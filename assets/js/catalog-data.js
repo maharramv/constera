@@ -99,6 +99,50 @@ window.CONSTERA_MARKETPLACE = {
       subcategories: ["Səki daşı", "Bordür", "Süni ot", "Damcı suvarma", "Bağ alətləri", "Drenaj"]
     }
   ],
+  serviceCategories: [
+    {
+      id: "construction",
+      title: "Tikinti işləri",
+      subtitle: "Karkas, beton, hörgü, dam, fasad və mühəndis işləri"
+    },
+    {
+      id: "renovation",
+      title: "Təmir işləri",
+      subtitle: "Mənzil, ofis, obyekt və açar təslim təmir paketləri"
+    },
+    {
+      id: "design",
+      title: "Dizayn və layihələndirmə",
+      subtitle: "Memarlıq, interyer, 3D vizualizasiya, smeta və texniki sənədlər"
+    },
+    {
+      id: "workforce",
+      title: "Usta və briqada",
+      subtitle: "Santexnik, elektrik, boyaçı, suvaqçı və sahə briqadaları"
+    }
+  ],
+  rentalCategories: [
+    {
+      id: "heavy-equipment",
+      title: "Ağır texnika",
+      subtitle: "Ekskavator, yükləyici, kran, forklift və beton texnikası"
+    },
+    {
+      id: "site-equipment",
+      title: "Sahə avadanlığı",
+      subtitle: "İskele, generator, kompressor, vibroplita və beton vibratorları"
+    },
+    {
+      id: "power-tools",
+      title: "Elektrikli alətlər",
+      subtitle: "Perforator, kəsici, ştroborez, qaynaq aparatı və ölçü cihazları"
+    },
+    {
+      id: "finishing-tools",
+      title: "Təmir alətləri",
+      subtitle: "Boya, kafel, parket, alçıpan və təmiz işlər üçün alətlər"
+    }
+  ],
   brands: [
     { id: "penguin", name: "Penguin", country: "Azərbaycan", segments: ["paints"], website: "www.penguin.az", certification: "Rəsmi kataloq mənbəyi" },
     { id: "epo", name: "EPO", country: "Azərbaycan", segments: ["dry-mixes", "construction-chemicals"], website: "www.epo.com.az", certification: "Rəsmi kataloq mənbəyi" },
@@ -153,6 +197,250 @@ window.CONSTERA_MARKETPLACE = {
       website: "Daxili təchizatçı",
       status: "Canlı kataloq lazımdır",
       region: "Azərbaycan"
+    }
+  ],
+  services: [
+    {
+      id: "monolit-beton-isleri",
+      title: "Monolit beton və karkas işləri",
+      category: "construction",
+      type: "Tikinti",
+      unit: "m³ / layihə",
+      price: "Sorğu əsasında",
+      leadTime: "Obyektə baxışdan sonra",
+      team: "Usta briqadası + texniki nəzarət",
+      specs: ["Fundament, kolon, rigel və plitə betonlama", "Armatur və qəlib işləri", "Texniki nəzarət və mərhələli qəbul"],
+      deliverables: ["İş qrafiki", "Material siyahısı", "RFQ üçün smeta bazası"]
+    },
+    {
+      id: "horgu-suvaq-isleri",
+      title: "Hörgü, suvaq və malyar hazırlığı",
+      category: "construction",
+      type: "Tikinti / təmir",
+      unit: "m²",
+      price: "Sorğu əsasında",
+      leadTime: "1-3 gün ərzində qiymətləndirmə",
+      team: "Hörgü və suvaq briqadası",
+      specs: ["Kərpic, blok və arakəsmə hörgüsü", "Daxili və fasad suvağı", "Astar, şpaklyovka və boya hazırlığı"],
+      deliverables: ["Miqdar çıxarışı", "Material norması", "İcra planı"]
+    },
+    {
+      id: "menzil-temiri-paketi",
+      title: "Mənzil təmiri paketi",
+      category: "renovation",
+      type: "Təmir",
+      unit: "m² / paket",
+      price: "Sorğu əsasında",
+      leadTime: "Plan və ölçüdən sonra",
+      team: "Açar təslim təmir komandası",
+      specs: ["Söküntü, elektrik, santexnika və tamamlama", "Boya, döşəmə, kafel və qapı işləri", "Material seçimi və mərhələli təhvil"],
+      deliverables: ["Təmir planı", "Smeta", "Material siyahısı"]
+    },
+    {
+      id: "ofis-obyekt-temiri",
+      title: "Ofis və kommersiya obyektlərinin təmiri",
+      category: "renovation",
+      type: "Təmir",
+      unit: "m² / layihə",
+      price: "Sorğu əsasında",
+      leadTime: "Obyekt brifindən sonra",
+      team: "MEP + tamamlama komandası",
+      specs: ["Ofis, mağaza, restoran və showroom təmiri", "Elektrik, zəif axın, HVAC və işıqlandırma", "Gecə və mərhələli iş qrafiki imkanı"],
+      deliverables: ["İş proqramı", "Təklif paketi", "Təhvil checklist-i"]
+    },
+    {
+      id: "interyer-dizayn",
+      title: "İnteryer dizayn layihəsi",
+      category: "design",
+      type: "Dizayn",
+      unit: "m²",
+      price: "Sorğu əsasında",
+      leadTime: "Brifdən sonra mərhələli",
+      team: "Dizayner + vizualizator",
+      specs: ["Plan həlləri və zonalaşdırma", "Material, rəng və işıq konsepti", "3D vizualizasiya və seçim siyahısı"],
+      deliverables: ["Plan albomu", "3D renderlər", "Material cədvəli"]
+    },
+    {
+      id: "memarliq-layihelendirme",
+      title: "Memarlıq və eskiz layihələndirmə",
+      category: "design",
+      type: "Layihələndirmə",
+      unit: "layihə",
+      price: "Sorğu əsasında",
+      leadTime: "Texniki tapşırıqdan sonra",
+      team: "Memar + mühəndis məsləhəti",
+      specs: ["Plan, fasad və həcm həlləri", "Villa, obyekt və kiçik kommersiya layihələri", "Smeta və material bazasına çıxış"],
+      deliverables: ["Eskiz layihə", "Texniki tapşırıq", "İlkin material siyahısı"]
+    },
+    {
+      id: "smeta-texniki-nezaret",
+      title: "Smeta və texniki nəzarət",
+      category: "design",
+      type: "Konsaltinq",
+      unit: "layihə / ay",
+      price: "Sorğu əsasında",
+      leadTime: "Sənədlər alındıqdan sonra",
+      team: "Smetaçı + texniki nəzarətçi",
+      specs: ["Material və iş həcmi çıxarışı", "Qiymət sorğusu üçün RFQ paketi", "İcra keyfiyyəti və həcmlərin yoxlanması"],
+      deliverables: ["Smeta faylı", "RFQ siyahısı", "Nəzarət hesabatı"]
+    },
+    {
+      id: "elektrik-santexnika-usta",
+      title: "Elektrik və santexnika ustaları",
+      category: "workforce",
+      type: "Usta xidməti",
+      unit: "gün / iş həcmi",
+      price: "Sorğu əsasında",
+      leadTime: "Mövcudluqdan asılıdır",
+      team: "Elektrik + santexnik usta",
+      specs: ["Rozetka, kabel, pano və işıqlandırma montajı", "Su xətti, kanalizasiya və sanitar qovşaqlar", "Kiçik işlər və obyekt briqadası imkanı"],
+      deliverables: ["Usta təyinatı", "İş siyahısı", "Material tələbi"]
+    }
+  ],
+  rentals: [
+    {
+      id: "ekskavator-20t",
+      name: "Ekskavator 20 ton icarəsi",
+      category: "heavy-equipment",
+      capacity: "20 ton",
+      unit: "saat / gün",
+      price: "Sorğu əsasında",
+      deposit: "Müqavilə əsasında",
+      delivery: "Operator və daşınma ayrıca razılaşdırılır",
+      operator: "Operatorla",
+      specs: ["Torpaq qazıntısı", "Fundament hazırlığı", "Sahə planlama işləri"]
+    },
+    {
+      id: "mini-yukleyici",
+      name: "Mini yükləyici icarəsi",
+      category: "heavy-equipment",
+      capacity: "Bobcat tipli",
+      unit: "saat / gün",
+      price: "Sorğu əsasında",
+      deposit: "Müqavilə əsasında",
+      delivery: "Obyekt ünvanına görə",
+      operator: "Operatorla",
+      specs: ["Dar sahələrdə yükləmə", "Sahə təmizliyi", "Material daşınması"]
+    },
+    {
+      id: "avtokran-25t",
+      name: "Avtokran 25 ton icarəsi",
+      category: "heavy-equipment",
+      capacity: "25 ton",
+      unit: "saat / növbə",
+      price: "Sorğu əsasında",
+      deposit: "Müqavilə əsasında",
+      delivery: "Marşrut və icazələrə görə",
+      operator: "Operatorla",
+      specs: ["Metal konstruksiya qaldırma", "Panel və blok montajı", "Yükləmə-boşaltma"]
+    },
+    {
+      id: "beton-nasos",
+      name: "Beton nasosu icarəsi",
+      category: "heavy-equipment",
+      capacity: "Layihəyə görə",
+      unit: "növbə",
+      price: "Sorğu əsasında",
+      deposit: "Müqavilə əsasında",
+      delivery: "Beton qrafiki ilə koordinasiya",
+      operator: "Operatorla",
+      specs: ["Monolit beton tökülüşü", "Mərtəbəli obyektlər", "Sürətli betonlama prosesi"]
+    },
+    {
+      id: "iskele-sistemi",
+      name: "İskele sistemi icarəsi",
+      category: "site-equipment",
+      capacity: "m² üzrə",
+      unit: "gün / ay",
+      price: "Sorğu əsasında",
+      deposit: "Miqdara görə",
+      delivery: "Quraşdırma ayrıca hesablanır",
+      operator: "Quraşdırma briqadası ilə",
+      specs: ["Fasad və təmir işləri", "Təhlükəsizlik elementləri", "Mərhələli montaj imkanı"]
+    },
+    {
+      id: "generator-30kva",
+      name: "Generator 30 kVA icarəsi",
+      category: "site-equipment",
+      capacity: "30 kVA",
+      unit: "gün / həftə",
+      price: "Sorğu əsasında",
+      deposit: "Müqavilə əsasında",
+      delivery: "Yanacaq və servis şərtləri ilə",
+      operator: "Operatorsuz / servis dəstəyi",
+      specs: ["Tikinti sahəsi enerjisi", "Ehtiyat enerji", "Səs izolyasiyalı model seçimi"]
+    },
+    {
+      id: "vibroplita",
+      name: "Vibroplita icarəsi",
+      category: "site-equipment",
+      capacity: "90-160 kg",
+      unit: "gün",
+      price: "Sorğu əsasında",
+      deposit: "Alət dəyərinə görə",
+      delivery: "Götürmə və ya çatdırılma",
+      operator: "Operatorsuz",
+      specs: ["Torpaq və səki altı sıxlaşdırma", "Kiçik sahələr", "Landşaft və yol işləri"]
+    },
+    {
+      id: "perforator-sds-max",
+      name: "SDS Max perforator icarəsi",
+      category: "power-tools",
+      capacity: "Professional sinif",
+      unit: "gün",
+      price: "Sorğu əsasında",
+      deposit: "Alət dəyərinə görə",
+      delivery: "Götürmə və ya çatdırılma",
+      operator: "Operatorsuz",
+      specs: ["Beton deşmə", "Söküntü işləri", "Tac və burğu dəsti ilə"]
+    },
+    {
+      id: "qaynaq-aparati",
+      name: "Qaynaq aparatı icarəsi",
+      category: "power-tools",
+      capacity: "İnverter",
+      unit: "gün / həftə",
+      price: "Sorğu əsasında",
+      deposit: "Alət dəyərinə görə",
+      delivery: "Götürmə və ya çatdırılma",
+      operator: "Operatorsuz",
+      specs: ["Metal montaj", "Sahə təmiri", "Elektrod və aksesuarlarla"]
+    },
+    {
+      id: "lazer-nivelir",
+      name: "Lazer nivelir icarəsi",
+      category: "finishing-tools",
+      capacity: "360° / tripod",
+      unit: "gün",
+      price: "Sorğu əsasında",
+      deposit: "Alət dəyərinə görə",
+      delivery: "Götürmə və ya çatdırılma",
+      operator: "Operatorsuz",
+      specs: ["Döşəmə və tavan nişanlama", "Alçıpan və kafel işləri", "Tripod və qəbuledici ilə"]
+    },
+    {
+      id: "plitka-kesen",
+      name: "Kafel kəsən aparat icarəsi",
+      category: "finishing-tools",
+      capacity: "Su ilə kəsmə",
+      unit: "gün",
+      price: "Sorğu əsasında",
+      deposit: "Alət dəyərinə görə",
+      delivery: "Götürmə və ya çatdırılma",
+      operator: "Operatorsuz",
+      specs: ["Kafel və keramoqranit kəsimi", "Təmiz kənar", "Hamam və mətbəx işləri"]
+    },
+    {
+      id: "toz-soran-senaye",
+      name: "Sənaye tozsoranı icarəsi",
+      category: "finishing-tools",
+      capacity: "Tikinti tozu üçün",
+      unit: "gün / həftə",
+      price: "Sorğu əsasında",
+      deposit: "Alət dəyərinə görə",
+      delivery: "Götürmə və ya çatdırılma",
+      operator: "Operatorsuz",
+      specs: ["Təmir sonrası təmizlik", "Ştrob və zımpara tozu", "Filtr və torba ilə"]
     }
   ],
   products: [

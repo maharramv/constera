@@ -1,8 +1,12 @@
 const marketplace = window.CONSTERA_MARKETPLACE || {
   categories: [],
+  serviceCategories: [],
+  rentalCategories: [],
   brands: [],
   suppliers: [],
-  products: []
+  products: [],
+  services: [],
+  rentals: []
 };
 
 const storage = {
@@ -20,6 +24,10 @@ const storage = {
 
 const getCategory = (id) => marketplace.categories.find((category) => category.id === id);
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
+const getServiceCategory = (id) =>
+  (marketplace.serviceCategories || []).find((category) => category.id === id);
+const getRentalCategory = (id) =>
+  (marketplace.rentalCategories || []).find((category) => category.id === id);
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 const escapeHtml = (value) =>
@@ -34,6 +42,8 @@ const escapeAttr = escapeHtml;
 
 const countProductsBy = (field, value) =>
   marketplace.products.filter((product) => product[field] === value).length;
+const countItemsBy = (items, field, value) =>
+  (items || []).filter((item) => item[field] === value).length;
 
 const createProductCard = (product) => {
   const category = getCategory(product.category);
@@ -214,10 +224,128 @@ const renderSuppliers = () => {
   `).join("");
 };
 
+const createServiceCard = (service) => {
+  const category = getServiceCategory(service.category);
+
+  return `
+    <article class="market-card service-card">
+      <div class="product-card-body">
+        <div class="product-meta">
+          <span>${escapeHtml(category?.title || service.category)}</span>
+          <span>${escapeHtml(service.type)}</span>
+        </div>
+        <h3>${escapeHtml(service.title)}</h3>
+        <div class="product-attributes">
+          <span>${escapeHtml(service.unit)}</span>
+          <span>${escapeHtml(service.leadTime)}</span>
+        </div>
+        <ul class="spec-list">
+          ${(service.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
+        </ul>
+        <div class="service-deliverables">
+          ${(service.deliverables || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="product-card-footer">
+        <div>
+          <span class="price-label">Qiymət</span>
+          <strong>${escapeHtml(service.price)}</strong>
+          <small>${escapeHtml(service.team)}</small>
+        </div>
+      </div>
+      <a class="button button-secondary product-rfq" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu</a>
+    </article>
+  `;
+};
+
+const createRentalCard = (rental) => {
+  const category = getRentalCategory(rental.category);
+
+  return `
+    <article class="market-card rental-card">
+      <div class="product-card-body">
+        <div class="product-meta">
+          <span>${escapeHtml(category?.title || rental.category)}</span>
+          <span>${escapeHtml(rental.operator)}</span>
+        </div>
+        <h3>${escapeHtml(rental.name)}</h3>
+        <div class="product-attributes">
+          <span>${escapeHtml(rental.capacity)}</span>
+          <span>${escapeHtml(rental.unit)}</span>
+          <span>${escapeHtml(rental.delivery)}</span>
+        </div>
+        <ul class="spec-list">
+          ${(rental.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
+        </ul>
+      </div>
+      <div class="product-card-footer">
+        <div>
+          <span class="price-label">İcarə qiyməti</span>
+          <strong>${escapeHtml(rental.price)}</strong>
+          <small>${escapeHtml(rental.deposit)}</small>
+        </div>
+      </div>
+      <a class="button button-secondary product-rfq" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu</a>
+    </article>
+  `;
+};
+
+const renderServices = () => {
+  const grid = document.querySelector("[data-service-grid]");
+  const filter = document.querySelector("[data-service-filter]");
+  const count = document.querySelector("[data-service-count]");
+  if (!grid || !filter) return;
+
+  const services = marketplace.services || [];
+  filter.innerHTML = `
+    <option value="all">Bütün xidmətlər</option>
+    ${(marketplace.serviceCategories || []).map((category) => `
+      <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(services, "category", category.id)})</option>
+    `).join("")}
+  `;
+
+  const render = () => {
+    const value = filter.value;
+    const filtered = services.filter((service) => value === "all" || service.category === value);
+    grid.innerHTML = filtered.map(createServiceCard).join("");
+    if (count) count.textContent = `${filtered.length} xidmət`;
+  };
+
+  filter.addEventListener("change", render);
+  render();
+};
+
+const renderRentals = () => {
+  const grid = document.querySelector("[data-rental-grid]");
+  const filter = document.querySelector("[data-rental-filter]");
+  const count = document.querySelector("[data-rental-count]");
+  if (!grid || !filter) return;
+
+  const rentals = marketplace.rentals || [];
+  filter.innerHTML = `
+    <option value="all">Bütün avadanlıqlar</option>
+    ${(marketplace.rentalCategories || []).map((category) => `
+      <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(rentals, "category", category.id)})</option>
+    `).join("")}
+  `;
+
+  const render = () => {
+    const value = filter.value;
+    const filtered = rentals.filter((rental) => value === "all" || rental.category === value);
+    grid.innerHTML = filtered.map(createRentalCard).join("");
+    if (count) count.textContent = `${filtered.length} avadanlıq`;
+  };
+
+  filter.addEventListener("change", render);
+  render();
+};
+
 const renderAdmin = () => {
   const stats = document.querySelector("[data-admin-stats]");
   const productRows = document.querySelector("[data-admin-products]");
   const categoryRows = document.querySelector("[data-admin-categories]");
+  const serviceRows = document.querySelector("[data-admin-services]");
+  const rentalRows = document.querySelector("[data-admin-rentals]");
 
   if (stats) {
     stats.innerHTML = `
@@ -225,6 +353,8 @@ const renderAdmin = () => {
       <article class="stat-card"><span class="stat-value">${marketplace.brands.length}</span><p>brend</p></article>
       <article class="stat-card"><span class="stat-value">${marketplace.suppliers.length}</span><p>təchizatçı</p></article>
       <article class="stat-card"><span class="stat-value">${marketplace.products.length}</span><p>məhsul</p></article>
+      <article class="stat-card"><span class="stat-value">${(marketplace.services || []).length}</span><p>xidmət</p></article>
+      <article class="stat-card"><span class="stat-value">${(marketplace.rentals || []).length}</span><p>icarə avadanlığı</p></article>
     `;
   }
 
@@ -249,6 +379,30 @@ const renderAdmin = () => {
       </tr>
     `).join("");
   }
+
+  if (serviceRows) {
+    serviceRows.innerHTML = (marketplace.services || []).map((service) => `
+      <tr>
+        <td>${escapeHtml(service.title)}</td>
+        <td>${escapeHtml(getServiceCategory(service.category)?.title || service.category)}</td>
+        <td>${escapeHtml(service.unit)}</td>
+        <td>${escapeHtml(service.price)}</td>
+        <td>${escapeHtml(service.leadTime)}</td>
+      </tr>
+    `).join("");
+  }
+
+  if (rentalRows) {
+    rentalRows.innerHTML = (marketplace.rentals || []).map((rental) => `
+      <tr>
+        <td>${escapeHtml(rental.name)}</td>
+        <td>${escapeHtml(getRentalCategory(rental.category)?.title || rental.category)}</td>
+        <td>${escapeHtml(rental.unit)}</td>
+        <td>${escapeHtml(rental.operator)}</td>
+        <td>${escapeHtml(rental.price)}</td>
+      </tr>
+    `).join("");
+  }
 };
 
 const initRfq = () => {
@@ -257,23 +411,47 @@ const initRfq = () => {
   const productSelect = document.querySelector("[data-product-select]");
   if (!form || !output || !productSelect) return;
 
+  const serviceOptions = (marketplace.services || [])
+    .map((service) => `<option value="service:${escapeAttr(service.id)}">${escapeHtml(service.title)}</option>`)
+    .join("");
+  const rentalOptions = (marketplace.rentals || [])
+    .map((rental) => `<option value="rental:${escapeAttr(rental.id)}">${escapeHtml(rental.name)}</option>`)
+    .join("");
+  const productOptions = marketplace.products
+    .map((product) => `<option value="product:${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>`)
+    .join("");
+
   productSelect.innerHTML = `
-    <option value="">Məhsul seçin</option>
-    ${marketplace.products.map((product) => `<option value="${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>`).join("")}
+    <option value="">Məhsul, xidmət və ya avadanlıq seçin</option>
+    <optgroup label="Məhsullar">${productOptions}</optgroup>
+    <optgroup label="Xidmətlər">${serviceOptions}</optgroup>
+    <optgroup label="Avadanlıq icarəsi">${rentalOptions}</optgroup>
   `;
 
   const params = new URLSearchParams(window.location.search);
   const productId = params.get("product");
+  const serviceId = params.get("service");
+  const rentalId = params.get("rental");
   if (productId && marketplace.products.some((product) => product.id === productId)) {
-    productSelect.value = productId;
+    productSelect.value = `product:${productId}`;
+  }
+  if (serviceId && (marketplace.services || []).some((service) => service.id === serviceId)) {
+    productSelect.value = `service:${serviceId}`;
+  }
+  if (rentalId && (marketplace.rentals || []).some((rental) => rental.id === rentalId)) {
+    productSelect.value = `rental:${rentalId}`;
   }
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(form);
-    const selectedProduct = marketplace.products.find((product) => product.id === data.get("product"));
+    const selectedValue = String(data.get("product") || "");
+    const [selectedType, selectedId] = selectedValue.split(":");
+    const selectedProduct = marketplace.products.find((product) => selectedType === "product" && product.id === selectedId);
+    const selectedService = (marketplace.services || []).find((service) => selectedType === "service" && service.id === selectedId);
+    const selectedRental = (marketplace.rentals || []).find((rental) => selectedType === "rental" && rental.id === selectedId);
     const rfq = {
-      product: selectedProduct?.name || data.get("customProduct"),
+      product: selectedProduct?.name || selectedService?.title || selectedRental?.name || data.get("customProduct"),
       quantity: data.get("quantity"),
       company: data.get("company"),
       contact: data.get("contact"),
@@ -323,6 +501,8 @@ const applyUrlFilters = () => {
 renderCatalog();
 renderBrands();
 renderSuppliers();
+renderServices();
+renderRentals();
 renderAdmin();
 initRfq();
 initActions();

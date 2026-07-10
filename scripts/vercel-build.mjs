@@ -3,6 +3,8 @@ import { accessSync, constants, cpSync, mkdirSync, rmSync } from "node:fs";
 const requiredFiles = [
   "index.html",
   "catalog.html",
+  "services.html",
+  "rental.html",
   "brands.html",
   "suppliers.html",
   "rfq.html",
@@ -16,6 +18,8 @@ const requiredFiles = [
 const staticEntries = [
   "index.html",
   "catalog.html",
+  "services.html",
+  "rental.html",
   "brands.html",
   "suppliers.html",
   "rfq.html",

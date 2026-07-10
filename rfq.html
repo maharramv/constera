@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra RFQ | Material sorğusu</title>
-    <meta name="description" content="ConstEra təchizatçıları üçün tikinti materialı RFQ draftı yaradın." />
+    <title>ConstEra RFQ | Material, xidmət və icarə sorğusu</title>
+    <meta name="description" content="ConstEra təchizatçıları üçün tikinti materialı, xidmət işi və avadanlıq icarəsi üzrə RFQ draftı yaradın." />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://constera.ru/rfq.html" />
     <meta name="theme-color" content="#0b0f14" />
@@ -38,6 +38,8 @@
         <nav class="nav" id="site-nav">
           <a href="index.html#home">Ana səhifə</a>
           <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
           <a href="rfq.html" aria-current="page">RFQ</a>
@@ -50,28 +52,29 @@
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
             <p class="eyebrow">Qiymət sorğusu</p>
-            <h1>Material sorğusunu hazırla və təchizatçı axınına bağla.</h1>
+            <h1>Material, xidmət və icarə sorğusunu vahid RFQ axınına bağla.</h1>
             <p class="hero-text">
               Bu demo mərhələdə RFQ brauzerdə draft kimi saxlanır. Server hissəsi əlavə
-              olunanda eyni forma təchizatçılara avtomatik təklif sorğusu göndərəcək.
+              olunanda eyni forma məhsul təchizatçılarına, iş briqadalarına və icarə
+              operatorlarına avtomatik təklif sorğusu göndərəcək.
             </p>
           </div>
           <div class="market-kpi-strip glass">
             <article><strong>1</strong><span>forma</span></article>
             <article><strong>20</strong><span>lokal draft limiti</span></article>
-            <article><strong>Növbəti</strong><span>təchizatçı təklifləri</span></article>
+            <article><strong>3</strong><span>məhsul, xidmət və icarə axını</span></article>
           </div>
         </section>
 
         <section class="section rfq-layout">
           <form class="rfq-form glass" data-rfq-form>
             <label class="form-field">
-              <span class="field-label">Kataloq məhsulu</span>
+              <span class="field-label">Məhsul / xidmət / avadanlıq</span>
               <select name="product" data-product-select></select>
             </label>
             <label class="form-field">
-              <span class="field-label">Kataloqda yoxdursa</span>
-              <input type="text" name="customProduct" placeholder="məsələn: 500 kisə sement M400" />
+              <span class="field-label">Siyahıda yoxdursa</span>
+              <input type="text" name="customProduct" placeholder="məsələn: 500 kisə sement M400, 120 m² təmir, 1 gün kran" />
             </label>
             <label class="form-field">
               <span class="field-label">Miqdar</span>
@@ -91,7 +94,7 @@
             </label>
             <label class="form-field rfq-wide">
               <span class="field-label">Qeyd</span>
-              <textarea name="note" rows="5" placeholder="Çatdırılma, marka, ölçü, sertifikat və digər tələblər"></textarea>
+              <textarea name="note" rows="5" placeholder="Çatdırılma, marka, ölçü, iş həcmi, operator, sertifikat və digər tələblər"></textarea>
             </label>
             <button class="button button-primary rfq-wide" type="submit">RFQ draft yarat</button>
             <div class="rfq-output rfq-wide" data-rfq-output hidden></div>
@@ -100,11 +103,11 @@
           <aside class="rfq-guide">
             <article class="info-card">
               <span>Addım 1</span>
-              <h3>Məhsulu və miqdarı seç.</h3>
+              <h3>Məhsul, xidmət və ya avadanlığı seç.</h3>
             </article>
             <article class="info-card">
               <span>Addım 2</span>
-              <h3>Təchizatçılar qiymət, stok və çatdırılma müddəti göndərir.</h3>
+              <h3>Təchizatçı, briqada və icarə operatoru qiymət və icra müddəti göndərir.</h3>
             </article>
             <article class="info-card">
               <span>Addım 3</span>

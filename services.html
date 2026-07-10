@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra Brendlər | Tikinti brendləri</title>
-    <meta name="description" content="ConstEra tikinti, boya, elektrik, santexnika və alət brendləri üçün brend mərkəzi." />
+    <title>ConstEra Xidmətlər | Tikinti, təmir və dizayn işləri</title>
+    <meta
+      name="description"
+      content="ConstEra tikinti, təmir, interyer dizayn, layihələndirmə, smeta və usta briqadaları üçün ayrıca xidmət mərkəzi."
+    />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://constera.ru/brands.html" />
+    <link rel="canonical" href="https://constera.ru/services.html" />
     <meta name="theme-color" content="#0b0f14" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +20,7 @@
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
   </head>
-  <body data-page="brands">
+  <body data-page="services">
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
     <div class="site-shell">
@@ -26,7 +29,7 @@
           <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
           <span class="brand-copy">
             <strong>CONSTERA</strong>
-            <span>Brend mərkəzi</span>
+            <span>Xidmətlər</span>
           </span>
         </a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
@@ -38,42 +41,54 @@
         <nav class="nav" id="site-nav">
           <a href="index.html#home">Ana səhifə</a>
           <a href="catalog.html">Kataloq</a>
-          <a href="services.html">Xidmətlər</a>
+          <a href="services.html" aria-current="page">Xidmətlər</a>
           <a href="rental.html">İcarə</a>
-          <a href="brands.html" aria-current="page">Brendlər</a>
+          <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
           <a href="rfq.html">RFQ</a>
           <a href="admin.html">Admin</a>
-          <a class="button button-outline nav-cta" href="catalog.html">Kataloqa keç</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Xidmət sorğusu</a>
         </nav>
       </header>
 
       <main>
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
-            <p class="eyebrow">Brend mərkəzi</p>
-            <h1>ConstEra üçün brend bazası və məhsul xəritəsi.</h1>
+            <p class="eyebrow">Tikinti, təmir və dizayn</p>
+            <h1>Material kataloqundan ayrıca idarə olunan xidmət bazası.</h1>
             <p class="hero-text">
-              Yerli və beynəlxalq brendlər vahid strukturda saxlanılır: məhsul
-              qrupları, datasheet statusu, təchizatçı və gələcəkdə sertifikatlar.
+              Tikinti işləri, mənzil və obyekt təmiri, interyer dizayn, memarlıq
+              layihələndirmə, smeta və usta briqadaları RFQ axınına ayrıca qoşulur.
             </p>
           </div>
-          <div class="market-kpi-strip glass">
-            <article><strong>16</strong><span>başlanğıc brend</span></article>
-            <article><strong>6</strong><span>əsas seqment</span></article>
-            <article><strong>1</strong><span>vahid katalog</span></article>
+          <div class="market-command glass">
+            <label>
+              <span>Xidmət növü</span>
+              <select data-service-filter></select>
+            </label>
+            <div class="market-mini-stats">
+              <article>
+                <strong data-service-count>0 xidmət</strong>
+                <span>başlanğıc xidmət bazası</span>
+              </article>
+              <article>
+                <strong>RFQ</strong>
+                <span>təklif sorğusuna hazır</span>
+              </article>
+            </div>
+            <a class="button button-primary" href="rfq.html">Xidmət üçün RFQ yarat</a>
           </div>
         </section>
 
         <section class="section">
           <div class="market-section-heading">
             <div>
-              <p class="eyebrow">Brendlər</p>
-              <h2>Brend profilləri</h2>
+              <p class="eyebrow">Xidmət mərkəzi</p>
+              <h2>İş paketləri</h2>
             </div>
-            <a class="card-link" href="suppliers.html">Təchizatçıları aç</a>
+            <a class="card-link" href="rental.html">Avadanlıq icarəsinə keç</a>
           </div>
-          <div class="market-grid" data-brand-grid></div>
+          <div class="product-grid" data-service-grid></div>
         </section>
       </main>
     </div>

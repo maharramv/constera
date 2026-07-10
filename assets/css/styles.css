@@ -1535,6 +1535,38 @@ dd {
   padding: 22px;
 }
 
+.market-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.market-mini-stats article {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+}
+
+.market-mini-stats strong,
+.market-mini-stats span {
+  display: block;
+}
+
+.market-mini-stats strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.market-mini-stats span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .market-command label,
 .rfq-form label {
   display: grid;
@@ -1682,6 +1714,12 @@ dd {
   grid-template-rows: 164px 1fr auto auto;
 }
 
+.service-card,
+.rental-card {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+}
+
 .product-media {
   display: grid;
   place-items: center;
@@ -1770,6 +1808,25 @@ dd {
   padding-left: 18px;
   color: var(--muted);
   font-size: 0.84rem;
+}
+
+.service-deliverables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.service-deliverables span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(15, 143, 111, 0.28);
+  border-radius: 999px;
+  color: #bff5e7;
+  background: rgba(15, 143, 111, 0.1);
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .product-card-footer {
@@ -2038,6 +2095,7 @@ dd {
   .market-grid,
   .market-kpi-strip,
   .admin-stat-grid,
+  .market-mini-stats,
   .rfq-form {
     grid-template-columns: 1fr;
   }
