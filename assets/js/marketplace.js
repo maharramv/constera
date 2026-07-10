@@ -22,7 +22,15 @@ const getCategory = (id) => marketplace.categories.find((category) => category.i
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
-const escapeAttr = (value) => String(value || "").replace(/"/g, "&quot;");
+const escapeHtml = (value) =>
+  String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;"
+  })[char]);
+const escapeAttr = escapeHtml;
 
 const countProductsBy = (field, value) =>
   marketplace.products.filter((product) => product[field] === value).length;
@@ -35,44 +43,45 @@ const createProductCard = (product) => {
   const isFavorite = favoriteIds.includes(product.id);
   const isCompared = compareIds.includes(product.id);
   const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
+  const categoryTitle = category?.title || product.category;
   const media = product.imageUrl
     ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
-    : `<span>${brandMark}</span>`;
+    : `<span>${escapeHtml(brandMark)}</span>`;
   const source = product.sourceUrl
-    ? `<a class="source-link" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${product.sourceLabel || "Mənbə"}</a>`
+    ? `<a class="source-link" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
     : "";
 
   return `
-    <article class="market-card product-card" data-product-id="${product.id}">
+    <article class="market-card product-card" data-product-id="${escapeAttr(product.id)}">
       <div class="product-media">
         ${media}
       </div>
       <div class="product-card-body">
         <div class="product-meta">
-          <span>${category?.title || product.category}</span>
-          <span>${product.subcategory}</span>
+          <span>${escapeHtml(categoryTitle)}</span>
+          <span>${escapeHtml(product.subcategory)}</span>
         </div>
-        <h3>${product.name}</h3>
-        <p class="product-sku">${product.sku}</p>
+        <h3>${escapeHtml(product.name)}</h3>
+        <p class="product-sku">${escapeHtml(product.sku)}</p>
         <div class="product-attributes">
-          <span>${product.package}</span>
-          <span>${product.origin}</span>
-          <span>${product.availability}</span>
+          <span>${escapeHtml(product.package)}</span>
+          <span>${escapeHtml(product.origin)}</span>
+          <span>${escapeHtml(product.availability)}</span>
         </div>
         <ul class="spec-list">
-          ${product.specs.map((spec) => `<li>${spec}</li>`).join("")}
+          ${(product.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
         </ul>
       </div>
       <div class="product-card-footer">
         <div>
           <span class="price-label">Qiymət</span>
-          <strong>${product.price}</strong>
-          <small>${product.priceNote}</small>
+          <strong>${escapeHtml(product.price)}</strong>
+          <small>${escapeHtml(product.priceNote)}</small>
           ${source}
         </div>
         <div class="product-actions">
-          <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${product.id}" aria-label="Seçilmişlərə əlavə et">♡</button>
-          <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${product.id}" aria-label="Müqayisəyə əlavə et">⇄</button>
+          <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${escapeAttr(product.id)}" aria-label="Seçilmişlərə əlavə et">♡</button>
+          <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${escapeAttr(product.id)}" aria-label="Müqayisəyə əlavə et">⇄</button>
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
@@ -101,7 +110,7 @@ const renderCatalog = () => {
       </button>
       ${marketplace.categories.map((category) => `
         <button class="category-filter" type="button" data-category="${category.id}">
-          <span>${category.title}</span>
+          <span>${escapeHtml(category.title)}</span>
           <strong>${countProductsBy("category", category.id)}</strong>
         </button>
       `).join("")}
@@ -111,7 +120,7 @@ const renderCatalog = () => {
   const renderBrandOptions = () => {
     const options = marketplace.brands
       .filter((brand) => marketplace.products.some((product) => product.brand === brand.name))
-      .map((brand) => `<option value="${brand.name}">${brand.name}</option>`)
+      .map((brand) => `<option value="${escapeAttr(brand.name)}">${escapeHtml(brand.name)}</option>`)
       .join("");
 
     brandSelect.innerHTML = `<option value="all">Bütün brendlər</option>${options}`;
@@ -172,15 +181,15 @@ const renderBrands = () => {
 
     return `
       <article class="market-card brand-card">
-        <div class="brand-mark">${brand.name.slice(0, 2).toUpperCase()}</div>
-        <span class="card-topline">${brand.country}</span>
-        <h3>${brand.name}</h3>
-        <p>${segmentNames}</p>
+        <div class="brand-mark">${escapeHtml(brand.name.slice(0, 2).toUpperCase())}</div>
+        <span class="card-topline">${escapeHtml(brand.country)}</span>
+        <h3>${escapeHtml(brand.name)}</h3>
+        <p>${escapeHtml(segmentNames)}</p>
         <div class="market-card-metrics">
           <span>${productCount} məhsul</span>
-          <span>${brand.certification}</span>
+          <span>${escapeHtml(brand.certification)}</span>
         </div>
-        <a class="card-link" href="catalog.html?brand=${encodeURIComponent(brand.name)}">${brand.website}</a>
+        <a class="card-link" href="catalog.html?brand=${encodeURIComponent(brand.name)}">${escapeHtml(brand.website)}</a>
       </article>
     `;
   }).join("");
@@ -192,13 +201,13 @@ const renderSuppliers = () => {
 
   grid.innerHTML = marketplace.suppliers.map((supplier) => `
     <article class="market-card supplier-card">
-      <span class="card-topline">${supplier.type}</span>
-      <h3>${supplier.name}</h3>
-      <p>${supplier.focus}</p>
+      <span class="card-topline">${escapeHtml(supplier.type)}</span>
+      <h3>${escapeHtml(supplier.name)}</h3>
+      <p>${escapeHtml(supplier.focus)}</p>
       <dl class="supplier-list">
-        <div><dt>Region</dt><dd>${supplier.region}</dd></div>
-        <div><dt>Vəziyyət</dt><dd>${supplier.status}</dd></div>
-        <div><dt>Sayt</dt><dd>${supplier.website}</dd></div>
+        <div><dt>Region</dt><dd>${escapeHtml(supplier.region)}</dd></div>
+        <div><dt>Vəziyyət</dt><dd>${escapeHtml(supplier.status)}</dd></div>
+        <div><dt>Sayt</dt><dd>${escapeHtml(supplier.website)}</dd></div>
       </dl>
       <a class="button button-secondary" href="rfq.html?supplier=${encodeURIComponent(supplier.id)}">Təklif sorğusu</a>
     </article>
@@ -222,11 +231,11 @@ const renderAdmin = () => {
   if (productRows) {
     productRows.innerHTML = marketplace.products.slice(0, 12).map((product) => `
       <tr>
-        <td>${product.sku}</td>
-        <td>${product.name}</td>
-        <td>${product.brand}</td>
-        <td>${product.price}</td>
-        <td>${product.availability}</td>
+        <td>${escapeHtml(product.sku)}</td>
+        <td>${escapeHtml(product.name)}</td>
+        <td>${escapeHtml(product.brand)}</td>
+        <td>${escapeHtml(product.price)}</td>
+        <td>${escapeHtml(product.availability)}</td>
       </tr>
     `).join("");
   }
@@ -234,7 +243,7 @@ const renderAdmin = () => {
   if (categoryRows) {
     categoryRows.innerHTML = marketplace.categories.map((category) => `
       <tr>
-        <td>${category.title}</td>
+        <td>${escapeHtml(category.title)}</td>
         <td>${category.subcategories.length}</td>
         <td>${countProductsBy("category", category.id)}</td>
       </tr>
@@ -250,7 +259,7 @@ const initRfq = () => {
 
   productSelect.innerHTML = `
     <option value="">Məhsul seçin</option>
-    ${marketplace.products.map((product) => `<option value="${product.id}">${product.name}</option>`).join("")}
+    ${marketplace.products.map((product) => `<option value="${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>`).join("")}
   `;
 
   const params = new URLSearchParams(window.location.search);
@@ -280,7 +289,7 @@ const initRfq = () => {
     output.hidden = false;
     output.innerHTML = `
       <strong>RFQ draftı hazırdır.</strong>
-      <span>${rfq.product || "Məhsul"} · ${rfq.quantity || "miqdar yazılmayıb"} · ${rfq.company || "şirkət"}</span>
+      <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
       <small>Bu demo versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
     `;
   });

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="1000" height="1000"><metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description><dc:creator>RealFaviconGenerator</dc:creator><dc:source>https://realfavicongenerator.net</dc:source></rdf:Description></rdf:RDF></metadata><g clip-path="url(#SvgjsClipPath1129)"><rect width="1000" height="1000" fill="#000000"></rect><g transform="matrix(5.46875,0,0,5.46875,150,150)"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 128 128" width="128" height="128"><defs>
     <style>
       .cls-1 {
-        fill: url(#_Новый_образец_градиента_19-4);
+        fill: url(#gradient_gold-4);
       }
 
       .cls-2 {
@@ -9,7 +9,7 @@
       }
 
       .cls-3 {
-        fill: url(#_Безымянный_градиент_203-3);
+        fill: url(#gradient_light-3);
       }
 
       .cls-3, .cls-4, .cls-5, .cls-6, .cls-7, .cls-8, .cls-9, .cls-10, .cls-11, .cls-12, .cls-13, .cls-14, .cls-15 {
@@ -29,15 +29,15 @@
       }
 
       .cls-4 {
-        fill: url(#_Безымянный_градиент_85-2);
+        fill: url(#gradient_glow-2);
       }
 
       .cls-19 {
-        fill: url(#_Безымянный_градиент_48-2);
+        fill: url(#gradient_deep_green8-2);
       }
 
       .cls-5 {
-        fill: url(#_Безымянный_градиент_203-6);
+        fill: url(#gradient_light-6);
       }
 
       .cls-20 {
@@ -45,66 +45,66 @@
       }
 
       .cls-6 {
-        fill: url(#_Безымянный_градиент_203-4);
+        fill: url(#gradient_light-4);
       }
 
       .cls-7 {
-        fill: url(#_Безымянный_градиент_85);
+        fill: url(#gradient_glow);
       }
 
       .cls-21 {
-        fill: url(#_Безымянный_градиент_48);
+        fill: url(#gradient_deep_green8);
       }
 
       .cls-8 {
-        fill: url(#_Безымянный_градиент_85-7);
+        fill: url(#gradient_glow-7);
       }
 
       .cls-9 {
-        fill: url(#_Безымянный_градиент_85-5);
+        fill: url(#gradient_glow-5);
       }
 
       .cls-22 {
-        fill: url(#_Безымянный_градиент_4);
+        fill: url(#gradient_deep_green);
       }
 
       .cls-23 {
-        fill: url(#_Новый_образец_градиента_19-2);
+        fill: url(#gradient_gold-2);
       }
 
       .cls-10 {
-        fill: url(#_Безымянный_градиент_85-6);
+        fill: url(#gradient_glow-6);
       }
 
       .cls-11 {
-        fill: url(#_Безымянный_градиент_203);
+        fill: url(#gradient_light);
       }
 
       .cls-12 {
-        fill: url(#_Безымянный_градиент_203-5);
+        fill: url(#gradient_light-5);
       }
 
       .cls-24 {
-        fill: url(#_Новый_образец_градиента_19);
+        fill: url(#gradient_gold);
       }
 
       .cls-13 {
-        fill: url(#_Безымянный_градиент_85-4);
+        fill: url(#gradient_glow-4);
       }
 
       .cls-14 {
-        fill: url(#_Безымянный_градиент_203-2);
+        fill: url(#gradient_light-2);
       }
 
       .cls-25 {
-        fill: url(#_Новый_образец_градиента_19-3);
+        fill: url(#gradient_gold-3);
       }
 
       .cls-15 {
-        fill: url(#_Безымянный_градиент_85-3);
+        fill: url(#gradient_glow-3);
       }
     </style>
-    <linearGradient id="_Новый_образец_градиента_19" data-name="Новый образец градиента 19" x1="10.25" y1="96.81" x2="93.7" y2="96.81" gradientUnits="userSpaceOnUse">
+    <linearGradient id="gradient_gold" data-name="Gold gradient" x1="10.25" y1="96.81" x2="93.7" y2="96.81" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#8c6034"></stop>
       <stop offset=".14" stop-color="#a8824e"></stop>
       <stop offset=".46" stop-color="#f2d793"></stop>
@@ -112,45 +112,45 @@
       <stop offset=".67" stop-color="#e2c07b"></stop>
       <stop offset="1" stop-color="#a67033"></stop>
     </linearGradient>
-    <linearGradient id="_Новый_образец_градиента_19-2" data-name="Новый образец градиента 19" x1="24.96" y1="81.21" x2="78.69" y2="120.43" xlink:href="#_Новый_образец_градиента_19"></linearGradient>
-    <radialGradient id="_Безымянный_градиент_4" data-name="Безымянный градиент 4" cx="16.89" cy="53.1" fx="16.89" fy="53.1" r="112.77" gradientUnits="userSpaceOnUse">
+    <linearGradient id="gradient_gold-2" data-name="Gold gradient" x1="24.96" y1="81.21" x2="78.69" y2="120.43" xlink:href="#gradient_gold"></linearGradient>
+    <radialGradient id="gradient_deep_green" data-name="Deep green gradient" cx="16.89" cy="53.1" fx="16.89" fy="53.1" r="112.77" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#002917"></stop>
       <stop offset="1" stop-color="#011410"></stop>
     </radialGradient>
-    <linearGradient id="_Новый_образец_градиента_19-3" data-name="Новый образец градиента 19" x1="29.62" y1="71.36" x2="123.72" y2="71.36" xlink:href="#_Новый_образец_градиента_19"></linearGradient>
-    <linearGradient id="_Новый_образец_градиента_19-4" data-name="Новый образец градиента 19" x1="42.36" y1="69.99" x2="109.84" y2="69.99" xlink:href="#_Новый_образец_градиента_19"></linearGradient>
-    <radialGradient id="_Безымянный_градиент_48" data-name="Безымянный градиент 48" cx="73.83" cy="25" fx="73.83" fy="25" r="113.87" gradientUnits="userSpaceOnUse">
+    <linearGradient id="gradient_gold-3" data-name="Gold gradient" x1="29.62" y1="71.36" x2="123.72" y2="71.36" xlink:href="#gradient_gold"></linearGradient>
+    <linearGradient id="gradient_gold-4" data-name="Gold gradient" x1="42.36" y1="69.99" x2="109.84" y2="69.99" xlink:href="#gradient_gold"></linearGradient>
+    <radialGradient id="gradient_deep_green8" data-name="Deep green gradient8" cx="73.83" cy="25" fx="73.83" fy="25" r="113.87" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#011410"></stop>
       <stop offset=".36" stop-color="#005c33"></stop>
       <stop offset="1" stop-color="#011410"></stop>
     </radialGradient>
-    <radialGradient id="_Безымянный_градиент_48-2" data-name="Безымянный градиент 48" cx="67.36" cy="1.32" fx="67.36" fy="1.32" r="83.35" xlink:href="#_Безымянный_градиент_48"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_203" data-name="Безымянный градиент 203" cx="-587.85" cy="4483.17" fx="-587.85" fy="4483.17" r="30.72" gradientTransform="translate(1059.24 -191.11) scale(1.68 .05)" gradientUnits="userSpaceOnUse">
+    <radialGradient id="gradient_deep_green8-2" data-name="Deep green gradient8" cx="67.36" cy="1.32" fx="67.36" fy="1.32" r="83.35" xlink:href="#gradient_deep_green8"></radialGradient>
+    <radialGradient id="gradient_light" data-name="Light gradient" cx="-587.85" cy="4483.17" fx="-587.85" fy="4483.17" r="30.72" gradientTransform="translate(1059.24 -191.11) scale(1.68 .05)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#fff4b5"></stop>
       <stop offset=".5" stop-color="#797355" stop-opacity=".48"></stop>
       <stop offset=".84" stop-color="#222018" stop-opacity=".13"></stop>
       <stop offset="1" stop-color="#000" stop-opacity="0"></stop>
     </radialGradient>
-    <radialGradient id="_Безымянный_градиент_203-2" data-name="Безымянный градиент 203" cx="-447.63" cy="4595.71" fx="-447.63" fy="4595.71" r="30.72" gradientTransform="translate(668.66 -190.31) scale(1.29 .05)" xlink:href="#_Безымянный_градиент_203"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_203-3" data-name="Безымянный градиент 203" cx="-527.47" cy="3234.89" fx="-527.47" fy="3234.89" r="30.72" gradientTransform="translate(-105.59 980.07) rotate(90) scale(1.68 -.05)" xlink:href="#_Безымянный_градиент_203"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_203-4" data-name="Безымянный градиент 203" cx="-368.65" cy="3347.43" fx="-368.65" fy="3347.43" r="30.72" gradientTransform="translate(-88.32 559.3) rotate(90) scale(1.29 -.05)" xlink:href="#_Безымянный_градиент_203"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_203-5" data-name="Безымянный градиент 203" cx="-593.71" cy="4333.94" fx="-593.71" fy="4333.94" r="30.72" gradientTransform="translate(-187.25 1088.9) rotate(90) scale(1.68 -.05)" xlink:href="#_Безымянный_градиент_203"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_203-6" data-name="Безымянный градиент 203" cx="-488.08" cy="4226.09" fx="-488.08" fy="4226.09" r="30.72" gradientTransform="translate(-177.72 712.51) rotate(90) scale(1.24 -.05)" xlink:href="#_Безымянный_градиент_203"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_85" data-name="Безымянный градиент 85" cx="-433.12" cy="4186.57" fx="-433.12" fy="4186.57" r="30.72" gradientTransform="translate(604.65 -198.51) scale(1.26 .05)" gradientUnits="userSpaceOnUse">
+    <radialGradient id="gradient_light-2" data-name="Light gradient" cx="-447.63" cy="4595.71" fx="-447.63" fy="4595.71" r="30.72" gradientTransform="translate(668.66 -190.31) scale(1.29 .05)" xlink:href="#gradient_light"></radialGradient>
+    <radialGradient id="gradient_light-3" data-name="Light gradient" cx="-527.47" cy="3234.89" fx="-527.47" fy="3234.89" r="30.72" gradientTransform="translate(-105.59 980.07) rotate(90) scale(1.68 -.05)" xlink:href="#gradient_light"></radialGradient>
+    <radialGradient id="gradient_light-4" data-name="Light gradient" cx="-368.65" cy="3347.43" fx="-368.65" fy="3347.43" r="30.72" gradientTransform="translate(-88.32 559.3) rotate(90) scale(1.29 -.05)" xlink:href="#gradient_light"></radialGradient>
+    <radialGradient id="gradient_light-5" data-name="Light gradient" cx="-593.71" cy="4333.94" fx="-593.71" fy="4333.94" r="30.72" gradientTransform="translate(-187.25 1088.9) rotate(90) scale(1.68 -.05)" xlink:href="#gradient_light"></radialGradient>
+    <radialGradient id="gradient_light-6" data-name="Light gradient" cx="-488.08" cy="4226.09" fx="-488.08" fy="4226.09" r="30.72" gradientTransform="translate(-177.72 712.51) rotate(90) scale(1.24 -.05)" xlink:href="#gradient_light"></radialGradient>
+    <radialGradient id="gradient_glow" data-name="Glow gradient" cx="-433.12" cy="4186.57" fx="-433.12" fy="4186.57" r="30.72" gradientTransform="translate(604.65 -198.51) scale(1.26 .05)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#9fffb2"></stop>
       <stop offset=".5" stop-color="#4b7954" stop-opacity=".48"></stop>
       <stop offset=".84" stop-color="#152217" stop-opacity=".13"></stop>
       <stop offset="1" stop-color="#000" stop-opacity="0"></stop>
     </radialGradient>
-    <radialGradient id="_Безымянный_градиент_85-2" data-name="Безымянный градиент 85" cx="-442.97" cy="4076.95" fx="-442.97" fy="4076.95" r="30.72" gradientTransform="translate(598.5 -201.91) scale(1.26 .05)" xlink:href="#_Безымянный_градиент_85"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_85-3" data-name="Безымянный градиент 85" cx="701.61" cy="-1475.41" fx="701.61" fy="-1475.41" r="30.72" gradientTransform="translate(-4.43 -326.01) rotate(90) scale(.48 .05)" xlink:href="#_Безымянный_градиент_85"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_85-4" data-name="Безымянный градиент 85" cx="629.61" cy="-1140.83" fx="629.61" fy="-1140.83" r="30.72" gradientTransform="translate(-41.02 -263.56) rotate(90) scale(.48 .05)" xlink:href="#_Безымянный_градиент_85"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_85-5" data-name="Безымянный градиент 85" cx="707.5" cy="-493.22" fx="707.5" fy="-493.22" r="30.72" gradientTransform="translate(-7.5 -271) rotate(90) scale(.48 .05)" xlink:href="#_Безымянный_градиент_85"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_85-6" data-name="Безымянный градиент 85" cx="-940.23" cy="-7189.15" fx="-940.23" fy="-7189.15" gradientTransform="translate(-257.85 785.26) rotate(90) scale(.79 .04)" xlink:href="#_Безымянный_градиент_85"></radialGradient>
-    <radialGradient id="_Безымянный_градиент_85-7" data-name="Безымянный градиент 85" cx="-895.62" cy="-7355.69" fx="-895.62" fy="-7355.69" r="30.72" gradientTransform="translate(-246.54 646.9) rotate(90) scale(.66 .04)" xlink:href="#_Безымянный_градиент_85"></radialGradient>
+    <radialGradient id="gradient_glow-2" data-name="Glow gradient" cx="-442.97" cy="4076.95" fx="-442.97" fy="4076.95" r="30.72" gradientTransform="translate(598.5 -201.91) scale(1.26 .05)" xlink:href="#gradient_glow"></radialGradient>
+    <radialGradient id="gradient_glow-3" data-name="Glow gradient" cx="701.61" cy="-1475.41" fx="701.61" fy="-1475.41" r="30.72" gradientTransform="translate(-4.43 -326.01) rotate(90) scale(.48 .05)" xlink:href="#gradient_glow"></radialGradient>
+    <radialGradient id="gradient_glow-4" data-name="Glow gradient" cx="629.61" cy="-1140.83" fx="629.61" fy="-1140.83" r="30.72" gradientTransform="translate(-41.02 -263.56) rotate(90) scale(.48 .05)" xlink:href="#gradient_glow"></radialGradient>
+    <radialGradient id="gradient_glow-5" data-name="Glow gradient" cx="707.5" cy="-493.22" fx="707.5" fy="-493.22" r="30.72" gradientTransform="translate(-7.5 -271) rotate(90) scale(.48 .05)" xlink:href="#gradient_glow"></radialGradient>
+    <radialGradient id="gradient_glow-6" data-name="Glow gradient" cx="-940.23" cy="-7189.15" fx="-940.23" fy="-7189.15" gradientTransform="translate(-257.85 785.26) rotate(90) scale(.79 .04)" xlink:href="#gradient_glow"></radialGradient>
+    <radialGradient id="gradient_glow-7" data-name="Glow gradient" cx="-895.62" cy="-7355.69" fx="-895.62" fy="-7355.69" r="30.72" gradientTransform="translate(-246.54 646.9) rotate(90) scale(.66 .04)" xlink:href="#gradient_glow"></radialGradient>
   <clipPath id="SvgjsClipPath1129"><rect width="1000" height="1000" x="0" y="0" rx="500" ry="500"></rect></clipPath></defs><g class="cls-16">
-    <g id="_Слой_2" data-name="Слой 2">
-      <g id="_Слой_1-2" data-name="Слой 1">
+    <g id="layer_2" data-name="Layer 2">
+      <g id="layer_1-2" data-name="Layer 1">
         <rect width="128" height="128"></rect>
         <g>
           <polygon class="cls-24" points="93.7 113.67 10.25 68.5 10.25 89.84 75.81 125.11 93.7 115.36 93.7 113.67"></polygon>

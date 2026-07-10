@@ -154,8 +154,8 @@ const translations = {
     "contact.inquiry": "Sorğu",
     "contact.inquiryPlaceholder": "Tərəfdaşlıq, investisiya və ya layihə sorğunuzu təsvir edin",
     "contact.submit": "Sorğu göndər",
-    "contact.success": "Sorğu uğurla göndərildi.",
-    "contact.error": "Sorğunu göndərmək mümkün olmadı. Zəhmət olmasa sonra yenidən cəhd edin.",
+    "contact.success": "Sorğu lokal draft kimi yadda saxlandı.",
+    "contact.error": "Sorğunu yadda saxlamaq mümkün olmadı. Zəhmət olmasa sonra yenidən cəhd edin.",
     "contact.validation": "Zəhmət olmasa bütün məcburi sahələri düzgün doldurun.",
     "contact.error.nameRequired": "Zəhmət olmasa adınızı yazın.",
     "contact.error.nameShort": "Ad ən azı 2 simvoldan ibarət olmalıdır.",
@@ -440,6 +440,8 @@ if (form) {
   });
 
   form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
     if (langInput) {
       langInput.value = "az";
     }
@@ -452,9 +454,30 @@ if (form) {
     });
 
     if (!isValid) {
-      event.preventDefault();
       setFormStatus("error", translations.az["contact.validation"]);
       firstInvalidField?.focus();
+      return;
+    }
+
+    try {
+      const formData = new FormData(form);
+      const inquiry = {
+        name: formData.get("name"),
+        company: formData.get("company"),
+        email: formData.get("email"),
+        message: formData.get("message"),
+        createdAt: new Date().toISOString()
+      };
+      const existing = JSON.parse(localStorage.getItem("constera-contact-drafts") || "[]");
+      existing.unshift(inquiry);
+      localStorage.setItem("constera-contact-drafts", JSON.stringify(existing.slice(0, 20)));
+      setFormStatus("success", translations.az["contact.success"]);
+      form.reset();
+      if (langInput) {
+        langInput.value = "az";
+      }
+    } catch {
+      setFormStatus("error", translations.az["contact.error"]);
     }
   });
 }

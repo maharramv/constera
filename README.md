@@ -40,6 +40,7 @@ Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamand
 - SKU, qablaşdırma, mənşə, vəziyyət və qiymət qeydləri olan məhsul kartları
 - brauzerdə lokal seçilmişlər və müqayisə işarələri
 - RFQ draft forması
+- Vercel üçün statik-safe əlaqə draft forması
 - gələcək CRUD və CSV/Excel idxalı üçün admin struktur önbaxışı
 
 `Sorğu əsasında` kimi göstərilən qiymətlər ictimai istifadədən əvvəl təchizatçı tərəfindən təsdiqlənməlidir. İctimai kataloq səhifələri məhsul adı, qablaşdırma, texniki xüsusiyyət, mənbə linki və rəsmi məhsul şəkilləri üçün istifadə olunur. Rəsmi səhifədə qiymət yoxdursa, təchizatçı qiymət siyahısı admin/idxal axınına əlavə olunana qədər məhsul sorğu əsaslı qalır.

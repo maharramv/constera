@@ -22,8 +22,7 @@ const staticEntries = [
   "admin.html",
   "assets",
   "robots.txt",
-  "sitemap.xml",
-  "send.php"
+  "sitemap.xml"
 ];
 
 const missingFiles = requiredFiles.filter((file) => {
