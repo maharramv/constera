@@ -17,6 +17,7 @@ const requiredFiles = [
   "assets/css/styles.css",
   "assets/js/script.js",
   "assets/js/catalog-data.js",
+  "assets/js/taxonomy-expansion.js",
   "assets/js/marketplace.js"
 ];
 

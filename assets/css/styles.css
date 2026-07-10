@@ -1654,6 +1654,15 @@ dd {
   gap: 8px;
 }
 
+.category-group-label {
+  margin-top: 12px;
+  color: #f4d99d;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .category-filter {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

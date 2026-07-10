@@ -20,6 +20,7 @@ GitHub Pages və Vercel üçün hazırlanmış statik korporativ sayt konsepti.
 - `assets/css/` - stillər
 - `assets/js/` - skriptlər
 - `assets/js/catalog-data.js` - başlanğıc bazar platforması məlumatları
+- `assets/js/taxonomy-expansion.js` - geniş kateqoriya/subkateqoriya xəritəsi və RFQ-ready seed məlumatları
 - `assets/js/marketplace.js` - kataloq, RFQ və admin render məntiqi
 - `assets/images/` - kontent şəkilləri və logo
 - `assets/icons/` - favicon dəsti və manifest
@@ -42,10 +43,13 @@ npm run vercel-build
 
 Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamanda ilk B2B bazar platforması qatını əlavə edir:
 
-- tikinti kateqoriyaları və subkateqoriyaları
+- 35 material kateqoriyası və 360 material subkateqoriyası olan geniş tikinti taksonomiyası
+- material qrupları üzrə bölünmüş katalog: konstruksiya, quru qarışıqlar, kimya, fasad, elektrik, HVAC, santexnika, interyer, enerji, anbar və ərazi sistemləri
+- RFQ-ready məhsul qrupları: canlı təchizatçı qiyməti təsdiqlənənə qədər `Sorğu əsasında` saxlanılır
 - tikinti, təmir, dizayn, mühəndis sistemləri, tamamlama, fasad və audit üçün kateqoriya/subkateqoriya xidmət bazası
-- hazır təmir, hazır tikinti və full tikinti+təmir üçün paket bazası
-- ağır texnika, torpaq/yol texnikası, beton avadanlığı, hündürlük sistemləri, sahə avadanlığı və təmir alətləri üçün kateqoriya/subkateqoriya icarə bazası
+- 12 xidmət kateqoriyası və 116 xidmət subkateqoriyası
+- hazır təmir, hazır tikinti, full tikinti+təmir, mühəndis və servis paketləri üçün 66 paketlik baza
+- ağır texnika, ölçmə cihazları, söküntü, metal emalı, sahə təhlükəsizliyi və təmir alətləri üzrə 100 icarə kartı
 - məhsul, paket, xidmət və icarə üçün parametrli detal səhifələri
 - paket, xidmət həcmi və icarə müddəti üçün ilkin hesablayıcı panellər
 - tarix, büdcə, çatdırılma/operator və istifadə məqsədi sahələri ilə genişləndirilmiş RFQ draftı

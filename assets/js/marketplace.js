@@ -55,6 +55,31 @@ const getSubcategories = (categories, categoryId) => {
   return [...new Set(selectedCategories.flatMap((category) => category.subcategories || []))];
 };
 
+const groupCategories = (categories) => {
+  const groups = [];
+  (categories || []).forEach((category) => {
+    const groupName = category.group || "Ümumi";
+    let group = groups.find((item) => item.name === groupName);
+    if (!group) {
+      group = { name: groupName, categories: [] };
+      groups.push(group);
+    }
+    group.categories.push(category);
+  });
+  return groups;
+};
+
+const renderGroupedCategoryOptions = (categories, items, allLabel) => `
+  <option value="all">${escapeHtml(allLabel)} (${(items || []).length})</option>
+  ${groupCategories(categories).map((group) => `
+    <optgroup label="${escapeAttr(group.name)}">
+      ${group.categories.map((category) => `
+        <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(items, "category", category.id)})</option>
+      `).join("")}
+    </optgroup>
+  `).join("")}
+`;
+
 const getFilteredSubcategoryCount = (items, categoryId, subcategory) =>
   (items || []).filter((item) => {
     const matchesCategory = categoryId === "all" || item.category === categoryId;
@@ -148,11 +173,14 @@ const renderCatalog = () => {
         <span>Bütün kataloq</span>
         <strong>${allCount}</strong>
       </button>
-      ${marketplace.categories.map((category) => `
-        <button class="category-filter" type="button" data-category="${category.id}">
-          <span>${escapeHtml(category.title)}</span>
-          <strong>${countProductsBy("category", category.id)}</strong>
-        </button>
+      ${groupCategories(marketplace.categories).map((group) => `
+        <div class="category-group-label">${escapeHtml(group.name)}</div>
+        ${group.categories.map((category) => `
+          <button class="category-filter" type="button" data-category="${escapeAttr(category.id)}">
+            <span>${escapeHtml(category.title)}</span>
+            <strong>${countProductsBy("category", category.id)}</strong>
+          </button>
+        `).join("")}
       `).join("")}
     `;
   };
@@ -372,12 +400,7 @@ const renderServices = () => {
   const services = marketplace.services || [];
   const categories = marketplace.serviceCategories || [];
 
-  categoryFilter.innerHTML = `
-    <option value="all">Bütün kateqoriyalar (${services.length})</option>
-    ${(marketplace.serviceCategories || []).map((category) => `
-      <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(services, "category", category.id)})</option>
-    `).join("")}
-  `;
+  categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, services, "Bütün kateqoriyalar");
 
   const renderSubcategoryOptions = () => {
     if (!subcategoryFilter) return;
@@ -421,12 +444,7 @@ const renderPackages = () => {
   const packages = marketplace.packages || [];
   const categories = marketplace.packageCategories || [];
 
-  categoryFilter.innerHTML = `
-    <option value="all">Bütün paketlər (${packages.length})</option>
-    ${categories.map((category) => `
-      <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(packages, "category", category.id)})</option>
-    `).join("")}
-  `;
+  categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, packages, "Bütün paketlər");
 
   const renderSubcategoryOptions = () => {
     if (!subcategoryFilter) return;
@@ -470,12 +488,7 @@ const renderRentals = () => {
   const rentals = marketplace.rentals || [];
   const categories = marketplace.rentalCategories || [];
 
-  categoryFilter.innerHTML = `
-    <option value="all">Bütün kateqoriyalar (${rentals.length})</option>
-    ${(marketplace.rentalCategories || []).map((category) => `
-      <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(rentals, "category", category.id)})</option>
-    `).join("")}
-  `;
+  categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, rentals, "Bütün kateqoriyalar");
 
   const renderSubcategoryOptions = () => {
     if (!subcategoryFilter) return;
@@ -860,6 +873,7 @@ const renderAdmin = () => {
   if (categoryRows) {
     categoryRows.innerHTML = marketplace.categories.map((category) => `
       <tr>
+        <td>${escapeHtml(category.group || "Ümumi")}</td>
         <td>${escapeHtml(category.title)}</td>
         <td>${category.subcategories.length}</td>
         <td>${countProductsBy("category", category.id)}</td>
