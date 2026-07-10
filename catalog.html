@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Catalog | Tikinti materialları marketplace</title>
+    <meta
+      name="description"
+      content="ConstEra Enterprise v2 catalog platform for construction materials, suppliers, brands and RFQ workflows in Azerbaijan."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://constera.ru/catalog.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="catalog">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA home">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Marketplace</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Home</a>
+          <a href="catalog.html" aria-current="page">Catalog</a>
+          <a href="brands.html">Brands</a>
+          <a href="suppliers.html">Suppliers</a>
+          <a href="rfq.html">RFQ</a>
+          <a href="admin.html">Admin</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Sorğu göndər</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">ConstEra Mega Catalog AZ</p>
+            <h1>Tikinti materialları üçün idarə olunan B2B kataloq.</h1>
+            <p class="hero-text">
+              Bu mərhələ katalog, brend, təchizatçı və RFQ strukturunu bir yerdə
+              göstərir. Qiymətlər canlı bazaya qoşulana qədər təsdiqlənmiş
+              siyahı və sorğu əsasında idarə olunur.
+            </p>
+          </div>
+          <div class="market-command glass">
+            <label>
+              <span>Axtarış</span>
+              <input data-search type="search" placeholder="məsələn: boya 15 L, Bosch, armatur 12 mm" />
+            </label>
+            <label>
+              <span>Brend</span>
+              <select data-brand-filter></select>
+            </label>
+            <a class="button button-primary" href="rfq.html">RFQ yarat</a>
+          </div>
+        </section>
+
+        <section class="section catalog-workspace">
+          <aside class="catalog-sidebar glass">
+            <div class="sidebar-heading">
+              <span class="eyebrow">Kateqoriyalar</span>
+              <strong data-result-count>0 məhsul</strong>
+            </div>
+            <div class="category-list" data-category-list></div>
+          </aside>
+
+          <div class="catalog-results">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Marketplace</p>
+                <h2>Başlanğıc məhsul bazası</h2>
+              </div>
+              <a class="card-link" href="admin.html">Admin strukturuna bax</a>
+            </div>
+            <div class="product-grid" data-product-grid></div>
+            <div class="empty-state glass" data-empty-state hidden>
+              <strong>Nəticə tapılmadı.</strong>
+              <span>Axtarışı sadələşdir və ya başqa kateqoriya seç.</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

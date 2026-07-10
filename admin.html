@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Admin | Catalog control</title>
+    <meta name="description" content="ConstEra Enterprise v2 admin platform for product, category, brand and supplier management." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.ru/admin.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="admin">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA home">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Admin</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Home</a>
+          <a href="catalog.html">Catalog</a>
+          <a href="brands.html">Brands</a>
+          <a href="suppliers.html">Suppliers</a>
+          <a href="rfq.html">RFQ</a>
+          <a href="admin.html" aria-current="page">Admin</a>
+          <a class="button button-outline nav-cta" href="catalog.html">Preview catalog</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Enterprise Admin v2</p>
+            <h1>Kataloq, price list və supplier idarəetməsi üçün başlanğıc panel.</h1>
+            <p class="hero-text">
+              Bu hələ real login-li admin deyil. Amma strukturu göstərir:
+              məhsullar, kateqoriyalar, price import və supplier statusları.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-admin-stats></div>
+        </section>
+
+        <section class="section admin-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Import schema</p>
+                <h2>Excel / CSV sütunları</h2>
+              </div>
+              <span class="data-badge">v1 ready</span>
+            </div>
+            <div class="schema-grid">
+              <span>sku</span>
+              <span>name</span>
+              <span>brand</span>
+              <span>category</span>
+              <span>subcategory</span>
+              <span>package</span>
+              <span>price</span>
+              <span>supplier</span>
+              <span>availability</span>
+              <span>specs</span>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Products</p>
+                <h2>Başlanğıc məhsul cədvəli</h2>
+              </div>
+              <a class="card-link" href="catalog.html">Kataloqda aç</a>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Məhsul</th>
+                    <th>Brend</th>
+                    <th>Qiymət</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody data-admin-products></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Categories</p>
+                <h2>Kateqoriya strukturu</h2>
+              </div>
+              <span class="data-badge">nested-ready</span>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Kateqoriya</th>
+                    <th>Subkateqoriya</th>
+                    <th>Məhsul</th>
+                  </tr>
+                </thead>
+                <tbody data-admin-categories></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

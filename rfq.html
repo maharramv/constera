@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra RFQ | Material sorğusu</title>
+    <meta name="description" content="Create a construction material RFQ draft for ConstEra suppliers." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://constera.ru/rfq.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="rfq">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA home">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>RFQ</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Home</a>
+          <a href="catalog.html">Catalog</a>
+          <a href="brands.html">Brands</a>
+          <a href="suppliers.html">Suppliers</a>
+          <a href="rfq.html" aria-current="page">RFQ</a>
+          <a href="admin.html">Admin</a>
+          <a class="button button-outline nav-cta" href="catalog.html">Məhsul seç</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Request for Quote</p>
+            <h1>Material sorğusunu hazırla və supplier axınına bağla.</h1>
+            <p class="hero-text">
+              Bu demo mərhələdə RFQ brauzerdə draft kimi saxlanır. Backend əlavə
+              olunanda eyni forma supplier-lərə avtomatik təklif sorğusu göndərəcək.
+            </p>
+          </div>
+          <div class="market-kpi-strip glass">
+            <article><strong>1</strong><span>forma</span></article>
+            <article><strong>20</strong><span>lokal draft limiti</span></article>
+            <article><strong>Next</strong><span>supplier teklifleri</span></article>
+          </div>
+        </section>
+
+        <section class="section rfq-layout">
+          <form class="rfq-form glass" data-rfq-form>
+            <label class="form-field">
+              <span class="field-label">Kataloq məhsulu</span>
+              <select name="product" data-product-select></select>
+            </label>
+            <label class="form-field">
+              <span class="field-label">Kataloqda yoxdursa</span>
+              <input type="text" name="customProduct" placeholder="məsələn: 500 kisə sement M400" />
+            </label>
+            <label class="form-field">
+              <span class="field-label">Miqdar</span>
+              <input type="text" name="quantity" placeholder="məsələn: 120 kisə, 600 m², 40 ədəd" required />
+            </label>
+            <label class="form-field">
+              <span class="field-label">Şirkət</span>
+              <input type="text" name="company" placeholder="Şirkət adı" required />
+            </label>
+            <label class="form-field">
+              <span class="field-label">Əlaqə</span>
+              <input type="text" name="contact" placeholder="Telefon və ya email" required />
+            </label>
+            <label class="form-field">
+              <span class="field-label">Şəhər / Rayon</span>
+              <input type="text" name="city" placeholder="Bakı, Sumqayıt, Gəncə..." />
+            </label>
+            <label class="form-field rfq-wide">
+              <span class="field-label">Qeyd</span>
+              <textarea name="note" rows="5" placeholder="Çatdırılma, marka, ölçü, sertifikat və digər tələblər"></textarea>
+            </label>
+            <button class="button button-primary rfq-wide" type="submit">RFQ draft yarat</button>
+            <div class="rfq-output rfq-wide" data-rfq-output hidden></div>
+          </form>
+
+          <aside class="rfq-guide">
+            <article class="info-card">
+              <span>Step 1</span>
+              <h3>Məhsulu və miqdarı seç.</h3>
+            </article>
+            <article class="info-card">
+              <span>Step 2</span>
+              <h3>Supplier-lər qiymət, stok və çatdırılma müddəti göndərir.</h3>
+            </article>
+            <article class="info-card">
+              <span>Step 3</span>
+              <h3>Admin paneldə təkliflər müqayisə olunur.</h3>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>
