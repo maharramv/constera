@@ -44,6 +44,18 @@ const countProductsBy = (field, value) =>
   marketplace.products.filter((product) => product[field] === value).length;
 const countItemsBy = (items, field, value) =>
   (items || []).filter((item) => item[field] === value).length;
+const getSubcategories = (categories, categoryId) => {
+  const selectedCategories = categoryId === "all"
+    ? categories
+    : categories.filter((category) => category.id === categoryId);
+  return [...new Set(selectedCategories.flatMap((category) => category.subcategories || []))];
+};
+
+const getFilteredSubcategoryCount = (items, categoryId, subcategory) =>
+  (items || []).filter((item) => {
+    const matchesCategory = categoryId === "all" || item.category === categoryId;
+    return matchesCategory && item.subcategory === subcategory;
+  }).length;
 
 const createProductCard = (product) => {
   const category = getCategory(product.category);
@@ -232,6 +244,7 @@ const createServiceCard = (service) => {
       <div class="product-card-body">
         <div class="product-meta">
           <span>${escapeHtml(category?.title || service.category)}</span>
+          <span>${escapeHtml(service.subcategory || "Ümumi")}</span>
           <span>${escapeHtml(service.type)}</span>
         </div>
         <h3>${escapeHtml(service.title)}</h3>
@@ -266,6 +279,7 @@ const createRentalCard = (rental) => {
       <div class="product-card-body">
         <div class="product-meta">
           <span>${escapeHtml(category?.title || rental.category)}</span>
+          <span>${escapeHtml(rental.subcategory || "Ümumi")}</span>
           <span>${escapeHtml(rental.operator)}</span>
         </div>
         <h3>${escapeHtml(rental.name)}</h3>
@@ -292,51 +306,99 @@ const createRentalCard = (rental) => {
 
 const renderServices = () => {
   const grid = document.querySelector("[data-service-grid]");
-  const filter = document.querySelector("[data-service-filter]");
+  const categoryFilter = document.querySelector("[data-service-category-filter]") || document.querySelector("[data-service-filter]");
+  const subcategoryFilter = document.querySelector("[data-service-subcategory-filter]");
   const count = document.querySelector("[data-service-count]");
-  if (!grid || !filter) return;
+  if (!grid || !categoryFilter) return;
 
   const services = marketplace.services || [];
-  filter.innerHTML = `
-    <option value="all">Bütün xidmətlər</option>
+  const categories = marketplace.serviceCategories || [];
+
+  categoryFilter.innerHTML = `
+    <option value="all">Bütün kateqoriyalar (${services.length})</option>
     ${(marketplace.serviceCategories || []).map((category) => `
       <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(services, "category", category.id)})</option>
     `).join("")}
   `;
 
+  const renderSubcategoryOptions = () => {
+    if (!subcategoryFilter) return;
+    const activeCategory = categoryFilter.value;
+    const options = getSubcategories(categories, activeCategory)
+      .map((subcategory) => `
+        <option value="${escapeAttr(subcategory)}">${escapeHtml(subcategory)} (${getFilteredSubcategoryCount(services, activeCategory, subcategory)})</option>
+      `)
+      .join("");
+    subcategoryFilter.innerHTML = `<option value="all">Bütün subkateqoriyalar</option>${options}`;
+  };
+
   const render = () => {
-    const value = filter.value;
-    const filtered = services.filter((service) => value === "all" || service.category === value);
+    const categoryValue = categoryFilter.value;
+    const subcategoryValue = subcategoryFilter?.value || "all";
+    const filtered = services.filter((service) => {
+      const matchesCategory = categoryValue === "all" || service.category === categoryValue;
+      const matchesSubcategory = subcategoryValue === "all" || service.subcategory === subcategoryValue;
+      return matchesCategory && matchesSubcategory;
+    });
     grid.innerHTML = filtered.map(createServiceCard).join("");
     if (count) count.textContent = `${filtered.length} xidmət`;
   };
 
-  filter.addEventListener("change", render);
+  categoryFilter.addEventListener("change", () => {
+    renderSubcategoryOptions();
+    render();
+  });
+  subcategoryFilter?.addEventListener("change", render);
+  renderSubcategoryOptions();
   render();
 };
 
 const renderRentals = () => {
   const grid = document.querySelector("[data-rental-grid]");
-  const filter = document.querySelector("[data-rental-filter]");
+  const categoryFilter = document.querySelector("[data-rental-category-filter]") || document.querySelector("[data-rental-filter]");
+  const subcategoryFilter = document.querySelector("[data-rental-subcategory-filter]");
   const count = document.querySelector("[data-rental-count]");
-  if (!grid || !filter) return;
+  if (!grid || !categoryFilter) return;
 
   const rentals = marketplace.rentals || [];
-  filter.innerHTML = `
-    <option value="all">Bütün avadanlıqlar</option>
+  const categories = marketplace.rentalCategories || [];
+
+  categoryFilter.innerHTML = `
+    <option value="all">Bütün kateqoriyalar (${rentals.length})</option>
     ${(marketplace.rentalCategories || []).map((category) => `
       <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(rentals, "category", category.id)})</option>
     `).join("")}
   `;
 
+  const renderSubcategoryOptions = () => {
+    if (!subcategoryFilter) return;
+    const activeCategory = categoryFilter.value;
+    const options = getSubcategories(categories, activeCategory)
+      .map((subcategory) => `
+        <option value="${escapeAttr(subcategory)}">${escapeHtml(subcategory)} (${getFilteredSubcategoryCount(rentals, activeCategory, subcategory)})</option>
+      `)
+      .join("");
+    subcategoryFilter.innerHTML = `<option value="all">Bütün subkateqoriyalar</option>${options}`;
+  };
+
   const render = () => {
-    const value = filter.value;
-    const filtered = rentals.filter((rental) => value === "all" || rental.category === value);
+    const categoryValue = categoryFilter.value;
+    const subcategoryValue = subcategoryFilter?.value || "all";
+    const filtered = rentals.filter((rental) => {
+      const matchesCategory = categoryValue === "all" || rental.category === categoryValue;
+      const matchesSubcategory = subcategoryValue === "all" || rental.subcategory === subcategoryValue;
+      return matchesCategory && matchesSubcategory;
+    });
     grid.innerHTML = filtered.map(createRentalCard).join("");
     if (count) count.textContent = `${filtered.length} avadanlıq`;
   };
 
-  filter.addEventListener("change", render);
+  categoryFilter.addEventListener("change", () => {
+    renderSubcategoryOptions();
+    render();
+  });
+  subcategoryFilter?.addEventListener("change", render);
+  renderSubcategoryOptions();
   render();
 };
 
@@ -385,6 +447,7 @@ const renderAdmin = () => {
       <tr>
         <td>${escapeHtml(service.title)}</td>
         <td>${escapeHtml(getServiceCategory(service.category)?.title || service.category)}</td>
+        <td>${escapeHtml(service.subcategory || "Ümumi")}</td>
         <td>${escapeHtml(service.unit)}</td>
         <td>${escapeHtml(service.price)}</td>
         <td>${escapeHtml(service.leadTime)}</td>
@@ -397,6 +460,7 @@ const renderAdmin = () => {
       <tr>
         <td>${escapeHtml(rental.name)}</td>
         <td>${escapeHtml(getRentalCategory(rental.category)?.title || rental.category)}</td>
+        <td>${escapeHtml(rental.subcategory || "Ümumi")}</td>
         <td>${escapeHtml(rental.unit)}</td>
         <td>${escapeHtml(rental.operator)}</td>
         <td>${escapeHtml(rental.price)}</td>
@@ -411,11 +475,23 @@ const initRfq = () => {
   const productSelect = document.querySelector("[data-product-select]");
   if (!form || !output || !productSelect) return;
 
-  const serviceOptions = (marketplace.services || [])
-    .map((service) => `<option value="service:${escapeAttr(service.id)}">${escapeHtml(service.title)}</option>`)
+  const serviceOptions = (marketplace.serviceCategories || [])
+    .map((category) => {
+      const options = (marketplace.services || [])
+        .filter((service) => service.category === category.id)
+        .map((service) => `<option value="service:${escapeAttr(service.id)}">${escapeHtml(service.title)} — ${escapeHtml(service.subcategory || "Ümumi")}</option>`)
+        .join("");
+      return options ? `<optgroup label="Xidmətlər - ${escapeAttr(category.title)}">${options}</optgroup>` : "";
+    })
     .join("");
-  const rentalOptions = (marketplace.rentals || [])
-    .map((rental) => `<option value="rental:${escapeAttr(rental.id)}">${escapeHtml(rental.name)}</option>`)
+  const rentalOptions = (marketplace.rentalCategories || [])
+    .map((category) => {
+      const options = (marketplace.rentals || [])
+        .filter((rental) => rental.category === category.id)
+        .map((rental) => `<option value="rental:${escapeAttr(rental.id)}">${escapeHtml(rental.name)} — ${escapeHtml(rental.subcategory || "Ümumi")}</option>`)
+        .join("");
+      return options ? `<optgroup label="İcarə - ${escapeAttr(category.title)}">${options}</optgroup>` : "";
+    })
     .join("");
   const productOptions = marketplace.products
     .map((product) => `<option value="product:${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>`)
@@ -424,8 +500,8 @@ const initRfq = () => {
   productSelect.innerHTML = `
     <option value="">Məhsul, xidmət və ya avadanlıq seçin</option>
     <optgroup label="Məhsullar">${productOptions}</optgroup>
-    <optgroup label="Xidmətlər">${serviceOptions}</optgroup>
-    <optgroup label="Avadanlıq icarəsi">${rentalOptions}</optgroup>
+    ${serviceOptions}
+    ${rentalOptions}
   `;
 
   const params = new URLSearchParams(window.location.search);

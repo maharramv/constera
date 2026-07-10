@@ -38,8 +38,8 @@ npm run vercel-build
 Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamanda ilk B2B bazar platforması qatını əlavə edir:
 
 - tikinti kateqoriyaları və subkateqoriyaları
-- tikinti, təmir, dizayn, smeta və usta xidmətləri üçün ayrıca xidmət bazası
-- ağır texnika, sahə avadanlığı və təmir alətləri üçün ayrıca icarə bazası
+- tikinti, təmir, dizayn, mühəndis sistemləri, tamamlama, fasad və audit üçün kateqoriya/subkateqoriya xidmət bazası
+- ağır texnika, torpaq/yol texnikası, beton avadanlığı, hündürlük sistemləri, sahə avadanlığı və təmir alətləri üçün kateqoriya/subkateqoriya icarə bazası
 - təchizatçı və brend profilləri
 - SKU, qablaşdırma, mənşə, vəziyyət və qiymət qeydləri olan məhsul kartları
 - brauzerdə lokal seçilmişlər və müqayisə işarələri
