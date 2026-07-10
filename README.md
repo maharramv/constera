@@ -21,6 +21,17 @@ Static corporate website concept prepared for GitHub Pages deployment.
 
 Open `index.html` in a browser or serve the folder with any static server.
 
+## Deploy on Vercel
+
+This is a static site. Vercel can run:
+
+```bash
+npm run vercel-build
+```
+
+The command validates that the required static pages and assets exist. The
+output directory is the repository root (`.`).
+
 ## ConstEra Enterprise v2
 
 The current milestone keeps the project static and dependency-free while adding
