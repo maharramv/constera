@@ -42,6 +42,13 @@ npm run vercel-build
 
 Əmr tələb olunan statik səhifə və asset fayllarını yoxlayır, sonra deploy üçün hazır saytı `dist` qovluğuna köçürür.
 
+Vercel project ayarları statik sayt kimi saxlanmalıdır:
+
+- Framework Preset: `Other`
+- Install Command: boş (`vercel.json` daxilində `""`)
+- Build Command: `npm run vercel-build`
+- Output Directory: `dist`
+
 ## ConstEra Korporativ v2
 
 Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamanda ilk B2B bazar platforması qatını əlavə edir:
