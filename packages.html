@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra Xidmətlər | Tikinti, təmir və dizayn işləri</title>
+    <title>ConstEra Paketlər | Hazır təmir, tikinti və full həllər</title>
     <meta
       name="description"
-      content="ConstEra tikinti, təmir, interyer dizayn, layihələndirmə, smeta və usta briqadaları üçün ayrıca xidmət mərkəzi."
+      content="ConstEra hazır təmir paketləri, hazır tikinti paketləri və full tikinti+təmir açar təslim həllərini RFQ axınına bağlayır."
     />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://constera.ru/services.html" />
+    <link rel="canonical" href="https://constera.ru/packages.html" />
     <meta name="theme-color" content="#0b0f14" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,7 +20,7 @@
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
   </head>
-  <body data-page="services">
+  <body data-page="packages">
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
     <div class="site-shell">
@@ -29,7 +29,7 @@
           <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
           <span class="brand-copy">
             <strong>CONSTERA</strong>
-            <span>Xidmətlər</span>
+            <span>Paketlər</span>
           </span>
         </a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
@@ -41,86 +41,95 @@
         <nav class="nav" id="site-nav">
           <a href="index.html#home">Ana səhifə</a>
           <a href="catalog.html">Kataloq</a>
-          <a href="services.html" aria-current="page">Xidmətlər</a>
-          <a href="packages.html">Paketlər</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html" aria-current="page">Paketlər</a>
           <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
           <a href="rfq.html">RFQ</a>
           <a href="admin.html">Admin</a>
-          <a class="button button-outline nav-cta" href="rfq.html">Xidmət sorğusu</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Paket sorğusu</a>
         </nav>
       </header>
 
       <main>
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
-            <p class="eyebrow">Tikinti, təmir və dizayn</p>
-            <h1>Material kataloqundan ayrıca idarə olunan xidmət bazası.</h1>
+            <p class="eyebrow">Hazır paketlər</p>
+            <h1>Təmir, tikinti və full açar təslim paketləri bir yerdə.</h1>
             <p class="hero-text">
-              Tikinti işləri, mənzil və obyekt təmiri, interyer dizayn, memarlıq
-              layihələndirmə, smeta və usta briqadaları RFQ axınına ayrıca qoşulur.
+              Ekonom, standart və premium təmir; qara karkas, ağ suvaq və villa
+              tikintisi; həmçinin tikinti+təmir full paketləri ayrıca RFQ axınına qoşulur.
             </p>
           </div>
           <div class="market-command glass">
             <label>
               <span>Kateqoriya</span>
-              <select data-service-category-filter></select>
+              <select data-package-category-filter></select>
             </label>
             <label>
               <span>Subkateqoriya</span>
-              <select data-service-subcategory-filter></select>
+              <select data-package-subcategory-filter></select>
             </label>
             <div class="market-mini-stats">
               <article>
-                <strong data-service-count>0 xidmət</strong>
-                <span>kateqoriya və subkateqoriya ilə</span>
+                <strong data-package-count>0 paket</strong>
+                <span>təmir, tikinti və full həllər</span>
               </article>
               <article>
                 <strong>RFQ</strong>
-                <span>təklif sorğusuna hazır</span>
+                <span>iş həcmi və büdcə ilə</span>
               </article>
             </div>
-            <a class="button button-primary" href="rfq.html">Xidmət üçün RFQ yarat</a>
+            <a class="button button-primary" href="rfq.html">Paket üçün RFQ yarat</a>
           </div>
         </section>
 
         <section class="section calculator-section">
           <div class="market-section-heading">
             <div>
-              <p class="eyebrow">İlkin hesablayıcı</p>
-              <h2>Xidmət həcmi və smeta yönləndiricisi</h2>
+              <p class="eyebrow">Paket yönləndiricisi</p>
+              <h2>Sahə, paket tipi və material səviyyəsi üzrə ilkin indeks</h2>
             </div>
-            <span class="data-badge">RFQ-ready</span>
+            <span class="data-badge">Qiymət RFQ ilə</span>
           </div>
           <div class="calculator-grid">
-            <form class="calculator-panel glass" data-service-calculator>
+            <form class="calculator-panel glass" data-package-calculator>
               <label>
                 <span class="field-label">Sahə</span>
                 <input type="number" name="area" min="1" value="120" />
               </label>
               <label>
-                <span class="field-label">İş tipi</span>
+                <span class="field-label">Paket tipi</span>
                 <select name="scope">
-                  <option value="1">Yüngül təmir</option>
-                  <option value="1.35" selected>Standart təmir</option>
-                  <option value="1.75">Açar təslim</option>
-                  <option value="2.2">Tikinti və mühəndis sistemləri</option>
+                  <option value="1" selected>Standart təmir</option>
+                  <option value="1.45">Ağ suvaq tikinti</option>
+                  <option value="1.9">Full tikinti + təmir</option>
+                  <option value="2.35">Premium full</option>
                 </select>
               </label>
               <label>
-                <span class="field-label">Material səviyyəsi</span>
+                <span class="field-label">Səviyyə</span>
                 <select name="level">
                   <option value="Ekonom">Ekonom</option>
                   <option value="Standart" selected>Standart</option>
                   <option value="Premium">Premium</option>
                 </select>
               </label>
+              <label>
+                <span class="field-label">RFQ paketi</span>
+                <select name="packageId">
+                  <option value="standart-temir-paketi" selected>Standart təmir</option>
+                  <option value="ag-suvaq-paketi">Ağ suvaq</option>
+                  <option value="acar-teslim-ev-paketi">Açar təslim ev</option>
+                  <option value="premium-full-paketi">Premium full</option>
+                </select>
+              </label>
               <button class="button button-primary" type="submit">Hesabla</button>
             </form>
-            <div class="calculator-output glass" data-service-calculator-output>
-              <strong>162 m² iş indeksi</strong>
-              <span>Standart material səviyyəsi ilə RFQ üçün ilkin həcmi göstərir.</span>
+            <div class="calculator-output glass" data-package-calculator-output>
+              <strong>134 paket indeksi</strong>
+              <span>Standart səviyyə ilə RFQ üçün ilkin iş həcmi.</span>
             </div>
           </div>
         </section>
@@ -128,12 +137,12 @@
         <section class="section">
           <div class="market-section-heading">
             <div>
-              <p class="eyebrow">Xidmət mərkəzi</p>
-              <h2>Kateqoriyalara bölünmüş iş paketləri</h2>
+              <p class="eyebrow">Paket kataloqu</p>
+              <h2>Hazır təmir, tikinti və full həllər</h2>
             </div>
-            <a class="card-link" href="rental.html">Avadanlıq icarəsinə keç</a>
+            <a class="card-link" href="services.html">Xidmətlərə keç</a>
           </div>
-          <div class="product-grid" data-service-grid></div>
+          <div class="product-grid" data-package-grid></div>
         </section>
       </main>
     </div>

@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra Admin | Kataloq, xidmət və icarə idarəetməsi</title>
-    <meta name="description" content="ConstEra Korporativ v2 məhsul, xidmət, avadanlıq icarəsi, kateqoriya, brend və təchizatçı idarəetməsi üçün admin platforması." />
+    <title>ConstEra Admin | Kataloq, paket, xidmət və icarə idarəetməsi</title>
+    <meta name="description" content="ConstEra Korporativ v2 məhsul, paket, xidmət, avadanlıq icarəsi, kateqoriya, brend və təchizatçı idarəetməsi üçün admin platforması." />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://constera.ru/admin.html" />
     <meta name="theme-color" content="#0b0f14" />
@@ -39,6 +39,7 @@
           <a href="index.html#home">Ana səhifə</a>
           <a href="catalog.html">Kataloq</a>
           <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
           <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
@@ -55,7 +56,7 @@
             <h1>Kataloq, xidmət, icarə və təchizatçı idarəetməsi üçün başlanğıc panel.</h1>
             <p class="hero-text">
               Bu hələ real login-li admin deyil. Amma strukturu göstərir:
-              məhsullar, xidmət paketləri, avadanlıq icarəsi, qiymət idxalı və təchizatçı statusları.
+              məhsullar, hazır paketlər, xidmətlər, avadanlıq icarəsi, qiymət idxalı və təchizatçı statusları.
             </p>
           </div>
           <div class="admin-stat-grid" data-admin-stats></div>
@@ -82,6 +83,7 @@
               <span>qiymət</span>
               <span>təchizatçı</span>
               <span>operator</span>
+              <span>paket tipi</span>
               <span>müddət</span>
               <span>mövcudluq</span>
               <span>xüsusiyyətlər</span>
@@ -155,6 +157,31 @@
                   </tr>
                 </thead>
                 <tbody data-admin-services></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Hazır paketlər</p>
+                <h2>Təmir, tikinti və full paketlər</h2>
+              </div>
+              <a class="card-link" href="packages.html">Paket səhifəsini aç</a>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Paket</th>
+                    <th>Kateqoriya</th>
+                    <th>Subkateqoriya</th>
+                    <th>Vahid</th>
+                    <th>Qiymət</th>
+                    <th>Müddət</th>
+                  </tr>
+                </thead>
+                <tbody data-admin-packages></tbody>
               </table>
             </div>
           </div>

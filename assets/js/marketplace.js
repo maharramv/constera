@@ -1,11 +1,13 @@
 const marketplace = window.CONSTERA_MARKETPLACE || {
   categories: [],
   serviceCategories: [],
+  packageCategories: [],
   rentalCategories: [],
   brands: [],
   suppliers: [],
   products: [],
   services: [],
+  packages: [],
   rentals: []
 };
 
@@ -26,6 +28,8 @@ const getCategory = (id) => marketplace.categories.find((category) => category.i
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
 const getServiceCategory = (id) =>
   (marketplace.serviceCategories || []).find((category) => category.id === id);
+const getPackageCategory = (id) =>
+  (marketplace.packageCategories || []).find((category) => category.id === id);
 const getRentalCategory = (id) =>
   (marketplace.rentalCategories || []).find((category) => category.id === id);
 
@@ -286,6 +290,44 @@ const createServiceCard = (service) => {
   `;
 };
 
+const createPackageCard = (pack) => {
+  const category = getPackageCategory(pack.category);
+
+  return `
+    <article class="market-card service-card">
+      <div class="product-card-body">
+        <div class="product-meta">
+          <span>${escapeHtml(category?.title || pack.category)}</span>
+          <span>${escapeHtml(pack.subcategory || "Ümumi")}</span>
+          <span>${escapeHtml(pack.type)}</span>
+        </div>
+        <h3>${escapeHtml(pack.title)}</h3>
+        <p class="product-sku">${escapeHtml(pack.idealFor)}</p>
+        <div class="product-attributes">
+          <span>${escapeHtml(pack.unit)}</span>
+          <span>${escapeHtml(pack.timeline)}</span>
+          <span>${escapeHtml(pack.team)}</span>
+        </div>
+        <ul class="spec-list">
+          ${(pack.includes || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+        <div class="service-deliverables">
+          ${(pack.deliverables || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="product-card-footer">
+        <div>
+          <span class="price-label">Paket qiyməti</span>
+          <strong>${escapeHtml(pack.price)}</strong>
+          <small>${escapeHtml(pack.timeline)}</small>
+          <a class="source-link" href="package-detail.html?package=${encodeURIComponent(pack.id)}">Detallı bax</a>
+        </div>
+      </div>
+      <a class="button button-secondary product-rfq" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket RFQ</a>
+    </article>
+  `;
+};
+
 const createRentalCard = (rental) => {
   const category = getRentalCategory(rental.category);
 
@@ -358,6 +400,55 @@ const renderServices = () => {
     });
     grid.innerHTML = filtered.map(createServiceCard).join("");
     if (count) count.textContent = `${filtered.length} xidmət`;
+  };
+
+  categoryFilter.addEventListener("change", () => {
+    renderSubcategoryOptions();
+    render();
+  });
+  subcategoryFilter?.addEventListener("change", render);
+  renderSubcategoryOptions();
+  render();
+};
+
+const renderPackages = () => {
+  const grid = document.querySelector("[data-package-grid]");
+  const categoryFilter = document.querySelector("[data-package-category-filter]");
+  const subcategoryFilter = document.querySelector("[data-package-subcategory-filter]");
+  const count = document.querySelector("[data-package-count]");
+  if (!grid || !categoryFilter) return;
+
+  const packages = marketplace.packages || [];
+  const categories = marketplace.packageCategories || [];
+
+  categoryFilter.innerHTML = `
+    <option value="all">Bütün paketlər (${packages.length})</option>
+    ${categories.map((category) => `
+      <option value="${escapeAttr(category.id)}">${escapeHtml(category.title)} (${countItemsBy(packages, "category", category.id)})</option>
+    `).join("")}
+  `;
+
+  const renderSubcategoryOptions = () => {
+    if (!subcategoryFilter) return;
+    const activeCategory = categoryFilter.value;
+    const options = getSubcategories(categories, activeCategory)
+      .map((subcategory) => `
+        <option value="${escapeAttr(subcategory)}">${escapeHtml(subcategory)} (${getFilteredSubcategoryCount(packages, activeCategory, subcategory)})</option>
+      `)
+      .join("");
+    subcategoryFilter.innerHTML = `<option value="all">Bütün subkateqoriyalar</option>${options}`;
+  };
+
+  const render = () => {
+    const categoryValue = categoryFilter.value;
+    const subcategoryValue = subcategoryFilter?.value || "all";
+    const filtered = packages.filter((pack) => {
+      const matchesCategory = categoryValue === "all" || pack.category === categoryValue;
+      const matchesSubcategory = subcategoryValue === "all" || pack.subcategory === subcategoryValue;
+      return matchesCategory && matchesSubcategory;
+    });
+    grid.innerHTML = filtered.map(createPackageCard).join("");
+    if (count) count.textContent = `${filtered.length} paket`;
   };
 
   categoryFilter.addEventListener("change", () => {
@@ -580,6 +671,82 @@ const renderServiceDetail = () => {
   `;
 };
 
+const renderPackageDetail = () => {
+  const container = document.querySelector("[data-package-detail]");
+  if (!container) return;
+
+  const packageId = getQueryParam("package");
+  const pack = packageId
+    ? (marketplace.packages || []).find((item) => item.id === packageId)
+    : (marketplace.packages || [])[0];
+  if (!pack) {
+    renderDetailFallback(container, "Paket tapılmadı", "packages.html");
+    return;
+  }
+
+  const category = getPackageCategory(pack.category);
+  document.title = `${pack.title} | ConstEra Paketlər`;
+  container.innerHTML = `
+    <div class="detail-hero glass">
+      <div class="detail-symbol">
+        <span>PK</span>
+      </div>
+      <div class="detail-copy">
+        <p class="eyebrow">Hazır paket detalı</p>
+        <h1>${escapeHtml(pack.title)}</h1>
+        <div class="product-meta detail-tags">
+          <span>${escapeHtml(category?.title || pack.category)}</span>
+          <span>${escapeHtml(pack.subcategory || "Ümumi")}</span>
+          <span>${escapeHtml(pack.type)}</span>
+        </div>
+        <p class="hero-text">${escapeHtml(pack.idealFor)}</p>
+        <div class="detail-actions">
+          <a class="button button-primary" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket RFQ yarat</a>
+          <a class="button button-outline" href="packages.html">Paketlərə qayıt</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <article class="detail-panel glass">
+        <span class="price-label">Paket qiyməti</span>
+        <strong>${escapeHtml(pack.price)}</strong>
+        <p>Obyekt ölçüsü, material səviyyəsi və icra şərtləri RFQ-dən sonra dəqiqləşir.</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Müddət</span>
+        <strong>${escapeHtml(pack.timeline)}</strong>
+        <p>${escapeHtml(pack.unit)}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Komanda</span>
+        <strong>${escapeHtml(pack.team)}</strong>
+        <p>İş həcminə görə briqada və nəzarət tərkibi dəyişir.</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Təhvil</span>
+        <strong>${(pack.deliverables || []).length} nəticə</strong>
+        <p>RFQ və müqavilə üçün strukturlaşdırılmış çıxışlar.</p>
+      </article>
+    </div>
+
+    <div class="detail-two-column">
+      <article class="detail-panel glass">
+        <p class="eyebrow">Paketə daxildir</p>
+        <ul class="spec-list detail-list">
+          ${(pack.includes || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+      </article>
+      <article class="detail-panel glass">
+        <p class="eyebrow">Təhvil nəticələri</p>
+        <div class="service-deliverables">
+          ${(pack.deliverables || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+      </article>
+    </div>
+  `;
+};
+
 const renderRentalDetail = () => {
   const container = document.querySelector("[data-rental-detail]");
   if (!container) return;
@@ -663,6 +830,7 @@ const renderAdmin = () => {
   const productRows = document.querySelector("[data-admin-products]");
   const categoryRows = document.querySelector("[data-admin-categories]");
   const serviceRows = document.querySelector("[data-admin-services]");
+  const packageRows = document.querySelector("[data-admin-packages]");
   const rentalRows = document.querySelector("[data-admin-rentals]");
 
   if (stats) {
@@ -672,6 +840,7 @@ const renderAdmin = () => {
       <article class="stat-card"><span class="stat-value">${marketplace.suppliers.length}</span><p>təchizatçı</p></article>
       <article class="stat-card"><span class="stat-value">${marketplace.products.length}</span><p>məhsul</p></article>
       <article class="stat-card"><span class="stat-value">${(marketplace.services || []).length}</span><p>xidmət</p></article>
+      <article class="stat-card"><span class="stat-value">${(marketplace.packages || []).length}</span><p>hazır paket</p></article>
       <article class="stat-card"><span class="stat-value">${(marketplace.rentals || []).length}</span><p>icarə avadanlığı</p></article>
     `;
   }
@@ -711,6 +880,19 @@ const renderAdmin = () => {
     `).join("");
   }
 
+  if (packageRows) {
+    packageRows.innerHTML = (marketplace.packages || []).map((pack) => `
+      <tr>
+        <td>${escapeHtml(pack.title)}</td>
+        <td>${escapeHtml(getPackageCategory(pack.category)?.title || pack.category)}</td>
+        <td>${escapeHtml(pack.subcategory || "Ümumi")}</td>
+        <td>${escapeHtml(pack.unit)}</td>
+        <td>${escapeHtml(pack.price)}</td>
+        <td>${escapeHtml(pack.timeline)}</td>
+      </tr>
+    `).join("");
+  }
+
   if (rentalRows) {
     rentalRows.innerHTML = (marketplace.rentals || []).map((rental) => `
       <tr>
@@ -740,6 +922,15 @@ const initRfq = () => {
       return options ? `<optgroup label="Xidmətlər - ${escapeAttr(category.title)}">${options}</optgroup>` : "";
     })
     .join("");
+  const packageOptions = (marketplace.packageCategories || [])
+    .map((category) => {
+      const options = (marketplace.packages || [])
+        .filter((pack) => pack.category === category.id)
+        .map((pack) => `<option value="package:${escapeAttr(pack.id)}">${escapeHtml(pack.title)} — ${escapeHtml(pack.subcategory || "Ümumi")}</option>`)
+        .join("");
+      return options ? `<optgroup label="Paketlər - ${escapeAttr(category.title)}">${options}</optgroup>` : "";
+    })
+    .join("");
   const rentalOptions = (marketplace.rentalCategories || [])
     .map((category) => {
       const options = (marketplace.rentals || [])
@@ -754,21 +945,26 @@ const initRfq = () => {
     .join("");
 
   productSelect.innerHTML = `
-    <option value="">Məhsul, xidmət və ya avadanlıq seçin</option>
+    <option value="">Məhsul, xidmət, paket və ya avadanlıq seçin</option>
     <optgroup label="Məhsullar">${productOptions}</optgroup>
     ${serviceOptions}
+    ${packageOptions}
     ${rentalOptions}
   `;
 
   const params = new URLSearchParams(window.location.search);
   const productId = params.get("product");
   const serviceId = params.get("service");
+  const packageId = params.get("package");
   const rentalId = params.get("rental");
   if (productId && marketplace.products.some((product) => product.id === productId)) {
     productSelect.value = `product:${productId}`;
   }
   if (serviceId && (marketplace.services || []).some((service) => service.id === serviceId)) {
     productSelect.value = `service:${serviceId}`;
+  }
+  if (packageId && (marketplace.packages || []).some((pack) => pack.id === packageId)) {
+    productSelect.value = `package:${packageId}`;
   }
   if (rentalId && (marketplace.rentals || []).some((rental) => rental.id === rentalId)) {
     productSelect.value = `rental:${rentalId}`;
@@ -781,9 +977,10 @@ const initRfq = () => {
     const [selectedType, selectedId] = selectedValue.split(":");
     const selectedProduct = marketplace.products.find((product) => selectedType === "product" && product.id === selectedId);
     const selectedService = (marketplace.services || []).find((service) => selectedType === "service" && service.id === selectedId);
+    const selectedPackage = (marketplace.packages || []).find((pack) => selectedType === "package" && pack.id === selectedId);
     const selectedRental = (marketplace.rentals || []).find((rental) => selectedType === "rental" && rental.id === selectedId);
     const rfq = {
-      product: selectedProduct?.name || selectedService?.title || selectedRental?.name || data.get("customProduct"),
+      product: selectedProduct?.name || selectedService?.title || selectedPackage?.title || selectedRental?.name || data.get("customProduct"),
       quantity: data.get("quantity"),
       needDate: data.get("needDate"),
       budget: data.get("budget"),
@@ -829,6 +1026,37 @@ const initServiceCalculator = () => {
       <strong>${workIndex} m² iş indeksi</strong>
       <span>${escapeHtml(level)} material səviyyəsi · ${materialIndex} material indeksi · ${daysMin}-${daysMax} gün ilkin icra aralığı</span>
       <a class="button button-secondary" href="rfq.html?service=menzil-temiri-paketi">RFQ-yə göndər</a>
+    `;
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    render();
+  });
+  form.addEventListener("input", render);
+  form.addEventListener("change", render);
+  render();
+};
+
+const initPackageCalculator = () => {
+  const form = document.querySelector("[data-package-calculator]");
+  const output = document.querySelector("[data-package-calculator-output]");
+  if (!form || !output) return;
+
+  const render = () => {
+    const data = new FormData(form);
+    const area = Math.max(Number(data.get("area")) || 0, 1);
+    const scope = Number(data.get("scope")) || 1;
+    const level = data.get("level") || "Standart";
+    const packageId = data.get("packageId") || "standart-temir-paketi";
+    const packageIndex = Math.round(area * scope);
+    const riskReserve = Math.round(packageIndex * (level === "Premium" ? 0.18 : level === "Ekonom" ? 0.08 : 0.12));
+    const totalIndex = packageIndex + riskReserve;
+
+    output.innerHTML = `
+      <strong>${totalIndex} paket indeksi</strong>
+      <span>${escapeHtml(level)} səviyyə · ${area} m² baza · ${riskReserve} ehtiyat indeksi · qiymət RFQ ilə təsdiqlənir</span>
+      <a class="button button-secondary" href="rfq.html?package=${encodeURIComponent(packageId)}">Paket RFQ-yə göndər</a>
     `;
   };
 
@@ -900,13 +1128,16 @@ renderCatalog();
 renderBrands();
 renderSuppliers();
 renderServices();
+renderPackages();
 renderRentals();
 renderProductDetail();
 renderServiceDetail();
+renderPackageDetail();
 renderRentalDetail();
 renderAdmin();
 initRfq();
 initServiceCalculator();
+initPackageCalculator();
 initRentalCalculator();
 initActions();
 applyUrlFilters();
