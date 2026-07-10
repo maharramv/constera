@@ -331,18 +331,21 @@ const animateCounter = (entry) => {
 };
 
 if (menuToggle && nav) {
-  menuToggle.addEventListener("click", () => {
-    const isOpen = nav.classList.toggle("is-open");
+  const setMenuState = (isOpen) => {
+    nav.classList.toggle("is-open", isOpen);
     menuToggle.setAttribute("aria-expanded", String(isOpen));
     menuToggle.classList.toggle("is-active", isOpen);
+    document.body.classList.toggle("nav-open", isOpen);
+  };
+
+  const closeMenu = () => setMenuState(false);
+
+  menuToggle.addEventListener("click", () => {
+    setMenuState(!nav.classList.contains("is-open"));
   });
 
   nav.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => {
-      nav.classList.remove("is-open");
-      menuToggle.setAttribute("aria-expanded", "false");
-      menuToggle.classList.remove("is-active");
-    });
+    link.addEventListener("click", closeMenu);
   });
 
   document.addEventListener("click", (event) => {
@@ -350,16 +353,18 @@ if (menuToggle && nav) {
     if (!(target instanceof Node)) return;
     if (!nav.classList.contains("is-open")) return;
     if (nav.contains(target) || menuToggle.contains(target)) return;
-    nav.classList.remove("is-open");
-    menuToggle.setAttribute("aria-expanded", "false");
-    menuToggle.classList.remove("is-active");
+    closeMenu();
   });
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    nav.classList.remove("is-open");
-    menuToggle.setAttribute("aria-expanded", "false");
-    menuToggle.classList.remove("is-active");
+    closeMenu();
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 1100) {
+      closeMenu();
+    }
   });
 }
 

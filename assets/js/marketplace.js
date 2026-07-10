@@ -1361,17 +1361,17 @@ const renderRfqDashboard = () => {
 
     rows.innerHTML = filtered.map((draft) => `
       <tr>
-        <td>
+        <td data-label="Sorğu">
           <strong>${escapeHtml(draft.product || "Sərbəst sorğu")}</strong>
           <small>${escapeHtml(draft.note || draft.usage || "Qeyd yoxdur")}</small>
         </td>
-        <td>${escapeHtml(typeLabels[draft.type] || "Sərbəst")}</td>
-        <td>${escapeHtml(draft.quantity || "Yazılmayıb")}</td>
-        <td>${escapeHtml(draft.company || "Şirkət yoxdur")}</td>
-        <td>${escapeHtml(draft.contact || "Əlaqə yoxdur")}</td>
-        <td>${escapeHtml(draft.needDate || "Açıq")}</td>
-        <td><span class="status-pill">${escapeHtml(draft.status)}</span></td>
-        <td>
+        <td data-label="Tip">${escapeHtml(typeLabels[draft.type] || "Sərbəst")}</td>
+        <td data-label="Miqdar">${escapeHtml(draft.quantity || "Yazılmayıb")}</td>
+        <td data-label="Şirkət">${escapeHtml(draft.company || "Şirkət yoxdur")}</td>
+        <td data-label="Əlaqə">${escapeHtml(draft.contact || "Əlaqə yoxdur")}</td>
+        <td data-label="Tarix">${escapeHtml(draft.needDate || "Açıq")}</td>
+        <td data-label="Status"><span class="status-pill">${escapeHtml(draft.status)}</span></td>
+        <td data-label="Əməliyyat">
           <div class="status-actions">
             ${statusList.map((status) => `
               <button type="button" data-rfq-status="${escapeAttr(status)}" data-rfq-id="${escapeAttr(draft.id)}">${escapeHtml(status)}</button>

@@ -24,6 +24,8 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 section[id] {
@@ -38,6 +40,17 @@ body {
   background:
     radial-gradient(circle at 80% 20%, rgba(212, 166, 79, 0.08), transparent 18%),
     linear-gradient(180deg, #06090e 0%, #0b0f14 42%, #09131b 100%);
+}
+
+body.nav-open {
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 body::before {
@@ -1247,6 +1260,10 @@ dd {
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
+    max-height: min(72vh, 620px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 18px;
     border: 1px solid var(--line);
     border-radius: 24px;
@@ -1267,6 +1284,13 @@ dd {
     visibility: visible;
     pointer-events: auto;
     transform: translateY(0) scale(1);
+  }
+
+  .nav a {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
   }
 
   .nav-cta {
@@ -2432,8 +2456,14 @@ dd {
 }
 
 @media (max-width: 760px) {
+  .site-shell {
+    padding-inline: 0;
+    padding-bottom: 40px;
+  }
+
   .compact-hero {
     padding-top: 58px;
+    gap: 18px;
   }
 
   .market-command,
@@ -2471,5 +2501,378 @@ dd {
   .detail-media,
   .detail-symbol {
     min-height: 260px;
+  }
+
+  .catalog-workspace,
+  .rfq-layout,
+  .detail-shell,
+  .admin-board {
+    gap: 18px;
+    padding-top: 22px;
+  }
+
+  .catalog-sidebar {
+    padding: 16px;
+  }
+
+  .product-card {
+    grid-template-rows: auto 1fr auto auto;
+  }
+
+  .product-media,
+  .product-media img {
+    min-height: 136px;
+    height: 136px;
+  }
+
+  .product-card-body,
+  .product-card-footer,
+  .brand-card,
+  .supplier-card {
+    padding: 16px;
+  }
+
+  .product-rfq {
+    margin: 0 16px 16px;
+  }
+
+  .market-kpi-strip article {
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .table-wrap {
+    margin-inline: -18px;
+    padding-inline: 18px;
+  }
+
+  .rfq-dashboard-table,
+  .rfq-dashboard-table thead,
+  .rfq-dashboard-table tbody,
+  .rfq-dashboard-table tr,
+  .rfq-dashboard-table th,
+  .rfq-dashboard-table td {
+    display: block;
+  }
+
+  .rfq-dashboard-table {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+
+  .rfq-dashboard-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .rfq-dashboard-table tr {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.035);
+    padding: 12px;
+  }
+
+  .rfq-dashboard-table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    padding: 11px 0;
+    min-width: 0;
+  }
+
+  .rfq-dashboard-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .rfq-dashboard-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .rfq-dashboard-table small {
+    max-width: none;
+  }
+
+  .status-actions {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 540px) {
+  :root {
+    --container: min(100vw - 24px, 1440px);
+    --radius-lg: 22px;
+    --radius-md: 16px;
+  }
+
+  .header {
+    top: 10px;
+    margin-top: 10px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border-radius: 22px;
+  }
+
+  .brand {
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .brand-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brand-copy {
+    min-width: 0;
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+  }
+
+  .brand-copy strong {
+    font-size: 0.9rem;
+  }
+
+  .brand-copy span {
+    max-width: 128px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .menu-toggle {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .nav {
+    max-height: calc(100svh - 92px);
+    gap: 8px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .nav a {
+    min-height: 40px;
+    font-size: 0.9rem;
+  }
+
+  .section {
+    padding: 54px 0;
+  }
+
+  .hero {
+    margin-top: -86px;
+    padding-top: 118px;
+    padding-bottom: 66px;
+    gap: 20px;
+  }
+
+  h1 {
+    font-size: clamp(2.2rem, 13vw, 3.15rem);
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: clamp(1.72rem, 9vw, 2.35rem);
+  }
+
+  .market-hero-copy h1,
+  .detail-copy h1 {
+    font-size: clamp(2rem, 11vw, 3rem);
+    line-height: 1.02;
+  }
+
+  .hero-text {
+    margin-top: 18px;
+    font-size: 0.95rem;
+    line-height: 1.62;
+  }
+
+  .eyebrow {
+    margin-bottom: 12px;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+  }
+
+  .button {
+    min-height: 48px;
+    padding-inline: 18px;
+  }
+
+  .hero-panel {
+    display: none;
+  }
+
+  .hero-ticker {
+    display: grid;
+    width: 100%;
+    gap: 8px;
+    border-radius: 18px;
+  }
+
+  .hero-ticker span {
+    padding-right: 0;
+    font-size: 0.72rem;
+  }
+
+  .hero-ticker span::after {
+    display: none;
+  }
+
+  .market-command input,
+  .market-command select,
+  .rfq-form input,
+  .rfq-form select,
+  .rfq-form textarea,
+  .dashboard-filter-grid select,
+  .calculator-panel input,
+  .calculator-panel select {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 16px;
+  }
+
+  .compact-hero {
+    padding-top: 42px;
+    padding-bottom: 28px;
+  }
+
+  .market-command,
+  .admin-panel,
+  .rfq-form,
+  .detail-hero,
+  .detail-panel,
+  .calculator-panel,
+  .calculator-output,
+  .detail-empty,
+  .catalog-sidebar {
+    padding: 14px;
+  }
+
+  .sidebar-heading,
+  .market-section-heading {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .sidebar-heading h2,
+  .market-section-heading h2 {
+    font-size: clamp(1.45rem, 8vw, 2rem);
+  }
+
+  .category-filter-row {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 6px;
+  }
+
+  .category-filter,
+  .category-open-link,
+  .taxonomy-chip-grid a {
+    min-height: 42px;
+    border-radius: 12px;
+    padding: 9px 10px;
+  }
+
+  .category-open-link {
+    min-width: 42px;
+  }
+
+  .product-grid,
+  .market-grid {
+    gap: 14px;
+  }
+
+  .market-card h3,
+  .product-card h3 {
+    font-size: 1rem;
+  }
+
+  .product-card p,
+  .market-card p,
+  .detail-panel p,
+  .detail-empty p,
+  .calculator-output span {
+    line-height: 1.56;
+  }
+
+  .product-meta span,
+  .product-attributes span,
+  .market-card-metrics span,
+  .schema-grid span,
+  .service-deliverables span {
+    min-height: 26px;
+    font-size: 0.68rem;
+  }
+
+  .product-card-footer small {
+    max-width: none;
+  }
+
+  .icon-action {
+    width: 40px;
+    height: 40px;
+  }
+
+  .detail-media,
+  .detail-symbol {
+    min-height: 210px;
+  }
+
+  .detail-media img {
+    padding: 18px;
+  }
+
+  .detail-media span,
+  .detail-symbol span {
+    width: 86px;
+    height: 86px;
+    border-radius: 22px;
+    font-size: 1.55rem;
+  }
+
+  .calculator-section {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  .rfq-dashboard-table td {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-copy span {
+    max-width: 104px;
+  }
+
+  .market-hero-copy h1,
+  .detail-copy h1,
+  h1 {
+    font-size: 2rem;
+  }
+
+  .market-mini-stats article,
+  .market-kpi-strip article,
+  .product-card-body,
+  .product-card-footer,
+  .brand-card,
+  .supplier-card {
+    padding: 13px;
+  }
+
+  .status-actions button {
+    width: 100%;
   }
 }
