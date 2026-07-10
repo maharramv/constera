@@ -36,7 +36,7 @@ const missingFiles = requiredFiles.filter((file) => {
 });
 
 if (missingFiles.length > 0) {
-  console.error("ConstEra static build check failed. Missing files:");
+  console.error("ConstEra statik yığım yoxlaması uğursuz oldu. Çatışmayan fayllar:");
   missingFiles.forEach((file) => console.error(`- ${file}`));
   process.exit(1);
 }
@@ -49,8 +49,8 @@ staticEntries.forEach((entry) => {
     accessSync(entry, constants.R_OK);
     cpSync(entry, `dist/${entry}`, { recursive: true });
   } catch {
-    // Optional files can be omitted without failing the static export.
+    // Könüllü fayllar statik exportu dayandırmadan buraxıla bilər.
   }
 });
 
-console.log("ConstEra static export created in dist.");
+console.log("ConstEra statik exportu dist qovluğunda yaradıldı.");

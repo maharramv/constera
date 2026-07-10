@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$lang = ($_POST['lang'] ?? 'en') === 'ru' ? 'ru' : 'en';
+$lang = 'az';
 $redirectBase = './index.html';
 
 $name = trim((string)($_POST['name'] ?? ''));
@@ -28,22 +28,22 @@ if ($hasErrors) {
 }
 
 $to = 'sales@constera.ru';
-$subject = 'CONSTERA website inquiry';
+$subject = 'CONSTERA sayt sorğusu';
 
 $lines = [
-    'New inquiry from CONSTERA website',
+    'CONSTERA saytından yeni sorğu',
     '',
-    'Name: ' . ($name !== '' ? $name : '-'),
-    'Company: ' . ($company !== '' ? $company : '-'),
-    'Email: ' . $email,
+    'Ad: ' . ($name !== '' ? $name : '-'),
+    'Şirkət: ' . ($company !== '' ? $company : '-'),
+    'E-poçt: ' . $email,
     '',
-    'Message:',
+    'Mesaj:',
     $message,
 ];
 
 $body = implode(PHP_EOL, $lines);
 $headers = [
-    'From: CONSTERA Website <no-reply@constera.ru>',
+    'From: CONSTERA Saytı <no-reply@constera.ru>',
     'Reply-To: ' . $email,
     'Content-Type: text/plain; charset=UTF-8',
 ];

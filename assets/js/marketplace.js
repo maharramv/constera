@@ -71,8 +71,8 @@ const createProductCard = (product) => {
           ${source}
         </div>
         <div class="product-actions">
-          <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${product.id}" aria-label="Add to favorites">♡</button>
-          <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${product.id}" aria-label="Add to compare">⇄</button>
+          <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${product.id}" aria-label="Seçilmişlərə əlavə et">♡</button>
+          <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${product.id}" aria-label="Müqayisəyə əlavə et">⇄</button>
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
@@ -197,8 +197,8 @@ const renderSuppliers = () => {
       <p>${supplier.focus}</p>
       <dl class="supplier-list">
         <div><dt>Region</dt><dd>${supplier.region}</dd></div>
-        <div><dt>Status</dt><dd>${supplier.status}</dd></div>
-        <div><dt>Website</dt><dd>${supplier.website}</dd></div>
+        <div><dt>Vəziyyət</dt><dd>${supplier.status}</dd></div>
+        <div><dt>Sayt</dt><dd>${supplier.website}</dd></div>
       </dl>
       <a class="button button-secondary" href="rfq.html?supplier=${encodeURIComponent(supplier.id)}">Təklif sorğusu</a>
     </article>
@@ -279,9 +279,9 @@ const initRfq = () => {
 
     output.hidden = false;
     output.innerHTML = `
-      <strong>RFQ draft hazırdır.</strong>
+      <strong>RFQ draftı hazırdır.</strong>
       <span>${rfq.product || "Məhsul"} · ${rfq.quantity || "miqdar yazılmayıb"} · ${rfq.company || "şirkət"}</span>
-      <small>Bu demo versiyada sorğu brauzerdə saxlanır. Backend qoşulanda avtomatik supplier-lərə göndəriləcək.</small>
+      <small>Bu demo versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
     `;
   });
 };

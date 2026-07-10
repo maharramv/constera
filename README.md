@@ -1,51 +1,45 @@
 # CONSTERA Industrial Group
 
-Static corporate website concept prepared for GitHub Pages deployment.
+GitHub Pages və Vercel üçün hazırlanmış statik korporativ sayt konsepti.
 
-## Structure
+## Struktur
 
-- `index.html` - main entry point
-- `catalog.html` - ConstEra Enterprise v2 marketplace catalog
-- `brands.html` - brand center
-- `suppliers.html` - supplier center
-- `rfq.html` - local RFQ draft flow
-- `admin.html` - catalog/admin structure preview
-- `assets/css/` - styles
-- `assets/js/` - scripts
-- `assets/js/catalog-data.js` - starter marketplace data
-- `assets/js/marketplace.js` - catalog, RFQ and admin rendering
-- `assets/images/` - content images and logo
-- `assets/icons/` - favicon set and manifest
+- `index.html` - əsas səhifə
+- `catalog.html` - ConstEra Korporativ v2 kataloqu
+- `brands.html` - brend mərkəzi
+- `suppliers.html` - təchizatçı mərkəzi
+- `rfq.html` - lokal RFQ draft axını
+- `admin.html` - kataloq və admin struktur önbaxışı
+- `assets/css/` - stillər
+- `assets/js/` - skriptlər
+- `assets/js/catalog-data.js` - başlanğıc bazar platforması məlumatları
+- `assets/js/marketplace.js` - kataloq, RFQ və admin render məntiqi
+- `assets/images/` - kontent şəkilləri və logo
+- `assets/icons/` - favicon dəsti və manifest
 
-## Run locally
+## Lokal işə salma
 
-Open `index.html` in a browser or serve the folder with any static server.
+`index.html` faylını brauzerdə açın və ya qovluğu istənilən statik serverlə servis edin.
 
-## Deploy on Vercel
+## Vercel deploy
 
-This is a static site. Vercel can run:
+Bu statik saytdır. Vercel aşağıdakı əmri işə sala bilər:
 
 ```bash
 npm run vercel-build
 ```
 
-The command validates that the required static pages and assets exist, then
-copies the deployable site into `dist`.
+Əmr tələb olunan statik səhifə və asset fayllarını yoxlayır, sonra deploy üçün hazır saytı `dist` qovluğuna köçürür.
 
-## ConstEra Enterprise v2
+## ConstEra Korporativ v2
 
-The current milestone keeps the project static and dependency-free while adding
-the first B2B marketplace platform layer:
+Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamanda ilk B2B bazar platforması qatını əlavə edir:
 
-- construction categories and subcategories
-- supplier and brand profiles
-- product cards with SKU, package, origin, status and price notes
-- browser-local favorites and compare flags
-- RFQ draft form
-- admin structure preview for future CRUD and CSV/Excel import
+- tikinti kateqoriyaları və subkateqoriyaları
+- təchizatçı və brend profilləri
+- SKU, qablaşdırma, mənşə, vəziyyət və qiymət qeydləri olan məhsul kartları
+- brauzerdə lokal seçilmişlər və müqayisə işarələri
+- RFQ draft forması
+- gələcək CRUD və CSV/Excel idxalı üçün admin struktur önbaxışı
 
-Prices marked as `Sorğu əsasında` require supplier confirmation before public
-use. Public catalog pages are used for product names, package sizes, technical
-properties, source links and official product images. If an official page does
-not publish a price, the product stays request-based until a supplier price list
-is added to the admin/import flow.
+`Sorğu əsasında` kimi göstərilən qiymətlər ictimai istifadədən əvvəl təchizatçı tərəfindən təsdiqlənməlidir. İctimai kataloq səhifələri məhsul adı, qablaşdırma, texniki xüsusiyyət, mənbə linki və rəsmi məhsul şəkilləri üçün istifadə olunur. Rəsmi səhifədə qiymət yoxdursa, təchizatçı qiymət siyahısı admin/idxal axınına əlavə olunana qədər məhsul sorğu əsaslı qalır.

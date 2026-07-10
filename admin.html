@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra Admin | Catalog control</title>
-    <meta name="description" content="ConstEra Enterprise v2 admin platform for product, category, brand and supplier management." />
+    <title>ConstEra Admin | Kataloq idarəetməsi</title>
+    <meta name="description" content="ConstEra Korporativ v2 məhsul, kateqoriya, brend və təchizatçı idarəetməsi üçün admin platforması." />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://constera.ru/admin.html" />
     <meta name="theme-color" content="#0b0f14" />
@@ -22,7 +22,7 @@
     <div class="ambient ambient-two"></div>
     <div class="site-shell">
       <header class="header">
-        <a class="brand" href="index.html#home" aria-label="CONSTERA home">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
           <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
           <span class="brand-copy">
             <strong>CONSTERA</strong>
@@ -36,24 +36,24 @@
           </span>
         </button>
         <nav class="nav" id="site-nav">
-          <a href="index.html#home">Home</a>
-          <a href="catalog.html">Catalog</a>
-          <a href="brands.html">Brands</a>
-          <a href="suppliers.html">Suppliers</a>
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
           <a href="rfq.html">RFQ</a>
           <a href="admin.html" aria-current="page">Admin</a>
-          <a class="button button-outline nav-cta" href="catalog.html">Preview catalog</a>
+          <a class="button button-outline nav-cta" href="catalog.html">Kataloqa bax</a>
         </nav>
       </header>
 
       <main>
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
-            <p class="eyebrow">Enterprise Admin v2</p>
-            <h1>Kataloq, price list və supplier idarəetməsi üçün başlanğıc panel.</h1>
+            <p class="eyebrow">Korporativ Admin v2</p>
+            <h1>Kataloq, qiymət siyahısı və təchizatçı idarəetməsi üçün başlanğıc panel.</h1>
             <p class="hero-text">
               Bu hələ real login-li admin deyil. Amma strukturu göstərir:
-              məhsullar, kateqoriyalar, price import və supplier statusları.
+              məhsullar, kateqoriyalar, qiymət idxalı və təchizatçı statusları.
             </p>
           </div>
           <div class="admin-stat-grid" data-admin-stats></div>
@@ -63,29 +63,29 @@
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
-                <p class="eyebrow">Import schema</p>
+                <p class="eyebrow">İdxal sxemi</p>
                 <h2>Excel / CSV sütunları</h2>
               </div>
-              <span class="data-badge">v1 ready</span>
+              <span class="data-badge">v1 hazır</span>
             </div>
             <div class="schema-grid">
               <span>sku</span>
-              <span>name</span>
-              <span>brand</span>
-              <span>category</span>
-              <span>subcategory</span>
-              <span>package</span>
-              <span>price</span>
-              <span>supplier</span>
-              <span>availability</span>
-              <span>specs</span>
+              <span>ad</span>
+              <span>brend</span>
+              <span>kateqoriya</span>
+              <span>subkateqoriya</span>
+              <span>qablaşdırma</span>
+              <span>qiymət</span>
+              <span>təchizatçı</span>
+              <span>mövcudluq</span>
+              <span>xüsusiyyətlər</span>
             </div>
           </div>
 
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
-                <p class="eyebrow">Products</p>
+                <p class="eyebrow">Məhsullar</p>
                 <h2>Başlanğıc məhsul cədvəli</h2>
               </div>
               <a class="card-link" href="catalog.html">Kataloqda aç</a>
@@ -98,7 +98,7 @@
                     <th>Məhsul</th>
                     <th>Brend</th>
                     <th>Qiymət</th>
-                    <th>Status</th>
+                    <th>Vəziyyət</th>
                   </tr>
                 </thead>
                 <tbody data-admin-products></tbody>
@@ -109,7 +109,7 @@
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
-                <p class="eyebrow">Categories</p>
+                <p class="eyebrow">Kateqoriyalar</p>
                 <h2>Kateqoriya strukturu</h2>
               </div>
               <span class="data-badge">nested-ready</span>

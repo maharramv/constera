@@ -2,7 +2,7 @@
   "name": "constera-enterprise-v2",
   "version": "2.0.0",
   "private": true,
-  "description": "ConstEra Enterprise v2 static marketplace platform.",
+  "description": "ConstEra Korporativ v2 statik bazar platforması.",
   "scripts": {
     "build": "npm run vercel-build",
     "vercel-build": "node scripts/vercel-build.mjs"

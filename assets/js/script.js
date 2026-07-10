@@ -14,335 +14,176 @@ const hasTranslationTargets = Boolean(
 );
 
 const translations = {
-  en: {
-    "meta.title": "CONSTERA Industrial Group | Industrial Infrastructure, Energy and Manufacturing",
-    "meta.description": "CONSTERA Industrial Group is an international industrial group focused on infrastructure, energy systems, advanced manufacturing and strategic partnerships.",
-    "brand.subtitle": "Industrial Group",
-    "nav.home": "Home",
-    "nav.about": "About",
-    "nav.divisions": "Divisions",
-    "nav.projects": "Projects",
-    "nav.investors": "Investors",
-    "nav.news": "News",
-    "nav.contact": "Contact",
-    "nav.partner": "Partner Inquiry",
-    "hero.eyebrow": "Global Industrial Infrastructure",
-    "hero.title": "Engineering resilient industrial platforms for the next era of growth.",
-    "hero.text": "CONSTERA Industrial Group unites energy, logistics, advanced manufacturing and strategic infrastructure capabilities into one premium industrial platform for institutional-scale partnerships.",
-    "hero.primary": "Explore Portfolio",
-    "hero.secondary": "Investor Highlights",
-    "hero.ticker1": "Energy transition platforms",
-    "hero.ticker2": "Logistics corridors",
-    "hero.ticker3": "Institutional-grade governance",
-    "metrics.markets": "Active Markets",
-    "metrics.projects": "Strategic Projects",
-    "metrics.pipeline": "Asset Pipeline",
-    "metrics.talent": "Engineering Talent",
-    "band.footprintLabel": "Operating footprint",
-    "band.footprintValue": "24 strategic markets",
-    "band.sectorsLabel": "Priority sectors",
-    "band.sectorsValue": "Energy, logistics, advanced industry",
-    "band.modelLabel": "Partnership model",
-    "band.modelValue": "Public, private and institutional capital alignment",
-    "about.eyebrow": "About",
-    "about.title": "A corporate platform designed for scale, control and long-term value creation.",
-    "about.p1": "CONSTERA Industrial Group is positioned as an international industrial and infrastructure holding with capabilities spanning project origination, engineering delivery, digital operations and strategic asset partnerships.",
-    "about.p2": "The company narrative emphasizes disciplined execution, advanced technical expertise and an integrated operating model suited for public-sector, institutional and multinational counterparties.",
-    "about.positioningLabel": "Positioning",
-    "about.positioningText": "Industrial, infrastructure and technology convergence",
-    "about.modelLabel": "Operating Model",
-    "about.modelText": "End-to-end capabilities from concept to lifecycle optimization",
-    "about.partnerLabel": "Partner Focus",
-    "about.partnerText": "B2B clients, sovereign entities and institutional capital partners",
-    "about.ribbon1": "Project origination",
-    "about.ribbon2": "Engineering governance",
-    "about.ribbon3": "Asset lifecycle optimization",
-    "about.ribbon4": "Digital operations intelligence",
-    "divisions.eyebrow": "Divisions",
-    "divisions.title": "Specialized business units aligned around strategic industrial growth themes.",
-    "divisions.link": "Discuss division",
-    "divisions.energy.topline": "Energy Systems",
-    "divisions.energy.title": "Utility-scale power, grid modernization and decarbonization assets.",
-    "divisions.energy.text": "Capabilities in EPC coordination, storage integration and resilient energy networks.",
-    "divisions.energy.li1": "12 GW managed pipeline",
-    "divisions.energy.li2": "Hybrid grid technologies",
-    "divisions.energy.li3": "Regional deployment capability",
-    "divisions.infrastructure.topline": "Industrial Infrastructure",
-    "divisions.infrastructure.title": "High-specification transport, logistics and mission-critical facilities.",
-    "divisions.infrastructure.text": "Execution frameworks for ports, terminals, corridors and complex industrial platforms.",
-    "divisions.infrastructure.li1": "Multi-site program delivery",
-    "divisions.infrastructure.li2": "Digital twin supervision",
-    "divisions.infrastructure.li3": "Lifecycle asset optimization",
-    "divisions.manufacturing.topline": "Advanced Manufacturing",
-    "divisions.manufacturing.title": "Smart production systems and precision industrial transformation.",
-    "divisions.manufacturing.text": "Automation-led manufacturing environments with analytics-enabled efficiency programs.",
-    "divisions.manufacturing.li1": "Industry 4.0 architecture",
-    "divisions.manufacturing.li2": "Process controls and robotics",
-    "divisions.manufacturing.li3": "OEE and yield optimization",
-    "projects.eyebrow": "Projects",
-    "projects.title": "A selective portfolio spanning energy, mobility and high-value industrial assets.",
-    "projects.investment": "Investment",
-    "projects.scope": "Scope",
-    "projects.link": "Open project brief",
-    "projects.p1.region": "Central Asia",
-    "projects.p1.sector": "Energy",
-    "projects.p1.title": "Kestrel Integrated Grid Hub",
-    "projects.p1.text": "1.8 GW hybrid generation and transmission program designed for regional grid stability.",
-    "projects.p1.scopeValue": "Generation, storage, HV systems",
-    "projects.p2.region": "Middle East",
-    "projects.p2.sector": "Logistics",
-    "projects.p2.title": "Orion Dry Port Corridor",
-    "projects.p2.text": "Intermodal logistics platform with customs automation, warehousing and rail integration.",
-    "projects.p2.scopeValue": "Terminal systems, smart yard controls",
-    "projects.p3.region": "Eastern Europe",
-    "projects.p3.sector": "Manufacturing",
-    "projects.p3.title": "Atlas Precision Campus",
-    "projects.p3.text": "Advanced manufacturing ecosystem with AI-assisted production analytics and energy recovery.",
-    "projects.p3.scopeValue": "Process automation, plant engineering",
-    "presence.eyebrow": "Global Presence",
-    "presence.title": "Operational reach across strategic industrial and infrastructure corridors.",
+  az: {
+    "meta.title": "CONSTERA Industrial Group | Sənaye infrastrukturu, enerji və istehsal",
+    "meta.description": "CONSTERA Industrial Group infrastruktur, enerji sistemləri, qabaqcıl istehsal və strateji tərəfdaşlıqlara fokuslanan beynəlxalq sənaye qrupudur.",
+    "brand.subtitle": "Sənaye Qrupu",
+    "nav.home": "Ana səhifə",
+    "nav.about": "Haqqımızda",
+    "nav.divisions": "İstiqamətlər",
+    "nav.projects": "Layihələr",
+    "nav.investors": "İnvestorlar",
+    "nav.news": "Xəbərlər",
+    "nav.contact": "Əlaqə",
+    "nav.partner": "Tərəfdaşlıq sorğusu",
+    "hero.eyebrow": "Qlobal sənaye infrastrukturu",
+    "hero.title": "Növbəti inkişaf mərhələsi üçün dayanıqlı sənaye platformaları qururuq.",
+    "hero.text": "CONSTERA Industrial Group enerji, logistika, qabaqcıl istehsal və strateji infrastruktur imkanlarını institusional miqyaslı tərəfdaşlıqlar üçün vahid premium sənaye platformasında birləşdirir.",
+    "hero.primary": "Portfelə bax",
+    "hero.secondary": "İnvestor icmalı",
+    "hero.ticker1": "Enerji keçidi platformaları",
+    "hero.ticker2": "Logistika dəhlizləri",
+    "hero.ticker3": "İnstitusional idarəetmə",
+    "metrics.markets": "Aktiv bazarlar",
+    "metrics.projects": "Strateji layihələr",
+    "metrics.pipeline": "Aktiv portfeli",
+    "metrics.talent": "Mühəndis komandası",
+    "band.footprintLabel": "Əməliyyat coğrafiyası",
+    "band.footprintValue": "24 strateji bazar",
+    "band.sectorsLabel": "Prioritet sektorlar",
+    "band.sectorsValue": "Enerji, logistika, qabaqcıl sənaye",
+    "band.modelLabel": "Tərəfdaşlıq modeli",
+    "band.modelValue": "Dövlət, özəl sektor və institusional kapital uyğunluğu",
+    "about.eyebrow": "Haqqımızda",
+    "about.title": "Miqyas, nəzarət və uzunmüddətli dəyər yaratmaq üçün qurulmuş korporativ platforma.",
+    "about.p1": "CONSTERA Industrial Group layihələrin təşəbbüsü, mühəndis icrası, rəqəmsal əməliyyatlar və strateji aktiv tərəfdaşlıqları üzrə imkanlara malik beynəlxalq sənaye və infrastruktur holdinqi kimi mövqelənir.",
+    "about.p2": "Şirkətin yanaşması intizamlı icra, dərin texniki ekspertiza və dövlət sektoru, institusional investorlar və beynəlxalq tərəfdaşlar üçün uyğun inteqrasiya olunmuş əməliyyat modelinə əsaslanır.",
+    "about.positioningLabel": "Mövqelənmə",
+    "about.positioningText": "Sənaye, infrastruktur və texnologiyanın birləşməsi",
+    "about.modelLabel": "Əməliyyat modeli",
+    "about.modelText": "Konsepsiyadan aktivin həyat dövrü optimizasiyasına qədər tam imkanlar",
+    "about.partnerLabel": "Tərəfdaş fokusu",
+    "about.partnerText": "B2B müştərilər, dövlət qurumları və institusional kapital tərəfdaşları",
+    "about.ribbon1": "Layihə təşəbbüsü",
+    "about.ribbon2": "Mühəndis idarəetməsi",
+    "about.ribbon3": "Aktivlərin həyat dövrü optimizasiyası",
+    "about.ribbon4": "Rəqəmsal əməliyyat analitikası",
+    "divisions.eyebrow": "İstiqamətlər",
+    "divisions.title": "Strateji sənaye artımı mövzuları ətrafında qurulmuş ixtisaslaşmış biznes vahidləri.",
+    "divisions.link": "İstiqaməti müzakirə et",
+    "divisions.energy.topline": "Enerji sistemləri",
+    "divisions.energy.title": "Böyükmiqyaslı enerji obyektləri, şəbəkə modernizasiyası və dekarbonizasiya aktivləri.",
+    "divisions.energy.text": "EPC koordinasiyası, saxlama sistemlərinin inteqrasiyası və dayanıqlı enerji şəbəkələri üzrə imkanlar.",
+    "divisions.energy.li1": "12 GW idarə olunan layihə portfeli",
+    "divisions.energy.li2": "Hibrid şəbəkə texnologiyaları",
+    "divisions.energy.li3": "Regional icra qabiliyyəti",
+    "divisions.infrastructure.topline": "Sənaye infrastrukturu",
+    "divisions.infrastructure.title": "Yüksək tələblərə malik nəqliyyat, logistika və kritik obyektlər.",
+    "divisions.infrastructure.text": "Limanlar, terminallar, dəhlizlər və kompleks sənaye platformaları üçün icra çərçivələri.",
+    "divisions.infrastructure.li1": "Çoxsahəli proqram icrası",
+    "divisions.infrastructure.li2": "Rəqəmsal əkizlə nəzarət",
+    "divisions.infrastructure.li3": "Aktivlərin həyat dövrü optimizasiyası",
+    "divisions.manufacturing.topline": "Qabaqcıl istehsal",
+    "divisions.manufacturing.title": "Ağıllı istehsal sistemləri və dəqiq sənaye transformasiyası.",
+    "divisions.manufacturing.text": "Avtomatlaşdırma əsaslı istehsal mühitləri və analitika ilə gücləndirilmiş səmərəlilik proqramları.",
+    "divisions.manufacturing.li1": "Industry 4.0 arxitekturası",
+    "divisions.manufacturing.li2": "Proses nəzarəti və robotlaşdırma",
+    "divisions.manufacturing.li3": "OEE və məhsuldarlıq optimizasiyası",
+    "projects.eyebrow": "Layihələr",
+    "projects.title": "Enerji, mobillik və yüksək dəyərli sənaye aktivlərini əhatə edən seçilmiş portfel.",
+    "projects.investment": "İnvestisiya",
+    "projects.scope": "İş həcmi",
+    "projects.link": "Layihə xülasəsini aç",
+    "projects.p1.region": "Mərkəzi Asiya",
+    "projects.p1.sector": "Enerji",
+    "projects.p1.title": "Kestrel inteqrasiya olunmuş şəbəkə mərkəzi",
+    "projects.p1.text": "Regional enerji şəbəkəsinin dayanıqlığını artırmaq üçün 1.8 GW hibrid generasiya və ötürmə proqramı.",
+    "projects.p1.scopeValue": "Generasiya, saxlama, yüksək gərginlik sistemləri",
+    "projects.p2.region": "Yaxın Şərq",
+    "projects.p2.sector": "Logistika",
+    "projects.p2.title": "Orion quru liman dəhlizi",
+    "projects.p2.text": "Gömrük avtomatlaşdırması, anbar infrastrukturu və dəmir yolu inteqrasiyası olan intermodal logistika platforması.",
+    "projects.p2.scopeValue": "Terminal sistemləri, ağıllı meydança idarəetməsi",
+    "projects.p3.region": "Şərqi Avropa",
+    "projects.p3.sector": "İstehsal",
+    "projects.p3.title": "Atlas dəqiq istehsal kampusu",
+    "projects.p3.text": "AI dəstəkli istehsal analitikası və enerji bərpası sistemləri ilə qabaqcıl istehsal ekosistemi.",
+    "projects.p3.scopeValue": "Proses avtomatlaşdırması, zavod mühəndisliyi",
+    "presence.eyebrow": "Qlobal iştirak",
+    "presence.title": "Strateji sənaye və infrastruktur dəhlizləri üzrə əməliyyat əhatəsi.",
     "presence.city1": "London",
-    "presence.city2": "Dubai",
-    "presence.city3": "Singapore",
+    "presence.city2": "Dubay",
+    "presence.city3": "Sinqapur",
     "presence.city4": "Astana",
     "presence.city5": "Toronto",
-    "presence.coverageLabel": "Coverage",
-    "presence.coverageText": "24 markets with focus on energy, logistics and industrial modernization.",
-    "presence.deliveryLabel": "Delivery Model",
-    "presence.deliveryText": "Regional partnerships combined with centralized governance and risk oversight.",
-    "partners.eyebrow": "Partners",
-    "partners.title": "Structured for collaboration with operators, governments and capital institutions.",
-    "partners.item1": "Infrastructure Funds",
-    "partners.item2": "Industrial OEMs",
-    "partners.item3": "Sovereign Entities",
-    "partners.item4": "Utilities",
-    "partners.item5": "Logistics Operators",
-    "partners.item6": "Technology Alliances",
-    "investors.eyebrow": "Investors",
-    "investors.title": "Growth strategy supported by disciplined governance and visible project economics.",
-    "investors.stat1": "active strategic partnerships",
-    "investors.stat2": "pipeline opportunities under review",
-    "investors.stat3": "target governance and risk framework maturity",
-    "investors.stat4": "long-range growth horizon for regional expansion",
-    "investors.highlightsLabel": "Financial Highlights",
-    "investors.highlightsText": "Diversified project pipeline, phased capital deployment and margin-led delivery model.",
-    "investors.governanceLabel": "Governance",
-    "investors.governanceText": "Transparent reporting, independent oversight and ESG integration for institutional readiness.",
-    "investors.reportsLabel": "Reports",
-    "investors.reportsText": "Annual report, investor presentation and strategy review blocks can be added as downloadable files.",
-    "news.eyebrow": "News",
-    "news.title": "Recent announcements, project milestones and strategic market updates.",
-    "news.n1.date": "March 2026",
-    "news.n1.title": "CONSTERA advances cross-border energy storage framework with regional utility consortium.",
-    "news.link1": "Discuss opportunity",
-    "news.n2.date": "February 2026",
-    "news.n2.title": "Industrial modernization program enters delivery phase with new automation stack.",
-    "news.link2": "View portfolio",
-    "news.n3.date": "January 2026",
-    "news.n3.title": "Board approves expansion roadmap focused on logistics corridors and resilient infrastructure.",
-    "news.link3": "Investor section",
-    "contact.eyebrow": "Contact",
-    "contact.title": "Start a partnership conversation with the CONSTERA corporate team.",
-    "contact.hq": "Corporate Headquarters",
-    "contact.addr1": "One Horizon Square, Level 28",
-    "contact.addr2": "Global Business District",
-    "contact.name": "Name",
-    "contact.namePlaceholder": "Your full name",
-    "contact.company": "Company",
-    "contact.companyPlaceholder": "Company or institution",
-    "contact.email": "Email",
-    "contact.inquiry": "Inquiry",
-    "contact.inquiryPlaceholder": "Describe your partnership, investment or project inquiry",
-    "contact.submit": "Send Inquiry",
-    "contact.success": "Inquiry sent successfully.",
-    "contact.error": "Failed to send inquiry. Please try again later.",
-    "contact.validation": "Please complete all required fields correctly.",
-    "contact.error.nameRequired": "Please enter your name.",
-    "contact.error.nameShort": "Name must contain at least 2 characters.",
-    "contact.error.companyShort": "Company name must contain at least 2 characters.",
-    "contact.error.emailRequired": "Please enter your email address.",
-    "contact.error.emailInvalid": "Please enter a valid email address.",
-    "contact.error.messageRequired": "Please enter your inquiry.",
-    "contact.error.messageShort": "Inquiry must contain at least 10 characters.",
-    "footer.description": "International industrial group focused on infrastructure, energy systems and advanced manufacturing partnerships.",
-    "footer.navigation": "Navigation",
-    "footer.contact": "Contact",
-    "footer.legal": "Information",
-    "footer.address": "One Horizon Square, Level 28",
-    "footer.rights": "All rights reserved.",
-    "footer.note": "Corporate website concept for presentation purposes.",
+    "presence.coverageLabel": "Əhatə",
+    "presence.coverageText": "Enerji, logistika və sənaye modernizasiyasına fokuslanan 24 bazar.",
+    "presence.deliveryLabel": "İcra modeli",
+    "presence.deliveryText": "Mərkəzləşdirilmiş idarəetmə və risk nəzarəti ilə gücləndirilmiş regional tərəfdaşlıqlar.",
+    "partners.eyebrow": "Tərəfdaşlar",
+    "partners.title": "Operatorlar, dövlət qurumları və kapital institutları ilə əməkdaşlıq üçün qurulmuş model.",
+    "partners.item1": "İnfrastruktur fondları",
+    "partners.item2": "Sənaye OEM-ləri",
+    "partners.item3": "Dövlət qurumları",
+    "partners.item4": "Enerji şirkətləri",
+    "partners.item5": "Logistika operatorları",
+    "partners.item6": "Texnologiya alyansları",
+    "investors.eyebrow": "İnvestorlar",
+    "investors.title": "İntizamlı idarəetmə və şəffaf layihə iqtisadiyyatı ilə dəstəklənən artım strategiyası.",
+    "investors.stat1": "aktiv strateji tərəfdaşlıq",
+    "investors.stat2": "qiymətləndirmədə olan portfel imkanları",
+    "investors.stat3": "hədəf idarəetmə və risk çərçivəsi yetkinliyi",
+    "investors.stat4": "regional genişlənmə üçün uzunmüddətli artım üfüqü",
+    "investors.highlightsLabel": "Maliyyə göstəriciləri",
+    "investors.highlightsText": "Diversifikasiya olunmuş layihə portfeli, mərhələli kapital yerləşdirilməsi və marja yönümlü icra modeli.",
+    "investors.governanceLabel": "Korporativ idarəetmə",
+    "investors.governanceText": "İnstitusional hazırlıq üçün şəffaf hesabatlılıq, müstəqil nəzarət və ESG inteqrasiyası.",
+    "investors.reportsLabel": "Hesabatlar",
+    "investors.reportsText": "İllik hesabat, investor təqdimatı və strateji icmal yüklənə bilən materiallar kimi əlavə edilə bilər.",
+    "news.eyebrow": "Xəbərlər",
+    "news.title": "Son elanlar, layihə mərhələləri və strateji bazar yenilikləri.",
+    "news.n1.date": "Mart 2026",
+    "news.n1.title": "CONSTERA regional enerji şirkətləri konsorsiumu ilə transsərhəd enerji saxlama çərçivəsini irəli aparır.",
+    "news.link1": "İmkanı müzakirə et",
+    "news.n2.date": "Fevral 2026",
+    "news.n2.title": "Sənaye modernizasiyası proqramı yeni avtomatlaşdırma sistemi ilə icra mərhələsinə keçir.",
+    "news.link2": "Portfelə bax",
+    "news.n3.date": "Yanvar 2026",
+    "news.n3.title": "Direktorlar şurası logistika dəhlizləri və dayanıqlı infrastruktura fokuslanan genişlənmə yol xəritəsini təsdiqlədi.",
+    "news.link3": "İnvestor bölməsi",
+    "contact.eyebrow": "Əlaqə",
+    "contact.title": "CONSTERA korporativ komandası ilə tərəfdaşlıq dialoquna başlayın.",
+    "contact.hq": "Korporativ qərargah",
+    "contact.addr1": "One Horizon Square, 28-ci mərtəbə",
+    "contact.addr2": "Qlobal biznes rayonu",
+    "contact.name": "Ad",
+    "contact.namePlaceholder": "Tam adınız",
+    "contact.company": "Şirkət",
+    "contact.companyPlaceholder": "Şirkət və ya təşkilat",
+    "contact.email": "E-poçt",
+    "contact.inquiry": "Sorğu",
+    "contact.inquiryPlaceholder": "Tərəfdaşlıq, investisiya və ya layihə sorğunuzu təsvir edin",
+    "contact.submit": "Sorğu göndər",
+    "contact.success": "Sorğu uğurla göndərildi.",
+    "contact.error": "Sorğunu göndərmək mümkün olmadı. Zəhmət olmasa sonra yenidən cəhd edin.",
+    "contact.validation": "Zəhmət olmasa bütün məcburi sahələri düzgün doldurun.",
+    "contact.error.nameRequired": "Zəhmət olmasa adınızı yazın.",
+    "contact.error.nameShort": "Ad ən azı 2 simvoldan ibarət olmalıdır.",
+    "contact.error.companyShort": "Şirkət adı ən azı 2 simvoldan ibarət olmalıdır.",
+    "contact.error.emailRequired": "Zəhmət olmasa email ünvanınızı yazın.",
+    "contact.error.emailInvalid": "Zəhmət olmasa düzgün email ünvanı yazın.",
+    "contact.error.messageRequired": "Zəhmət olmasa sorğu mətnini yazın.",
+    "contact.error.messageShort": "Sorğu mətni ən azı 10 simvoldan ibarət olmalıdır.",
+    "footer.description": "İnfrastruktur, enerji sistemləri və qabaqcıl istehsal tərəfdaşlıqlarına fokuslanan beynəlxalq sənaye qrupu.",
+    "footer.navigation": "Naviqasiya",
+    "footer.contact": "Əlaqə",
+    "footer.legal": "Məlumat",
+    "footer.address": "One Horizon Square, 28-ci mərtəbə",
+    "footer.rights": "Bütün hüquqlar qorunur.",
+    "footer.note": "Təqdimat məqsədli korporativ sayt konsepti.",
     "footer.copyright": "© 2026 CONSTERA Industrial Group",
-    "footer.backToTop": "Back to top"
-  },
-  ru: {
-    "meta.title": "CONSTERA Industrial Group | Промышленная инфраструктура, энергетика и производство",
-    "meta.description": "CONSTERA Industrial Group — международная промышленная группа с фокусом на инфраструктуру, энергетические системы, advanced manufacturing и стратегические партнерства.",
-    "brand.subtitle": "Индастриал Груп",
-    "nav.home": "Главная",
-    "nav.about": "О компании",
-    "nav.divisions": "Направления",
-    "nav.projects": "Проекты",
-    "nav.investors": "Инвесторам",
-    "nav.news": "Новости",
-    "nav.contact": "Контакты",
-    "nav.partner": "Партнерский запрос",
-    "hero.eyebrow": "Глобальная промышленная инфраструктура",
-    "hero.title": "Создаем устойчивые индустриальные платформы для следующего этапа роста.",
-    "hero.text": "CONSTERA Industrial Group объединяет энергетику, логистику, передовое производство и стратегическую инфраструктуру в единую премиальную индустриальную платформу для партнерств институционального масштаба.",
-    "hero.primary": "Смотреть портфель",
-    "hero.secondary": "Инвест-обзор",
-    "hero.ticker1": "Платформы энергоперехода",
-    "hero.ticker2": "Логистические коридоры",
-    "hero.ticker3": "Институциональный уровень управления",
-    "metrics.markets": "Активные рынки",
-    "metrics.projects": "Стратегические проекты",
-    "metrics.pipeline": "Инвестиционный пайплайн",
-    "metrics.talent": "Инженерная команда",
-    "band.footprintLabel": "География присутствия",
-    "band.footprintValue": "24 стратегических рынка",
-    "band.sectorsLabel": "Приоритетные сектора",
-    "band.sectorsValue": "Энергетика, логистика, advanced industry",
-    "band.modelLabel": "Партнерская модель",
-    "band.modelValue": "Синергия государства, бизнеса и институционального капитала",
-    "about.eyebrow": "О компании",
-    "about.title": "Корпоративная платформа, выстроенная для масштаба, контроля и долгосрочного создания стоимости.",
-    "about.p1": "CONSTERA Industrial Group позиционируется как международный промышленно-инфраструктурный холдинг с компетенциями в инициации проектов, инженерной реализации, цифровых операциях и стратегических партнерствах по активам.",
-    "about.p2": "Нарратив компании строится вокруг дисциплины исполнения, глубокой технической экспертизы и интегрированной операционной модели, подходящей для государственного сектора, институциональных инвесторов и международных контрагентов.",
-    "about.positioningLabel": "Позиционирование",
-    "about.positioningText": "Синергия промышленности, инфраструктуры и технологий",
-    "about.modelLabel": "Операционная модель",
-    "about.modelText": "Сквозные компетенции от концепции до оптимизации жизненного цикла",
-    "about.partnerLabel": "Фокус на партнерах",
-    "about.partnerText": "B2B-клиенты, суверенные структуры и институциональные партнеры по капиталу",
-    "about.ribbon1": "Инициация проектов",
-    "about.ribbon2": "Инженерное управление",
-    "about.ribbon3": "Оптимизация жизненного цикла активов",
-    "about.ribbon4": "Цифровая операционная аналитика",
-    "divisions.eyebrow": "Направления",
-    "divisions.title": "Специализированные бизнес-юниты, выстроенные вокруг стратегических индустриальных драйверов роста.",
-    "divisions.link": "Обсудить направление",
-    "divisions.energy.topline": "Энергетические системы",
-    "divisions.energy.title": "Объекты utility-scale power, модернизация сетей и декарбонизационные активы.",
-    "divisions.energy.text": "Компетенции в EPC-координации, интеграции накопителей и построении устойчивых энергосетей.",
-    "divisions.energy.li1": "12 ГВт управляемого пайплайна",
-    "divisions.energy.li2": "Гибридные сетевые технологии",
-    "divisions.energy.li3": "Региональная способность к развертыванию",
-    "divisions.infrastructure.topline": "Промышленная инфраструктура",
-    "divisions.infrastructure.title": "Транспортные, логистические и mission-critical объекты высокой сложности.",
-    "divisions.infrastructure.text": "Исполнительные модели для портов, терминалов, коридоров и комплексных индустриальных платформ.",
-    "divisions.infrastructure.li1": "Управление мультисайтовыми программами",
-    "divisions.infrastructure.li2": "Контроль через digital twin",
-    "divisions.infrastructure.li3": "Оптимизация активов на всем цикле",
-    "divisions.manufacturing.topline": "Передовое производство",
-    "divisions.manufacturing.title": "Умные производственные системы и точная индустриальная трансформация.",
-    "divisions.manufacturing.text": "Производственные среды с автоматизацией и программами эффективности на базе аналитики.",
-    "divisions.manufacturing.li1": "Архитектура Industry 4.0",
-    "divisions.manufacturing.li2": "Системы управления процессами и роботизация",
-    "divisions.manufacturing.li3": "Оптимизация OEE и выхода годной продукции",
-    "projects.eyebrow": "Проекты",
-    "projects.title": "Избирательный портфель проектов в энергетике, мобильности и высокоценных индустриальных активах.",
-    "projects.investment": "Инвестиции",
-    "projects.scope": "Объем работ",
-    "projects.link": "Открыть проект",
-    "projects.p1.region": "Центральная Азия",
-    "projects.p1.sector": "Энергетика",
-    "projects.p1.title": "Kestrel Integrated Grid Hub",
-    "projects.p1.text": "Гибридная генерация и передающая инфраструктура мощностью 1,8 ГВт для повышения устойчивости региональной энергосистемы.",
-    "projects.p1.scopeValue": "Генерация, накопители, системы ВН",
-    "projects.p2.region": "Ближний Восток",
-    "projects.p2.sector": "Логистика",
-    "projects.p2.title": "Orion Dry Port Corridor",
-    "projects.p2.text": "Интермодальная логистическая платформа с автоматизацией таможни, складской инфраструктурой и интеграцией с железной дорогой.",
-    "projects.p2.scopeValue": "Терминальные системы, smart yard controls",
-    "projects.p3.region": "Восточная Европа",
-    "projects.p3.sector": "Производство",
-    "projects.p3.title": "Atlas Precision Campus",
-    "projects.p3.text": "Экосистема передового производства с AI-аналитикой процессов и системами рекуперации энергии.",
-    "projects.p3.scopeValue": "Автоматизация процессов, plant engineering",
-    "presence.eyebrow": "Глобальное присутствие",
-    "presence.title": "Операционный охват ключевых промышленных и инфраструктурных коридоров.",
-    "presence.city1": "Лондон",
-    "presence.city2": "Дубай",
-    "presence.city3": "Сингапур",
-    "presence.city4": "Астана",
-    "presence.city5": "Торонто",
-    "presence.coverageLabel": "Охват",
-    "presence.coverageText": "24 рынка с фокусом на энергетику, логистику и индустриальную модернизацию.",
-    "presence.deliveryLabel": "Модель реализации",
-    "presence.deliveryText": "Региональные партнерства, усиленные централизованным управлением и риск-контролем.",
-    "partners.eyebrow": "Партнеры",
-    "partners.title": "Модель сотрудничества, рассчитанная на операторов, государства и институты капитала.",
-    "partners.item1": "Инфраструктурные фонды",
-    "partners.item2": "Промышленные OEM",
-    "partners.item3": "Суверенные структуры",
-    "partners.item4": "Энергокомпании",
-    "partners.item5": "Логистические операторы",
-    "partners.item6": "Технологические альянсы",
-    "investors.eyebrow": "Инвесторам",
-    "investors.title": "Стратегия роста, подкрепленная дисциплиной управления и прозрачной экономикой проектов.",
-    "investors.stat1": "активных стратегических партнерств",
-    "investors.stat2": "возможности в пайплайне на стадии оценки",
-    "investors.stat3": "целевой уровень зрелости governance и risk framework",
-    "investors.stat4": "горизонт стратегической экспансии",
-    "investors.highlightsLabel": "Финансовые акценты",
-    "investors.highlightsText": "Диверсифицированный пайплайн проектов, поэтапное размещение капитала и delivery-модель с фокусом на маржинальность.",
-    "investors.governanceLabel": "Корпоративное управление",
-    "investors.governanceText": "Прозрачная отчетность, независимый контроль и интеграция ESG для институциональной готовности.",
-    "investors.reportsLabel": "Отчетность",
-    "investors.reportsText": "Годовой отчет, инвест-презентация и стратегический обзор могут быть добавлены как скачиваемые материалы.",
-    "news.eyebrow": "Новости",
-    "news.title": "Последние анонсы, проектные этапы и стратегические рыночные обновления.",
-    "news.n1.date": "Март 2026",
-    "news.n1.title": "CONSTERA продвигает трансграничную платформу хранения энергии совместно с региональным консорциумом utilities.",
-    "news.link1": "Обсудить возможность",
-    "news.n2.date": "Февраль 2026",
-    "news.n2.title": "Программа индустриальной модернизации перешла в фазу реализации с новым стеком автоматизации.",
-    "news.link2": "Смотреть портфель",
-    "news.n3.date": "Январь 2026",
-    "news.n3.title": "Совет директоров утвердил дорожную карту экспансии с фокусом на логистические коридоры и устойчивую инфраструктуру.",
-    "news.link3": "Раздел для инвесторов",
-    "contact.eyebrow": "Контакты",
-    "contact.title": "Начните диалог о партнерстве с корпоративной командой CONSTERA.",
-    "contact.hq": "Корпоративная штаб-квартира",
-    "contact.addr1": "One Horizon Square, уровень 28",
-    "contact.addr2": "Global Business District",
-    "contact.name": "Имя",
-    "contact.namePlaceholder": "Ваше полное имя",
-    "contact.company": "Компания",
-    "contact.companyPlaceholder": "Компания или организация",
-    "contact.email": "Email",
-    "contact.inquiry": "Запрос",
-    "contact.inquiryPlaceholder": "Опишите ваш партнерский, инвестиционный или проектный запрос",
-    "contact.submit": "Отправить запрос",
-    "contact.success": "Запрос успешно отправлен.",
-    "contact.error": "Не удалось отправить запрос. Попробуйте позже.",
-    "contact.validation": "Пожалуйста, корректно заполните все обязательные поля.",
-    "contact.error.nameRequired": "Пожалуйста, укажите имя.",
-    "contact.error.nameShort": "Имя должно содержать не менее 2 символов.",
-    "contact.error.companyShort": "Название компании должно содержать не менее 2 символов.",
-    "contact.error.emailRequired": "Пожалуйста, укажите email.",
-    "contact.error.emailInvalid": "Пожалуйста, укажите корректный email.",
-    "contact.error.messageRequired": "Пожалуйста, укажите текст запроса.",
-    "contact.error.messageShort": "Текст запроса должен содержать не менее 10 символов.",
-    "footer.description": "Международная промышленная группа с фокусом на инфраструктуру, энергетические системы и партнерства в сфере передового производства.",
-    "footer.navigation": "Навигация",
-    "footer.contact": "Контакты",
-    "footer.legal": "Информация",
-    "footer.address": "One Horizon Square, уровень 28",
-    "footer.rights": "Все права защищены.",
-    "footer.note": "Корпоративная концепция сайта для презентационных целей.",
-    "footer.copyright": "© 2026 CONSTERA Industrial Group",
-    "footer.backToTop": "Наверх"
+    "footer.backToTop": "Yuxarı qayıt"
   }
 };
 
-let currentLanguage = localStorage.getItem("constera-language") || "en";
+let currentLanguage = "az";
+localStorage.setItem("constera-language", currentLanguage);
 let languageTransitionTimers = [];
 
 const applyTranslations = (lang) => {
-  const dictionary = translations[lang] || translations.en;
+  const dictionary = translations[lang] || translations.az;
   if (hasTranslationTargets) {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = "az";
     document.title = dictionary["meta.title"] || document.title;
   }
 
@@ -384,11 +225,11 @@ const applyTranslations = (lang) => {
   }
 
   langButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.lang === lang);
+    button.classList.toggle("is-active", button.dataset.lang === "az");
   });
 
   if (langInput) {
-    langInput.value = lang;
+    langInput.value = "az";
   }
 
   formFields.forEach((field) => {
@@ -421,7 +262,7 @@ const clearFormStatus = () => {
 const setFieldError = (field, errorKey) => {
   const wrapper = field.closest(".form-field");
   const errorNode = form?.querySelector(`[data-error-for="${field.name}"]`);
-  const message = translations[currentLanguage][errorKey];
+  const message = translations.az[errorKey];
 
   if (!wrapper || !errorNode || !message) return false;
   field.dataset.errorKey = errorKey;
@@ -474,13 +315,12 @@ const animateCounter = (entry) => {
   const target = Number(entry.target.dataset.target);
   const duration = 2200;
   const start = performance.now();
-  const locale = currentLanguage === "ru" ? "ru-RU" : "en-US";
 
   const tick = (now) => {
     const progress = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
     const value = Math.round(target * eased);
-    entry.target.textContent = value.toLocaleString(locale);
+    entry.target.textContent = value.toLocaleString("az-AZ");
 
     if (progress < 1) {
       requestAnimationFrame(tick);
@@ -549,9 +389,6 @@ if (window.AOS) {
 
 langButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    const nextLanguage = button.dataset.lang;
-    if (nextLanguage === currentLanguage) return;
-
     languageTransitionTimers.forEach((timer) => window.clearTimeout(timer));
     languageTransitionTimers = [];
 
@@ -560,7 +397,7 @@ langButtons.forEach((button) => {
     }
 
     const applyTimer = window.setTimeout(() => {
-      currentLanguage = nextLanguage;
+      currentLanguage = "az";
       localStorage.setItem("constera-language", currentLanguage);
       applyTranslations(currentLanguage);
     }, 120);
@@ -577,20 +414,13 @@ applyTranslations(currentLanguage);
 
 const params = new URLSearchParams(window.location.search);
 const status = params.get("status");
-const statusLang = params.get("lang");
-
-if (statusLang && translations[statusLang]) {
-  currentLanguage = statusLang;
-  localStorage.setItem("constera-language", currentLanguage);
-  applyTranslations(currentLanguage);
-}
 
 if (formStatus && (status === "success" || status === "error")) {
-  setFormStatus(status, translations[currentLanguage][`contact.${status}`]);
+  setFormStatus(status, translations.az[`contact.${status}`]);
 }
 
 if (status === "validation") {
-  setFormStatus("error", translations[currentLanguage]["contact.validation"]);
+  setFormStatus("error", translations.az["contact.validation"]);
 }
 
 if (form) {
@@ -611,7 +441,7 @@ if (form) {
 
   form.addEventListener("submit", (event) => {
     if (langInput) {
-      langInput.value = currentLanguage;
+      langInput.value = "az";
     }
 
     let firstInvalidField = null;
@@ -623,7 +453,7 @@ if (form) {
 
     if (!isValid) {
       event.preventDefault();
-      setFormStatus("error", translations[currentLanguage]["contact.validation"]);
+      setFormStatus("error", translations.az["contact.validation"]);
       firstInvalidField?.focus();
     }
   });
