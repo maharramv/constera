@@ -3,6 +3,8 @@ import { accessSync, constants, cpSync, mkdirSync, rmSync } from "node:fs";
 const requiredFiles = [
   "index.html",
   "catalog.html",
+  "category.html",
+  "subcategory.html",
   "product-detail.html",
   "services.html",
   "service-detail.html",
@@ -13,6 +15,7 @@ const requiredFiles = [
   "brands.html",
   "suppliers.html",
   "rfq.html",
+  "rfq-dashboard.html",
   "admin.html",
   "assets/css/styles.css",
   "assets/js/script.js",
@@ -24,6 +27,8 @@ const requiredFiles = [
 const staticEntries = [
   "index.html",
   "catalog.html",
+  "category.html",
+  "subcategory.html",
   "product-detail.html",
   "services.html",
   "service-detail.html",
@@ -34,6 +39,7 @@ const staticEntries = [
   "brands.html",
   "suppliers.html",
   "rfq.html",
+  "rfq-dashboard.html",
   "admin.html",
   "assets",
   "robots.txt",

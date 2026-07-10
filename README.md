@@ -6,6 +6,8 @@ GitHub Pages və Vercel üçün hazırlanmış statik korporativ sayt konsepti.
 
 - `index.html` - əsas səhifə
 - `catalog.html` - ConstEra Korporativ v2 kataloqu
+- `category.html` - kateqoriya landing səhifəsi
+- `subcategory.html` - subkateqoriya landing səhifəsi
 - `product-detail.html` - məhsul detal səhifəsi
 - `services.html` - tikinti, təmir, dizayn və usta xidmətləri
 - `service-detail.html` - xidmət detal səhifəsi
@@ -16,6 +18,7 @@ GitHub Pages və Vercel üçün hazırlanmış statik korporativ sayt konsepti.
 - `brands.html` - brend mərkəzi
 - `suppliers.html` - təchizatçı mərkəzi
 - `rfq.html` - lokal RFQ draft axını
+- `rfq-dashboard.html` - lokal RFQ dashboard və status paneli
 - `admin.html` - kataloq və admin struktur önbaxışı
 - `assets/css/` - stillər
 - `assets/js/` - skriptlər
@@ -46,6 +49,8 @@ Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamand
 - 35 material kateqoriyası və 360 material subkateqoriyası olan geniş tikinti taksonomiyası
 - material qrupları üzrə bölünmüş katalog: konstruksiya, quru qarışıqlar, kimya, fasad, elektrik, HVAC, santexnika, interyer, enerji, anbar və ərazi sistemləri
 - RFQ-ready məhsul qrupları: canlı təchizatçı qiyməti təsdiqlənənə qədər `Sorğu əsasında` saxlanılır
+- qrup, kateqoriya, subkateqoriya, brend, mənşə, qiymət statusu və mövcudluq üzrə ağıllı filtr paneli
+- material, xidmət, paket və icarə üçün parametrli kateqoriya/subkateqoriya landing səhifələri
 - tikinti, təmir, dizayn, mühəndis sistemləri, tamamlama, fasad və audit üçün kateqoriya/subkateqoriya xidmət bazası
 - 12 xidmət kateqoriyası və 116 xidmət subkateqoriyası
 - hazır təmir, hazır tikinti, full tikinti+təmir, mühəndis və servis paketləri üçün 66 paketlik baza
@@ -53,6 +58,7 @@ Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamand
 - məhsul, paket, xidmət və icarə üçün parametrli detal səhifələri
 - paket, xidmət həcmi və icarə müddəti üçün ilkin hesablayıcı panellər
 - tarix, büdcə, çatdırılma/operator və istifadə məqsədi sahələri ilə genişləndirilmiş RFQ draftı
+- RFQ draftlarının lokal dashboard-u və status axını: Yeni, Cavab gözləyir, Təklif gəldi, Bağlandı
 - təchizatçı və brend profilləri
 - SKU, qablaşdırma, mənşə, vəziyyət və qiymət qeydləri olan məhsul kartları
 - brauzerdə lokal seçilmişlər və müqayisə işarələri

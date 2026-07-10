@@ -47,6 +47,7 @@
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
           <a href="rfq.html">RFQ</a>
+          <a href="rfq-dashboard.html">RFQ Panel</a>
           <a href="admin.html">Admin</a>
           <a class="button button-outline nav-cta" href="rfq.html">Sorğu göndər</a>
         </nav>
@@ -69,9 +70,43 @@
               <input data-search type="search" placeholder="məsələn: boya 15 L, Bosch, armatur 12 mm" />
             </label>
             <label>
+              <span>Qrup</span>
+              <select data-group-filter></select>
+            </label>
+            <label>
               <span>Brend</span>
               <select data-brand-filter></select>
             </label>
+            <label>
+              <span>Subkateqoriya</span>
+              <select data-subcategory-filter></select>
+            </label>
+            <label>
+              <span>Mənşə</span>
+              <select data-origin-filter>
+                <option value="all">Bütün mənşələr</option>
+                <option value="local">Azərbaycan</option>
+                <option value="import">Import</option>
+                <option value="mixed">Azərbaycan / Import</option>
+              </select>
+            </label>
+            <label>
+              <span>Qiymət statusu</span>
+              <select data-price-filter>
+                <option value="all">Bütün qiymətlər</option>
+                <option value="request">Sorğu əsasında</option>
+                <option value="confirmed">Təsdiqli qiymət</option>
+              </select>
+            </label>
+            <label>
+              <span>Mövcudluq</span>
+              <select data-availability-filter>
+                <option value="all">Bütün statuslar</option>
+                <option value="Sorğu əsasında">Sorğu əsasında</option>
+                <option value="Təchizatçıdan asılıdır">Təchizatçıdan asılıdır</option>
+              </select>
+            </label>
+            <div class="active-filter-list" data-active-filter-list></div>
             <a class="button button-primary" href="rfq.html">RFQ yarat</a>
           </div>
         </section>

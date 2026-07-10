@@ -1663,6 +1663,13 @@ dd {
   text-transform: uppercase;
 }
 
+.category-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .category-filter {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1677,6 +1684,25 @@ dd {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.category-open-link {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: #f4d99d;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.category-open-link:hover,
+.category-open-link:focus-visible {
+  border-color: rgba(212, 166, 79, 0.4);
+  background: rgba(212, 166, 79, 0.08);
 }
 
 .category-filter:hover,
@@ -1694,6 +1720,29 @@ dd {
 .category-filter strong {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.active-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.active-filter-list:empty {
+  display: none;
+}
+
+.active-filter-list span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(212, 166, 79, 0.24);
+  border-radius: 999px;
+  color: #f4d99d;
+  background: rgba(212, 166, 79, 0.08);
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .catalog-results {
@@ -1836,6 +1885,49 @@ dd {
   padding: 0 10px;
   font-size: 0.72rem;
   font-weight: 600;
+}
+
+.taxonomy-subcategory-panel,
+.taxonomy-results {
+  margin-top: 26px;
+}
+
+.taxonomy-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.taxonomy-chip-grid a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+}
+
+.taxonomy-chip-grid a:hover,
+.taxonomy-chip-grid a:focus-visible,
+.taxonomy-chip-grid a.is-active {
+  border-color: rgba(212, 166, 79, 0.34);
+  background: rgba(212, 166, 79, 0.08);
+}
+
+.taxonomy-chip-grid span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taxonomy-chip-grid strong {
+  color: #f4d99d;
+  font-size: 0.8rem;
 }
 
 .product-card-footer {
@@ -2012,6 +2104,29 @@ dd {
 
 .rfq-output small {
   color: var(--muted);
+}
+
+.dashboard-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dashboard-filter-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-filter-grid select {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  outline: 0;
+  padding: 0 16px;
+  font: inherit;
 }
 
 .rfq-guide {
@@ -2234,6 +2349,58 @@ dd {
   color: var(--text);
 }
 
+.rfq-dashboard-table strong,
+.rfq-dashboard-table small {
+  display: block;
+}
+
+.rfq-dashboard-table small {
+  max-width: 360px;
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(15, 143, 111, 0.3);
+  border-radius: 999px;
+  color: #bff5e7;
+  background: rgba(15, 143, 111, 0.12);
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.status-actions button {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 9px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.status-actions button:hover,
+.status-actions button:focus-visible {
+  border-color: rgba(212, 166, 79, 0.36);
+  color: #f4d99d;
+}
+
 .nav a[aria-current="page"] {
   color: #f4d99d;
 }
@@ -2254,7 +2421,8 @@ dd {
 
   .product-grid,
   .market-grid,
-  .detail-grid {
+  .detail-grid,
+  .taxonomy-chip-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2281,6 +2449,8 @@ dd {
   .market-mini-stats,
   .detail-grid,
   .calculator-panel,
+  .dashboard-filter-grid,
+  .taxonomy-chip-grid,
   .rfq-form {
     grid-template-columns: 1fr;
   }

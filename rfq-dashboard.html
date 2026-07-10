@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra RFQ Panel | Sorğu dashboard</title>
+    <meta name="description" content="ConstEra RFQ paneli: material, paket, xidmət və icarə sorğularının lokal dashboard görünüşü." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.ru/rfq-dashboard.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="rfq-dashboard">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>RFQ Panel</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
+          <a href="rfq.html">RFQ</a>
+          <a href="rfq-dashboard.html" aria-current="page">RFQ Panel</a>
+          <a href="admin.html">Admin</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Yeni RFQ</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">RFQ dashboard</p>
+            <h1>Sorğuları status, tip və tarix üzrə idarə et.</h1>
+            <p class="hero-text">
+              Bu mərhələdə panel brauzerdə saxlanan RFQ draftları ilə işləyir.
+              Server və login əlavə olunanda eyni struktur real admin dashboard-a çevrilə bilər.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-rfq-dashboard-stats></div>
+        </section>
+
+        <section class="section admin-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Filtr</p>
+                <h2>RFQ axını</h2>
+              </div>
+              <a class="button button-secondary" href="rfq.html">Yeni sorğu yarat</a>
+            </div>
+            <div class="dashboard-filter-grid">
+              <label>
+                <span class="field-label">Status</span>
+                <select data-rfq-status-filter></select>
+              </label>
+              <label>
+                <span class="field-label">Tip</span>
+                <select data-rfq-type-filter></select>
+              </label>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Sorğular</p>
+                <h2>Lokal RFQ draftları</h2>
+              </div>
+              <span class="data-badge">Demo dashboard</span>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table rfq-dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Sorğu</th>
+                    <th>Tip</th>
+                    <th>Miqdar</th>
+                    <th>Şirkət</th>
+                    <th>Əlaqə</th>
+                    <th>Tarix</th>
+                    <th>Status</th>
+                    <th>Əməliyyat</th>
+                  </tr>
+                </thead>
+                <tbody data-rfq-dashboard-rows></tbody>
+              </table>
+            </div>
+            <div class="empty-state glass" data-rfq-dashboard-empty hidden>
+              <strong>RFQ draftı yoxdur.</strong>
+              <span>Yeni sorğu yarat və dashboard-da statusunu dəyiş.</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>
