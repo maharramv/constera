@@ -1,4 +1,4 @@
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, cpSync, mkdirSync, rmSync } from "node:fs";
 
 const requiredFiles = [
   "index.html",
@@ -11,6 +11,19 @@ const requiredFiles = [
   "assets/js/script.js",
   "assets/js/catalog-data.js",
   "assets/js/marketplace.js"
+];
+
+const staticEntries = [
+  "index.html",
+  "catalog.html",
+  "brands.html",
+  "suppliers.html",
+  "rfq.html",
+  "admin.html",
+  "assets",
+  "robots.txt",
+  "sitemap.xml",
+  "send.php"
 ];
 
 const missingFiles = requiredFiles.filter((file) => {
@@ -28,4 +41,16 @@ if (missingFiles.length > 0) {
   process.exit(1);
 }
 
-console.log("ConstEra static build check passed. No build output step is required.");
+rmSync("dist", { recursive: true, force: true });
+mkdirSync("dist", { recursive: true });
+
+staticEntries.forEach((entry) => {
+  try {
+    accessSync(entry, constants.R_OK);
+    cpSync(entry, `dist/${entry}`, { recursive: true });
+  } catch {
+    // Optional files can be omitted without failing the static export.
+  }
+});
+
+console.log("ConstEra static export created in dist.");

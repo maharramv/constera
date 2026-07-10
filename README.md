@@ -29,8 +29,8 @@ This is a static site. Vercel can run:
 npm run vercel-build
 ```
 
-The command validates that the required static pages and assets exist. The
-output directory is the repository root (`.`).
+The command validates that the required static pages and assets exist, then
+copies the deployable site into `dist`.
 
 ## ConstEra Enterprise v2
 
@@ -45,4 +45,7 @@ the first B2B marketplace platform layer:
 - admin structure preview for future CRUD and CSV/Excel import
 
 Prices marked as `Sorğu əsasında` require supplier confirmation before public
-use. Verified supplier-list prices can be kept with a price-list note.
+use. Public catalog pages are used for product names, package sizes, technical
+properties, source links and official product images. If an official page does
+not publish a price, the product stays request-based until a supplier price list
+is added to the admin/import flow.

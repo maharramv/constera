@@ -22,6 +22,7 @@ const getCategory = (id) => marketplace.categories.find((category) => category.i
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
+const escapeAttr = (value) => String(value || "").replace(/"/g, "&quot;");
 
 const countProductsBy = (field, value) =>
   marketplace.products.filter((product) => product[field] === value).length;
@@ -33,11 +34,18 @@ const createProductCard = (product) => {
   const compareIds = storage.read("constera-compare");
   const isFavorite = favoriteIds.includes(product.id);
   const isCompared = compareIds.includes(product.id);
+  const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
+  const media = product.imageUrl
+    ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span>${brandMark}</span>`;
+  const source = product.sourceUrl
+    ? `<a class="source-link" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${product.sourceLabel || "Mənbə"}</a>`
+    : "";
 
   return `
     <article class="market-card product-card" data-product-id="${product.id}">
       <div class="product-media">
-        <span>${product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3)}</span>
+        ${media}
       </div>
       <div class="product-card-body">
         <div class="product-meta">
@@ -60,6 +68,7 @@ const createProductCard = (product) => {
           <span class="price-label">Qiymət</span>
           <strong>${product.price}</strong>
           <small>${product.priceNote}</small>
+          ${source}
         </div>
         <div class="product-actions">
           <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${product.id}" aria-label="Add to favorites">♡</button>
