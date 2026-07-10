@@ -84,6 +84,46 @@
           </div>
         </section>
 
+        <section class="section calculator-section">
+          <div class="market-section-heading">
+            <div>
+              <p class="eyebrow">İlkin hesablayıcı</p>
+              <h2>Xidmət həcmi və smeta yönləndiricisi</h2>
+            </div>
+            <span class="data-badge">RFQ-ready</span>
+          </div>
+          <div class="calculator-grid">
+            <form class="calculator-panel glass" data-service-calculator>
+              <label>
+                <span class="field-label">Sahə</span>
+                <input type="number" name="area" min="1" value="120" />
+              </label>
+              <label>
+                <span class="field-label">İş tipi</span>
+                <select name="scope">
+                  <option value="1">Yüngül təmir</option>
+                  <option value="1.35" selected>Standart təmir</option>
+                  <option value="1.75">Açar təslim</option>
+                  <option value="2.2">Tikinti və mühəndis sistemləri</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Material səviyyəsi</span>
+                <select name="level">
+                  <option value="Ekonom">Ekonom</option>
+                  <option value="Standart" selected>Standart</option>
+                  <option value="Premium">Premium</option>
+                </select>
+              </label>
+              <button class="button button-primary" type="submit">Hesabla</button>
+            </form>
+            <div class="calculator-output glass" data-service-calculator-output>
+              <strong>162 m² iş indeksi</strong>
+              <span>Standart material səviyyəsi ilə RFQ üçün ilkin həcmi göstərir.</span>
+            </div>
+          </div>
+        </section>
+
         <section class="section">
           <div class="market-section-heading">
             <div>

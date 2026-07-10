@@ -6,8 +6,11 @@ GitHub Pages və Vercel üçün hazırlanmış statik korporativ sayt konsepti.
 
 - `index.html` - əsas səhifə
 - `catalog.html` - ConstEra Korporativ v2 kataloqu
+- `product-detail.html` - məhsul detal səhifəsi
 - `services.html` - tikinti, təmir, dizayn və usta xidmətləri
+- `service-detail.html` - xidmət detal səhifəsi
 - `rental.html` - tikinti avadanlığı və alət icarəsi
+- `rental-detail.html` - icarə avadanlığı detal səhifəsi
 - `brands.html` - brend mərkəzi
 - `suppliers.html` - təchizatçı mərkəzi
 - `rfq.html` - lokal RFQ draft axını
@@ -40,6 +43,9 @@ Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamand
 - tikinti kateqoriyaları və subkateqoriyaları
 - tikinti, təmir, dizayn, mühəndis sistemləri, tamamlama, fasad və audit üçün kateqoriya/subkateqoriya xidmət bazası
 - ağır texnika, torpaq/yol texnikası, beton avadanlığı, hündürlük sistemləri, sahə avadanlığı və təmir alətləri üçün kateqoriya/subkateqoriya icarə bazası
+- məhsul, xidmət və icarə üçün parametrli detal səhifələri
+- xidmət həcmi və icarə müddəti üçün ilkin hesablayıcı panellər
+- tarix, büdcə, çatdırılma/operator və istifadə məqsədi sahələri ilə genişləndirilmiş RFQ draftı
 - təchizatçı və brend profilləri
 - SKU, qablaşdırma, mənşə, vəziyyət və qiymət qeydləri olan məhsul kartları
 - brauzerdə lokal seçilmişlər və müqayisə işarələri

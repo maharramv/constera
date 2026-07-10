@@ -81,6 +81,31 @@
               <input type="text" name="quantity" placeholder="məsələn: 120 kisə, 600 m², 40 ədəd" required />
             </label>
             <label class="form-field">
+              <span class="field-label">Tələb olunan tarix</span>
+              <input type="date" name="needDate" />
+            </label>
+            <label class="form-field">
+              <span class="field-label">Büdcə aralığı</span>
+              <select name="budget">
+                <option value="">Seçilməyib</option>
+                <option value="Ekonom">Ekonom</option>
+                <option value="Standart">Standart</option>
+                <option value="Premium">Premium</option>
+                <option value="Topdansatış qiymət lazımdır">Topdansatış qiymət lazımdır</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="field-label">Çatdırılma / operator</span>
+              <select name="deliveryMode">
+                <option value="">Seçilməyib</option>
+                <option value="Çatdırılma lazımdır">Çatdırılma lazımdır</option>
+                <option value="Özümüz götürəcəyik">Özümüz götürəcəyik</option>
+                <option value="Operatorla lazımdır">Operatorla lazımdır</option>
+                <option value="Operatorsuz lazımdır">Operatorsuz lazımdır</option>
+                <option value="Briqada ilə lazımdır">Briqada ilə lazımdır</option>
+              </select>
+            </label>
+            <label class="form-field">
               <span class="field-label">Şirkət</span>
               <input type="text" name="company" placeholder="Şirkət adı" required />
             </label>
@@ -91,6 +116,10 @@
             <label class="form-field">
               <span class="field-label">Şəhər / Rayon</span>
               <input type="text" name="city" placeholder="Bakı, Sumqayıt, Gəncə..." />
+            </label>
+            <label class="form-field rfq-wide">
+              <span class="field-label">Təyinat / istifadə məqsədi</span>
+              <input type="text" name="usage" placeholder="məsələn: villa təmiri, fasad işi, 3 gün ekskavator, ofis təmiri" />
             </label>
             <label class="form-field rfq-wide">
               <span class="field-label">Qeyd</span>

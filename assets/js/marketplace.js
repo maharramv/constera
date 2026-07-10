@@ -56,6 +56,18 @@ const getFilteredSubcategoryCount = (items, categoryId, subcategory) =>
     const matchesCategory = categoryId === "all" || item.category === categoryId;
     return matchesCategory && item.subcategory === subcategory;
   }).length;
+const getQueryParam = (name) => new URLSearchParams(window.location.search).get(name);
+
+const renderDetailFallback = (container, title, backHref) => {
+  container.innerHTML = `
+    <div class="detail-empty glass">
+      <p class="eyebrow">Məlumat tapılmadı</p>
+      <h1>${escapeHtml(title)}</h1>
+      <p>Seçilmiş məlumat bazada tapılmadı. Siyahıya qayıdıb başqa seçim et.</p>
+      <a class="button button-primary" href="${escapeAttr(backHref)}">Siyahıya qayıt</a>
+    </div>
+  `;
+};
 
 const createProductCard = (product) => {
   const category = getCategory(product.category);
@@ -72,6 +84,7 @@ const createProductCard = (product) => {
   const source = product.sourceUrl
     ? `<a class="source-link" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
     : "";
+  const detailLink = `<a class="source-link" href="product-detail.html?product=${encodeURIComponent(product.id)}">Detallı bax</a>`;
 
   return `
     <article class="market-card product-card" data-product-id="${escapeAttr(product.id)}">
@@ -100,6 +113,7 @@ const createProductCard = (product) => {
           <strong>${escapeHtml(product.price)}</strong>
           <small>${escapeHtml(product.priceNote)}</small>
           ${source}
+          ${detailLink}
         </div>
         <div class="product-actions">
           <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${escapeAttr(product.id)}" aria-label="Seçilmişlərə əlavə et">♡</button>
@@ -264,6 +278,7 @@ const createServiceCard = (service) => {
           <span class="price-label">Qiymət</span>
           <strong>${escapeHtml(service.price)}</strong>
           <small>${escapeHtml(service.team)}</small>
+          <a class="source-link" href="service-detail.html?service=${encodeURIComponent(service.id)}">Detallı bax</a>
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu</a>
@@ -297,6 +312,7 @@ const createRentalCard = (rental) => {
           <span class="price-label">İcarə qiyməti</span>
           <strong>${escapeHtml(rental.price)}</strong>
           <small>${escapeHtml(rental.deposit)}</small>
+          <a class="source-link" href="rental-detail.html?rental=${encodeURIComponent(rental.id)}">Detallı bax</a>
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu</a>
@@ -400,6 +416,246 @@ const renderRentals = () => {
   subcategoryFilter?.addEventListener("change", render);
   renderSubcategoryOptions();
   render();
+};
+
+const renderProductDetail = () => {
+  const container = document.querySelector("[data-product-detail]");
+  if (!container) return;
+
+  const productId = getQueryParam("product");
+  const product = productId
+    ? marketplace.products.find((item) => item.id === productId)
+    : marketplace.products[0];
+  if (!product) {
+    renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html");
+    return;
+  }
+
+  const category = getCategory(product.category);
+  const brand = getBrand(product.brand);
+  const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
+  const media = product.imageUrl
+    ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span>${escapeHtml(brandMark)}</span>`;
+  const source = product.sourceUrl
+    ? `<a class="button button-secondary" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbəni aç")}</a>`
+    : "";
+
+  document.title = `${product.name} | ConstEra Kataloq`;
+  container.innerHTML = `
+    <div class="detail-hero glass">
+      <div class="detail-media">${media}</div>
+      <div class="detail-copy">
+        <p class="eyebrow">Məhsul detalı</p>
+        <h1>${escapeHtml(product.name)}</h1>
+        <div class="product-meta detail-tags">
+          <span>${escapeHtml(category?.title || product.category)}</span>
+          <span>${escapeHtml(product.subcategory)}</span>
+          <span>${escapeHtml(product.brand)}</span>
+        </div>
+        <p class="hero-text">Bu səhifə RFQ, təchizatçı qiyməti və gələcək admin redaktəsi üçün məhsulun vahid məlumat kartıdır.</p>
+        <div class="detail-actions">
+          <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(product.id)}">RFQ göndər</a>
+          <a class="button button-outline" href="catalog.html">Kataloqa qayıt</a>
+          ${source}
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <article class="detail-panel glass">
+        <span class="price-label">Qiymət</span>
+        <strong>${escapeHtml(product.price)}</strong>
+        <p>${escapeHtml(product.priceNote || "Qiymət təchizatçı tərəfindən təsdiqlənməlidir.")}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">SKU</span>
+        <strong>${escapeHtml(product.sku)}</strong>
+        <p>${escapeHtml(product.package)} · ${escapeHtml(product.origin)}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Təchizatçı</span>
+        <strong>${escapeHtml(product.supplier)}</strong>
+        <p>${escapeHtml(product.availability)}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Brend statusu</span>
+        <strong>${escapeHtml(brand?.country || product.origin)}</strong>
+        <p>${escapeHtml(brand?.certification || "Təchizatçı təsdiqi lazımdır")}</p>
+      </article>
+    </div>
+
+    <div class="detail-two-column">
+      <article class="detail-panel glass">
+        <p class="eyebrow">Texniki xüsusiyyətlər</p>
+        <ul class="spec-list detail-list">
+          ${(product.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
+        </ul>
+      </article>
+      <article class="detail-panel glass">
+        <p class="eyebrow">RFQ üçün qeydlər</p>
+        <ul class="spec-list detail-list">
+          <li>Qiymət real təchizatçı siyahısı ilə təsdiqlənməlidir.</li>
+          <li>Çatdırılma şəhər/rayon və miqdardan asılıdır.</li>
+          <li>Alternativ marka və paket ölçüsü RFQ qeydində yazıla bilər.</li>
+        </ul>
+      </article>
+    </div>
+  `;
+};
+
+const renderServiceDetail = () => {
+  const container = document.querySelector("[data-service-detail]");
+  if (!container) return;
+
+  const serviceId = getQueryParam("service");
+  const service = serviceId
+    ? (marketplace.services || []).find((item) => item.id === serviceId)
+    : (marketplace.services || [])[0];
+  if (!service) {
+    renderDetailFallback(container, "Xidmət tapılmadı", "services.html");
+    return;
+  }
+
+  const category = getServiceCategory(service.category);
+  document.title = `${service.title} | ConstEra Xidmətlər`;
+  container.innerHTML = `
+    <div class="detail-hero glass">
+      <div class="detail-symbol">
+        <span>${escapeHtml(service.type.slice(0, 2).toUpperCase())}</span>
+      </div>
+      <div class="detail-copy">
+        <p class="eyebrow">Xidmət detalı</p>
+        <h1>${escapeHtml(service.title)}</h1>
+        <div class="product-meta detail-tags">
+          <span>${escapeHtml(category?.title || service.category)}</span>
+          <span>${escapeHtml(service.subcategory || "Ümumi")}</span>
+          <span>${escapeHtml(service.unit)}</span>
+        </div>
+        <p class="hero-text">İş həcmi, briqada, təhvil nəticələri və ilkin smeta üçün istifadə olunan xidmət kartı.</p>
+        <div class="detail-actions">
+          <a class="button button-primary" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət RFQ yarat</a>
+          <a class="button button-outline" href="services.html">Xidmətlərə qayıt</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <article class="detail-panel glass">
+        <span class="price-label">Qiymət</span>
+        <strong>${escapeHtml(service.price)}</strong>
+        <p>Obyektə baxış və iş həcmi təsdiqindən sonra dəqiqləşir.</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Müddət</span>
+        <strong>${escapeHtml(service.leadTime)}</strong>
+        <p>${escapeHtml(service.unit)}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Komanda</span>
+        <strong>${escapeHtml(service.team)}</strong>
+        <p>İş həcminə görə briqada tərkibi dəyişir.</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Təhvil</span>
+        <strong>${(service.deliverables || []).length} nəticə</strong>
+        <p>RFQ və smeta üçün strukturlaşdırılmış çıxışlar.</p>
+      </article>
+    </div>
+
+    <div class="detail-two-column">
+      <article class="detail-panel glass">
+        <p class="eyebrow">İş həcmi</p>
+        <ul class="spec-list detail-list">
+          ${(service.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
+        </ul>
+      </article>
+      <article class="detail-panel glass">
+        <p class="eyebrow">Təhvil nəticələri</p>
+        <div class="service-deliverables">
+          ${(service.deliverables || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+      </article>
+    </div>
+  `;
+};
+
+const renderRentalDetail = () => {
+  const container = document.querySelector("[data-rental-detail]");
+  if (!container) return;
+
+  const rentalId = getQueryParam("rental");
+  const rental = rentalId
+    ? (marketplace.rentals || []).find((item) => item.id === rentalId)
+    : (marketplace.rentals || [])[0];
+  if (!rental) {
+    renderDetailFallback(container, "Avadanlıq tapılmadı", "rental.html");
+    return;
+  }
+
+  const category = getRentalCategory(rental.category);
+  document.title = `${rental.name} | ConstEra İcarə`;
+  container.innerHTML = `
+    <div class="detail-hero glass">
+      <div class="detail-symbol">
+        <span>İC</span>
+      </div>
+      <div class="detail-copy">
+        <p class="eyebrow">İcarə detalı</p>
+        <h1>${escapeHtml(rental.name)}</h1>
+        <div class="product-meta detail-tags">
+          <span>${escapeHtml(category?.title || rental.category)}</span>
+          <span>${escapeHtml(rental.subcategory || "Ümumi")}</span>
+          <span>${escapeHtml(rental.operator)}</span>
+        </div>
+        <p class="hero-text">Avadanlıq gücü, operator şərti, depozit, çatdırılma və rezervasiya RFQ-si üçün əsas kart.</p>
+        <div class="detail-actions">
+          <a class="button button-primary" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə RFQ yarat</a>
+          <a class="button button-outline" href="rental.html">İcarəyə qayıt</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <article class="detail-panel glass">
+        <span class="price-label">İcarə qiyməti</span>
+        <strong>${escapeHtml(rental.price)}</strong>
+        <p>Gün, həftə, ay və obyekt şərtinə görə dəqiqləşir.</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Güc / tutum</span>
+        <strong>${escapeHtml(rental.capacity)}</strong>
+        <p>${escapeHtml(rental.unit)}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Operator</span>
+        <strong>${escapeHtml(rental.operator)}</strong>
+        <p>${escapeHtml(rental.delivery)}</p>
+      </article>
+      <article class="detail-panel glass">
+        <span class="price-label">Depozit</span>
+        <strong>${escapeHtml(rental.deposit)}</strong>
+        <p>Müqavilə və avadanlıq dəyərinə görə təsdiqlənir.</p>
+      </article>
+    </div>
+
+    <div class="detail-two-column">
+      <article class="detail-panel glass">
+        <p class="eyebrow">İstifadə sahələri</p>
+        <ul class="spec-list detail-list">
+          ${(rental.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
+        </ul>
+      </article>
+      <article class="detail-panel glass">
+        <p class="eyebrow">Rezervasiya qeydləri</p>
+        <ul class="spec-list detail-list">
+          <li>Tarix, müddət və obyekt ünvanı RFQ-də yazılmalıdır.</li>
+          <li>Operator, yanacaq və daşınma şərtləri ayrıca təsdiqlənir.</li>
+          <li>Depozit və təhvil-qəbul aktı müqavilə əsasında bağlanır.</li>
+        </ul>
+      </article>
+    </div>
+  `;
 };
 
 const renderAdmin = () => {
@@ -529,6 +785,10 @@ const initRfq = () => {
     const rfq = {
       product: selectedProduct?.name || selectedService?.title || selectedRental?.name || data.get("customProduct"),
       quantity: data.get("quantity"),
+      needDate: data.get("needDate"),
+      budget: data.get("budget"),
+      deliveryMode: data.get("deliveryMode"),
+      usage: data.get("usage"),
       company: data.get("company"),
       contact: data.get("contact"),
       city: data.get("city"),
@@ -544,9 +804,71 @@ const initRfq = () => {
     output.innerHTML = `
       <strong>RFQ draftı hazırdır.</strong>
       <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
+      <span>${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")} · ${escapeHtml(rfq.budget || "büdcə yazılmayıb")}</span>
       <small>Bu demo versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
     `;
   });
+};
+
+const initServiceCalculator = () => {
+  const form = document.querySelector("[data-service-calculator]");
+  const output = document.querySelector("[data-service-calculator-output]");
+  if (!form || !output) return;
+
+  const render = () => {
+    const data = new FormData(form);
+    const area = Math.max(Number(data.get("area")) || 0, 1);
+    const scope = Number(data.get("scope")) || 1;
+    const level = data.get("level") || "Standart";
+    const workIndex = Math.round(area * scope);
+    const materialIndex = Math.round(workIndex * (level === "Premium" ? 1.35 : level === "Ekonom" ? 0.82 : 1));
+    const daysMin = Math.max(1, Math.ceil(workIndex / 45));
+    const daysMax = Math.max(daysMin + 1, Math.ceil(workIndex / 28));
+
+    output.innerHTML = `
+      <strong>${workIndex} m² iş indeksi</strong>
+      <span>${escapeHtml(level)} material səviyyəsi · ${materialIndex} material indeksi · ${daysMin}-${daysMax} gün ilkin icra aralığı</span>
+      <a class="button button-secondary" href="rfq.html?service=menzil-temiri-paketi">RFQ-yə göndər</a>
+    `;
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    render();
+  });
+  form.addEventListener("input", render);
+  form.addEventListener("change", render);
+  render();
+};
+
+const initRentalCalculator = () => {
+  const form = document.querySelector("[data-rental-calculator]");
+  const output = document.querySelector("[data-rental-calculator-output]");
+  if (!form || !output) return;
+
+  const render = () => {
+    const data = new FormData(form);
+    const days = Math.max(Number(data.get("days")) || 0, 1);
+    const shift = Number(data.get("shift")) || 8;
+    const operator = data.get("operator") || "Operatorla";
+    const zone = data.get("zone") || "Bakı";
+    const hours = days * shift;
+    const reservationType = days >= 22 ? "aylıq" : days >= 7 ? "həftəlik" : "günlük";
+
+    output.innerHTML = `
+      <strong>${hours} saatlıq rezervasiya</strong>
+      <span>${days} gün · ${shift} saatlıq növbə · ${escapeHtml(operator)} · ${escapeHtml(zone)} zonası · ${reservationType} RFQ</span>
+      <a class="button button-secondary" href="rfq.html?rental=ekskavator-20t">İcarə RFQ yarat</a>
+    `;
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    render();
+  });
+  form.addEventListener("input", render);
+  form.addEventListener("change", render);
+  render();
 };
 
 const initActions = () => {
@@ -579,7 +901,12 @@ renderBrands();
 renderSuppliers();
 renderServices();
 renderRentals();
+renderProductDetail();
+renderServiceDetail();
+renderRentalDetail();
 renderAdmin();
 initRfq();
+initServiceCalculator();
+initRentalCalculator();
 initActions();
 applyUrlFilters();

@@ -84,6 +84,53 @@
           </div>
         </section>
 
+        <section class="section calculator-section">
+          <div class="market-section-heading">
+            <div>
+              <p class="eyebrow">İcarə planlayıcısı</p>
+              <h2>Müddət, operator və çatdırılma yönləndiricisi</h2>
+            </div>
+            <span class="data-badge">Rezervasiya-ready</span>
+          </div>
+          <div class="calculator-grid">
+            <form class="calculator-panel glass" data-rental-calculator>
+              <label>
+                <span class="field-label">İcarə müddəti</span>
+                <input type="number" name="days" min="1" value="3" />
+              </label>
+              <label>
+                <span class="field-label">Növbə saatı</span>
+                <select name="shift">
+                  <option value="4">4 saat</option>
+                  <option value="8" selected>8 saat</option>
+                  <option value="12">12 saat</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Operator</span>
+                <select name="operator">
+                  <option value="Operatorla" selected>Operatorla</option>
+                  <option value="Operatorsuz">Operatorsuz</option>
+                  <option value="Servis dəstəyi ilə">Servis dəstəyi ilə</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Çatdırılma zonası</span>
+                <select name="zone">
+                  <option value="Bakı">Bakı</option>
+                  <option value="Abşeron / Sumqayıt">Abşeron / Sumqayıt</option>
+                  <option value="Region">Region</option>
+                </select>
+              </label>
+              <button class="button button-primary" type="submit">Planla</button>
+            </form>
+            <div class="calculator-output glass" data-rental-calculator-output>
+              <strong>24 saatlıq rezervasiya</strong>
+              <span>Operatorla, Bakı zonası üçün RFQ qeydi hazırdır.</span>
+            </div>
+          </div>
+        </section>
+
         <section class="section">
           <div class="market-section-heading">
             <div>
