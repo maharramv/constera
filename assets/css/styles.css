@@ -2207,6 +2207,109 @@ dd {
   font-weight: 700;
 }
 
+.ai-smeta-board {
+  align-items: start;
+}
+
+.ai-smeta-layout,
+.ai-smeta-history,
+.ai-smeta-table,
+.ai-smeta-products {
+  display: grid;
+  gap: 14px;
+}
+
+.ai-smeta-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.ai-smeta-summary article,
+.ai-smeta-history-card,
+.ai-smeta-row,
+.ai-smeta-products a {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ai-smeta-summary article {
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  align-content: center;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.ai-smeta-summary strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.35rem;
+}
+
+.ai-smeta-summary span,
+.ai-smeta-history-card span,
+.ai-smeta-history-card small,
+.ai-smeta-row p,
+.ai-smeta-products span {
+  color: var(--muted);
+}
+
+.ai-smeta-history-card {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  border-radius: 18px;
+  color: var(--text);
+  padding: 14px;
+  cursor: pointer;
+}
+
+.ai-smeta-history-card:hover,
+.ai-smeta-products a:hover {
+  border-color: rgba(212, 166, 79, 0.48);
+  background: rgba(212, 166, 79, 0.08);
+}
+
+.ai-smeta-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(260px, 1.05fr);
+  gap: 16px;
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.ai-smeta-row h3 {
+  margin: 10px 0 6px;
+  font-size: 1rem;
+}
+
+.ai-smeta-row p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.ai-smeta-products a {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  align-content: center;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.ai-smeta-products strong {
+  font-size: 0.86rem;
+}
+
+.ai-smeta-products span {
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .rfq-guide {
   display: grid;
   gap: 14px;
@@ -2699,7 +2802,9 @@ dd {
   .admin-manager-grid,
   .admin-backup-grid,
   .admin-form-grid,
-  .admin-toolbar {
+  .admin-toolbar,
+  .ai-smeta-summary,
+  .ai-smeta-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -2729,6 +2834,8 @@ dd {
   .admin-backup-grid,
   .admin-form-grid,
   .admin-toolbar,
+  .ai-smeta-summary,
+  .ai-smeta-row,
   .market-mini-stats,
   .detail-grid,
   .calculator-panel,

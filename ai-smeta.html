@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra AI Smeta | Tikinti material hesablama assistenti</title>
+    <meta
+      name="description"
+      content="ConstEra AI Smeta tikinti, təmir və paket layihələri üçün ilkin material siyahısı, RFQ draftı və kataloq məhsul tövsiyələri hazırlayır."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://constera.ru/ai-smeta.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="ai-smeta">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>AI Smeta</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
+          <a href="rfq.html">RFQ</a>
+          <a href="rfq-dashboard.html">RFQ Panel</a>
+          <a href="tender.html">Tender</a>
+          <a href="ai-smeta.html" aria-current="page">AI Smeta</a>
+          <a href="admin.html">Admin</a>
+          <a class="button button-outline nav-cta" href="rfq.html">RFQ yarat</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">AI Smeta Assistant</p>
+            <h1>Layihə ölçüsünə görə ilkin material xəritəsi və RFQ draftı hazırla.</h1>
+            <p class="hero-text">
+              Bu modul sahə, mərtəbə, iş həcmi və təhvil səviyyəsinə əsasən material miqdarı hesablayır,
+              kataloqdan uyğun məhsulları seçir və nəticəni RFQ panelinə göndərir.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-ai-smeta-stats></div>
+        </section>
+
+        <section class="section admin-board ai-smeta-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Layihə parametrləri</p>
+                <h2>İlkin smeta üçün məlumatları daxil et</h2>
+              </div>
+              <span class="data-badge">lokal hesablama</span>
+            </div>
+            <form class="admin-form" data-ai-smeta-form>
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Layihə tipi</span>
+                  <select name="projectType">
+                    <option value="villa">Villa / fərdi ev</option>
+                    <option value="apartment">Mənzil təmiri</option>
+                    <option value="office">Ofis / kommersiya</option>
+                    <option value="warehouse">Anbar / istehsalat</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Sahə, m²</span>
+                  <input name="area" type="number" min="20" step="1" value="120" required />
+                </label>
+                <label class="admin-field">
+                  <span>Mərtəbə sayı</span>
+                  <input name="floors" type="number" min="1" max="20" step="1" value="1" />
+                </label>
+                <label class="admin-field">
+                  <span>İş həcmi</span>
+                  <select name="scope">
+                    <option value="shell">Qara karkas</option>
+                    <option value="white">Ağ suvaq</option>
+                    <option value="renovation">Full təmir</option>
+                    <option value="turnkey" selected>Full tikinti + təmir</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Səviyyə</span>
+                  <select name="finishLevel">
+                    <option value="economy">Ekonom</option>
+                    <option value="standard" selected>Standart</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Şəhər / rayon</span>
+                  <input name="city" type="text" placeholder="Bakı, Abşeron..." />
+                </label>
+              </div>
+              <label class="admin-field admin-field-wide">
+                <span>Qeyd</span>
+                <textarea name="note" rows="4" placeholder="Məsələn: 3 otaqlı villa, isti döşəmə, fasad izolyasiyası və premium boya istənilir."></textarea>
+              </label>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Smeta hazırla</button>
+                <button class="button button-secondary" type="button" data-ai-smeta-reset>Formu yenilə</button>
+                <button class="button button-outline" type="button" data-ai-smeta-export>CSV export</button>
+              </div>
+              <p class="admin-import-status" data-ai-smeta-status>
+                Hesablama ilkin yönləndirmə üçündür. Son qiymət supplier təklifi, layihə sənədi və obyekt baxışından sonra təsdiqlənməlidir.
+              </p>
+            </form>
+          </div>
+
+          <div class="ai-smeta-layout">
+            <div class="admin-panel glass" data-ai-smeta-output hidden></div>
+            <div class="admin-panel glass">
+              <div class="market-section-heading">
+                <div>
+                  <p class="eyebrow">Smeta tarixçəsi</p>
+                  <h2>Son hesablamalar</h2>
+                </div>
+                <button class="button button-secondary" type="button" data-ai-smeta-clear-history>Tarixçəni təmizlə</button>
+              </div>
+              <div class="ai-smeta-history" data-ai-smeta-history></div>
+              <div class="empty-state glass" data-ai-smeta-empty>
+                <strong>Hələ smeta yoxdur.</strong>
+                <span>Parametrləri daxil edib ilk material xəritəsini yarat.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

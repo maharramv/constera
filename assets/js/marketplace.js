@@ -64,6 +64,7 @@ const adminBackupKeys = [
   adminEntityConfigs.rental.storageKey,
   "constera-rfq-drafts",
   "constera-tenders",
+  "constera-ai-estimates",
   "constera-favorites",
   "constera-compare"
 ];
@@ -1621,6 +1622,7 @@ const renderAdmin = () => {
   const backupSuppliers = document.querySelector("[data-backup-suppliers]");
   const backupRfq = document.querySelector("[data-backup-rfq]");
   const backupTenders = document.querySelector("[data-backup-tenders]");
+  const backupEstimates = document.querySelector("[data-backup-estimates]");
   const backupEntities = document.querySelector("[data-backup-entities]");
 
   const setActiveAdminTab = (tabName) => {
@@ -1653,6 +1655,7 @@ const renderAdmin = () => {
     if (backupSuppliers) backupSuppliers.textContent = getAdminSuppliers().length;
     if (backupRfq) backupRfq.textContent = storage.read("constera-rfq-drafts").length;
     if (backupTenders) backupTenders.textContent = storage.read("constera-tenders").length;
+    if (backupEstimates) backupEstimates.textContent = storage.read("constera-ai-estimates").length;
     if (backupEntities) {
       backupEntities.textContent = getAdminEntityItems("service").length +
         getAdminEntityItems("package").length +
@@ -2869,6 +2872,307 @@ const initRentalCalculator = () => {
   render();
 };
 
+const initAiSmeta = () => {
+  const form = document.querySelector("[data-ai-smeta-form]");
+  const output = document.querySelector("[data-ai-smeta-output]");
+  const historyList = document.querySelector("[data-ai-smeta-history]");
+  const empty = document.querySelector("[data-ai-smeta-empty]");
+  const stats = document.querySelector("[data-ai-smeta-stats]");
+  const status = document.querySelector("[data-ai-smeta-status]");
+  const exportButton = document.querySelector("[data-ai-smeta-export]");
+  const resetButton = document.querySelector("[data-ai-smeta-reset]");
+  const clearHistoryButton = document.querySelector("[data-ai-smeta-clear-history]");
+  if (!form || !output) return;
+
+  const estimateKey = "constera-ai-estimates";
+  const projectLabels = {
+    villa: "Villa / fərdi ev",
+    apartment: "Mənzil təmiri",
+    office: "Ofis / kommersiya",
+    warehouse: "Anbar / istehsalat"
+  };
+  const scopeLabels = {
+    shell: "Qara karkas",
+    white: "Ağ suvaq",
+    renovation: "Full təmir",
+    turnkey: "Full tikinti + təmir"
+  };
+  const levelLabels = {
+    economy: "Ekonom",
+    standard: "Standart",
+    premium: "Premium"
+  };
+  const scopeMultipliers = {
+    shell: 0.78,
+    white: 0.9,
+    renovation: 0.82,
+    turnkey: 1
+  };
+  const levelMultipliers = {
+    economy: 0.86,
+    standard: 1,
+    premium: 1.22
+  };
+  const projectProfiles = {
+    villa: { concrete: 0.24, rebar: 0.034, block: 12.2, plaster: 1.75, paint: 0.24, tile: 0.42, cable: 5.6, pipe: 1.05, insulation: 0.9, roof: 0.72 },
+    apartment: { concrete: 0.04, rebar: 0.006, block: 3.8, plaster: 1.45, paint: 0.28, tile: 0.38, cable: 4.8, pipe: 0.86, insulation: 0.18, roof: 0 },
+    office: { concrete: 0.08, rebar: 0.012, block: 4.8, plaster: 1.2, paint: 0.3, tile: 0.26, cable: 7.2, pipe: 0.72, insulation: 0.36, roof: 0.08 },
+    warehouse: { concrete: 0.32, rebar: 0.042, block: 7.5, plaster: 0.75, paint: 0.14, tile: 0.08, cable: 3.8, pipe: 0.34, insulation: 0.52, roof: 1.05 }
+  };
+  const materialRules = [
+    { key: "concrete", title: "Hazır beton / sement bazası", unit: "m³", category: "Konstruksiya", keywords: ["beton", "sement", "m400", "m500"], scopes: ["shell", "white", "turnkey"], confidence: "Orta" },
+    { key: "rebar", title: "Armatur və metal karkas", unit: "ton", category: "Metal", keywords: ["armatur", "metal", "profil"], scopes: ["shell", "white", "turnkey"], confidence: "Orta" },
+    { key: "block", title: "Hörgü bloku / kərpic", unit: "ədəd", category: "Hörgü", keywords: ["blok", "kərpic", "kerpic", "hörgü"], scopes: ["shell", "white", "turnkey"], confidence: "Yüksək" },
+    { key: "plaster", title: "Suvaq, şpaklyovka və gips qarışıqları", unit: "kisə", category: "Kimya", keywords: ["suvaq", "gips", "şpaklyovka", "spaklyovka", "rotband", "epomix"], scopes: ["white", "renovation", "turnkey"], confidence: "Yüksək" },
+    { key: "paint", title: "Daxili və xarici boya", unit: "litr", category: "Boya", keywords: ["boya", "paint", "penguin", "zink", "interior", "eksteryer"], scopes: ["renovation", "turnkey"], confidence: "Yüksək" },
+    { key: "tile", title: "Kafel, keramoqranit və yapışdırıcı", unit: "m²", category: "Döşəmə", keywords: ["kafel", "keramoqranit", "plitə", "yapışdırıcı"], scopes: ["renovation", "turnkey"], confidence: "Orta" },
+    { key: "cable", title: "Elektrik kabeli və avtomatika", unit: "metr", category: "Elektrik", keywords: ["kabel", "elektrik", "schneider", "legrand", "avtomat"], scopes: ["white", "renovation", "turnkey"], confidence: "Orta" },
+    { key: "pipe", title: "Santexnika boruları və fitinqlər", unit: "metr", category: "Santexnika", keywords: ["boru", "ppr", "pvc", "fitinq", "santexnika"], scopes: ["white", "renovation", "turnkey"], confidence: "Orta" },
+    { key: "insulation", title: "İzolyasiya və membran", unit: "m²", category: "İzolyasiya", keywords: ["izolyasiya", "xps", "eps", "membran", "daş yun"], scopes: ["shell", "white", "turnkey"], confidence: "Orta" },
+    { key: "roof", title: "Dam örtüyü və aksesuarları", unit: "m²", category: "Dam", keywords: ["dam", "profnastil", "membran", "kirəmit"], scopes: ["shell", "turnkey"], confidence: "Aşağı" }
+  ];
+
+  const numberFormat = new Intl.NumberFormat("az-AZ", {
+    maximumFractionDigits: 1
+  });
+  const readEstimates = () => storage.read(estimateKey);
+  const writeEstimates = (items) => storage.write(estimateKey, items.slice(0, 25));
+  const asNumber = (value, fallback = 0) => {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : fallback;
+  };
+  const formatQty = (value) => numberFormat.format(Math.max(value, 0));
+  const productSearchText = (product) => normalize([
+    product.name,
+    product.brand,
+    product.category,
+    product.subcategory,
+    product.supplier,
+    product.specs
+  ].flat().join(" "));
+  const recommendProducts = (rule) => {
+    const keywords = rule.keywords.map(normalize);
+    return (marketplace.products || [])
+      .map((product) => {
+        const text = productSearchText(product);
+        const score = keywords.reduce((sum, keyword) => sum + (text.includes(keyword) ? 1 : 0), 0);
+        return { product, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((entry) => entry.product);
+  };
+  const createMaterialRows = ({ projectType, area, floors, scope, finishLevel }) => {
+    const profile = projectProfiles[projectType] || projectProfiles.villa;
+    const floorFactor = projectType === "apartment" ? 1 : Math.max(floors, 1) ** 0.18;
+    const scopeFactor = scopeMultipliers[scope] || 1;
+    const levelFactor = levelMultipliers[finishLevel] || 1;
+
+    return materialRules
+      .filter((rule) => rule.scopes.includes(scope))
+      .map((rule) => {
+        const base = profile[rule.key] || 0;
+        const finishSensitive = ["paint", "tile", "plaster", "cable", "pipe"].includes(rule.key);
+        const rawQty = area * base * floorFactor * scopeFactor * (finishSensitive ? levelFactor : 1);
+        const quantity = rule.key === "rebar" ? Math.max(rawQty, 0.1) : Math.ceil(rawQty);
+        return {
+          ...rule,
+          quantity: rule.key === "rebar" ? Math.round(quantity * 10) / 10 : quantity,
+          products: recommendProducts(rule)
+        };
+      })
+      .filter((row) => row.quantity > 0);
+  };
+  const createEstimate = (data) => {
+    const projectType = String(data.get("projectType") || "villa");
+    const scope = String(data.get("scope") || "turnkey");
+    const finishLevel = String(data.get("finishLevel") || "standard");
+    const area = asNumber(data.get("area"), 120);
+    const floors = Math.max(1, Math.round(asNumber(data.get("floors"), 1)));
+    const rows = createMaterialRows({ projectType, area, floors, scope, finishLevel });
+    const riskReserve = finishLevel === "premium" ? 15 : finishLevel === "economy" ? 8 : 12;
+
+    return {
+      id: `smeta-${Date.now()}`,
+      projectType,
+      projectLabel: projectLabels[projectType] || projectType,
+      area,
+      floors,
+      scope,
+      scopeLabel: scopeLabels[scope] || scope,
+      finishLevel,
+      finishLabel: levelLabels[finishLevel] || finishLevel,
+      city: String(data.get("city") || "").trim(),
+      note: String(data.get("note") || "").trim(),
+      riskReserve,
+      rows,
+      createdAt: new Date().toISOString()
+    };
+  };
+  const estimateToRfq = (estimate) => {
+    const summary = estimate.rows.map((row) => `${row.title}: ${formatQty(row.quantity)} ${row.unit}`).join("; ");
+    const rfq = {
+      id: `rfq-${Date.now()}`,
+      type: "custom",
+      sourceId: estimate.id,
+      status: "Yeni",
+      supplierId: "",
+      supplier: "Açıq RFQ",
+      priority: "Qiymət müqayisəsi",
+      product: `AI Smeta: ${estimate.projectLabel} · ${estimate.area} m²`,
+      quantity: `${estimate.rows.length} material qrupu`,
+      needDate: "",
+      budget: "Sorğu əsasında",
+      deliveryMode: "Layihə üzrə paket təklif",
+      usage: estimate.scopeLabel,
+      company: "",
+      contact: "",
+      city: estimate.city,
+      note: `${summary}${estimate.note ? ` | Qeyd: ${estimate.note}` : ""}`,
+      createdAt: new Date().toISOString()
+    };
+    const drafts = storage.read("constera-rfq-drafts");
+    storage.write("constera-rfq-drafts", [rfq, ...drafts].slice(0, 30));
+    return rfq;
+  };
+  const exportEstimate = (estimate) => {
+    if (!estimate) return;
+    const headers = ["kateqoriya", "material", "miqdar", "vahid", "etibar", "tövsiyə olunan məhsullar"];
+    const rows = estimate.rows.map((row) => [
+      row.category,
+      row.title,
+      formatQty(row.quantity),
+      row.unit,
+      row.confidence,
+      row.products.map((product) => `${product.name} (${product.price || "Sorğu əsasında"})`).join("; ")
+    ].map(escapeCsvValue).join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `constera-ai-smeta-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const renderStats = () => {
+    if (!stats) return;
+    const estimates = readEstimates();
+    const latest = estimates[0];
+    stats.innerHTML = `
+      <article class="stat-card"><span class="stat-value">${estimates.length}</span><p>smeta</p></article>
+      <article class="stat-card"><span class="stat-value">${latest ? latest.rows.length : 0}</span><p>material qrupu</p></article>
+      <article class="stat-card"><span class="stat-value">${latest ? latest.area : 0}</span><p>son m²</p></article>
+      <article class="stat-card"><span class="stat-value">${marketplace.products.length}</span><p>kataloq məhsulu</p></article>
+    `;
+  };
+  const renderHistory = () => {
+    const estimates = readEstimates();
+    if (historyList) {
+      historyList.innerHTML = estimates.slice(0, 6).map((estimate) => `
+        <button class="ai-smeta-history-card" type="button" data-ai-smeta-open="${escapeAttr(estimate.id)}">
+          <strong>${escapeHtml(estimate.projectLabel)} · ${escapeHtml(estimate.area)} m²</strong>
+          <span>${escapeHtml(estimate.scopeLabel)} · ${escapeHtml(estimate.finishLabel)} · ${escapeHtml(estimate.rows.length)} qrup</span>
+          <small>${new Date(estimate.createdAt).toLocaleString("az-AZ")}</small>
+        </button>
+      `).join("");
+    }
+    if (empty) empty.hidden = estimates.length > 0;
+    renderStats();
+  };
+  const renderEstimate = (estimate, shouldScroll = true) => {
+    output.hidden = false;
+    output.innerHTML = `
+      <div class="market-section-heading">
+        <div>
+          <p class="eyebrow">İlkin nəticə</p>
+          <h2>${escapeHtml(estimate.projectLabel)} · ${escapeHtml(estimate.area)} m²</h2>
+        </div>
+        <span class="data-badge">${escapeHtml(estimate.scopeLabel)}</span>
+      </div>
+      <div class="ai-smeta-summary">
+        <article><strong>${escapeHtml(estimate.finishLabel)}</strong><span>səviyyə</span></article>
+        <article><strong>${escapeHtml(estimate.floors)}</strong><span>mərtəbə</span></article>
+        <article><strong>${escapeHtml(estimate.riskReserve)}%</strong><span>ehtiyat</span></article>
+        <article><strong>${escapeHtml(estimate.rows.length)}</strong><span>material qrupu</span></article>
+      </div>
+      <div class="ai-smeta-table">
+        ${estimate.rows.map((row) => `
+          <article class="ai-smeta-row">
+            <div>
+              <span class="status-pill">${escapeHtml(row.category)}</span>
+              <h3>${escapeHtml(row.title)}</h3>
+              <p>${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)} · RFQ ilə dəqiqləşdirilməlidir</p>
+            </div>
+            <div class="ai-smeta-products">
+              ${row.products.length ? row.products.map((product) => `
+                <a href="product-detail.html?id=${encodeURIComponent(product.id)}">
+                  <strong>${escapeHtml(product.name)}</strong>
+                  <span>${escapeHtml(product.brand || "Brend")} · ${escapeHtml(product.price || "Sorğu əsasında")}</span>
+                </a>
+              `).join("") : "<span class=\"admin-import-status\">Uyğun məhsul üçün kataloqa yeni pozisiya əlavə et.</span>"}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+      <div class="admin-actions">
+        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}">RFQ draft yarat</button>
+        <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV et</button>
+        <a class="button button-outline" href="catalog.html">Kataloqda bax</a>
+      </div>
+    `;
+    if (shouldScroll) output.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  let currentEstimate = readEstimates()[0] || null;
+  if (currentEstimate) renderEstimate(currentEstimate, false);
+  renderHistory();
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    currentEstimate = createEstimate(new FormData(form));
+    writeEstimates([currentEstimate, ...readEstimates()]);
+    renderEstimate(currentEstimate);
+    renderHistory();
+    if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. RFQ draft yarada bilərsən.`;
+  });
+  resetButton?.addEventListener("click", () => {
+    form.reset();
+    output.hidden = true;
+    currentEstimate = null;
+    if (status) status.textContent = "Forma yeniləndi.";
+  });
+  exportButton?.addEventListener("click", () => exportEstimate(currentEstimate || readEstimates()[0]));
+  clearHistoryButton?.addEventListener("click", () => {
+    writeEstimates([]);
+    currentEstimate = null;
+    output.hidden = true;
+    renderHistory();
+    if (status) status.textContent = "Smeta tarixçəsi təmizləndi.";
+  });
+  historyList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-ai-smeta-open]");
+    if (!button) return;
+    currentEstimate = readEstimates().find((estimate) => estimate.id === button.dataset.aiSmetaOpen) || null;
+    if (currentEstimate) renderEstimate(currentEstimate);
+  });
+  output.addEventListener("click", (event) => {
+    const exportCurrent = event.target.closest("[data-ai-smeta-export-current]");
+    if (exportCurrent) {
+      const estimate = readEstimates().find((item) => item.id === exportCurrent.dataset.aiSmetaExportCurrent) || currentEstimate;
+      exportEstimate(estimate);
+      return;
+    }
+    const rfqButton = event.target.closest("[data-ai-smeta-rfq]");
+    if (!rfqButton) return;
+    const estimate = readEstimates().find((item) => item.id === rfqButton.dataset.aiSmetaRfq) || currentEstimate;
+    if (!estimate) return;
+    const rfq = estimateToRfq(estimate);
+    if (status) status.innerHTML = `RFQ draft yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">RFQ paneldə aç</a>`;
+  });
+};
+
 const initActions = () => {
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
@@ -2912,5 +3216,6 @@ initTender();
 initServiceCalculator();
 initPackageCalculator();
 initRentalCalculator();
+initAiSmeta();
 initActions();
 applyUrlFilters();
