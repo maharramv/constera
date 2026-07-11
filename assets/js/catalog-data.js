@@ -164,9 +164,9 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "full-combo",
-      title: "Full tikinti + təmir",
+      title: "Tam tikinti + təmir",
       subtitle: "Tikinti və təmiri birlikdə əhatə edən açar təslim paketlər",
-      subcategories: ["Açar təslim ev", "Açar təslim villa", "Ofis full paket", "Obyekt full paket", "Premium full", "Investor paketi"]
+      subcategories: ["Açar təslim ev", "Açar təslim villa", "Ofis tam paket", "Obyekt tam paket", "Premium tam", "İnvestor paketi"]
     }
   ],
   rentalCategories: [
@@ -299,7 +299,7 @@ window.CONSTERA_MARKETPLACE = {
       leadTime: "Obyektə baxışdan sonra",
       team: "Usta briqadası + texniki nəzarət",
       specs: ["Fundament, kolon, rigel və plitə betonlama", "Armatur və qəlib işləri", "Texniki nəzarət və mərhələli qəbul"],
-      deliverables: ["İş qrafiki", "Material siyahısı", "RFQ üçün smeta bazası"]
+      deliverables: ["İş qrafiki", "Material siyahısı", "Qiymət sorğusu üçün smeta bazası"]
     },
     {
       id: "horgu-suvaq-isleri",
@@ -376,8 +376,8 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       leadTime: "Sənədlər alındıqdan sonra",
       team: "Smetaçı + texniki nəzarətçi",
-      specs: ["Material və iş həcmi çıxarışı", "Qiymət sorğusu üçün RFQ paketi", "İcra keyfiyyəti və həcmlərin yoxlanması"],
-      deliverables: ["Smeta faylı", "RFQ siyahısı", "Nəzarət hesabatı"]
+      specs: ["Material və iş həcmi çıxarışı", "Qiymət sorğusu üçün sorğu paketi", "İcra keyfiyyəti və həcmlərin yoxlanması"],
+      deliverables: ["Smeta faylı", "Qiymət sorğusu siyahısı", "Nəzarət hesabatı"]
     },
     {
       id: "elektrik-santexnika-usta",
@@ -545,7 +545,7 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       leadTime: "Dizayn brifindən sonra",
       team: "Dizayner + satınalma məsləhətçisi",
-      specs: ["Boya, kafel, döşəmə və işıq seçimi", "Alternativ büdcə səviyyələri", "RFQ üçün məhsul siyahısı"],
+      specs: ["Boya, kafel, döşəmə və işıq seçimi", "Alternativ büdcə səviyyələri", "Qiymət sorğusu üçün məhsul siyahısı"],
       deliverables: ["Moodboard", "Məhsul siyahısı", "Qiymət sorğusu paketi"]
     },
     {
@@ -558,7 +558,7 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       leadTime: "Çertyoj alındıqdan sonra",
       team: "Smetaçı",
-      specs: ["Material həcmi çıxarışı", "İş həcmləri", "RFQ üçün BOQ cədvəli"],
+      specs: ["Material həcmi çıxarışı", "İş həcmləri", "Qiymət sorğusu üçün BOQ cədvəli"],
       deliverables: ["BOQ faylı", "Miqdar cədvəli", "Qiymət sorğusu siyahısı"]
     },
     {
@@ -884,7 +884,7 @@ window.CONSTERA_MARKETPLACE = {
       leadTime: "Təkliflər toplandıqdan sonra",
       team: "Satınalma analitiki",
       specs: ["Təchizatçı təklifləri", "Qiymət və şərt müqayisəsi", "Alternativ məhsul analizi"],
-      deliverables: ["Müqayisə cədvəli", "Tövsiyə", "RFQ arxivi"]
+      deliverables: ["Müqayisə cədvəli", "Tövsiyə", "Sorğu arxivi"]
     },
     {
       id: "techizat-plani",
@@ -897,7 +897,7 @@ window.CONSTERA_MARKETPLACE = {
       leadTime: "Smeta təsdiqindən sonra",
       team: "Satınalma + smeta komandası",
       specs: ["Material mərhələləri", "Anbar və çatdırılma planı", "Təchizatçı bölgüsü"],
-      deliverables: ["Material qrafiki", "Çatdırılma planı", "RFQ siyahısı"]
+      deliverables: ["Material qrafiki", "Çatdırılma planı", "Sorğu siyahısı"]
     },
     {
       id: "seki-bordur-isleri",
@@ -984,7 +984,7 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "hamam-metbex-full-paketi",
-      title: "Hamam və mətbəx full paketi",
+      title: "Hamam və mətbəx tam paketi",
       category: "ready-renovation",
       subcategory: "Hamam və mətbəx",
       type: "Zonal təmir",
@@ -1120,7 +1120,7 @@ window.CONSTERA_MARKETPLACE = {
       team: "Tikinti, təmir, MEP və təhvil komandası",
       idealFor: "Fərdi evin fundamentdən yaşayışa hazır təhvilinə qədər",
       includes: ["Qara karkas və ağ suvaq", "Tam elektrik, santexnika və HVAC hazırlığı", "Daxili təmir, sanitar qovşaq və son təhvil"],
-      deliverables: ["Full icra planı", "Material və təchizat qrafiki", "Açar təslim təhvil aktı"]
+      deliverables: ["Tam icra planı", "Material və təchizat qrafiki", "Açar təslim təhvil aktı"]
     },
     {
       id: "acar-teslim-villa-paketi",
@@ -1138,9 +1138,9 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "ofis-full-paketi",
-      title: "Ofis full paketi",
+      title: "Ofis tam paketi",
       category: "full-combo",
-      subcategory: "Ofis full paket",
+      subcategory: "Ofis tam paket",
       type: "Layihə + təmir",
       unit: "m² / ofis",
       price: "Sorğu əsasında",
@@ -1152,10 +1152,10 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "obyekt-full-paketi",
-      title: "Obyekt full paketi",
+      title: "Obyekt tam paketi",
       category: "full-combo",
-      subcategory: "Obyekt full paket",
-      type: "Kommersiya full",
+      subcategory: "Obyekt tam paket",
+      type: "Kommersiya tam paketi",
       unit: "m² / obyekt",
       price: "Sorğu əsasında",
       timeline: "45-150 gün",
@@ -1166,10 +1166,10 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "premium-full-paketi",
-      title: "Premium full tikinti və təmir paketi",
+      title: "Premium tam tikinti və təmir paketi",
       category: "full-combo",
-      subcategory: "Premium full",
-      type: "Premium full",
+      subcategory: "Premium tam",
+      type: "Premium tam paket",
       unit: "layihə",
       price: "Sorğu əsasında",
       timeline: "Layihə ölçüsünə görə",
@@ -1183,13 +1183,13 @@ window.CONSTERA_MARKETPLACE = {
       title: "Investor tikinti və təmir paketi",
       category: "full-combo",
       subcategory: "Investor paketi",
-      type: "B2B full paket",
+      type: "B2B tam paket",
       unit: "portfel / layihə",
       price: "Sorğu əsasında",
       timeline: "Portfelə görə",
       team: "Layihə idarəetməsi, smeta, təchizat və icra komandası",
       idealFor: "Satış üçün mənzil portfeli, kirayə biznesi və kiçik developer layihələri",
-      includes: ["Standartlaşdırılmış dizayn və material matrisası", "Toplu təmir və tikinti qrafiki", "Qiymət müqayisəsi, RFQ və təchizat planı"],
+      includes: ["Standartlaşdırılmış dizayn və material matrisası", "Toplu təmir və tikinti qrafiki", "Qiymət müqayisəsi, Qiymət sorğusu və təchizat planı"],
       deliverables: ["Portfel smetası", "Mərhələli icra xəritəsi", "ROI üçün xərc strukturu"]
     }
   ],
@@ -1680,7 +1680,7 @@ window.CONSTERA_MARKETPLACE = {
       name: "Boya püskürtmə aparatı icarəsi",
       category: "finishing-tools",
       subcategory: "Boya aparatı",
-      capacity: "Airless tipli",
+      capacity: "Havasız püskürtmə tipli",
       unit: "gün / həftə",
       price: "Sorğu əsasında",
       deposit: "Alət dəyərinə görə",
@@ -2131,7 +2131,7 @@ window.CONSTERA_MARKETPLACE = {
       category: "metal",
       subcategory: "Armatur",
       supplier: "Metal təchizatçısı",
-      origin: "Azərbaycan/Import",
+      origin: "Azərbaycan/İdxal",
       package: "12 m çubuq",
       price: "Sorğu əsasında",
       priceNote: "Gündəlik metal qiyməti lazımdır",
@@ -2176,7 +2176,7 @@ window.CONSTERA_MARKETPLACE = {
       category: "electrical",
       subcategory: "Kabellər",
       supplier: "Elektrik təchizatçısı",
-      origin: "Azərbaycan/Import",
+      origin: "Azərbaycan/İdxal",
       package: "1 m / rulon",
       price: "Sorğu əsasında",
       priceNote: "Mis qiymətindən asılıdır",
@@ -2281,7 +2281,7 @@ window.CONSTERA_MARKETPLACE = {
       category: "insulation",
       subcategory: "XPS",
       supplier: "İzolyasiya təchizatçısı",
-      origin: "Azərbaycan/Import",
+      origin: "Azərbaycan/İdxal",
       package: "Lövhə",
       price: "Sorğu əsasında",
       priceNote: "Yerli təchizatçı qiyməti lazımdır",
@@ -2311,7 +2311,7 @@ window.CONSTERA_MARKETPLACE = {
       category: "roofing",
       subcategory: "Profnastil",
       supplier: "Dam təchizatçısı",
-      origin: "Azərbaycan/Import",
+      origin: "Azərbaycan/İdxal",
       package: "m²",
       price: "Sorğu əsasında",
       priceNote: "Metal qiymətindən asılıdır",
@@ -2326,7 +2326,7 @@ window.CONSTERA_MARKETPLACE = {
       category: "fasteners",
       subcategory: "Dübel",
       supplier: "Bərkidici təchizatçısı",
-      origin: "Azərbaycan/Import",
+      origin: "Azərbaycan/İdxal",
       package: "100 ədəd",
       price: "Sorğu əsasında",
       priceNote: "Topdansatış qiyməti lazımdır",
@@ -2341,7 +2341,7 @@ window.CONSTERA_MARKETPLACE = {
       category: "safety",
       subcategory: "Yanğınsöndürən",
       supplier: "Təhlükəsizlik təchizatçısı",
-      origin: "Azərbaycan/Import",
+      origin: "Azərbaycan/İdxal",
       package: "1 ədəd",
       price: "Sorğu əsasında",
       priceNote: "Sertifikatlı təchizatçı lazımdır",

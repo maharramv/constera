@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra RFQ Panel | Sorğu dashboard</title>
-    <meta name="description" content="ConstEra RFQ paneli: material, paket, xidmət və icarə sorğularının lokal dashboard görünüşü." />
+    <title>ConstEra Sorğu paneli | Qiymət sorğularının idarəetməsi</title>
+    <meta name="description" content="ConstEra qiymət sorğusu paneli: material, paket, xidmət və icarə sorğularının lokal panel görünüşü." />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://constera.ru/rfq-dashboard.html" />
     <meta name="theme-color" content="#0b0f14" />
@@ -26,7 +26,7 @@
           <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
           <span class="brand-copy">
             <strong>CONSTERA</strong>
-            <span>RFQ Panel</span>
+            <span>Sorğu paneli</span>
           </span>
         </a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
@@ -43,23 +43,23 @@
           <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
-          <a href="rfq.html">RFQ</a>
-          <a href="rfq-dashboard.html" aria-current="page">RFQ Panel</a>
+          <a href="rfq.html">Qiymət sorğusu</a>
+          <a href="rfq-dashboard.html" aria-current="page">Sorğu paneli</a>
           <a href="tender.html">Tender</a>
-          <a href="ai-smeta.html">AI Smeta</a>
-          <a href="admin.html">Admin</a>
-          <a class="button button-outline nav-cta" href="rfq.html">Yeni RFQ</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="admin.html">İdarəetmə</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Yeni sorğu</a>
         </nav>
       </header>
 
       <main>
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
-            <p class="eyebrow">RFQ dashboard</p>
-            <h1>Sorğuları status, tip və tarix üzrə idarə et.</h1>
+            <p class="eyebrow">Sorğu paneli</p>
+            <h1>Sorğuları vəziyyət, tip və tarix üzrə idarə et.</h1>
             <p class="hero-text">
-              Bu mərhələdə panel brauzerdə saxlanan RFQ draftları ilə işləyir.
-              Server və login əlavə olunanda eyni struktur real admin dashboard-a çevrilə bilər.
+              Bu mərhələdə panel brauzerdə saxlanan sorğu qaralamaları ilə işləyir.
+              Server və giriş əlavə olunanda eyni struktur real idarəetmə panelinə çevrilə bilər.
             </p>
           </div>
           <div class="admin-stat-grid" data-rfq-dashboard-stats></div>
@@ -70,13 +70,13 @@
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Filtr</p>
-                <h2>RFQ axını</h2>
+                <h2>Qiymət sorğusu axını</h2>
               </div>
               <a class="button button-secondary" href="rfq.html">Yeni sorğu yarat</a>
             </div>
             <div class="dashboard-filter-grid">
               <label>
-                <span class="field-label">Status</span>
+                <span class="field-label">Vəziyyət</span>
                 <select data-rfq-status-filter></select>
               </label>
               <label>
@@ -87,7 +87,7 @@
                 <span class="field-label">Təchizatçı</span>
                 <select data-rfq-supplier-filter></select>
               </label>
-              <button class="button button-secondary" type="button" data-rfq-export>CSV export</button>
+              <button class="button button-secondary" type="button" data-rfq-export>CSV ixracı</button>
             </div>
           </div>
 
@@ -95,14 +95,14 @@
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Təklif müqayisəsi</p>
-                <h2>Supplier təkliflərini RFQ üzrə əlavə et</h2>
+                <h2>Təchizatçı təkliflərini qiymət sorğusu üzrə əlavə et</h2>
               </div>
-              <span class="data-badge">best offer</span>
+              <span class="data-badge">ən uyğun təklif</span>
             </div>
             <form class="admin-form" data-rfq-offer-form>
               <div class="admin-form-grid">
                 <label class="admin-field">
-                  <span>RFQ</span>
+                  <span>Qiymət sorğusu</span>
                   <select name="rfqId" data-rfq-offer-rfq required></select>
                 </label>
                 <label class="admin-field">
@@ -132,10 +132,10 @@
               </div>
               <div class="admin-actions">
                 <button class="button button-primary" type="submit">Təklif əlavə et</button>
-                <button class="button button-secondary" type="button" data-rfq-offer-export>Teklifləri CSV export et</button>
+                <button class="button button-secondary" type="button" data-rfq-offer-export>Təklifləri CSV ixracı et</button>
               </div>
               <p class="admin-import-status" data-rfq-offer-status>
-                Təklif əlavə etdikdən sonra RFQ statusu avtomatik “Təklif gəldi” olacaq.
+                Təklif əlavə etdikdən sonra qiymət sorğusu vəziyyəti avtomatik “Təklif gəldi” olacaq.
               </p>
             </form>
           </div>
@@ -144,9 +144,9 @@
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Sorğular</p>
-                <h2>Lokal RFQ draftları</h2>
+                <h2>Lokal sorğu qaralamaları</h2>
               </div>
-              <span class="data-badge">Demo dashboard</span>
+              <span class="data-badge">Nümunə panel</span>
             </div>
             <div class="table-wrap">
               <table class="admin-table rfq-dashboard-table">
@@ -161,7 +161,7 @@
                     <th>Təkliflər</th>
                     <th>Əlaqə</th>
                     <th>Tarix</th>
-                    <th>Status</th>
+                    <th>Vəziyyət</th>
                     <th>Əməliyyat</th>
                   </tr>
                 </thead>
@@ -169,8 +169,8 @@
               </table>
             </div>
             <div class="empty-state glass" data-rfq-dashboard-empty hidden>
-              <strong>RFQ draftı yoxdur.</strong>
-              <span>Yeni sorğu yarat və dashboard-da statusunu dəyiş.</span>
+              <strong>sorğu qaralaması yoxdur.</strong>
+              <span>Yeni sorğu yarat və paneldə vəziyyətini dəyiş.</span>
             </div>
           </div>
         </section>

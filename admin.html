@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ConstEra Admin | Kataloq, paket, xidmət və icarə idarəetməsi</title>
-    <meta name="description" content="ConstEra Korporativ v2 məhsul, paket, xidmət, avadanlıq icarəsi, kateqoriya, brend və təchizatçı idarəetməsi üçün admin platforması." />
+    <title>ConstEra İdarəetmə | Kataloq, paket, xidmət və icarə idarəetməsi</title>
+    <meta name="description" content="ConstEra Korporativ v2 məhsul, paket, xidmət, avadanlıq icarəsi, kateqoriya, brend və təchizatçı idarəetməsi üçün idarəetmə platforması." />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="canonical" href="https://constera.ru/admin.html" />
     <meta name="theme-color" content="#0b0f14" />
@@ -26,7 +26,7 @@
           <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
           <span class="brand-copy">
             <strong>CONSTERA</strong>
-            <span>Admin</span>
+            <span>İdarəetmə</span>
           </span>
         </a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
@@ -43,11 +43,11 @@
           <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
-          <a href="rfq.html">RFQ</a>
-          <a href="rfq-dashboard.html">RFQ Panel</a>
+          <a href="rfq.html">Qiymət sorğusu</a>
+          <a href="rfq-dashboard.html">Sorğu paneli</a>
           <a href="tender.html">Tender</a>
-          <a href="ai-smeta.html">AI Smeta</a>
-          <a href="admin.html" aria-current="page">Admin</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="admin.html" aria-current="page">İdarəetmə</a>
           <a class="button button-outline nav-cta" href="catalog.html">Kataloqa bax</a>
         </nav>
       </header>
@@ -55,11 +55,11 @@
       <main>
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
-            <p class="eyebrow">Korporativ Admin v2</p>
+            <p class="eyebrow">Korporativ idarəetmə v2</p>
             <h1>Kataloq, paket, xidmət, icarə və təchizatçı idarəetməsi üçün başlanğıc panel.</h1>
             <p class="hero-text">
-              Bu hələ real login-li admin deyil. Amma strukturu göstərir:
-              məhsullar, hazır paketlər, xidmətlər, avadanlıq icarəsi, qiymət idxalı və təchizatçı statusları.
+              Bu hələ real giriş sistemi olan idarəetmə paneli deyil. Amma strukturu göstərir:
+              məhsullar, hazır paketlər, xidmətlər, avadanlıq icarəsi, qiymət idxalı və təchizatçı vəziyyətləri.
             </p>
           </div>
           <div class="admin-stat-grid" data-admin-stats></div>
@@ -71,7 +71,7 @@
             <button class="admin-tab-button" type="button" data-admin-tab="products">Məhsullar</button>
             <button class="admin-tab-button" type="button" data-admin-tab="suppliers">Təchizatçılar</button>
             <button class="admin-tab-button" type="button" data-admin-tab="services">Xidmət / paket / icarə</button>
-            <button class="admin-tab-button" type="button" data-admin-tab="backup">Backup</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="backup">Ehtiyat nüsxə</button>
           </div>
 
           <div class="admin-panel glass" data-admin-panel="overview">
@@ -113,24 +113,24 @@
           <div class="admin-panel glass" data-admin-panel="backup" hidden>
             <div class="market-section-heading">
               <div>
-                <p class="eyebrow">Backup / restore</p>
-                <h2>Admin məlumatlarını JSON kimi saxla və geri yüklə</h2>
+                <p class="eyebrow">Ehtiyat nüsxə / bərpa</p>
+                <h2>İdarəetmə məlumatlarını JSON kimi saxla və geri yüklə</h2>
               </div>
-              <span class="data-badge">localStorage backup</span>
+              <span class="data-badge">lokal ehtiyat nüsxə</span>
             </div>
             <div class="admin-backup-grid">
               <div class="admin-import-box">
                 <label class="admin-field">
-                  <span>Backup JSON</span>
-                  <textarea class="admin-textarea" data-admin-backup-input rows="16" placeholder="Export etdiyin JSON burada görünəcək. Restore üçün JSON-u buraya yapışdır."></textarea>
+                  <span>Ehtiyat JSON nüsxəsi</span>
+                  <textarea class="admin-textarea" data-admin-backup-input rows="16" placeholder="İxrac etdiyin JSON burada görünəcək. Bərpa üçün JSON-u buraya yapışdır."></textarea>
                 </label>
                 <div class="admin-actions">
-                  <button class="button button-primary" type="button" data-admin-export-backup>JSON export</button>
-                  <button class="button button-secondary" type="button" data-admin-import-backup>JSON import</button>
+                  <button class="button button-primary" type="button" data-admin-export-backup>JSON ixracı</button>
+                  <button class="button button-secondary" type="button" data-admin-import-backup>JSON idxalı</button>
                   <button class="button button-outline" type="button" data-admin-download-backup>Fayl kimi yüklə</button>
                 </div>
                 <p class="admin-import-status" data-admin-backup-status>
-                  Məhsul, təchizatçı, xidmət, paket, icarə, RFQ, favori və müqayisə məlumatları saxlanacaq.
+                  Məhsul, təchizatçı, xidmət, paket, icarə, qiymət sorğusu, favori və müqayisə məlumatları saxlanacaq.
                 </p>
               </div>
               <div class="admin-backup-summary">
@@ -144,7 +144,7 @@
                 </article>
                 <article>
                   <strong data-backup-rfq>0</strong>
-                  <span>RFQ draftı</span>
+                  <span>sorğu qaralaması</span>
                 </article>
                 <article>
                   <strong data-backup-tenders>0</strong>
@@ -168,7 +168,7 @@
                 <p class="eyebrow">Xidmət, paket və icarə meneceri</p>
                 <h2>Tikinti işləri, hazır paketlər və avadanlıq icarəsini idarə et</h2>
               </div>
-              <span class="data-badge">3 bölmə import</span>
+              <span class="data-badge">3 bölmə idxal</span>
             </div>
             <div class="admin-manager-grid">
               <form class="admin-form" data-admin-entity-form>
@@ -236,15 +236,15 @@
 
               <div class="admin-import-box">
                 <label class="admin-field">
-                  <span>CSV import</span>
+                  <span>CSV idxalı</span>
                   <textarea class="admin-textarea" data-admin-entity-csv-input rows="13" placeholder="ad,kateqoriya,subkateqoriya,tip,vahid,qiymət,müddət,komanda,xüsusiyyətlər,nəticələr"></textarea>
                 </label>
                 <div class="admin-actions">
-                  <button class="button button-primary" type="button" data-admin-import-entity-csv>CSV import</button>
-                  <button class="button button-secondary" type="button" data-admin-export-entity-csv>CSV export</button>
+                  <button class="button button-primary" type="button" data-admin-import-entity-csv>CSV idxalı</button>
+                  <button class="button button-secondary" type="button" data-admin-export-entity-csv>CSV ixracı</button>
                 </div>
                 <p class="admin-import-status" data-admin-entity-status>
-                  Əvvəlcə bölməni seç, sonra CSV-ni import et. Seçilmiş bölmənin cədvəli və səhifəsi dərhal yenilənir.
+                  Əvvəlcə bölməni seç, sonra CSV-ni idxal et. Seçilmiş bölmənin cədvəli və səhifəsi dərhal yenilənir.
                 </p>
               </div>
             </div>
@@ -254,9 +254,9 @@
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Məhsul meneceri</p>
-                <h2>Əl ilə əlavə et və ya CSV import et</h2>
+                <h2>Əl ilə əlavə et və ya CSV idxal et</h2>
               </div>
-              <span class="data-badge">lokal admin v1</span>
+              <span class="data-badge">lokal idarəetmə v1</span>
             </div>
             <div class="admin-manager-grid">
               <form class="admin-form" data-admin-product-form>
@@ -291,7 +291,7 @@
                     <input name="price" type="text" placeholder="Sorğu əsasında" />
                   </label>
                   <label class="admin-field">
-                    <span>Qiymət statusu</span>
+                    <span>Qiymət vəziyyəti</span>
                     <select name="priceStatus">
                       <option value="request">Sorğu əsasında</option>
                       <option value="confirmed">Təsdiqli qiymət</option>
@@ -321,19 +321,19 @@
                 <div class="admin-actions">
                   <button class="button button-primary" type="submit">Yadda saxla</button>
                   <button class="button button-secondary" type="button" data-admin-clear-form>Formu təmizlə</button>
-                  <button class="button button-outline" type="button" data-admin-reset-products>Demo dəyişiklikləri sil</button>
+                  <button class="button button-outline" type="button" data-admin-reset-products>Nümunə dəyişiklikləri sil</button>
                 </div>
               </form>
 
               <div class="admin-import-box">
                 <datalist id="admin-brand-list"></datalist>
                 <label class="admin-field">
-                  <span>CSV import</span>
+                  <span>CSV idxalı</span>
                   <textarea class="admin-textarea" data-admin-csv-input rows="12" placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,foto url,mənbə url"></textarea>
                 </label>
                 <div class="admin-actions">
-                  <button class="button button-primary" type="button" data-admin-import-csv>CSV import</button>
-                  <button class="button button-secondary" type="button" data-admin-export-csv>CSV export</button>
+                  <button class="button button-primary" type="button" data-admin-import-csv>CSV idxalı</button>
+                  <button class="button button-secondary" type="button" data-admin-export-csv>CSV ixracı</button>
                 </div>
                 <p class="admin-import-status" data-admin-import-status>
                   Excel-dən CSV kimi kopyala və buraya yapışdır. Başlıqlar azərbaycanca və ya ingiliscə ola bilər.
@@ -346,7 +346,7 @@
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Təchizatçı meneceri</p>
-                <h2>Supplier panel üçün şirkətləri idarə et</h2>
+                <h2>Təchizatçı paneli üçün şirkətləri idarə et</h2>
               </div>
               <a class="card-link" href="suppliers.html">Təchizatçılar səhifəsi</a>
             </div>
@@ -367,7 +367,7 @@
                     <input name="region" type="text" placeholder="Bakı / Azərbaycan" />
                   </label>
                   <label class="admin-field">
-                    <span>Status</span>
+                    <span>Vəziyyət</span>
                     <input name="status" type="text" placeholder="Aktiv / yoxlanılır / rəsmi kataloq" />
                   </label>
                   <label class="admin-field">
@@ -384,7 +384,7 @@
                   </label>
                   <label class="admin-field">
                     <span>Cavab müddəti</span>
-                    <input name="responseTime" type="text" placeholder="2 saat / 1 gün / RFQ əsasında" />
+                    <input name="responseTime" type="text" placeholder="2 saat / 1 gün / qiymət sorğusu əsasında" />
                   </label>
                 </div>
                 <label class="admin-field admin-field-wide">
@@ -405,8 +405,8 @@
                       <th>Şirkət</th>
                       <th>Tip</th>
                       <th>Region</th>
-                      <th>Status</th>
-                      <th>RFQ</th>
+                      <th>Vəziyyət</th>
+                      <th>Qiymət sorğusu</th>
                       <th>Əməliyyat</th>
                     </tr>
                   </thead>
@@ -514,7 +514,7 @@
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Hazır paketlər</p>
-                <h2>Təmir, tikinti və full paketlər</h2>
+                <h2>Təmir, tikinti və tam paketlər</h2>
               </div>
               <a class="card-link" href="packages.html">Paket səhifəsini aç</a>
             </div>

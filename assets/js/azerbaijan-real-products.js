@@ -69,7 +69,7 @@
     { id: "roof-drainage", group: "Dam və fasad", title: "Dam drenajı və yağış sistemi", subtitle: "Oluk, boru, süzgəc, dam keçidi və drenaj elementləri", subcategories: ["Oluk", "Yağış borusu", "Dam süzgəci", "Baca keçidi", "Dam ventilyasiyası", "Karniz aksesuarı", "Qar tutucu", "Dam təhlükəsizlik xətti"] },
     { id: "facade-fastening", group: "Dam və fasad", title: "Fasad bərkidici və aksesuarları", subtitle: "Ventfasad, termo fasad və daş fasad üçün bərkidici sistemlər", subcategories: ["Fasad kronşteyni", "Fasad ankəri", "Termo dübel", "Fasad setkası", "Start profil", "Damlalı profil", "Kompozit kaset", "Fasad membranı"] },
     { id: "mep-consumables", group: "MEP və mühəndis sistemləri", title: "MEP sərfiyyatları", subtitle: "Elektrik, santexnika, HVAC və zəif axın montaj sərfiyyatları", subcategories: ["Kabel bağı", "Boru qısqacı", "Kanal asqısı", "İzolyasiya lentləri", "Sızdırmazlıq halqası", "Konnektor", "Montaj relsi", "Etiket və marker"] },
-    { id: "water-treatment", group: "Santexnika və su sistemləri", title: "Su təmizləmə və filtrasiya", subtitle: "Məişət və obyektlər üçün filtrasiya, yumşaltma və təmiz su sistemləri", subcategories: ["Mexaniki filtr", "Karbon filtr", "Su yumşaldıcı", "RO sistem", "UV sterilizator", "Filtr kartuşu", "Manometr", "Filter housing"] },
+    { id: "water-treatment", group: "Santexnika və su sistemləri", title: "Su təmizləmə və filtrasiya", subtitle: "Məişət və obyektlər üçün filtrasiya, yumşaltma və təmiz su sistemləri", subcategories: ["Mexaniki filtr", "Karbon filtr", "Su yumşaldıcı", "RO sistem", "UV sterilizator", "Filtr kartuşu", "Manometr", "Filtr korpusu"] },
     { id: "drainage-sewer", group: "Santexnika və su sistemləri", title: "Kanalizasiya və drenaj", subtitle: "Kanalizasiya, drenaj xətti, trap və yağış suyu sistemləri", subcategories: ["Kanalizasiya borusu", "Drenaj borusu", "Trap", "Reviziya qapağı", "Yağ tutucu", "Septik aksesuarı", "Drenaj quyusu", "Kollektor quyusu"] },
     { id: "industrial-flooring", group: "Döşəmə və üzlük", title: "Sənaye döşəmə sistemləri", subtitle: "Epoksi, poliuretan, beton və anbar döşəmə həlləri", subcategories: ["Epoksi primer", "Epoksi boya", "PU örtük", "Antistatik döşəmə", "Döşəmə cilası", "Dilatasiya profili", "Sənaye süpürgəliyi", "Forklift izi qoruyucu"] },
     { id: "acoustic-systems", group: "İzolyasiya və membran", title: "Akustik sistemlər", subtitle: "Səs izolyasiyası, akustik panel və texniki otaq həlləri", subcategories: ["Akustik panel", "Səs baryeri", "Akustik tavan", "Akustik keçə", "Vibrasiya yastığı", "Texniki otaq izolyasiyası", "Studio panel", "Səs udan membran"] },
@@ -92,7 +92,7 @@
   [
     "1471534",
     "Drel-şrupbağlayan 0002332, 36 V",
-    "No Brand",
+    "Brendsiz",
     99,
     "https://strgimgr.umico.az/img/product/280/9e2d4aa6-cd5b-4aeb-bd1f-ce70f65eb682.jpeg",
     "https://birmarket.az/product/1471534-drel-shrupbaglayan-dewalt-36v-ez00002332",
@@ -101,7 +101,7 @@
   [
     "1038002",
     "Avtomobil üçün alətlər dəsti New Tools, 46 parça",
-    "No Brand",
+    "Brendsiz",
     5.99,
     "https://strgimgr.umico.az/img/product/280/97aa658f-2b87-4f12-8a1c-a52d8095bcad.jpeg",
     "https://birmarket.az/product/1038002-avtomobil-uchun-aletler-desti-46-1-keysde",
@@ -110,7 +110,7 @@
   [
     "1227626",
     "Avtomobil üçün açar dəsti HE00058, 46 parça",
-    "No Brand",
+    "Brendsiz",
     6.25,
     "https://strgimgr.umico.az/img/product/280/8279eeb5-1f19-48aa-a8ae-3853bcd1e2e6.jpeg",
     "https://birmarket.az/product/1227626-avtomobil-uchun-achar-desti-46-parcha-he00058",
@@ -119,7 +119,7 @@
   [
     "2469592",
     "Açarlar dəsti No brand 216 ədəd",
-    "No Brand",
+    "Brendsiz",
     189,
     "https://strgimgr.umico.az/img/product/280/f8a04c5e-04bd-4bc3-85ce-171a8af5ac39.jpeg",
     "https://birmarket.az/product/2469592-acharlar-desti-no-brand-professional-avtomobilin-alt-hissesinin-yoxlanilmasi-uchun-216-eded",
@@ -128,7 +128,7 @@
   [
     "1389350",
     "Lazer nivelir Bosch 16 xətt D 0005005",
-    "No Brand",
+    "Brendsiz",
     63.26,
     "https://strgimgr.umico.az/img/product/280/26009c74-bece-488d-8a9d-6fa689a75f12.jpeg",
     "https://birmarket.az/product/1389350-lazer-nivelir-bosch-16-xett-d-ez00005005",
@@ -137,7 +137,7 @@
   [
     "1338820",
     "Alət dəsti DeWalt 48V, (kabelsiz drel - şurup bağlayan və aksesuarlar)",
-    "No Brand",
+    "Brendsiz",
     39.98,
     "https://strgimgr.umico.az/img/product/280/ac5702eb-3112-4c57-9f04-282f97f3ac6e.jpeg",
     "https://birmarket.az/product/1338820-drel-shurup-baglayan-dewalt-48v",
@@ -154,8 +154,8 @@
   ],
   [
     "2014746",
-    "Perforator No Brand 2-26 mm",
-    "No Brand",
+    "Perforator, 2-26 mm",
+    "Brendsiz",
     52.71,
     "https://strgimgr.umico.az/img/product/280/2939eefe-1a56-427a-ad23-c0b87a008810.jpeg",
     "https://birmarket.az/product/2014746-perforator-bosch-2-26-mm",
@@ -164,7 +164,7 @@
   [
     "1525308",
     "Alət dəsti Socket2, 108 əşya",
-    "No Brand",
+    "Brendsiz",
     53.95,
     "https://strgimgr.umico.az/img/product/280/e55df0d7-88b4-4d04-be1c-446df6ae98d2.jpeg",
     "https://birmarket.az/product/1525308-socket2-108-pcs-alet-desti",
@@ -182,7 +182,7 @@
   [
     "1250220",
     "Drel-şurup bağlayan, 24 V",
-    "No Brand",
+    "Brendsiz",
     36.95,
     "https://strgimgr.umico.az/img/product/280/956a0b3b-db62-4f99-a952-c55893ac5ecf.jpeg",
     "https://birmarket.az/product/1250220-drel-shurup-baglayan-makita-24-v-80-nanometr-2-akkumulyator-6-0-amper-saatda-makita_drel_asd",
@@ -191,7 +191,7 @@
   [
     "2326938",
     "Elektrik alətlər dəsti Dewalt - cilalama maşını, perforator, drel-şurup bağlayan və elektrik lobzik, 88V",
-    "No Brand",
+    "Brendsiz",
     308.98,
     "https://strgimgr.umico.az/img/product/280/177ad13d-9a91-409d-9782-7705856ffcc3.jpeg",
     "https://birmarket.az/product/2326938-elektrik-aletler-destleri-dewalt-88v-kombo",
@@ -200,7 +200,7 @@
   [
     "2186831",
     "Lehim avadanığı dəsti",
-    "No Brand",
+    "Brendsiz",
     38,
     "https://strgimgr.umico.az/img/product/280/1eaf1b8b-8b0c-40c5-b547-f9c28e2129db.jpeg",
     "https://birmarket.az/product/2186831-lehim-avadanigi-desti",
@@ -271,8 +271,8 @@
   ],
   [
     "1974968",
-    "Əl ilə kafel kəsicisi Уралмаш, 1200 mm",
-    "Уралмаш",
+    "Əl ilə kafel kəsicisi Uralmaş, 1200 mm",
+    "Uralmaş",
     265.46,
     "https://strgimgr.umico.az/img/product/280/99b32243-9214-46eb-aea6-b57e118d4851.jpeg",
     "https://birmarket.az/product/1974968-uralmash-1200mm-el-kafel-kesici-sabit-govde",
@@ -281,7 +281,7 @@
   [
     "1340639",
     "Pnevmatik stepler",
-    "No Brand",
+    "Brendsiz",
     7.44,
     "https://strgimgr.umico.az/img/product/280/d9a7fc1d-3ac6-4586-aa50-8f08713d6436.jpeg",
     "https://birmarket.az/product/1340639-pnevmatik-mismar-vurucu",
@@ -290,7 +290,7 @@
   [
     "1319786",
     "Lazerli tikinti dərəcəsi 4D, 360°",
-    "No Brand",
+    "Brendsiz",
     62.95,
     "https://strgimgr.umico.az/img/product/280/7c114f08-ae2f-4f38-9771-e18990737377.jpeg",
     "https://birmarket.az/product/1319786-lazerli-tikinti-derecesi-makita-4d-360-makita-4d-360",
@@ -299,7 +299,7 @@
   [
     "2402407",
     "Qayka açan Makita 1000 NM, 88V",
-    "No Brand",
+    "Brendsiz",
     239.99,
     "https://strgimgr.umico.az/img/product/280/ff83f31e-2393-415e-b1cd-0ab2792ba16c.jpeg",
     "https://birmarket.az/product/2402407-qayka-achan-makita-1000-nm-88v",
@@ -344,7 +344,7 @@
   [
     "1208702",
     "Kabel CCTV 4/1, 100 m",
-    "No Brand",
+    "Brendsiz",
     40,
     "https://strgimgr.umico.az/img/product/280/b7fdb04e-c180-44e0-b423-8a6d5fda95f4.jpeg",
     "https://birmarket.az/product/1208702-eurocable-cctv-4-1-kabel-100m",
@@ -353,7 +353,7 @@
   [
     "2402188",
     "Elektrik montaj alət dəsti",
-    "No Brand",
+    "Brendsiz",
     16.24,
     "https://strgimgr.umico.az/img/product/280/bd42236d-6820-445f-b2e4-0fbd036d2443.jpeg",
     "https://birmarket.az/product/2402188-elektrik-montaj-alet-desti",
@@ -379,7 +379,7 @@
   ],
   [
     "2397490",
-    "Rele IEK РНТ-д 36 mm 63А",
+    "Rele IEK RNT-d 36 mm 63A",
     "IEK",
     64,
     "https://strgimgr.umico.az/img/product/280/e1c51a4e-445b-4bcb-88c5-f97119aa8e8f.jpeg",
@@ -406,7 +406,7 @@
   ],
   [
     "837658",
-    "Taxıc Merkan 16А",
+    "Taxıc Merkan 16A",
     "Merkan",
     0.78,
     "https://strgimgr.umico.az/sized/280/837658-b89be9a9a1f40f122ee8fcc1233cfc7f.jpg",
@@ -425,7 +425,7 @@
   [
     "2081557",
     "Zaman relesi DRV09 Samwha",
-    "No Brand",
+    "Brendsiz",
     19,
     "https://strgimgr.umico.az/img/product/280/866d7caf-a2ea-483a-ba10-ac72ee176a68.jpeg",
     "https://birmarket.az/product/2081557-zaman-relesi-drv09-samwha",
@@ -434,7 +434,7 @@
   [
     "2088230",
     "Germetik plastik qutu 16539098, 22x30x15 sm",
-    "No Brand",
+    "Brendsiz",
     16,
     "https://strgimgr.umico.az/img/product/280/411fe871-44b5-49b3-ba06-5168a72ad687.jpeg",
     "https://birmarket.az/product/2088230-ishildar-abs-pano-germetik-plastik-qutu-22x30x15",
@@ -452,7 +452,7 @@
   [
     "2348576",
     "Telefon uzatma kabeli RJ11 , 20 m, qara, İL-1332",
-    "No Brand",
+    "Brendsiz",
     3.45,
     "https://strgimgr.umico.az/img/product/280/2e85737b-dde0-4ff7-a435-8e108dff4f84.jpeg",
     "https://birmarket.az/product/2348576-20metr-qara-rengli-rj11-telefon-uzatma-kabeli-il-1332",
@@ -470,7 +470,7 @@
   [
     "2065650",
     "Blok YAWEITAI 6 yuva, IL - 1470",
-    "No Brand",
+    "Brendsiz",
     7.2,
     "https://strgimgr.umico.az/img/product/280/baff1a4b-d0a7-46d2-809a-e1623e5f5e4e.jpeg",
     "https://birmarket.az/product/2065650-yaweitai-professional-6-li-elektrik-uzadicisi-sade-il-1470",
@@ -488,7 +488,7 @@
   [
     "2118257",
     "Knookali rozetka",
-    "No Brand",
+    "Brendsiz",
     2.96,
     "https://strgimgr.umico.az/img/product/280/c2de7f5b-3ff8-45f4-b3b6-0ebcd2b6de74.jpeg",
     "https://birmarket.az/product/2118257-knookali-rozetka",
@@ -497,7 +497,7 @@
   [
     "2068048",
     "Plastik xamut 10x1000mm Ağ, İL - 2865",
-    "No Brand",
+    "Brendsiz",
     0.95,
     "https://strgimgr.umico.az/img/product/280/94e56fa7-6323-42c1-80f5-0bdc372b09f4.jpeg",
     "https://birmarket.az/product/2068048-plastik-xamut-10x1000mm-ag-zajim-il-2865",
@@ -524,7 +524,7 @@
   [
     "1541954",
     "Qarışdırıcı kran mətbəx çanağı üçün, gümüşü",
-    "No Brand",
+    "Brendsiz",
     23.98,
     "https://strgimgr.umico.az/img/product/280/eb5c5fc2-c3a1-479b-9ee4-74aade308b21.jpeg",
     "https://birmarket.az/product/1541954-qarishdirici-kran-metbex-uchun-gumushu",
@@ -533,7 +533,7 @@
   [
     "942243",
     "Mətbəx çanağı 7545",
-    "No Brand",
+    "Brendsiz",
     195,
     "https://strgimgr.umico.az/sized/280/942243-077f3eb57037662f3a75078f8bb7b3c9.jpg",
     "https://birmarket.az/product/942243-metbex-chanagi-7545",
@@ -560,7 +560,7 @@
   [
     "2015785",
     "Hamam otağı üçün mebel dəsti Seval Banyo 0011",
-    "No Brand",
+    "Brendsiz",
     310,
     "https://strgimgr.umico.az/img/product/280/f976c50b-4293-4f3f-9e92-51b0e8c36330.jpeg",
     "https://birmarket.az/product/2015785-seval-banyo-moydadir-0011",
@@ -577,8 +577,8 @@
   ],
   [
     "1052774",
-    "Hamam otağı üçün şkaf 3563_M3StiralkaOpenWh, ağ, 64х25х170 sm",
-    "No Brand",
+    "Hamam otağı üçün şkaf 3563_M3StiralkaOpenWh, ağ, 64x25x170 sm",
+    "Brendsiz",
     209,
     "https://strgimgr.umico.az/img/product/280/ecd1eacd-4554-4a63-bc21-b9c50a0223b8.jpeg",
     "https://birmarket.az/product/1052774-hamam-otagi-uchun-shkaf-3563_m3stiralkaopenwh-ag-64h25h170-sm",
@@ -587,7 +587,7 @@
   [
     "1727019",
     "Çanaq, keramika, ağ, 60x14x40 sm",
-    "No Brand",
+    "Brendsiz",
     100,
     "https://strgimgr.umico.az/img/product/280/b6867a21-0bd4-4fad-b074-cd9146c1753a.jpeg",
     "https://birmarket.az/product/1727019-chanaq-tb-08-keramika-ag",
@@ -596,7 +596,7 @@
   [
     "1938101",
     "Çanaq Tulpan Ayaqlı SUPRIME IPBSS2317, istehsalçı ölkə: Hindistan - A_G Tulpan 11",
-    "No Brand",
+    "Brendsiz",
     109,
     "https://strgimgr.umico.az/img/product/280/01790db1-95a1-489f-b626-74a3a30de399.jpeg",
     "https://birmarket.az/product/1938101-chanaq-tulpan-ayaqli-suprime-ipbss2317-istehsalchi-olke-hindistan-a_g-tulpan-11",
@@ -614,7 +614,7 @@
   [
     "1971316",
     "Qarışdırıcı kran üçün aerator 2253, plastik, gümüşü",
-    "No Brand",
+    "Brendsiz",
     3.48,
     "https://strgimgr.umico.az/img/product/280/1c047ffe-a983-49fa-af8d-3bc678c30022.jpeg",
     "https://birmarket.az/product/1971316-metbex-krani-uchun-360-firlanan-uzadilan-su-filtri-bashligi-spiral-elastik-shlanqli-kran-nasadkasi-3-rejimli-su-puskurducu-metal-korpus-su-qenaetli-aerator-filtr-metbex-ve-hamam-uchun-universal-kran-adapteri",
@@ -623,7 +623,7 @@
   [
     "1755027",
     "Hamam üçün güzgü c0026",
-    "No Brand",
+    "Brendsiz",
     69.99,
     "https://strgimgr.umico.az/img/product/280/533fca46-8b6a-4da1-b000-1aaf4b831586.jpeg",
     "https://birmarket.az/product/1755027-hamam-uchun-guzgu-c0026",
@@ -632,7 +632,7 @@
   [
     "2404052",
     "Bacok ici unitaz iki knopqalı",
-    "No Brand",
+    "Brendsiz",
     16.23,
     "https://strgimgr.umico.az/img/product/280/4c9a27bc-a310-4e1a-9b6e-cf7188d6cc97.jpeg",
     "https://birmarket.az/product/2404052-bacok-ici-unitaz-iki-knopqali",
@@ -641,7 +641,7 @@
   [
     "2049223",
     "Duş şlanqı, Gümüşü, İL-1324, 1.5m",
-    "No Brand",
+    "Brendsiz",
     3.89,
     "https://strgimgr.umico.az/img/product/280/26676c46-cbe3-4d9e-8e74-33310846b68a.jpeg",
     "https://birmarket.az/product/2049223-dush-shlanqi-gumushu-il-1324-1-5m",
@@ -650,7 +650,7 @@
   [
     "1402146",
     "Unitaz Plastik sağlamlıq imkanları məhdud şəxslər üçün - tor_0080",
-    "No Brand",
+    "Brendsiz",
     49.99,
     "https://strgimgr.umico.az/img/product/280/ae360689-d92b-4bfe-a333-534264f61e8f.jpeg",
     "https://birmarket.az/product/1402146-unitaz-plastik-saglamliq-imkanlari-mehdud-shexsler-uchun-tor_0080",
@@ -659,7 +659,7 @@
   [
     "1857231",
     "Unitaz üçün asma çən, ağ, plastik, 10 l",
-    "No Brand",
+    "Brendsiz",
     33,
     "https://strgimgr.umico.az/img/product/280/5f9a57f6-4c3b-4eaf-b56e-d56c82f5ce64.jpeg",
     "https://birmarket.az/product/1857231-unitaz-asma-bachok-10l",
@@ -667,8 +667,8 @@
   ],
   [
     "2227485",
-    "Çanaq üçün qarışdırıcı kran No Brand Black",
-    "No Brand",
+    "Çanaq üçün qara qarışdırıcı kran",
+    "Brendsiz",
     29.5,
     "https://strgimgr.umico.az/img/product/280/a870a951-243a-4ba2-bcd3-1f7b81c9d56a.jpeg",
     "https://birmarket.az/product/2227485-moydadir-krant-qara",
@@ -677,7 +677,7 @@
   [
     "2196656",
     "Gigiyenik duş c014, paslanmayan polad",
-    "No Brand",
+    "Brendsiz",
     28.9,
     "https://strgimgr.umico.az/img/product/280/9d0189d0-5c22-4007-9ebf-7ac7053c2e64.jpeg",
     "https://birmarket.az/product/2196656-bide-krani-c014",
@@ -686,7 +686,7 @@
   [
     "2205946",
     "Sifon çanaq üçün, paslanmayan polad, gümüşü, 90 sm",
-    "No Brand",
+    "Brendsiz",
     22.99,
     "https://strgimgr.umico.az/img/product/280/6510664b-1ad0-438d-8fc9-640036d1a53c.jpeg",
     "https://birmarket.az/product/2205946-sifon-chanaq-uchun-paslanmayan-polad-gumushu-90-sm",
@@ -695,7 +695,7 @@
   [
     "2394351",
     "Kanalizasiya təmizləmə trosu MU_3551, 10 m",
-    "No Brand",
+    "Brendsiz",
     22,
     "https://strgimgr.umico.az/img/product/280/bb8f76dd-4954-4348-acaf-b140a98ef293.jpeg",
     "https://birmarket.az/product/2394351-kanalizasiya-temizleme-trosu-10m-mu_3551",
@@ -703,8 +703,8 @@
   ],
   [
     "1400715",
-    "Əl duşu səpələyici No Brand",
-    "No Brand",
+    "Əl duşu səpələyici",
+    "Brendsiz",
     2.26,
     "https://strgimgr.umico.az/img/product/280/b8acdaf2-a022-4ef6-a3f1-3610b4fac475.jpeg",
     "https://birmarket.az/product/1400715-el-dushu-bashligi",
@@ -731,7 +731,7 @@
   [
     "1344901",
     "Mətbəx çanağı üçün quruducu, metal, ağ",
-    "No Brand",
+    "Brendsiz",
     14.49,
     "https://strgimgr.umico.az/img/product/280/aa612593-94c4-4d20-82af-8da306b38d0f.jpeg",
     "https://birmarket.az/product/1344901-moyka-uchun-ref-yigilan-metal",
@@ -740,7 +740,7 @@
   [
     "2198369",
     "Boya Forelli, qırmızı, 2.5 kq",
-    "No Brand",
+    "Brendsiz",
     24.99,
     "https://strgimgr.umico.az/img/product/280/e8cd53e8-18f2-4db2-bfc1-3779b1d1c385.jpeg",
     "https://birmarket.az/product/2198369-kraska-boya-qirmizi-2-5kq",
@@ -794,7 +794,7 @@
   [
     "2065196",
     "Dekorativ divar paneli 466m5, boz, 280x120 sm",
-    "No Brand",
+    "Brendsiz",
     24.5,
     "https://strgimgr.umico.az/img/product/280/1cb0aa79-a7d3-4ff7-be67-6cf0952afbea.jpeg",
     "https://birmarket.az/product/2065196-mermer-effektli-dekorativ-divar-paneli-466m5-280x120-sm",
@@ -803,7 +803,7 @@
   [
     "2199504",
     "Linoleum 10, bej, 2x1 m",
-    "No Brand",
+    "Brendsiz",
     18.99,
     "https://strgimgr.umico.az/img/product/280/d323bcb3-1712-4dc8-9b87-e031d1ee1266.jpeg",
     "https://birmarket.az/product/2199504-linoleum-ortuk-2-0m-1-0m",
@@ -812,7 +812,7 @@
   [
     "2209772",
     "Kompozit taxta divar paneli, teak, 290x21.9 sm",
-    "No Brand",
+    "Brendsiz",
     36,
     "https://strgimgr.umico.az/img/product/280/e8ff402e-28b5-47fa-9cfb-192e9ed57075.jpeg",
     "https://birmarket.az/product/2209772-kompozit-taxta-divar-paneli-teak-290x21-9-sm",
@@ -830,7 +830,7 @@
   [
     "2471926",
     "Divar paneli No brand 9599, qəhvəyi, plastik, 50x280 sm",
-    "No Brand",
+    "Brendsiz",
     29,
     "https://strgimgr.umico.az/img/product/280/70a87daa-29f9-44c4-94c7-b2fa4935913d.jpeg",
     "https://birmarket.az/product/2471926-divar-paneli-no-brand-karicnivi-plastik-50-sm",
@@ -848,7 +848,7 @@
   [
     "850250",
     "Dekorativ yapışqan plyonka MA-GH266, boz, 5 m",
-    "No Brand",
+    "Brendsiz",
     11.89,
     "https://strgimgr.umico.az/sized/280/850250-66bff9e510748dd3ef7c5257e49c9fd2.jpg",
     "https://birmarket.az/product/850250-dekorativ-yapishqan-plyonka-ma-gh266-boz-5-m",
@@ -856,8 +856,8 @@
   ],
   [
     "1187506",
-    "Boya təmizləyicisi Новбытхим, 0.5 l",
-    "Новбытхим",
+    "Boya təmizləyicisi Novbitxim, 0.5 l",
+    "Novbitxim",
     12,
     "https://strgimgr.umico.az/img/product/280/b682138d-3f6a-4a1c-9b2e-a04ae0c51b53.jpeg",
     "https://birmarket.az/product/1187506-boya-sokucu-0-5-lt-4601147003082",
@@ -875,7 +875,7 @@
   [
     "2256808",
     "Keramoqranit Black Marquina, parlaq, 600x600x0.9 mm",
-    "No Brand",
+    "Brendsiz",
     5.5,
     "https://strgimgr.umico.az/img/product/280/d37c3612-dc2e-46f2-8e65-5c89561fed17.jpeg",
     "https://birmarket.az/product/2256808-luks-black-marquina-uslublu-kafel-parlaq-ve-dozumlu",
@@ -884,7 +884,7 @@
   [
     "2371973",
     "Döşəmə və Divar üçün Qranit Naxışlı Kafel 50x50 sm",
-    "No Brand",
+    "Brendsiz",
     4.5,
     "https://strgimgr.umico.az/img/product/280/fce4b912-84cd-4f3c-8768-2e4078e79341.jpeg",
     "https://birmarket.az/product/2371973-dosheme-ve-divar-uchun-premium-qranit-naxishli-kafel-50x50-sm",
@@ -893,7 +893,7 @@
   [
     "1484394",
     "Epoksid qatran AR_037_09311",
-    "No Brand",
+    "Brendsiz",
     214.8,
     "https://strgimgr.umico.az/img/product/280/825b2f95-f89a-450e-9ea0-1307ac6c635c.jpeg",
     "https://birmarket.az/product/1484394-epoxy-master",
@@ -911,7 +911,7 @@
   [
     "2406695",
     "Divar paneli alçipan luku 50x50",
-    "No Brand",
+    "Brendsiz",
     49.98,
     "https://strgimgr.umico.az/img/product/280/f58ad3ed-bebd-4c6e-b06b-2b7ccb605f63.jpeg",
     "https://birmarket.az/product/2406695-divar-paneli-alchipan-luku-50x50",
@@ -920,7 +920,7 @@
   [
     "2357662",
     "Yapışqan Laminat 3028",
-    "No Brand",
+    "Brendsiz",
     3.17,
     "https://strgimgr.umico.az/img/product/280/741bcab7-0376-47fd-9977-31defac8ec4b.jpeg",
     "https://birmarket.az/product/2357662-yapishqan-laminat-1",
@@ -938,7 +938,7 @@
   [
     "1475784",
     "Foto oboy Yapon üslubunda albalı çiçəkləri və quşlarla, 3D effektli, 3x4 m, tək parça",
-    "No Brand",
+    "Brendsiz",
     419,
     "https://strgimgr.umico.az/img/product/280/72a7f2d4-44a9-426d-82f3-340fb9d022d6.jpeg",
     "https://birmarket.az/product/1475784-yapon-uslubunda-albali-chichekleri-ve-qushlarla-3d-divar-kagizi-3-00-x-4-00-tek-parcha-shovsuz",
@@ -955,7 +955,7 @@
   ],
   [
     "2315946",
-    "LED lampa Max, E27, 25 Vt, 4000К",
+    "LED lampa Max, E27, 25 Vt, 4000K",
     "MAX",
     4.8,
     "https://strgimgr.umico.az/img/product/280/1550eb49-eda9-40b3-aa66-1d0b01b7dfdb.jpeg",
@@ -983,7 +983,7 @@
   [
     "2072244",
     "Yarpaq dizaynlı LED divar lampası, qara-qızılı, 60 sm",
-    "No Brand",
+    "Brendsiz",
     74,
     "https://strgimgr.umico.az/img/product/280/e387fd3c-e7bc-4fc4-b612-424ff4c4528e.jpeg",
     "https://birmarket.az/product/2072244-dekorativ-led-divar-ishigi-qara-qizili-yarpaq-dizaynli-divar-lampasi-60-sm-gips-material",
@@ -992,7 +992,7 @@
   [
     "1395906",
     "Trek lampası Hermes PR-22 BK 10W 3000K RAY",
-    "No Brand",
+    "Brendsiz",
     29,
     "https://strgimgr.umico.az/img/product/280/6480bec7-adab-424e-ac2e-8a24a7d716f3.jpeg",
     "https://birmarket.az/product/1395906-spot-hermes-pr-22-bk-10w-3000k-ray",
@@ -1037,7 +1037,7 @@
   [
     "1315178",
     "Bağ və terras üçün günəş lampası, LED, IP65, 10 m kabel, iki başlı, uzaqdan idarə olunan - kop_155",
-    "No Brand",
+    "Brendsiz",
     49.99,
     "https://strgimgr.umico.az/img/product/280/df231e28-eb6c-4cc3-b462-3cb821312f82.jpeg",
     "https://birmarket.az/product/1315178-bag-ve-terras-uchun-gunesh-lampasi-led-ip65-10-m-kabel-iki-bashli-uzaqdan-idare-olunan-kop_155",
@@ -1054,7 +1054,7 @@
   ],
   [
     "2315496",
-    "LED lampa Max, E14, 4 Vt, 3000К",
+    "LED lampa Max, E14, 4 Vt, 3000K",
     "MAX",
     3.61,
     "https://strgimgr.umico.az/img/product/280/763696b8-dd97-49b3-8e53-0be0d6593370.jpeg",
@@ -1064,7 +1064,7 @@
   [
     "1260393",
     "Günəş işığı 2178T",
-    "No Brand",
+    "Brendsiz",
     11.75,
     "https://strgimgr.umico.az/img/product/280/9fe3b563-78f2-4960-9065-373278ba6e17.jpeg",
     "https://birmarket.az/product/1260393-gunesh-ishigi-2178t",
@@ -1073,7 +1073,7 @@
   [
     "2407066",
     "Günəş lampası 2407066, 6 Vt",
-    "No Brand",
+    "Brendsiz",
     42,
     "https://strgimgr.umico.az/img/product/280/dedb4ad1-ff9c-479b-82b0-91109815f730.jpeg",
     "https://birmarket.az/product/2407066-solnechnyy-svetodiodnyy-ulichnyy-svetilnik-enerlux-6-w",
@@ -1082,7 +1082,7 @@
   [
     "1802749",
     "LED işıqlandırma 3759, 5 m",
-    "No Brand",
+    "Brendsiz",
     34.9,
     "https://strgimgr.umico.az/img/product/280/91d24eb7-b6ea-42ba-bf07-b5e287390152.jpeg",
     "https://birmarket.az/product/1802749-led-ishiq-5-m-rgb-pultlu",
@@ -1091,7 +1091,7 @@
   [
     "2093792",
     "Divar çırağı 2118-1, plastik/metal, ağ, 50 sm",
-    "No Brand",
+    "Brendsiz",
     7.8,
     "https://strgimgr.umico.az/img/product/280/08618313-1d4d-432e-b4ad-e918c1af37f7.jpeg",
     "https://birmarket.az/product/2093792-sensorlu-led-lampa-usb-charge-3-rejim-50sm",
@@ -1100,7 +1100,7 @@
   [
     "1209523",
     "İkili LED spot J4ARBDWH, COB LED + GU10",
-    "No Brand",
+    "Brendsiz",
     9.5,
     "https://strgimgr.umico.az/img/product/280/6ee92a34-b7b1-40f4-901e-a05fb75fab5e.jpeg",
     "https://birmarket.az/product/1209523-led-spot-kvadrat-ag-9w-j4arbdwh",
@@ -1118,7 +1118,7 @@
   [
     "2480549",
     "Günəş enerjili küçə çırağı 500 W ağ.",
-    "No Brand",
+    "Brendsiz",
     41,
     "https://strgimgr.umico.az/img/product/280/5b317afe-3b6e-4ea3-bc8c-915e583a4993.jpeg",
     "https://birmarket.az/product/2480549-kuche-chiragi-no-brand-gunesh-lampasi-ag-500-vt-plastik",
@@ -1127,7 +1127,7 @@
   [
     "2419414",
     "Günəş paneli ile projektor. globe",
-    "No Brand",
+    "Brendsiz",
     39,
     "https://strgimgr.umico.az/img/product/280/f0159713-243e-4679-b211-a1488cdc2e4c.jpeg",
     "https://birmarket.az/product/2419414-gunesh-paneli-ile-projektor-globe",
@@ -1136,7 +1136,7 @@
   [
     "1463467",
     "İşıq filtri müasir LED, simsiz, maqnit, USB ilə enerji, tənzimlənən parlaqlıq, 50 sm, qara, plastik - miks1443",
-    "No Brand",
+    "Brendsiz",
     29.9,
     "https://strgimgr.umico.az/img/product/280/9a965d9b-57bd-46d2-a40e-475ff485a8ff.jpeg",
     "https://birmarket.az/product/1463467-ishiq-filtri-muasir-led-simsiz-maqnit-usb-ile-enerji-tenzimlenen-parlaqliq-50-sm-qara-plastik-miks1443",
@@ -1145,7 +1145,7 @@
   [
     "2060996",
     "LED lent 5 metr, İL - 4516",
-    "No Brand",
+    "Brendsiz",
     28.51,
     "https://strgimgr.umico.az/img/product/280/6c941619-40c5-4769-b4fb-ae611b295c80.jpeg",
     "https://birmarket.az/product/2060996-led-lent-5-metr-il-4516",
@@ -1154,7 +1154,7 @@
   [
     "2034984",
     "Led panel işıq 48w",
-    "No Brand",
+    "Brendsiz",
     15,
     "https://strgimgr.umico.az/img/product/280/022e2b4f-6132-4df4-8d22-0b3ef2753e9f.jpeg",
     "https://birmarket.az/product/2034984-sivaq-ustu-spot-48w",
@@ -1163,7 +1163,7 @@
   [
     "909112",
     "Tavan üçün lampa-ventilyator light_01, 30W",
-    "No Brand",
+    "Brendsiz",
     29.21,
     "https://strgimgr.umico.az/sized/280/909112-471a1dfdc62a157b1e095fca579b388a.jpg",
     "https://birmarket.az/product/909112-tavan-uchun-lampa-ventilyator-light_01-30w",
@@ -1172,7 +1172,7 @@
   [
     "1224836",
     "Polipropilen boruların lehimlənməsi üçün ütü, akkumulyator ilə, 21V, 32MM",
-    "No Brand",
+    "Brendsiz",
     256.99,
     "https://strgimgr.umico.az/img/product/280/e2d2eb5e-0376-4bc2-a339-a44f1536bb8d.jpeg",
     "https://birmarket.az/product/1224836-pvc-utu-batareyali-21v-32mm",
@@ -1181,7 +1181,7 @@
   [
     "2073168",
     "Elastik şkaf və çəkməcə kilidi, İL - 620",
-    "No Brand",
+    "Brendsiz",
     0.97,
     "https://strgimgr.umico.az/img/product/280/5b2d0a29-ab14-4cc6-b1f0-acb00cc6c36d.jpeg",
     "https://birmarket.az/product/2073168-elastik-shkaf-ve-chekmece-kilidi-il-620",
@@ -1294,7 +1294,7 @@
       imageUrl,
       sourceUrl,
       sourceLabel: "Birmarket məhsul səhifəsi",
-      availability: "Mənbədə stok statusu ilə yoxlanılır",
+      availability: "Mənbədə stok vəziyyəti ilə yoxlanılır",
       specs: [
         sourceSection,
         subcategory + " üzrə real bazar məhsulu",
@@ -1328,20 +1328,20 @@
         id: "az-rfq-" + category.id + "-" + slugify(subcategory),
         sku: "AZ-RFQ-" + slugify(category.id).slice(0, 8).toUpperCase() + "-" + String(index + 1).padStart(2, "0"),
         name: subcategory + " məhsul qrupu",
-        brand: "ConstEra RFQ",
+        brand: "ConstEra Sorğu",
         category: category.id,
         subcategory,
         supplier: "Açıq Azərbaycan təchizatçı bazası",
-        origin: "Azərbaycan/Import",
+        origin: "Azərbaycan/İdxal",
         package: "Layihəyə görə",
         price: "Sorğu əsasında",
-        priceNote: "Bu alt kateqoriya real təchizatçı qiyməti və məhsul fotosu əlavə edilənə qədər RFQ ilə işləyir",
+        priceNote: "Bu alt kateqoriya real təchizatçı qiyməti və məhsul fotosu əlavə edilənə qədər qiymət sorğusu ilə işləyir",
         priceStatus: "request",
         availability: "Təchizatçıdan asılıdır",
         specs: [
           category.title || category.id,
           subcategory + " üzrə məhsul qrupu",
-          "Admin paneldən real SKU, qiymət və foto ilə əvəzlənə bilər"
+          "İdarəetmə panelindən real SKU, qiymət və foto ilə əvəzlənə bilər"
         ]
       });
       existingProductKeys.add(key);

@@ -6,7 +6,7 @@
     <title>ConstEra Kataloq | Tikinti materialları platforması</title>
     <meta
       name="description"
-      content="ConstEra Korporativ v2 Azərbaycanda tikinti materialları, təchizatçılar, brendlər və RFQ axınları üçün kataloq platformasıdır."
+      content="ConstEra Korporativ v2 Azərbaycanda tikinti materialları, təchizatçılar, brendlər və qiymət sorğusu axınları üçün kataloq platformasıdır."
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://constera.ru/catalog.html" />
@@ -46,11 +46,11 @@
           <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
-          <a href="rfq.html">RFQ</a>
-          <a href="rfq-dashboard.html">RFQ Panel</a>
+          <a href="rfq.html">Qiymət sorğusu</a>
+          <a href="rfq-dashboard.html">Sorğu paneli</a>
           <a href="tender.html">Tender</a>
-          <a href="ai-smeta.html">AI Smeta</a>
-          <a href="admin.html">Admin</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="admin.html">İdarəetmə</a>
           <a class="button button-outline nav-cta" href="rfq.html">Sorğu göndər</a>
         </nav>
       </header>
@@ -88,12 +88,12 @@
               <select data-origin-filter>
                 <option value="all">Bütün mənşələr</option>
                 <option value="local">Azərbaycan</option>
-                <option value="import">Import</option>
-                <option value="mixed">Azərbaycan / Import</option>
+                <option value="import">İdxal</option>
+                <option value="mixed">Azərbaycan / İdxal</option>
               </select>
             </label>
             <label>
-              <span>Qiymət statusu</span>
+              <span>Qiymət vəziyyəti</span>
               <select data-price-filter>
                 <option value="all">Bütün qiymətlər</option>
                 <option value="request">Sorğu əsasında</option>
@@ -103,13 +103,13 @@
             <label>
               <span>Mövcudluq</span>
               <select data-availability-filter>
-                <option value="all">Bütün statuslar</option>
+                <option value="all">Bütün vəziyyətlər</option>
                 <option value="Sorğu əsasında">Sorğu əsasında</option>
                 <option value="Təchizatçıdan asılıdır">Təchizatçıdan asılıdır</option>
               </select>
             </label>
             <div class="active-filter-list" data-active-filter-list></div>
-            <a class="button button-primary" href="rfq.html">RFQ yarat</a>
+            <a class="button button-primary" href="rfq.html">Sorğu yarat</a>
           </div>
         </section>
 
@@ -128,7 +128,7 @@
                 <p class="eyebrow">Platforma</p>
                 <h2>Genişləndirilmiş məhsul bazası</h2>
               </div>
-              <a class="card-link" href="admin.html">Admin strukturuna bax</a>
+              <a class="card-link" href="admin.html">İdarəetmə strukturuna bax</a>
             </div>
             <div class="product-grid" data-product-grid></div>
             <div class="empty-state glass" data-empty-state hidden>

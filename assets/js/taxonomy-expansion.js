@@ -315,7 +315,7 @@
       group: "Təhvil və servis",
       title: "Təmizlik, təhvil və servis",
       subtitle: "Təmir sonrası təmizlik, defekt listi, servis və zəmanət koordinasiyası",
-      subcategories: ["Təmir sonrası təmizlik", "Defekt listi", "Zəmanət servisi", "Foto hesabat", "Son yoxlama", "İstismar təlimatı", "Aylıq baxım", "Emergency servis"]
+      subcategories: ["Təmir sonrası təmizlik", "Qüsur siyahısı", "Zəmanət servisi", "Foto hesabat", "Son yoxlama", "İstismar təlimatı", "Aylıq baxım", "Təcili servis"]
     }
   ];
 
@@ -332,8 +332,8 @@
     },
     {
       id: "full-combo",
-      group: "Full həllər",
-      subcategories: ["Ev + landşaft", "Villa + hovuz", "Restoran full", "Klinika full", "Showroom full", "Anbar + ofis"]
+      group: "Tam həllər",
+      subcategories: ["Ev + landşaft", "Villa + hovuz", "Restoran tam paket", "Klinika tam paket", "Sərgi zalı tam paket", "Anbar + ofis"]
     },
     {
       id: "room-packages",
@@ -347,21 +347,21 @@
       group: "Mühəndis paketləri",
       title: "Mühəndis sistem paketləri",
       subtitle: "Elektrik, santexnika, HVAC, zəif axın və smart home paketləri",
-      subcategories: ["Elektrik full", "Santexnika full", "HVAC full", "Zəif axın full", "Yanğın təhlükəsizliyi", "Smart home", "Solar enerji", "Generator ehtiyatı"]
+      subcategories: ["Elektrik tam paket", "Santexnika tam paket", "HVAC tam paket", "Zəif axın tam paket", "Yanğın təhlükəsizliyi", "Ağıllı ev", "Günəş enerjisi", "Generator ehtiyatı"]
     },
     {
       id: "exterior-packages",
       group: "Fasad və ərazi paketləri",
       title: "Fasad və ərazi paketləri",
       subtitle: "Fasad, dam, həyət, hasar, landşaft və açıq hava sistemləri",
-      subcategories: ["Fasad full", "Dam full", "Həyət abadlığı", "Hasar və darvaza", "Landşaft full", "Hovuz və SPA", "Pergola və terras", "Açıq işıqlandırma"]
+      subcategories: ["Fasad tam paket", "Dam tam paket", "Həyət abadlığı", "Hasar və darvaza", "Landşaft tam paket", "Hovuz və SPA", "Pergola və terras", "Açıq işıqlandırma"]
     },
     {
       id: "maintenance-packages",
       group: "Servis paketləri",
       title: "Baxım və servis paketləri",
       subtitle: "Obyektlər üçün aylıq texniki servis və təmir dəstəyi",
-      subcategories: ["Aylıq usta servisi", "Ofis baxımı", "Obyekt baxımı", "HVAC servis", "Santexnika servis", "Elektrik servis", "Təmizlik servisi", "Emergency paket"]
+      subcategories: ["Aylıq usta servisi", "Ofis baxımı", "Obyekt baxımı", "HVAC servis", "Santexnika servis", "Elektrik servis", "Təmizlik servisi", "Təcili paket"]
     }
   ];
 
@@ -371,7 +371,7 @@
       group: "Ölçmə və nəzarət",
       title: "Ölçmə və nəzarət cihazları",
       subtitle: "Geodeziya, termal yoxlama, nəm və keyfiyyət nəzarəti cihazları",
-      subcategories: ["Total station", "GNSS rover", "Rotary lazer", "Termal kamera", "Nəm ölçən", "Beton skaner", "Məsafəölçən", "Endoskop kamera"]
+      subcategories: ["Elektron taxometr", "GNSS ölçmə cihazı", "Fırlanan lazer niveliri", "Termal kamera", "Nəm ölçən", "Beton skaner", "Məsafəölçən", "Endoskop kamera"]
     },
     {
       id: "demolition-cutting",
@@ -392,7 +392,7 @@
       group: "Tamamlama alətləri",
       title: "Boya və örtük avadanlığı",
       subtitle: "Boya, dekorativ örtük, epoksi və fasad tətbiqi avadanlığı",
-      subcategories: ["Airless boya aparatı", "Kompressor boya seti", "Epoksi qarışdırıcı", "Dekorativ mala", "Fasad püskürtmə", "Rəng qarışdırıcı", "Quruducu lampa", "Maskalama seti"]
+      subcategories: ["Havasız boya aparatı", "Kompressorlu boya dəsti", "Epoksi qarışdırıcı", "Dekorativ mala", "Fasad püskürtmə", "Rəng qarışdırıcı", "Quruducu lampa", "Maskalama dəsti"]
     },
     {
       id: "site-safety-rental",
@@ -409,7 +409,7 @@
   mergeCategories("rentalCategories", rentalCategories);
 
   appendUnique("brands", [
-    { id: "constera-rfq", name: "ConstEra RFQ", country: "Azərbaycan", segments: ["bulk-materials", "masonry-blocks", "facade-systems", "lighting", "tools"], website: "rfq.html", certification: "RFQ məhsul qrupu" },
+    { id: "constera-rfq", name: "ConstEra Sorğu", country: "Azərbaycan", segments: ["bulk-materials", "masonry-blocks", "facade-systems", "lighting", "tools"], website: "rfq.html", certification: "Qiymət sorğusu məhsul qrupu" },
     { id: "akkord", name: "Akkord", country: "Azərbaycan", segments: ["cement-concrete", "masonry-blocks"], website: "Təchizatçı təsdiqi lazımdır", certification: "Yerli bazar profili" },
     { id: "matanat-a", name: "Matanat A", country: "Azərbaycan", segments: ["dry-mixes", "construction-chemicals"], website: "matanata.com", certification: "Yerli bazar profili" },
     { id: "fawori", name: "Fawori", country: "Türkiyə", segments: ["paints"], website: "fawori.com.tr", certification: "Qlobal kataloq" },
@@ -431,19 +431,19 @@
         id: `rfq-${category.id}-${slugify(subcategory)}`,
         sku: `RFQ-${slugify(category.id).slice(0, 8).toUpperCase()}-${String(index + 1).padStart(2, "0")}`,
         name: `${subcategory} məhsul qrupu`,
-        brand: "ConstEra RFQ",
+        brand: "ConstEra Sorğu",
         category: category.id,
         subcategory,
         supplier: "Açıq təchizatçı bazası",
-        origin: "Azərbaycan/Import",
+        origin: "Azərbaycan/İdxal",
         package: "Layihəyə görə",
         price: "Sorğu əsasında",
-        priceNote: "Qiymət RFQ və təchizatçı siyahısı ilə təsdiqlənir",
+        priceNote: "Qiymət sorğusu və təchizatçı siyahısı ilə təsdiqlənir",
         availability: "Təchizatçıdan asılıdır",
         specs: [
           `${category.title} kateqoriyası`,
           `${subcategory} üzrə ölçü, marka və variantlar`,
-          "Miqdar, çatdırılma və sertifikat tələbi RFQ-də dəqiqləşdirilir"
+          "Miqdar, çatdırılma və sertifikat tələbi Qiymət sorğusunda dəqiqləşdirilir"
         ]
       });
     });
@@ -469,7 +469,7 @@
         specs: [
           `${category.title} üzrə iş həcmi`,
           "Material, usta və avadanlıq tələbi ayrıca hesablanır",
-          "RFQ əsasında qiymət və icra qrafiki hazırlanır"
+          "Qiymət sorğusu əsasında qiymət və icra qrafiki hazırlanır"
         ],
         deliverables: ["İş həcmi", "Smeta bazası", "Təhvil qeydi"]
       });
@@ -493,11 +493,11 @@
         price: "Sorğu əsasında",
         timeline: "Layihə ölçüsünə görə",
         team: "Paket komandası + texniki nəzarət",
-        idealFor: `${subcategory} üzrə sürətli RFQ və standartlaşdırılmış icra planı`,
+        idealFor: `${subcategory} üzrə sürətli Qiymət sorğusu və standartlaşdırılmış icra planı`,
         includes: [
           "İş həcminin strukturlaşdırılması",
           "Material və usta ehtiyacının çıxarılması",
-          "RFQ üçün təchizat və icra paketinin hazırlanması"
+          "Qiymət sorğusu üçün təchizat və icra paketinin hazırlanması"
         ],
         deliverables: ["Paket smetası", "İcra qrafiki", "Təhvil checklist-i"]
       });
@@ -524,7 +524,7 @@
         operator: "Şərtə görə",
         specs: [
           `${category.title} üzrə istifadə`,
-          "Müddət və çatdırılma RFQ-də dəqiqləşdirilir",
+          "Müddət və çatdırılma Qiymət sorğusunda dəqiqləşdirilir",
           "Operator və servis şərtləri ayrıca təsdiqlənir"
         ]
       });

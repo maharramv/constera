@@ -153,13 +153,13 @@ const ensureAdminSupplierShape = (supplier, index = 0) => {
     id: supplier.id || `admin-supplier-${createSlug(name)}-${String(index + 1).padStart(3, "0")}`,
     name,
     type: supplier.type || "Təchizatçı",
-    focus: supplier.focus || "Material, xidmət və RFQ təklifləri",
+    focus: supplier.focus || "Material, xidmət və qiymət sorğusu təklifləri",
     website: supplier.website || "",
     status: supplier.status || "Aktiv",
     region: supplier.region || "Azərbaycan",
     contact: supplier.contact || "",
     rating: supplier.rating || "Yeni",
-    responseTime: supplier.responseTime || "RFQ əsasında"
+    responseTime: supplier.responseTime || "Qiymət sorğusu əsasında"
   };
 };
 const ensureAdminEntityShape = (entityType, item, index = 0) => {
@@ -234,10 +234,10 @@ const ensureAdminProductShape = (product, index = 0) => {
     category,
     subcategory,
     package: product.package || product.packaging || "Sorğu ilə",
-    origin: product.origin || "Azərbaycan/Import",
-    supplier: product.supplier || "Admin əlavə etdi",
+    origin: product.origin || "Azərbaycan/İdxal",
+    supplier: product.supplier || "İdarəetmə paneli əlavə etdi",
     price: product.price || "Sorğu əsasında",
-    priceNote: product.priceNote || "Admin paneldən əlavə olunub",
+    priceNote: product.priceNote || "İdarəetmə panelindən əlavə olunub",
     priceStatus: product.priceStatus || (normalize(product.price).includes("sorğu") ? "request" : "confirmed"),
     imageUrl: product.imageUrl || product.image || "",
     sourceUrl: product.sourceUrl || product.source || "",
@@ -583,7 +583,7 @@ const renderCatalog = () => {
         brand !== "all" ? brand : "",
         availability !== "all" ? availability : "",
         priceStatus === "request" ? "Sorğu qiyməti" : priceStatus === "confirmed" ? "Təsdiqli qiymət" : "",
-        origin === "local" ? "Azərbaycan" : origin === "import" ? "Import" : origin === "mixed" ? "Qarışıq mənşə" : ""
+        origin === "local" ? "Azərbaycan" : origin === "import" ? "İdxal" : origin === "mixed" ? "Qarışıq mənşə" : ""
       ].filter(Boolean);
       activeFilterList.innerHTML = chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("");
       activeFilterList.hidden = chips.length === 0;
@@ -666,9 +666,9 @@ const renderSuppliers = () => {
         <div><dt>Region</dt><dd>${escapeHtml(supplier.region)}</dd></div>
         <div><dt>Vəziyyət</dt><dd>${escapeHtml(supplier.status)}</dd></div>
         <div><dt>Sayt</dt><dd>${escapeHtml(supplier.website)}</dd></div>
-        <div><dt>Əlaqə</dt><dd>${escapeHtml(supplier.contact || "RFQ ilə")}</dd></div>
+        <div><dt>Əlaqə</dt><dd>${escapeHtml(supplier.contact || "Qiymət sorğusu ilə")}</dd></div>
         <div><dt>Reytinq</dt><dd>${escapeHtml(supplier.rating || "Yeni")}</dd></div>
-        <div><dt>Cavab</dt><dd>${escapeHtml(supplier.responseTime || "RFQ əsasında")}</dd></div>
+        <div><dt>Cavab</dt><dd>${escapeHtml(supplier.responseTime || "Qiymət sorğusu əsasında")}</dd></div>
       </dl>
       <a class="button button-secondary" href="rfq.html?supplier=${encodeURIComponent(supplier.id)}">Təklif sorğusu</a>
     </article>
@@ -744,7 +744,7 @@ const createPackageCard = (pack) => {
           <a class="source-link" href="package-detail.html?package=${encodeURIComponent(pack.id)}">Detallı bax</a>
         </div>
       </div>
-      <a class="button button-secondary product-rfq" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket RFQ</a>
+      <a class="button button-secondary product-rfq" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu</a>
     </article>
   `;
 };
@@ -950,9 +950,9 @@ const renderProductDetail = () => {
           <span>${escapeHtml(product.subcategory)}</span>
           <span>${escapeHtml(product.brand)}</span>
         </div>
-        <p class="hero-text">Bu səhifə RFQ, təchizatçı qiyməti və gələcək admin redaktəsi üçün məhsulun vahid məlumat kartıdır.</p>
+        <p class="hero-text">Bu səhifə qiymət sorğusu, təchizatçı qiyməti və gələcək idarəetmə redaktəsi üçün məhsulun vahid məlumat kartıdır.</p>
         <div class="detail-actions">
-          <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(product.id)}">RFQ göndər</a>
+          <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
           <a class="button button-outline" href="catalog.html">Kataloqa qayıt</a>
           ${source}
         </div>
@@ -976,7 +976,7 @@ const renderProductDetail = () => {
         <p>${escapeHtml(product.availability)}</p>
       </article>
       <article class="detail-panel glass">
-        <span class="price-label">Brend statusu</span>
+        <span class="price-label">Brend vəziyyəti</span>
         <strong>${escapeHtml(brand?.country || product.origin)}</strong>
         <p>${escapeHtml(brand?.certification || "Təchizatçı təsdiqi lazımdır")}</p>
       </article>
@@ -990,11 +990,11 @@ const renderProductDetail = () => {
         </ul>
       </article>
       <article class="detail-panel glass">
-        <p class="eyebrow">RFQ üçün qeydlər</p>
+        <p class="eyebrow">Qiymət sorğusu üçün qeydlər</p>
         <ul class="spec-list detail-list">
           <li>Qiymət real təchizatçı siyahısı ilə təsdiqlənməlidir.</li>
           <li>Çatdırılma şəhər/rayon və miqdardan asılıdır.</li>
-          <li>Alternativ marka və paket ölçüsü RFQ qeydində yazıla bilər.</li>
+          <li>Alternativ marka və paket ölçüsü sorğu qeydində yazıla bilər.</li>
         </ul>
       </article>
     </div>
@@ -1031,7 +1031,7 @@ const renderServiceDetail = () => {
         </div>
         <p class="hero-text">İş həcmi, briqada, təhvil nəticələri və ilkin smeta üçün istifadə olunan xidmət kartı.</p>
         <div class="detail-actions">
-          <a class="button button-primary" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət RFQ yarat</a>
+          <a class="button button-primary" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu yarat</a>
           <a class="button button-outline" href="services.html">Xidmətlərə qayıt</a>
         </div>
       </div>
@@ -1056,7 +1056,7 @@ const renderServiceDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">Təhvil</span>
         <strong>${(service.deliverables || []).length} nəticə</strong>
-        <p>RFQ və smeta üçün strukturlaşdırılmış çıxışlar.</p>
+        <p>Qiymət sorğusu və smeta üçün strukturlaşdırılmış çıxışlar.</p>
       </article>
     </div>
 
@@ -1107,7 +1107,7 @@ const renderPackageDetail = () => {
         </div>
         <p class="hero-text">${escapeHtml(pack.idealFor)}</p>
         <div class="detail-actions">
-          <a class="button button-primary" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket RFQ yarat</a>
+          <a class="button button-primary" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu yarat</a>
           <a class="button button-outline" href="packages.html">Paketlərə qayıt</a>
         </div>
       </div>
@@ -1117,7 +1117,7 @@ const renderPackageDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">Paket qiyməti</span>
         <strong>${escapeHtml(pack.price)}</strong>
-        <p>Obyekt ölçüsü, material səviyyəsi və icra şərtləri RFQ-dən sonra dəqiqləşir.</p>
+        <p>Obyekt ölçüsü, material səviyyəsi və icra şərtləri Qiymət sorğusundan sonra dəqiqləşir.</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Müddət</span>
@@ -1132,7 +1132,7 @@ const renderPackageDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">Təhvil</span>
         <strong>${(pack.deliverables || []).length} nəticə</strong>
-        <p>RFQ və müqavilə üçün strukturlaşdırılmış çıxışlar.</p>
+        <p>Qiymət sorğusu və müqavilə üçün strukturlaşdırılmış çıxışlar.</p>
       </article>
     </div>
 
@@ -1181,9 +1181,9 @@ const renderRentalDetail = () => {
           <span>${escapeHtml(rental.subcategory || "Ümumi")}</span>
           <span>${escapeHtml(rental.operator)}</span>
         </div>
-        <p class="hero-text">Avadanlıq gücü, operator şərti, depozit, çatdırılma və rezervasiya RFQ-si üçün əsas kart.</p>
+        <p class="hero-text">Avadanlıq gücü, operator şərti, depozit, çatdırılma və rezervasiya qiymət sorğusu üçün əsas kart.</p>
         <div class="detail-actions">
-          <a class="button button-primary" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə RFQ yarat</a>
+          <a class="button button-primary" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu yarat</a>
           <a class="button button-outline" href="rental.html">İcarəyə qayıt</a>
         </div>
       </div>
@@ -1222,7 +1222,7 @@ const renderRentalDetail = () => {
       <article class="detail-panel glass">
         <p class="eyebrow">Rezervasiya qeydləri</p>
         <ul class="spec-list detail-list">
-          <li>Tarix, müddət və obyekt ünvanı RFQ-də yazılmalıdır.</li>
+          <li>Tarix, müddət və obyekt ünvanı Qiymət sorğusunda yazılmalıdır.</li>
           <li>Operator, yanacaq və daşınma şərtləri ayrıca təsdiqlənir.</li>
           <li>Depozit və təhvil-qəbul aktı müqavilə əsasında bağlanır.</li>
         </ul>
@@ -1315,9 +1315,9 @@ const renderTaxonomyDetail = () => {
           <span>${escapeHtml(category.title)}</span>
           <span>${items.length} ${escapeHtml(config.itemLabel)}</span>
         </div>
-        <p class="hero-text">${escapeHtml(category.subtitle || "ConstEra RFQ axını üçün qruplaşdırılmış kateqoriya səhifəsi.")}</p>
+        <p class="hero-text">${escapeHtml(category.subtitle || "ConstEra qiymət sorğusu axını üçün qruplaşdırılmış kateqoriya səhifəsi.")}</p>
         <div class="detail-actions">
-          <a class="button button-primary" href="rfq.html">RFQ yarat</a>
+          <a class="button button-primary" href="rfq.html">Sorğu yarat</a>
           <a class="button button-outline" href="${escapeAttr(config.listHref)}">Kataloqa qayıt</a>
           ${type === "material" ? `<a class="button button-secondary" href="catalog.html?category=${encodeURIComponent(category.id)}${visibleSubcategory ? `&subcategory=${encodeURIComponent(visibleSubcategory)}` : ""}">Filtrdə aç</a>` : ""}
         </div>
@@ -1333,7 +1333,7 @@ const renderTaxonomyDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">Subkateqoriya</span>
         <strong>${visibleSubcategory ? "1" : category.subcategories.length}</strong>
-        <p>${visibleSubcategory ? escapeHtml(visibleSubcategory) : "Alt bölmələr RFQ və SEO üçün ayrıca açılır."}</p>
+        <p>${visibleSubcategory ? escapeHtml(visibleSubcategory) : "Alt bölmələr Qiymət sorğusu və SEO üçün ayrıca açılır."}</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Kart sayı</span>
@@ -1379,7 +1379,7 @@ const renderTaxonomyDetail = () => {
       ${items.length ? "" : `
         <div class="empty-state glass">
           <strong>Bu bölmədə kart yoxdur.</strong>
-          <span>Admin və import axını ilə yeni məlumat əlavə oluna bilər.</span>
+          <span>İdarəetmə və idxal axını ilə yeni məlumat əlavə oluna bilər.</span>
         </div>
       `}
     </section>
@@ -1862,7 +1862,7 @@ const renderAdmin = () => {
         <td>${escapeHtml(supplier.type)}</td>
         <td>${escapeHtml(supplier.region)}</td>
         <td><span class="status-pill">${escapeHtml(supplier.status)}</span></td>
-        <td>${escapeHtml(supplier.responseTime || "RFQ əsasında")}</td>
+        <td>${escapeHtml(supplier.responseTime || "Qiymət sorğusu əsasında")}</td>
         <td><button class="table-action" type="button" data-admin-edit-supplier="${escapeAttr(supplier.id)}">Redaktə et</button></td>
       </tr>
     `).join("");
@@ -1999,29 +1999,29 @@ const renderAdmin = () => {
     const backup = createAdminBackup();
     const text = JSON.stringify(backup, null, 2);
     if (backupInput) backupInput.value = text;
-    if (backupStatus) backupStatus.textContent = `Backup hazırdır: ${adminBackupKeys.length} məlumat bloku export edildi.`;
+    if (backupStatus) backupStatus.textContent = `Ehtiyat nüsxə hazırdır: ${adminBackupKeys.length} məlumat bloku ixrac edildi.`;
     renderBackupSummary();
   });
   downloadBackupButton?.addEventListener("click", () => {
     const text = backupInput?.value.trim() || JSON.stringify(createAdminBackup(), null, 2);
     downloadTextFile(`constera-admin-backup-${new Date().toISOString().slice(0, 10)}.json`, text);
-    if (backupStatus) backupStatus.textContent = "Backup JSON faylı yükləndi.";
+    if (backupStatus) backupStatus.textContent = "Ehtiyat JSON faylı yükləndi.";
   });
   importBackupButton?.addEventListener("click", () => {
     try {
       const parsed = JSON.parse(backupInput?.value || "{}");
       if (!parsed.data || typeof parsed.data !== "object") {
-        throw new Error("Backup data bloku tapılmadı.");
+        throw new Error("Ehtiyat məlumat bloku tapılmadı.");
       }
       const importedKeys = adminBackupKeys.filter((key) => Object.prototype.hasOwnProperty.call(parsed.data, key));
       importedKeys.forEach((key) => {
         storage.write(key, Array.isArray(parsed.data[key]) ? parsed.data[key] : []);
       });
-      if (backupStatus) backupStatus.textContent = `${importedKeys.length} məlumat bloku import edildi. Səhifə yenilənir.`;
+      if (backupStatus) backupStatus.textContent = `${importedKeys.length} məlumat bloku idxal edildi. Səhifə yenilənir.`;
       renderBackupSummary();
       setTimeout(() => window.location.reload(), 600);
     } catch (error) {
-      if (backupStatus) backupStatus.textContent = `Import alınmadı: ${error.message}`;
+      if (backupStatus) backupStatus.textContent = `İdxal alınmadı: ${error.message}`;
     }
   });
 
@@ -2032,7 +2032,7 @@ const renderAdmin = () => {
   clearFormButton?.addEventListener("click", () => fillForm({ category: marketplace.categories[0]?.id || "" }));
   resetProductsButton?.addEventListener("click", () => {
     saveAdminProducts([]);
-    if (importStatus) importStatus.textContent = "Lokal admin düzəlişləri silindi. Səhifə yenilənir.";
+    if (importStatus) importStatus.textContent = "Lokal idarəetmə düzəlişləri silindi. Səhifə yenilənir.";
     window.location.reload();
   });
 
@@ -2077,7 +2077,7 @@ const renderAdmin = () => {
     const rows = parseCsvRows(csvInput?.value || "");
     const importedProducts = rows.map(productFromCsvRow).filter((product) => product.name && product.sku);
     if (!importedProducts.length) {
-      if (importStatus) importStatus.textContent = "CSV import üçün ən azı sku və ad sütunları lazımdır.";
+      if (importStatus) importStatus.textContent = "CSV idxalı üçün ən azı sku və ad sütunları lazımdır.";
       return;
     }
 
@@ -2089,7 +2089,7 @@ const renderAdmin = () => {
     });
     saveAdminProducts([...mergedBySku.values()]);
     syncAdminProductOverlay();
-    if (importStatus) importStatus.textContent = `${importedProducts.length} məhsul import edildi.`;
+    if (importStatus) importStatus.textContent = `${importedProducts.length} məhsul idxal edildi.`;
     rerenderAdminProducts();
   });
 
@@ -2197,7 +2197,7 @@ const renderAdmin = () => {
     const importedItems = rows.map((row, index) => entityFromCsvRow(entityType, row, index))
       .filter((item) => getEntityTitle(entityType, item));
     if (!importedItems.length) {
-      if (entityStatus) entityStatus.textContent = "CSV import üçün ən azı ad sütunu lazımdır.";
+      if (entityStatus) entityStatus.textContent = "CSV idxalı üçün ən azı ad sütunu lazımdır.";
       return;
     }
 
@@ -2210,7 +2210,7 @@ const renderAdmin = () => {
       upsertEntityInMemory(entityType, shaped);
     });
     saveAdminEntityItems(entityType, [...mergedByTitle.values()]);
-    if (entityStatus) entityStatus.textContent = `${importedItems.length} ${getEntityConfig(entityType).label} import edildi.`;
+    if (entityStatus) entityStatus.textContent = `${importedItems.length} ${getEntityConfig(entityType).label} idxal edildi.`;
     rerenderAdminEntities();
   });
 
@@ -2268,7 +2268,7 @@ const initRfq = () => {
   `;
   if (supplierSelect) {
     supplierSelect.innerHTML = `
-      <option value="">Açıq RFQ - bütün uyğun təchizatçılar</option>
+      <option value="">Açıq sorğu - bütün uyğun təchizatçılar</option>
       ${(marketplace.suppliers || []).map((supplier) => `
         <option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)} — ${escapeHtml(supplier.focus)}</option>
       `).join("")}
@@ -2314,7 +2314,7 @@ const initRfq = () => {
       sourceId: selectedId || "",
       status: "Yeni",
       supplierId: selectedSupplierId,
-      supplier: selectedSupplier?.name || "Açıq RFQ",
+      supplier: selectedSupplier?.name || "Açıq sorğu",
       priority: data.get("priority") || "Normal",
       product: selectedProduct?.name || selectedService?.title || selectedPackage?.title || selectedRental?.name || data.get("customProduct"),
       quantity: data.get("quantity"),
@@ -2335,11 +2335,11 @@ const initRfq = () => {
 
     output.hidden = false;
     output.innerHTML = `
-      <strong>RFQ draftı hazırdır.</strong>
+      <strong>sorğu qaralaması hazırdır.</strong>
       <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
       <span>${escapeHtml(rfq.supplier)} · ${escapeHtml(rfq.priority)} · ${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")}</span>
-      <a class="button button-secondary" href="rfq-dashboard.html">RFQ paneldə aç</a>
-      <small>Bu demo versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
+      <a class="button button-secondary" href="rfq-dashboard.html">Sorğu panelində aç</a>
+      <small>Bu nümunə versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
     `;
   });
 };
@@ -2368,7 +2368,7 @@ const renderRfqDashboard = () => {
   };
   const statusList = ["Yeni", "Təchizatçıya göndərildi", "Cavab gözləyir", "Təklif gəldi", "Qiymət müqayisəsi", "Təsdiqləndi", "Bağlandı"];
   const supplierOptions = () => `
-    <option value="">Açıq RFQ</option>
+    <option value="">Açıq sorğu</option>
     ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
   `;
   const parseOfferPrice = (price) => {
@@ -2403,7 +2403,7 @@ const renderRfqDashboard = () => {
         type: draft.type || "custom",
         status: draft.status || "Yeni",
         supplierId: draft.supplierId || "",
-        supplier: draft.supplier || "Açıq RFQ",
+        supplier: draft.supplier || "Açıq sorğu",
         priority: draft.priority || "Normal",
         offers: Array.isArray(draft.offers) ? draft.offers : [],
         ...draft
@@ -2418,7 +2418,7 @@ const renderRfqDashboard = () => {
   const renderOfferControls = (drafts) => {
     if (offerRfqSelect) {
       offerRfqSelect.innerHTML = `
-        <option value="">RFQ seç</option>
+        <option value="">Sorğu seç</option>
         ${drafts.map((draft) => `<option value="${escapeAttr(draft.id)}">${escapeHtml(draft.product || "Sərbəst sorğu")} · ${escapeHtml(draft.company || "şirkət yoxdur")}</option>`).join("")}
       `;
     }
@@ -2465,7 +2465,7 @@ const renderRfqDashboard = () => {
     URL.revokeObjectURL(url);
   };
   const exportOffers = (drafts) => {
-    const headers = ["rfq id", "sorğu", "supplier", "qiymət", "müddət", "çatdırılma", "zəmanət", "qeyd"];
+    const headers = ["sorğu id", "sorğu", "təchizatçı", "qiymət", "müddət", "çatdırılma", "zəmanət", "qeyd"];
     const rowsForOffers = drafts.flatMap((draft) =>
       (draft.offers || []).map((offer) => [
         draft.id,
@@ -2507,11 +2507,11 @@ const renderRfqDashboard = () => {
     const offerCount = drafts.reduce((sum, draft) => sum + (draft.offers || []).length, 0);
 
     stats.innerHTML = `
-      <article class="stat-card"><span class="stat-value">${drafts.length}</span><p>ümumi RFQ</p></article>
+      <article class="stat-card"><span class="stat-value">${drafts.length}</span><p>ümumi sorğu</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Yeni"] || 0}</span><p>yeni sorğu</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Cavab gözləyir"] || 0}</span><p>cavab gözləyir</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Təklif gəldi"] || 0}</span><p>təklif gəldi</p></article>
-      <article class="stat-card"><span class="stat-value">${offerCount}</span><p>supplier təklifi</p></article>
+      <article class="stat-card"><span class="stat-value">${offerCount}</span><p>təchizatçı təklifi</p></article>
       <article class="stat-card"><span class="stat-value">${drafts.filter((draft) => draft.supplierId).length}</span><p>təyin olunub</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Bağlandı"] || 0}</span><p>bağlandı</p></article>
     `;
@@ -2534,7 +2534,7 @@ const renderRfqDashboard = () => {
         <td data-label="Təkliflər">${renderOfferText(draft)}</td>
         <td data-label="Əlaqə">${escapeHtml(draft.contact || "Əlaqə yoxdur")}</td>
         <td data-label="Tarix">${escapeHtml(draft.needDate || "Açıq")}</td>
-        <td data-label="Status"><span class="status-pill">${escapeHtml(draft.status)}</span></td>
+        <td data-label="Vəziyyət"><span class="status-pill">${escapeHtml(draft.status)}</span></td>
         <td data-label="Əməliyyat">
           <div class="status-actions">
             ${statusList.map((status) => `
@@ -2553,7 +2553,7 @@ const renderRfqDashboard = () => {
   };
 
   if (statusFilter) {
-    statusFilter.innerHTML = `<option value="all">Bütün statuslar</option>${statusList.map((status) => `<option value="${escapeAttr(status)}">${escapeHtml(status)}</option>`).join("")}`;
+    statusFilter.innerHTML = `<option value="all">Bütün vəziyyətlər</option>${statusList.map((status) => `<option value="${escapeAttr(status)}">${escapeHtml(status)}</option>`).join("")}`;
     statusFilter.addEventListener("change", render);
   }
   if (typeFilter) {
@@ -2566,7 +2566,7 @@ const renderRfqDashboard = () => {
   if (supplierFilter) {
     supplierFilter.innerHTML = `
       <option value="all">Bütün təchizatçılar</option>
-      <option value="open">Açıq RFQ</option>
+      <option value="open">Açıq sorğu</option>
       ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
     `;
     supplierFilter.addEventListener("change", render);
@@ -2581,7 +2581,7 @@ const renderRfqDashboard = () => {
     const supplier = (marketplace.suppliers || []).find((item) => item.id === supplierId);
     const draft = getDrafts().find((item) => item.id === rfqId);
     if (!draft || !supplier) {
-      if (offerStatus) offerStatus.textContent = "RFQ və təchizatçı seçilməlidir.";
+      if (offerStatus) offerStatus.textContent = "Qiymət sorğusu və təchizatçı seçilməlidir.";
       return;
     }
     const offer = {
@@ -2616,7 +2616,7 @@ const renderRfqDashboard = () => {
     const supplier = (marketplace.suppliers || []).find((item) => item.id === select.value);
     updateDraft(select.dataset.rfqSupplier, {
       supplierId: select.value,
-      supplier: supplier?.name || "Açıq RFQ",
+      supplier: supplier?.name || "Açıq sorğu",
       status: select.value ? "Təchizatçıya göndərildi" : "Yeni"
     });
     render();
@@ -2637,7 +2637,7 @@ const initTender = () => {
   const statusOutput = document.querySelector("[data-tender-status]");
   if (!form || !list) return;
 
-  const statusList = ["Yeni", "Supplier-lərə göndərildi", "Təklif toplanır", "Qiymətləndirmə", "Qalib seçildi", "Bağlandı"];
+  const statusList = ["Yeni", "Təchizatçılara göndərildi", "Təklif toplanır", "Qiymətləndirmə", "Qalib seçildi", "Bağlandı"];
   const getTenders = () => storage.read("constera-tenders").map((tender, index) => ({
     id: tender.id || `tender-migrated-${index}`,
     status: tender.status || "Yeni",
@@ -2665,7 +2665,7 @@ const initTender = () => {
     return tenders;
   };
   const exportTenders = (tenders) => {
-    const headers = ["id", "status", "tender", "şirkət", "şəhər", "supplier", "deadline", "budget", "lot sayı", "təsvir"];
+    const headers = ["id", "vəziyyət", "tender", "şirkət", "şəhər", "təchizatçı", "son tarix", "büdcə", "lot sayı", "təsvir"];
     const csv = [headers.join(","), ...tenders.map((tender) => [
       tender.id,
       tender.status,
@@ -2756,7 +2756,7 @@ const initTender = () => {
       supplier: supplierName(data.supplierId),
       description: data.description,
       lots: parseLots(data.lots),
-      status: data.supplierId ? "Supplier-lərə göndərildi" : "Yeni",
+      status: data.supplierId ? "Təchizatçılara göndərildi" : "Yeni",
       createdAt: new Date().toISOString()
     };
     saveTenders([tender, ...getTenders()].slice(0, 40));
@@ -2798,7 +2798,7 @@ const initServiceCalculator = () => {
     output.innerHTML = `
       <strong>${workIndex} m² iş indeksi</strong>
       <span>${escapeHtml(level)} material səviyyəsi · ${materialIndex} material indeksi · ${daysMin}-${daysMax} gün ilkin icra aralığı</span>
-      <a class="button button-secondary" href="rfq.html?service=menzil-temiri-paketi">RFQ-yə göndər</a>
+      <a class="button button-secondary" href="rfq.html?service=menzil-temiri-paketi">Qiymət sorğusuna göndər</a>
     `;
   };
 
@@ -2828,8 +2828,8 @@ const initPackageCalculator = () => {
 
     output.innerHTML = `
       <strong>${totalIndex} paket indeksi</strong>
-      <span>${escapeHtml(level)} səviyyə · ${area} m² baza · ${riskReserve} ehtiyat indeksi · qiymət RFQ ilə təsdiqlənir</span>
-      <a class="button button-secondary" href="rfq.html?package=${encodeURIComponent(packageId)}">Paket RFQ-yə göndər</a>
+      <span>${escapeHtml(level)} səviyyə · ${area} m² baza · ${riskReserve} ehtiyat indeksi · qiymət Qiymət sorğusu ilə təsdiqlənir</span>
+      <a class="button button-secondary" href="rfq.html?package=${encodeURIComponent(packageId)}">Paket sorğusuna göndər</a>
     `;
   };
 
@@ -2858,8 +2858,8 @@ const initRentalCalculator = () => {
 
     output.innerHTML = `
       <strong>${hours} saatlıq rezervasiya</strong>
-      <span>${days} gün · ${shift} saatlıq növbə · ${escapeHtml(operator)} · ${escapeHtml(zone)} zonası · ${reservationType} RFQ</span>
-      <a class="button button-secondary" href="rfq.html?rental=ekskavator-20t">İcarə RFQ yarat</a>
+      <span>${days} gün · ${shift} saatlıq növbə · ${escapeHtml(operator)} · ${escapeHtml(zone)} zonası · ${reservationType} qiymət sorğusu</span>
+      <a class="button button-secondary" href="rfq.html?rental=ekskavator-20t">İcarə sorğusu yarat</a>
     `;
   };
 
@@ -2894,8 +2894,8 @@ const initAiSmeta = () => {
   const scopeLabels = {
     shell: "Qara karkas",
     white: "Ağ suvaq",
-    renovation: "Full təmir",
-    turnkey: "Full tikinti + təmir"
+    renovation: "Tam təmir",
+    turnkey: "Tam tikinti + təmir"
   };
   const levelLabels = {
     economy: "Ekonom",
@@ -3018,9 +3018,9 @@ const initAiSmeta = () => {
       sourceId: estimate.id,
       status: "Yeni",
       supplierId: "",
-      supplier: "Açıq RFQ",
+      supplier: "Açıq sorğu",
       priority: "Qiymət müqayisəsi",
-      product: `AI Smeta: ${estimate.projectLabel} · ${estimate.area} m²`,
+      product: `Ağıllı smeta: ${estimate.projectLabel} · ${estimate.area} m²`,
       quantity: `${estimate.rows.length} material qrupu`,
       needDate: "",
       budget: "Sorğu əsasında",
@@ -3103,7 +3103,7 @@ const initAiSmeta = () => {
             <div>
               <span class="status-pill">${escapeHtml(row.category)}</span>
               <h3>${escapeHtml(row.title)}</h3>
-              <p>${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)} · RFQ ilə dəqiqləşdirilməlidir</p>
+              <p>${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)} · Qiymət sorğusu ilə dəqiqləşdirilməlidir</p>
             </div>
             <div class="ai-smeta-products">
               ${row.products.length ? row.products.map((product) => `
@@ -3117,8 +3117,8 @@ const initAiSmeta = () => {
         `).join("")}
       </div>
       <div class="admin-actions">
-        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}">RFQ draft yarat</button>
-        <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV et</button>
+        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}">Sorğu qaralaması yarat</button>
+        <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV-yə ixrac et</button>
         <a class="button button-outline" href="catalog.html">Kataloqda bax</a>
       </div>
     `;
@@ -3135,7 +3135,7 @@ const initAiSmeta = () => {
     writeEstimates([currentEstimate, ...readEstimates()]);
     renderEstimate(currentEstimate);
     renderHistory();
-    if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. RFQ draft yarada bilərsən.`;
+    if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. sorğu qaralaması yarada bilərsən.`;
   });
   resetButton?.addEventListener("click", () => {
     form.reset();
@@ -3169,7 +3169,7 @@ const initAiSmeta = () => {
     const estimate = readEstimates().find((item) => item.id === rfqButton.dataset.aiSmetaRfq) || currentEstimate;
     if (!estimate) return;
     const rfq = estimateToRfq(estimate);
-    if (status) status.innerHTML = `RFQ draft yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">RFQ paneldə aç</a>`;
+    if (status) status.innerHTML = `Sorğu qaralaması yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
   });
 };
 
