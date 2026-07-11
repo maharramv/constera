@@ -2355,8 +2355,45 @@ dd {
   padding-top: 36px;
 }
 
+.admin-tabs {
+  position: sticky;
+  top: 82px;
+  z-index: 8;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px;
+  scrollbar-width: thin;
+}
+
+.admin-tab-button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 16px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-tab-button:hover,
+.admin-tab-button.is-active {
+  border-color: rgba(212, 166, 79, 0.55);
+  color: #f6d78d;
+  background: rgba(212, 166, 79, 0.12);
+}
+
 .admin-panel {
   padding: 24px;
+}
+
+.admin-panel[hidden] {
+  display: none;
 }
 
 .admin-manager-grid {
@@ -2447,6 +2484,38 @@ dd {
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.admin-backup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-backup-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-backup-summary article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px;
+}
+
+.admin-backup-summary strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.8rem;
+  color: #f6d78d;
+}
+
+.admin-backup-summary span {
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .schema-grid {
@@ -2594,6 +2663,7 @@ dd {
   }
 
   .admin-manager-grid,
+  .admin-backup-grid,
   .admin-form-grid,
   .admin-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2622,6 +2692,7 @@ dd {
   .market-kpi-strip,
   .admin-stat-grid,
   .admin-manager-grid,
+  .admin-backup-grid,
   .admin-form-grid,
   .admin-toolbar,
   .market-mini-stats,
@@ -2657,6 +2728,18 @@ dd {
   .admin-board {
     gap: 18px;
     padding-top: 22px;
+  }
+
+  .admin-tabs {
+    top: 70px;
+    margin-inline: -4px;
+    padding: 8px;
+  }
+
+  .admin-tab-button {
+    min-height: 38px;
+    padding-inline: 12px;
+    font-size: 0.76rem;
   }
 
   .catalog-sidebar {

@@ -56,6 +56,16 @@ const adminEntityConfigs = {
     label: "icarə"
   }
 };
+const adminBackupKeys = [
+  adminProductStorageKey,
+  adminSupplierStorageKey,
+  adminEntityConfigs.service.storageKey,
+  adminEntityConfigs.package.storageKey,
+  adminEntityConfigs.rental.storageKey,
+  "constera-rfq-drafts",
+  "constera-favorites",
+  "constera-compare"
+];
 
 const getCategory = (id) => marketplace.categories.find((category) => category.id === id);
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
@@ -1565,6 +1575,8 @@ const entitiesToCsv = (entityType, items) => {
 };
 
 const renderAdmin = () => {
+  const tabButtons = document.querySelectorAll("[data-admin-tab]");
+  const tabPanels = document.querySelectorAll("[data-admin-panel]");
   const stats = document.querySelector("[data-admin-stats]");
   const productRows = document.querySelector("[data-admin-products]");
   const categoryRows = document.querySelector("[data-admin-categories]");
@@ -1599,6 +1611,71 @@ const renderAdmin = () => {
   const importEntityCsvButton = document.querySelector("[data-admin-import-entity-csv]");
   const exportEntityCsvButton = document.querySelector("[data-admin-export-entity-csv]");
   const entityStatus = document.querySelector("[data-admin-entity-status]");
+  const backupInput = document.querySelector("[data-admin-backup-input]");
+  const exportBackupButton = document.querySelector("[data-admin-export-backup]");
+  const importBackupButton = document.querySelector("[data-admin-import-backup]");
+  const downloadBackupButton = document.querySelector("[data-admin-download-backup]");
+  const backupStatus = document.querySelector("[data-admin-backup-status]");
+  const backupProducts = document.querySelector("[data-backup-products]");
+  const backupSuppliers = document.querySelector("[data-backup-suppliers]");
+  const backupRfq = document.querySelector("[data-backup-rfq]");
+  const backupEntities = document.querySelector("[data-backup-entities]");
+
+  const setActiveAdminTab = (tabName) => {
+    const activeTab = [...tabPanels].some((panel) => panel.dataset.adminPanel === tabName) ? tabName : "overview";
+    tabButtons.forEach((button) => {
+      const active = button.dataset.adminTab === activeTab;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    tabPanels.forEach((panel) => {
+      panel.hidden = panel.dataset.adminPanel !== activeTab;
+    });
+    try {
+      localStorage.setItem("constera-admin-active-tab", activeTab);
+    } catch {
+      // Tab memory is optional.
+    }
+  };
+
+  const getStoredAdminTab = () => {
+    try {
+      return localStorage.getItem("constera-admin-active-tab") || "overview";
+    } catch {
+      return "overview";
+    }
+  };
+
+  const renderBackupSummary = () => {
+    if (backupProducts) backupProducts.textContent = getAdminProducts().length;
+    if (backupSuppliers) backupSuppliers.textContent = getAdminSuppliers().length;
+    if (backupRfq) backupRfq.textContent = storage.read("constera-rfq-drafts").length;
+    if (backupEntities) {
+      backupEntities.textContent = getAdminEntityItems("service").length +
+        getAdminEntityItems("package").length +
+        getAdminEntityItems("rental").length;
+    }
+  };
+
+  const createAdminBackup = () => ({
+    version: "constera-admin-backup-v1",
+    exportedAt: new Date().toISOString(),
+    source: "ConstEra static admin",
+    data: adminBackupKeys.reduce((acc, key) => {
+      acc[key] = storage.read(key);
+      return acc;
+    }, {})
+  });
+
+  const downloadTextFile = (filename, text, mime = "application/json;charset=utf-8") => {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const renderStats = () => {
     if (!stats) return;
@@ -1744,6 +1821,7 @@ const renderAdmin = () => {
     renderStats();
     renderProductRows();
     renderCategoryRows();
+    renderBackupSummary();
   };
 
   const setSupplierFormField = (name, value) => {
@@ -1886,7 +1964,13 @@ const renderAdmin = () => {
     renderManagedEntityRows("service", serviceRows);
     renderManagedEntityRows("package", packageRows);
     renderManagedEntityRows("rental", rentalRows);
+    renderBackupSummary();
   };
+
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => setActiveAdminTab(button.dataset.adminTab));
+  });
+  setActiveAdminTab(getStoredAdminTab());
 
   renderStats();
   renderCategoryOptions(formCategory);
@@ -1900,9 +1984,40 @@ const renderAdmin = () => {
   renderProductRows();
   renderCategoryRows();
   renderSupplierRows();
+  renderBackupSummary();
   renderEntityCategoryOptions();
   updateEntitySubcategories();
   rerenderAdminEntities();
+
+  exportBackupButton?.addEventListener("click", () => {
+    const backup = createAdminBackup();
+    const text = JSON.stringify(backup, null, 2);
+    if (backupInput) backupInput.value = text;
+    if (backupStatus) backupStatus.textContent = `Backup hazırdır: ${adminBackupKeys.length} məlumat bloku export edildi.`;
+    renderBackupSummary();
+  });
+  downloadBackupButton?.addEventListener("click", () => {
+    const text = backupInput?.value.trim() || JSON.stringify(createAdminBackup(), null, 2);
+    downloadTextFile(`constera-admin-backup-${new Date().toISOString().slice(0, 10)}.json`, text);
+    if (backupStatus) backupStatus.textContent = "Backup JSON faylı yükləndi.";
+  });
+  importBackupButton?.addEventListener("click", () => {
+    try {
+      const parsed = JSON.parse(backupInput?.value || "{}");
+      if (!parsed.data || typeof parsed.data !== "object") {
+        throw new Error("Backup data bloku tapılmadı.");
+      }
+      const importedKeys = adminBackupKeys.filter((key) => Object.prototype.hasOwnProperty.call(parsed.data, key));
+      importedKeys.forEach((key) => {
+        storage.write(key, Array.isArray(parsed.data[key]) ? parsed.data[key] : []);
+      });
+      if (backupStatus) backupStatus.textContent = `${importedKeys.length} məlumat bloku import edildi. Səhifə yenilənir.`;
+      renderBackupSummary();
+      setTimeout(() => window.location.reload(), 600);
+    } catch (error) {
+      if (backupStatus) backupStatus.textContent = `Import alınmadı: ${error.message}`;
+    }
+  });
 
   formCategory?.addEventListener("change", () => updateFormSubcategories());
   productSearch?.addEventListener("input", renderProductRows);
@@ -2010,6 +2125,7 @@ const renderAdmin = () => {
     upsertSupplierInMemory(shaped);
     renderStats();
     renderSupplierRows();
+    renderBackupSummary();
     fillSupplierForm();
     if (importStatus) importStatus.textContent = `${shaped.name} təchizatçı panelinə əlavə edildi.`;
   });

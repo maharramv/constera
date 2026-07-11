@@ -64,7 +64,15 @@
         </section>
 
         <section class="section admin-board">
-          <div class="admin-panel glass">
+          <div class="admin-tabs glass" data-admin-tabs>
+            <button class="admin-tab-button is-active" type="button" data-admin-tab="overview">Ümumi</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="products">Məhsullar</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="suppliers">Təchizatçılar</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="services">Xidmət / paket / icarə</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="backup">Backup</button>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="overview">
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">İdxal sxemi</p>
@@ -100,7 +108,51 @@
             </p>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="backup" hidden>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Backup / restore</p>
+                <h2>Admin məlumatlarını JSON kimi saxla və geri yüklə</h2>
+              </div>
+              <span class="data-badge">localStorage backup</span>
+            </div>
+            <div class="admin-backup-grid">
+              <div class="admin-import-box">
+                <label class="admin-field">
+                  <span>Backup JSON</span>
+                  <textarea class="admin-textarea" data-admin-backup-input rows="16" placeholder="Export etdiyin JSON burada görünəcək. Restore üçün JSON-u buraya yapışdır."></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="button" data-admin-export-backup>JSON export</button>
+                  <button class="button button-secondary" type="button" data-admin-import-backup>JSON import</button>
+                  <button class="button button-outline" type="button" data-admin-download-backup>Fayl kimi yüklə</button>
+                </div>
+                <p class="admin-import-status" data-admin-backup-status>
+                  Məhsul, təchizatçı, xidmət, paket, icarə, RFQ, favori və müqayisə məlumatları saxlanacaq.
+                </p>
+              </div>
+              <div class="admin-backup-summary">
+                <article>
+                  <strong data-backup-products>0</strong>
+                  <span>məhsul düzəlişi</span>
+                </article>
+                <article>
+                  <strong data-backup-suppliers>0</strong>
+                  <span>təchizatçı düzəlişi</span>
+                </article>
+                <article>
+                  <strong data-backup-rfq>0</strong>
+                  <span>RFQ draftı</span>
+                </article>
+                <article>
+                  <strong data-backup-entities>0</strong>
+                  <span>xidmət/paket/icarə</span>
+                </article>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="services" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Xidmət, paket və icarə meneceri</p>
@@ -188,7 +240,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="products" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Məhsul meneceri</p>
@@ -280,7 +332,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="suppliers" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Təchizatçı meneceri</p>
@@ -354,7 +406,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="products" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Məhsullar</p>
@@ -399,7 +451,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="overview">
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Kateqoriyalar</p>
@@ -422,7 +474,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="services" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Xidmətlər</p>
@@ -448,7 +500,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="services" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">Hazır paketlər</p>
@@ -474,7 +526,7 @@
             </div>
           </div>
 
-          <div class="admin-panel glass">
+          <div class="admin-panel glass" data-admin-panel="services" hidden>
             <div class="market-section-heading">
               <div>
                 <p class="eyebrow">İcarə</p>
