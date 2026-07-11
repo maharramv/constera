@@ -12,6 +12,107 @@ const pageTransition = document.querySelector(".page-transition");
 const hasTranslationTargets = Boolean(
   document.querySelector("[data-i18n], [data-i18n-placeholder], [data-i18n-content]")
 );
+const siteOrigin = "https://constera.ru";
+
+const getCanonicalHref = () => {
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical?.href) return canonical.href;
+  const path = window.location.pathname.split("/").pop() || "";
+  return `${siteOrigin}/${path}`;
+};
+
+const upsertMeta = (selector, attributes) => {
+  let tag = document.head.querySelector(selector);
+  if (!tag) {
+    tag = document.createElement("meta");
+    Object.entries(attributes)
+      .filter(([key]) => key !== "content")
+      .forEach(([key, value]) => tag.setAttribute(key, value));
+    document.head.appendChild(tag);
+  }
+  if (attributes.content) tag.setAttribute("content", attributes.content);
+};
+
+const injectJsonLd = (id, data) => {
+  if (!data) return;
+  let script = document.getElementById(id);
+  if (!script) {
+    script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = id;
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(data);
+};
+
+const initSeoEnhancements = () => {
+  const title = document.title.trim() || "ConstEra";
+  const description = document.querySelector('meta[name="description"]')?.content?.trim() ||
+    "ConstEra tikinti materialları, xidmətlər, paketlər və avadanlıq icarəsi üçün Azərbaycan bazarına uyğun B2B platformadır.";
+  const canonical = getCanonicalHref();
+  const image = `${siteOrigin}/assets/images/hero.webp`;
+  const pageName = title.split("|")[0].trim() || "ConstEra";
+  const bodyPage = document.body?.dataset.page || "home";
+
+  upsertMeta('meta[property="og:type"]', { property: "og:type", content: "website" });
+  upsertMeta('meta[property="og:site_name"]', { property: "og:site_name", content: "ConstEra" });
+  upsertMeta('meta[property="og:title"]', { property: "og:title", content: title });
+  upsertMeta('meta[property="og:description"]', { property: "og:description", content: description });
+  upsertMeta('meta[property="og:url"]', { property: "og:url", content: canonical });
+  upsertMeta('meta[property="og:image"]', { property: "og:image", content: image });
+  upsertMeta('meta[name="twitter:card"]', { name: "twitter:card", content: "summary_large_image" });
+  upsertMeta('meta[name="twitter:title"]', { name: "twitter:title", content: title });
+  upsertMeta('meta[name="twitter:description"]', { name: "twitter:description", content: description });
+  upsertMeta('meta[name="twitter:image"]', { name: "twitter:image", content: image });
+
+  injectJsonLd("constera-website-schema", {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ConstEra",
+    "url": siteOrigin,
+    "inLanguage": "az",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": `${siteOrigin}/catalog.html?q={search_term_string}`,
+      "query-input": "required name=search_term_string"
+    }
+  });
+
+  injectJsonLd("constera-breadcrumb-schema", {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Ana səhifə",
+        "item": `${siteOrigin}/`
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": pageName,
+        "item": canonical
+      }
+    ]
+  });
+
+  if (["catalog", "services", "packages", "rental", "brands", "suppliers"].includes(bodyPage)) {
+    injectJsonLd("constera-collection-schema", {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": pageName,
+      "description": description,
+      "url": canonical,
+      "inLanguage": "az",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "ConstEra",
+        "url": siteOrigin
+      }
+    });
+  }
+};
 
 const translations = {
   az: {
@@ -416,6 +517,9 @@ langButtons.forEach((button) => {
 });
 
 applyTranslations(currentLanguage);
+initSeoEnhancements();
+window.consteraRefreshSeo = initSeoEnhancements;
+window.setTimeout(initSeoEnhancements, 0);
 
 const params = new URLSearchParams(window.location.search);
 const status = params.get("status");

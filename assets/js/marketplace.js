@@ -88,6 +88,13 @@ const escapeHtml = (value) =>
     "'": "&#039;"
   })[char]);
 const escapeAttr = escapeHtml;
+const updatePageDescription = (description) => {
+  const text = String(description || "").trim();
+  if (!text) return;
+  const meta = document.querySelector('meta[name="description"]');
+  if (meta) meta.setAttribute("content", text);
+  window.consteraRefreshSeo?.();
+};
 
 const countProductsBy = (field, value) =>
   marketplace.products.filter((product) => product[field] === value).length;
@@ -939,6 +946,7 @@ const renderProductDetail = () => {
     : "";
 
   document.title = `${product.name} | ConstEra Kataloq`;
+  updatePageDescription(`${product.name}: ${product.brand}, ${product.subcategory}, ${product.price}. ConstEra kataloqunda qiymət sorğusu göndər və təchizatçı məlumatını yoxla.`);
   container.innerHTML = `
     <div class="detail-hero glass">
       <div class="detail-media">${media}</div>
@@ -1016,6 +1024,7 @@ const renderServiceDetail = () => {
 
   const category = getServiceCategory(service.category);
   document.title = `${service.title} | ConstEra Xidmətlər`;
+  updatePageDescription(`${service.title}: ${category?.title || "tikinti xidməti"}, ${service.subcategory || "ümumi xidmət"}, ${service.price}. ConstEra üzərindən xidmət sorğusu yarat.`);
   container.innerHTML = `
     <div class="detail-hero glass">
       <div class="detail-symbol">
@@ -1092,6 +1101,7 @@ const renderPackageDetail = () => {
 
   const category = getPackageCategory(pack.category);
   document.title = `${pack.title} | ConstEra Paketlər`;
+  updatePageDescription(`${pack.title}: ${category?.title || "hazır paket"}, ${pack.subcategory || "ümumi paket"}, ${pack.price}. Təmir və tikinti paketləri üçün sorğu göndər.`);
   container.innerHTML = `
     <div class="detail-hero glass">
       <div class="detail-symbol">
@@ -1168,6 +1178,7 @@ const renderRentalDetail = () => {
 
   const category = getRentalCategory(rental.category);
   document.title = `${rental.name} | ConstEra İcarə`;
+  updatePageDescription(`${rental.name}: ${category?.title || "avadanlıq icarəsi"}, ${rental.capacity || rental.subcategory}, ${rental.price}. Tikinti avadanlığı icarəsi üçün sorğu yarat.`);
   container.innerHTML = `
     <div class="detail-hero glass">
       <div class="detail-symbol">
@@ -1302,6 +1313,7 @@ const renderTaxonomyDetail = () => {
   const baseUrl = `category.html?type=${encodeURIComponent(type)}&category=${encodeURIComponent(category.id)}`;
 
   document.title = `${pageTitle} | ConstEra ${config.label}`;
+  updatePageDescription(`${pageTitle}: ${category.subtitle || `${config.label} üzrə kateqoriya səhifəsi`}. ${items.length} ${config.itemLabel} tapıldı.`);
   container.innerHTML = `
     <div class="detail-hero glass taxonomy-hero">
       <div class="detail-symbol">
@@ -1789,23 +1801,23 @@ const renderAdmin = () => {
       const priceIsRequest = product.priceStatus === "request" || normalize(product.price).includes("sorğu");
       return `
         <tr>
-          <td>${escapeHtml(product.sku)}</td>
-          <td>
+          <td data-label="SKU">${escapeHtml(product.sku)}</td>
+          <td data-label="Məhsul">
             <strong>${escapeHtml(product.name)}</strong>
             <small>${escapeHtml(product.subcategory || "Ümumi")}</small>
           </td>
-          <td>${escapeHtml(product.brand)}</td>
-          <td>${escapeHtml(category?.title || product.category)}</td>
-          <td>${escapeHtml(product.price)}</td>
-          <td><span class="status-pill">${priceIsRequest ? "Sorğu" : "Təsdiqli"}</span></td>
-          <td><button class="table-action" type="button" data-admin-edit-product="${escapeAttr(product.id)}">Redaktə et</button></td>
+          <td data-label="Brend">${escapeHtml(product.brand)}</td>
+          <td data-label="Kateqoriya">${escapeHtml(category?.title || product.category)}</td>
+          <td data-label="Qiymət">${escapeHtml(product.price)}</td>
+          <td data-label="Vəziyyət"><span class="status-pill">${priceIsRequest ? "Sorğu" : "Təsdiqli"}</span></td>
+          <td data-label="Əməliyyat"><button class="table-action" type="button" data-admin-edit-product="${escapeAttr(product.id)}">Redaktə et</button></td>
         </tr>
       `;
     }).join("");
     if (filtered.length > 80) {
       productRows.insertAdjacentHTML("beforeend", `
         <tr>
-          <td colspan="7"><small>İlk 80 nəticə göstərilir. Daha dəqiq tapmaq üçün axtarış və filtrdən istifadə et.</small></td>
+          <td colspan="7" data-label="Məlumat"><small>İlk 80 nəticə göstərilir. Daha dəqiq tapmaq üçün axtarış və filtrdən istifadə et.</small></td>
         </tr>
       `);
     }
@@ -1814,13 +1826,13 @@ const renderAdmin = () => {
   const renderCategoryRows = () => {
     if (!categoryRows) return;
     categoryRows.innerHTML = marketplace.categories.map((category) => `
-      <tr>
-        <td>${escapeHtml(category.group || "Ümumi")}</td>
-        <td>${escapeHtml(category.title)}</td>
-        <td>${category.subcategories.length}</td>
-        <td>${countProductsBy("category", category.id)}</td>
-      </tr>
-    `).join("");
+        <tr>
+          <td data-label="Qrup">${escapeHtml(category.group || "Ümumi")}</td>
+          <td data-label="Kateqoriya">${escapeHtml(category.title)}</td>
+          <td data-label="Subkateqoriya">${category.subcategories.length}</td>
+          <td data-label="Məhsul">${countProductsBy("category", category.id)}</td>
+        </tr>
+      `).join("");
   };
 
   const rerenderAdminProducts = () => {
@@ -1855,15 +1867,15 @@ const renderAdmin = () => {
     if (!supplierRows) return;
     supplierRows.innerHTML = (marketplace.suppliers || []).map((supplier) => `
       <tr>
-        <td>
+        <td data-label="Şirkət">
           <strong>${escapeHtml(supplier.name)}</strong>
           <small>${escapeHtml(supplier.website || supplier.contact || "Əlaqə əlavə olunmayıb")}</small>
         </td>
-        <td>${escapeHtml(supplier.type)}</td>
-        <td>${escapeHtml(supplier.region)}</td>
-        <td><span class="status-pill">${escapeHtml(supplier.status)}</span></td>
-        <td>${escapeHtml(supplier.responseTime || "Qiymət sorğusu əsasında")}</td>
-        <td><button class="table-action" type="button" data-admin-edit-supplier="${escapeAttr(supplier.id)}">Redaktə et</button></td>
+        <td data-label="Tip">${escapeHtml(supplier.type)}</td>
+        <td data-label="Region">${escapeHtml(supplier.region)}</td>
+        <td data-label="Vəziyyət"><span class="status-pill">${escapeHtml(supplier.status)}</span></td>
+        <td data-label="Sorğu">${escapeHtml(supplier.responseTime || "Qiymət sorğusu əsasında")}</td>
+        <td data-label="Əməliyyat"><button class="table-action" type="button" data-admin-edit-supplier="${escapeAttr(supplier.id)}">Redaktə et</button></td>
       </tr>
     `).join("");
   };
@@ -1952,13 +1964,13 @@ const renderAdmin = () => {
       const time = entityType === "service" ? item.leadTime : entityType === "package" ? item.timeline : item.operator;
       return `
         <tr>
-          <td>${escapeHtml(title)}</td>
-          <td>${escapeHtml(category?.title || item.category)}</td>
-          <td>${escapeHtml(item.subcategory || "Ümumi")}</td>
-          <td>${escapeHtml(item.unit)}</td>
-          <td>${escapeHtml(entityType === "rental" ? item.operator : item.price)}</td>
-          <td>${escapeHtml(entityType === "rental" ? item.price : time)}</td>
-          <td><button class="table-action" type="button" data-admin-edit-entity="${escapeAttr(item.id)}" data-admin-entity-kind="${escapeAttr(entityType)}">Redaktə et</button></td>
+          <td data-label="Ad">${escapeHtml(title)}</td>
+          <td data-label="Kateqoriya">${escapeHtml(category?.title || item.category)}</td>
+          <td data-label="Subkateqoriya">${escapeHtml(item.subcategory || "Ümumi")}</td>
+          <td data-label="Vahid">${escapeHtml(item.unit)}</td>
+          <td data-label="${entityType === "rental" ? "Operator" : "Qiymət"}">${escapeHtml(entityType === "rental" ? item.operator : item.price)}</td>
+          <td data-label="${entityType === "rental" ? "Qiymət" : "Müddət"}">${escapeHtml(entityType === "rental" ? item.price : time)}</td>
+          <td data-label="Əməliyyat"><button class="table-action" type="button" data-admin-edit-entity="${escapeAttr(item.id)}" data-admin-entity-kind="${escapeAttr(entityType)}">Redaktə et</button></td>
         </tr>
       `;
     }).join("");

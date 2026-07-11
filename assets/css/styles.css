@@ -22,6 +22,10 @@
   box-sizing: border-box;
 }
 
+* {
+  min-width: 0;
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
@@ -118,6 +122,24 @@ a {
 
 img {
   max-width: 100%;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button,
+.nav a,
+.table-action,
+.admin-tab-button,
+.category-filter,
+.category-open-link,
+.icon-action {
+  touch-action: manipulation;
 }
 
 .site-shell {
@@ -249,6 +271,7 @@ img {
 .nav a {
   color: var(--muted);
   font-size: 0.94rem;
+  line-height: 1.25;
   transition: color 180ms ease;
 }
 
@@ -1265,6 +1288,7 @@ dd {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding: 18px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
     border: 1px solid var(--line);
     border-radius: 24px;
     background: rgba(7, 12, 18, 0.96);
@@ -1620,6 +1644,7 @@ dd {
   outline: 0;
   padding: 0 16px;
   font: inherit;
+  min-width: 0;
 }
 
 .rfq-form textarea {
@@ -1789,6 +1814,15 @@ dd {
     rgba(12, 18, 25, 0.74);
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.22);
   overflow: hidden;
+}
+
+.market-card,
+.product-card,
+.detail-panel,
+.admin-panel,
+.calculator-output,
+.stat-card {
+  overflow-wrap: anywhere;
 }
 
 .product-card {
@@ -2663,6 +2697,10 @@ dd {
 
 .table-wrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  border-radius: 18px;
 }
 
 .admin-table {
@@ -2975,6 +3013,58 @@ dd {
     max-width: none;
   }
 
+  .admin-table:not(.rfq-dashboard-table),
+  .admin-table:not(.rfq-dashboard-table) thead,
+  .admin-table:not(.rfq-dashboard-table) tbody,
+  .admin-table:not(.rfq-dashboard-table) tr,
+  .admin-table:not(.rfq-dashboard-table) th,
+  .admin-table:not(.rfq-dashboard-table) td {
+    display: block;
+  }
+
+  .admin-table:not(.rfq-dashboard-table) {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+
+  .admin-table:not(.rfq-dashboard-table) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .admin-table:not(.rfq-dashboard-table) tr {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.035);
+    padding: 12px;
+  }
+
+  .admin-table:not(.rfq-dashboard-table) td {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    padding: 11px 0;
+  }
+
+  .admin-table:not(.rfq-dashboard-table) td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .admin-table:not(.rfq-dashboard-table) td:last-child {
+    border-bottom: 0;
+  }
+
   .status-actions {
     min-width: 0;
   }
@@ -3221,7 +3311,8 @@ dd {
     padding-bottom: 20px;
   }
 
-  .rfq-dashboard-table td {
+  .rfq-dashboard-table td,
+  .admin-table:not(.rfq-dashboard-table) td {
     grid-template-columns: 1fr;
     gap: 6px;
   }
