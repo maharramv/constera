@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Tender | Tikinti tenderləri və lot idarəetməsi</title>
+    <meta name="description" content="ConstEra tender modulu: tikinti, təmir, material və icarə üzrə tender yarat, lotlara böl və təklifləri idarə et." />
+    <link rel="canonical" href="https://constera.ru/tender.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="tender">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Tender</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
+          <a href="rfq.html">RFQ</a>
+          <a href="rfq-dashboard.html">RFQ Panel</a>
+          <a href="tender.html" aria-current="page">Tender</a>
+          <a href="admin.html">Admin</a>
+          <a class="button button-outline nav-cta" href="rfq.html">RFQ yarat</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Tender platforması</p>
+            <h1>Tikinti layihələrini lotlara böl, supplier təkliflərini müqayisə et.</h1>
+            <p class="hero-text">
+              Bu modul böyük material, xidmət, paket və icarə sorğularını tender formatında idarə etmək üçün başlanğıc
+              workflow-dur. Məlumatlar demo mərhələdə brauzerdə saxlanır.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-tender-stats></div>
+        </section>
+
+        <section class="section admin-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Yeni tender</p>
+                <h2>Tender kartı və lotları yarat</h2>
+              </div>
+              <button class="button button-secondary" type="button" data-tender-export>CSV export</button>
+            </div>
+            <form class="admin-form" data-tender-form>
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Tender adı</span>
+                  <input name="title" type="text" placeholder="Villa tikintisi üçün material və iş tenderi" required />
+                </label>
+                <label class="admin-field">
+                  <span>Şirkət</span>
+                  <input name="company" type="text" placeholder="Sifarişçi şirkət" required />
+                </label>
+                <label class="admin-field">
+                  <span>Şəhər / rayon</span>
+                  <input name="city" type="text" placeholder="Bakı, Abşeron..." />
+                </label>
+                <label class="admin-field">
+                  <span>Son tarix</span>
+                  <input name="deadline" type="date" />
+                </label>
+                <label class="admin-field">
+                  <span>Büdcə</span>
+                  <select name="budget">
+                    <option value="Açıq">Açıq</option>
+                    <option value="Ekonom">Ekonom</option>
+                    <option value="Standart">Standart</option>
+                    <option value="Premium">Premium</option>
+                    <option value="Topdansatış">Topdansatış</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Təchizatçı</span>
+                  <select name="supplierId" data-tender-supplier-select></select>
+                </label>
+              </div>
+              <label class="admin-field admin-field-wide">
+                <span>Lotlar</span>
+                <textarea name="lots" rows="6" placeholder="Sement M400,500,kisə&#10;Armatur 12 mm,3,ton&#10;Açar təslim təmir,120,m²"></textarea>
+              </label>
+              <label class="admin-field admin-field-wide">
+                <span>Təsvir</span>
+                <textarea name="description" rows="4" placeholder="Layihə şərtləri, çatdırılma, sertifikat, zəmanət və texniki tələblər"></textarea>
+              </label>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Tender yarat</button>
+                <button class="button button-secondary" type="button" data-tender-clear>Formu təmizlə</button>
+              </div>
+              <p class="admin-import-status" data-tender-status>Tenderlər lokal saxlanır və backup JSON-a daxil edilə bilər.</p>
+            </form>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Tenderlər</p>
+                <h2>Aktiv tender siyahısı</h2>
+              </div>
+              <select class="table-select" data-tender-status-filter></select>
+            </div>
+            <div class="tender-grid" data-tender-list></div>
+            <div class="empty-state glass" data-tender-empty hidden>
+              <strong>Tender yoxdur.</strong>
+              <span>Yeni tender yarat və lotları supplier-lərə göndər.</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

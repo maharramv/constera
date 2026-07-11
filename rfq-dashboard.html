@@ -45,6 +45,7 @@
           <a href="suppliers.html">Təchizatçılar</a>
           <a href="rfq.html">RFQ</a>
           <a href="rfq-dashboard.html" aria-current="page">RFQ Panel</a>
+          <a href="tender.html">Tender</a>
           <a href="admin.html">Admin</a>
           <a class="button button-outline nav-cta" href="rfq.html">Yeni RFQ</a>
         </nav>
@@ -92,6 +93,55 @@
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
+                <p class="eyebrow">Təklif müqayisəsi</p>
+                <h2>Supplier təkliflərini RFQ üzrə əlavə et</h2>
+              </div>
+              <span class="data-badge">best offer</span>
+            </div>
+            <form class="admin-form" data-rfq-offer-form>
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>RFQ</span>
+                  <select name="rfqId" data-rfq-offer-rfq required></select>
+                </label>
+                <label class="admin-field">
+                  <span>Təchizatçı</span>
+                  <select name="supplierId" data-rfq-offer-supplier required></select>
+                </label>
+                <label class="admin-field">
+                  <span>Qiymət</span>
+                  <input name="price" type="text" placeholder="1250 AZN" required />
+                </label>
+                <label class="admin-field">
+                  <span>Müddət</span>
+                  <input name="leadTime" type="text" placeholder="2 gün / 3 həftə" />
+                </label>
+                <label class="admin-field">
+                  <span>Çatdırılma</span>
+                  <input name="delivery" type="text" placeholder="Daxildir / ayrıca" />
+                </label>
+                <label class="admin-field">
+                  <span>Zəmanət</span>
+                  <input name="warranty" type="text" placeholder="12 ay / yoxdur" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Qeyd</span>
+                  <textarea name="note" rows="2" placeholder="Ödəniş, stok, alternativ marka və digər şərtlər"></textarea>
+                </label>
+              </div>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Təklif əlavə et</button>
+                <button class="button button-secondary" type="button" data-rfq-offer-export>Teklifləri CSV export et</button>
+              </div>
+              <p class="admin-import-status" data-rfq-offer-status>
+                Təklif əlavə etdikdən sonra RFQ statusu avtomatik “Təklif gəldi” olacaq.
+              </p>
+            </form>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
                 <p class="eyebrow">Sorğular</p>
                 <h2>Lokal RFQ draftları</h2>
               </div>
@@ -107,6 +157,7 @@
                     <th>Şirkət</th>
                     <th>Təchizatçı</th>
                     <th>Prioritet</th>
+                    <th>Təkliflər</th>
                     <th>Əlaqə</th>
                     <th>Tarix</th>
                     <th>Status</th>

@@ -2173,6 +2173,40 @@ dd {
   box-shadow: 0 0 0 4px rgba(212, 166, 79, 0.1);
 }
 
+.tender-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.tender-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.tender-card .market-section-heading {
+  margin-bottom: 0;
+}
+
+.tender-lot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tender-lot-list span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(212, 166, 79, 0.26);
+  border-radius: 999px;
+  color: #f6d78d;
+  background: rgba(212, 166, 79, 0.1);
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .rfq-guide {
   display: grid;
   gap: 14px;

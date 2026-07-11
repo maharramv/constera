@@ -63,6 +63,7 @@ const adminBackupKeys = [
   adminEntityConfigs.package.storageKey,
   adminEntityConfigs.rental.storageKey,
   "constera-rfq-drafts",
+  "constera-tenders",
   "constera-favorites",
   "constera-compare"
 ];
@@ -1619,6 +1620,7 @@ const renderAdmin = () => {
   const backupProducts = document.querySelector("[data-backup-products]");
   const backupSuppliers = document.querySelector("[data-backup-suppliers]");
   const backupRfq = document.querySelector("[data-backup-rfq]");
+  const backupTenders = document.querySelector("[data-backup-tenders]");
   const backupEntities = document.querySelector("[data-backup-entities]");
 
   const setActiveAdminTab = (tabName) => {
@@ -1650,6 +1652,7 @@ const renderAdmin = () => {
     if (backupProducts) backupProducts.textContent = getAdminProducts().length;
     if (backupSuppliers) backupSuppliers.textContent = getAdminSuppliers().length;
     if (backupRfq) backupRfq.textContent = storage.read("constera-rfq-drafts").length;
+    if (backupTenders) backupTenders.textContent = storage.read("constera-tenders").length;
     if (backupEntities) {
       backupEntities.textContent = getAdminEntityItems("service").length +
         getAdminEntityItems("package").length +
@@ -2346,6 +2349,11 @@ const renderRfqDashboard = () => {
   const typeFilter = document.querySelector("[data-rfq-type-filter]");
   const supplierFilter = document.querySelector("[data-rfq-supplier-filter]");
   const exportButton = document.querySelector("[data-rfq-export]");
+  const offerForm = document.querySelector("[data-rfq-offer-form]");
+  const offerRfqSelect = document.querySelector("[data-rfq-offer-rfq]");
+  const offerSupplierSelect = document.querySelector("[data-rfq-offer-supplier]");
+  const offerStatus = document.querySelector("[data-rfq-offer-status]");
+  const offerExportButton = document.querySelector("[data-rfq-offer-export]");
   if (!stats || !rows) return;
 
   const typeLabels = {
@@ -2360,6 +2368,29 @@ const renderRfqDashboard = () => {
     <option value="">Açıq RFQ</option>
     ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
   `;
+  const parseOfferPrice = (price) => {
+    const normalizedPrice = String(price || "")
+      .replace(/\s+/g, "")
+      .replace(/azn|manat/gi, "")
+      .replace(",", ".");
+    const match = normalizedPrice.match(/\d+(\.\d+)?/);
+    return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+  };
+  const getBestOffer = (draft) => {
+    const offers = Array.isArray(draft.offers) ? draft.offers : [];
+    return [...offers].sort((a, b) => parseOfferPrice(a.price) - parseOfferPrice(b.price))[0];
+  };
+  const renderOfferText = (draft) => {
+    const offers = Array.isArray(draft.offers) ? draft.offers : [];
+    const bestOffer = getBestOffer(draft);
+    if (!bestOffer) {
+      return `<span class="status-pill">0 təklif</span>`;
+    }
+    return `
+      <strong>${escapeHtml(bestOffer.price || "Qiymət yoxdur")}</strong>
+      <small>${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif</small>
+    `;
+  };
 
   const getDrafts = () => {
     let changed = false;
@@ -2371,13 +2402,29 @@ const renderRfqDashboard = () => {
         supplierId: draft.supplierId || "",
         supplier: draft.supplier || "Açıq RFQ",
         priority: draft.priority || "Normal",
+        offers: Array.isArray(draft.offers) ? draft.offers : [],
         ...draft
       };
-      if (!draft.id || !draft.type || !draft.status || draft.supplierId === undefined || !draft.priority) changed = true;
+      if (!draft.id || !draft.type || !draft.status || draft.supplierId === undefined || !draft.priority || !Array.isArray(draft.offers)) changed = true;
       return next;
     });
     if (changed) storage.write("constera-rfq-drafts", drafts);
     return drafts;
+  };
+
+  const renderOfferControls = (drafts) => {
+    if (offerRfqSelect) {
+      offerRfqSelect.innerHTML = `
+        <option value="">RFQ seç</option>
+        ${drafts.map((draft) => `<option value="${escapeAttr(draft.id)}">${escapeHtml(draft.product || "Sərbəst sorğu")} · ${escapeHtml(draft.company || "şirkət yoxdur")}</option>`).join("")}
+      `;
+    }
+    if (offerSupplierSelect) {
+      offerSupplierSelect.innerHTML = `
+        <option value="">Təchizatçı seç</option>
+        ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
+      `;
+    }
   };
 
   const updateDraft = (id, patch) => {
@@ -2387,26 +2434,52 @@ const renderRfqDashboard = () => {
   };
 
   const exportDrafts = (drafts) => {
-    const headers = ["id", "status", "tip", "sorğu", "miqdar", "şirkət", "təchizatçı", "prioritet", "əlaqə", "tarix", "büdcə", "qeyd"];
-    const csv = [headers.join(","), ...drafts.map((draft) => [
-      draft.id,
-      draft.status,
-      typeLabels[draft.type] || draft.type,
-      draft.product,
-      draft.quantity,
-      draft.company,
-      draft.supplier,
-      draft.priority,
-      draft.contact,
-      draft.needDate,
-      draft.budget,
-      draft.note || draft.usage
-    ].map(escapeCsvValue).join(","))].join("\n");
+    const headers = ["id", "status", "tip", "sorğu", "miqdar", "şirkət", "təchizatçı", "prioritet", "ən yaxşı təklif", "əlaqə", "tarix", "büdcə", "qeyd"];
+    const csv = [headers.join(","), ...drafts.map((draft) => {
+      const bestOffer = getBestOffer(draft);
+      return [
+        draft.id,
+        draft.status,
+        typeLabels[draft.type] || draft.type,
+        draft.product,
+        draft.quantity,
+        draft.company,
+        draft.supplier,
+        draft.priority,
+        bestOffer ? `${bestOffer.supplier}: ${bestOffer.price}` : "",
+        draft.contact,
+        draft.needDate,
+        draft.budget,
+        draft.note || draft.usage
+      ].map(escapeCsvValue).join(",");
+    })].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `constera-rfq-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const exportOffers = (drafts) => {
+    const headers = ["rfq id", "sorğu", "supplier", "qiymət", "müddət", "çatdırılma", "zəmanət", "qeyd"];
+    const rowsForOffers = drafts.flatMap((draft) =>
+      (draft.offers || []).map((offer) => [
+        draft.id,
+        draft.product,
+        offer.supplier,
+        offer.price,
+        offer.leadTime,
+        offer.delivery,
+        offer.warranty,
+        offer.note
+      ].map(escapeCsvValue).join(","))
+    );
+    const blob = new Blob([[headers.join(","), ...rowsForOffers].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `constera-rfq-offers-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -2428,12 +2501,14 @@ const renderRfqDashboard = () => {
       acc[status] = drafts.filter((draft) => draft.status === status).length;
       return acc;
     }, {});
+    const offerCount = drafts.reduce((sum, draft) => sum + (draft.offers || []).length, 0);
 
     stats.innerHTML = `
       <article class="stat-card"><span class="stat-value">${drafts.length}</span><p>ümumi RFQ</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Yeni"] || 0}</span><p>yeni sorğu</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Cavab gözləyir"] || 0}</span><p>cavab gözləyir</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Təklif gəldi"] || 0}</span><p>təklif gəldi</p></article>
+      <article class="stat-card"><span class="stat-value">${offerCount}</span><p>supplier təklifi</p></article>
       <article class="stat-card"><span class="stat-value">${drafts.filter((draft) => draft.supplierId).length}</span><p>təyin olunub</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Bağlandı"] || 0}</span><p>bağlandı</p></article>
     `;
@@ -2453,6 +2528,7 @@ const renderRfqDashboard = () => {
           </select>
         </td>
         <td data-label="Prioritet"><span class="status-pill">${escapeHtml(draft.priority || "Normal")}</span></td>
+        <td data-label="Təkliflər">${renderOfferText(draft)}</td>
         <td data-label="Əlaqə">${escapeHtml(draft.contact || "Əlaqə yoxdur")}</td>
         <td data-label="Tarix">${escapeHtml(draft.needDate || "Açıq")}</td>
         <td data-label="Status"><span class="status-pill">${escapeHtml(draft.status)}</span></td>
@@ -2470,6 +2546,7 @@ const renderRfqDashboard = () => {
       if (draft) select.value = draft.supplierId || "";
     });
     if (empty) empty.hidden = filtered.length > 0;
+    renderOfferControls(drafts);
   };
 
   if (statusFilter) {
@@ -2492,6 +2569,37 @@ const renderRfqDashboard = () => {
     supplierFilter.addEventListener("change", render);
   }
   exportButton?.addEventListener("click", () => exportDrafts(getDrafts()));
+  offerExportButton?.addEventListener("click", () => exportOffers(getDrafts()));
+  offerForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = new FormData(offerForm);
+    const rfqId = String(data.get("rfqId") || "");
+    const supplierId = String(data.get("supplierId") || "");
+    const supplier = (marketplace.suppliers || []).find((item) => item.id === supplierId);
+    const draft = getDrafts().find((item) => item.id === rfqId);
+    if (!draft || !supplier) {
+      if (offerStatus) offerStatus.textContent = "RFQ və təchizatçı seçilməlidir.";
+      return;
+    }
+    const offer = {
+      id: `offer-${Date.now()}`,
+      supplierId,
+      supplier: supplier.name,
+      price: data.get("price"),
+      leadTime: data.get("leadTime"),
+      delivery: data.get("delivery"),
+      warranty: data.get("warranty"),
+      note: data.get("note"),
+      createdAt: new Date().toISOString()
+    };
+    updateDraft(rfqId, {
+      status: "Təklif gəldi",
+      offers: [...(draft.offers || []), offer]
+    });
+    offerForm.reset();
+    if (offerStatus) offerStatus.textContent = `${supplier.name} təklifi əlavə edildi.`;
+    render();
+  });
 
   rows.addEventListener("click", (event) => {
     const button = event.target.closest("[data-rfq-status]");
@@ -2511,6 +2619,161 @@ const renderRfqDashboard = () => {
     render();
   });
 
+  render();
+};
+
+const initTender = () => {
+  const form = document.querySelector("[data-tender-form]");
+  const list = document.querySelector("[data-tender-list]");
+  const empty = document.querySelector("[data-tender-empty]");
+  const stats = document.querySelector("[data-tender-stats]");
+  const statusFilter = document.querySelector("[data-tender-status-filter]");
+  const supplierSelect = document.querySelector("[data-tender-supplier-select]");
+  const exportButton = document.querySelector("[data-tender-export]");
+  const clearButton = document.querySelector("[data-tender-clear]");
+  const statusOutput = document.querySelector("[data-tender-status]");
+  if (!form || !list) return;
+
+  const statusList = ["Yeni", "Supplier-lərə göndərildi", "Təklif toplanır", "Qiymətləndirmə", "Qalib seçildi", "Bağlandı"];
+  const getTenders = () => storage.read("constera-tenders").map((tender, index) => ({
+    id: tender.id || `tender-migrated-${index}`,
+    status: tender.status || "Yeni",
+    lots: Array.isArray(tender.lots) ? tender.lots : [],
+    createdAt: tender.createdAt || new Date().toISOString(),
+    ...tender
+  }));
+  const saveTenders = (tenders) => storage.write("constera-tenders", tenders);
+  const parseLots = (value) => String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(/[,;\t]/).map((part) => part.trim());
+      return {
+        name: parts[0] || "Lot",
+        quantity: parts[1] || "1",
+        unit: parts[2] || "ədəd"
+      };
+    });
+  const supplierName = (id) => (marketplace.suppliers || []).find((supplier) => supplier.id === id)?.name || "Açıq tender";
+  const updateTender = (id, patch) => {
+    const tenders = getTenders().map((tender) => tender.id === id ? { ...tender, ...patch } : tender);
+    saveTenders(tenders);
+    return tenders;
+  };
+  const exportTenders = (tenders) => {
+    const headers = ["id", "status", "tender", "şirkət", "şəhər", "supplier", "deadline", "budget", "lot sayı", "təsvir"];
+    const csv = [headers.join(","), ...tenders.map((tender) => [
+      tender.id,
+      tender.status,
+      tender.title,
+      tender.company,
+      tender.city,
+      tender.supplier,
+      tender.deadline,
+      tender.budget,
+      (tender.lots || []).length,
+      tender.description
+    ].map(escapeCsvValue).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `constera-tenders-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (supplierSelect) {
+    supplierSelect.innerHTML = `
+      <option value="">Açıq tender - hamıya göndər</option>
+      ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
+    `;
+  }
+  if (statusFilter) {
+    statusFilter.innerHTML = `<option value="all">Bütün tenderlər</option>${statusList.map((status) => `<option value="${escapeAttr(status)}">${escapeHtml(status)}</option>`).join("")}`;
+  }
+
+  const render = () => {
+    const tenders = getTenders();
+    const activeStatus = statusFilter?.value || "all";
+    const filtered = tenders.filter((tender) => activeStatus === "all" || tender.status === activeStatus);
+    const lotCount = tenders.reduce((sum, tender) => sum + (tender.lots || []).length, 0);
+
+    if (stats) {
+      stats.innerHTML = `
+        <article class="stat-card"><span class="stat-value">${tenders.length}</span><p>tender</p></article>
+        <article class="stat-card"><span class="stat-value">${lotCount}</span><p>lot</p></article>
+        <article class="stat-card"><span class="stat-value">${tenders.filter((tender) => tender.status === "Təklif toplanır").length}</span><p>təklif toplanır</p></article>
+        <article class="stat-card"><span class="stat-value">${tenders.filter((tender) => tender.status === "Qalib seçildi").length}</span><p>qalib seçildi</p></article>
+      `;
+    }
+
+    list.innerHTML = filtered.map((tender) => `
+      <article class="tender-card glass">
+        <div class="market-section-heading">
+          <div>
+            <p class="eyebrow">${escapeHtml(tender.status)}</p>
+            <h2>${escapeHtml(tender.title)}</h2>
+          </div>
+          <span class="data-badge">${(tender.lots || []).length} lot</span>
+        </div>
+        <dl class="supplier-list">
+          <div><dt>Şirkət</dt><dd>${escapeHtml(tender.company)}</dd></div>
+          <div><dt>Şəhər</dt><dd>${escapeHtml(tender.city || "Açıq")}</dd></div>
+          <div><dt>Son tarix</dt><dd>${escapeHtml(tender.deadline || "Açıq")}</dd></div>
+          <div><dt>Büdcə</dt><dd>${escapeHtml(tender.budget || "Açıq")}</dd></div>
+          <div><dt>Təchizatçı</dt><dd>${escapeHtml(tender.supplier || "Açıq tender")}</dd></div>
+        </dl>
+        <p class="admin-import-status">${escapeHtml(tender.description || "Əlavə təsvir yoxdur.")}</p>
+        <div class="tender-lot-list">
+          ${(tender.lots || []).map((lot) => `
+            <span>${escapeHtml(lot.name)} · ${escapeHtml(lot.quantity)} ${escapeHtml(lot.unit)}</span>
+          `).join("")}
+        </div>
+        <div class="status-actions">
+          ${statusList.map((status) => `<button type="button" data-tender-status="${escapeAttr(status)}" data-tender-id="${escapeAttr(tender.id)}">${escapeHtml(status)}</button>`).join("")}
+        </div>
+      </article>
+    `).join("");
+    if (empty) empty.hidden = filtered.length > 0;
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const tender = {
+      id: `tender-${Date.now()}`,
+      title: data.title,
+      company: data.company,
+      city: data.city,
+      deadline: data.deadline,
+      budget: data.budget,
+      supplierId: data.supplierId || "",
+      supplier: supplierName(data.supplierId),
+      description: data.description,
+      lots: parseLots(data.lots),
+      status: data.supplierId ? "Supplier-lərə göndərildi" : "Yeni",
+      createdAt: new Date().toISOString()
+    };
+    saveTenders([tender, ...getTenders()].slice(0, 40));
+    form.reset();
+    if (supplierSelect) supplierSelect.value = "";
+    if (statusOutput) statusOutput.textContent = `${tender.title} tenderi yaradıldı.`;
+    render();
+  });
+  clearButton?.addEventListener("click", () => {
+    form.reset();
+    if (statusOutput) statusOutput.textContent = "Forma təmizləndi.";
+  });
+  exportButton?.addEventListener("click", () => exportTenders(getTenders()));
+  statusFilter?.addEventListener("change", render);
+  list.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-tender-status]");
+    if (!button) return;
+    updateTender(button.dataset.tenderId, { status: button.dataset.tenderStatus });
+    render();
+  });
   render();
 };
 
@@ -2645,6 +2908,7 @@ renderTaxonomyDetail();
 renderAdmin();
 initRfq();
 renderRfqDashboard();
+initTender();
 initServiceCalculator();
 initPackageCalculator();
 initRentalCalculator();
