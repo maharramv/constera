@@ -29,6 +29,7 @@ const storage = {
 };
 
 const adminProductStorageKey = "constera-admin-products";
+const adminSupplierStorageKey = "constera-admin-suppliers";
 const adminEntityConfigs = {
   service: {
     storageKey: "constera-admin-services",
@@ -132,6 +133,23 @@ const findEntitySubcategoryByInput = (entityType, categoryId, value) => {
 };
 const getAdminProducts = () => storage.read(adminProductStorageKey);
 const saveAdminProducts = (products) => storage.write(adminProductStorageKey, products);
+const getAdminSuppliers = () => storage.read(adminSupplierStorageKey);
+const saveAdminSuppliers = (suppliers) => storage.write(adminSupplierStorageKey, suppliers);
+const ensureAdminSupplierShape = (supplier, index = 0) => {
+  const name = supplier.name || "Yeni təchizatçı";
+  return {
+    id: supplier.id || `admin-supplier-${createSlug(name)}-${String(index + 1).padStart(3, "0")}`,
+    name,
+    type: supplier.type || "Təchizatçı",
+    focus: supplier.focus || "Material, xidmət və RFQ təklifləri",
+    website: supplier.website || "",
+    status: supplier.status || "Aktiv",
+    region: supplier.region || "Azərbaycan",
+    contact: supplier.contact || "",
+    rating: supplier.rating || "Yeni",
+    responseTime: supplier.responseTime || "RFQ əsasında"
+  };
+};
 const ensureAdminEntityShape = (entityType, item, index = 0) => {
   const config = getEntityConfig(entityType);
   const categories = getEntityCategories(entityType);
@@ -237,6 +255,28 @@ const syncAdminProductOverlay = () => {
     }
   });
 };
+const syncAdminSupplierOverlay = () => {
+  const adminSuppliers = getAdminSuppliers().map(ensureAdminSupplierShape);
+  if (!adminSuppliers.length) return;
+
+  const overlayById = new Map(adminSuppliers.map((supplier) => [supplier.id, supplier]));
+  const overlayByName = new Map(adminSuppliers.map((supplier) => [normalize(supplier.name), supplier]));
+  const usedIds = new Set();
+
+  marketplace.suppliers = (marketplace.suppliers || []).map((supplier) => {
+    const overlay = overlayById.get(supplier.id) || overlayByName.get(normalize(supplier.name));
+    if (!overlay) return supplier;
+    usedIds.add(overlay.id);
+    return { ...supplier, ...overlay };
+  });
+
+  adminSuppliers.forEach((supplier) => {
+    const exists = (marketplace.suppliers || []).some((item) =>
+      item.id === supplier.id || normalize(item.name) === normalize(supplier.name)
+    );
+    if (!usedIds.has(supplier.id) && !exists) marketplace.suppliers.push(supplier);
+  });
+};
 const syncAdminEntityOverlay = (entityType) => {
   const adminItems = getAdminEntityItems(entityType).map((item, index) => ensureAdminEntityShape(entityType, item, index));
   if (!adminItems.length) return;
@@ -299,6 +339,7 @@ const getFilteredSubcategoryCount = (items, categoryId, subcategory) =>
 const getQueryParam = (name) => new URLSearchParams(window.location.search).get(name);
 
 syncAdminProductOverlay();
+syncAdminSupplierOverlay();
 ["service", "package", "rental"].forEach(syncAdminEntityOverlay);
 
 const renderDetailFallback = (container, title, backHref) => {
@@ -613,6 +654,9 @@ const renderSuppliers = () => {
         <div><dt>Region</dt><dd>${escapeHtml(supplier.region)}</dd></div>
         <div><dt>Vəziyyət</dt><dd>${escapeHtml(supplier.status)}</dd></div>
         <div><dt>Sayt</dt><dd>${escapeHtml(supplier.website)}</dd></div>
+        <div><dt>Əlaqə</dt><dd>${escapeHtml(supplier.contact || "RFQ ilə")}</dd></div>
+        <div><dt>Reytinq</dt><dd>${escapeHtml(supplier.rating || "Yeni")}</dd></div>
+        <div><dt>Cavab</dt><dd>${escapeHtml(supplier.responseTime || "RFQ əsasında")}</dd></div>
       </dl>
       <a class="button button-secondary" href="rfq.html?supplier=${encodeURIComponent(supplier.id)}">Təklif sorğusu</a>
     </article>
@@ -1524,6 +1568,7 @@ const renderAdmin = () => {
   const stats = document.querySelector("[data-admin-stats]");
   const productRows = document.querySelector("[data-admin-products]");
   const categoryRows = document.querySelector("[data-admin-categories]");
+  const supplierRows = document.querySelector("[data-admin-suppliers]");
   const serviceRows = document.querySelector("[data-admin-services]");
   const packageRows = document.querySelector("[data-admin-packages]");
   const rentalRows = document.querySelector("[data-admin-rentals]");
@@ -1541,6 +1586,9 @@ const renderAdmin = () => {
   const productPriceFilter = document.querySelector("[data-admin-product-price-status]");
   const productCount = document.querySelector("[data-admin-product-count]");
   const brandList = document.querySelector("#admin-brand-list");
+  const supplierForm = document.querySelector("[data-admin-supplier-form]");
+  const clearSupplierFormButton = document.querySelector("[data-admin-clear-supplier-form]");
+  const resetSuppliersButton = document.querySelector("[data-admin-reset-suppliers]");
   const entityForm = document.querySelector("[data-admin-entity-form]");
   const entityTypeSelect = document.querySelector("[data-admin-entity-type]");
   const entityCategorySelect = document.querySelector("[data-admin-entity-category]");
@@ -1559,6 +1607,7 @@ const renderAdmin = () => {
     ).length;
     const withImages = marketplace.products.filter((product) => product.imageUrl).length;
     const adminChanges = getAdminProducts().length +
+      getAdminSuppliers().length +
       getAdminEntityItems("service").length +
       getAdminEntityItems("package").length +
       getAdminEntityItems("rental").length;
@@ -1697,6 +1746,57 @@ const renderAdmin = () => {
     renderCategoryRows();
   };
 
+  const setSupplierFormField = (name, value) => {
+    const field = supplierForm?.elements.namedItem(name);
+    if (field) field.value = value || "";
+  };
+
+  const fillSupplierForm = (supplier = {}) => {
+    if (!supplierForm) return;
+    supplierForm.reset();
+    const shaped = supplier.id ? ensureAdminSupplierShape(supplier) : supplier;
+    setSupplierFormField("id", shaped.id);
+    setSupplierFormField("name", shaped.name);
+    setSupplierFormField("type", shaped.type);
+    setSupplierFormField("region", shaped.region);
+    setSupplierFormField("status", shaped.status);
+    setSupplierFormField("website", shaped.website);
+    setSupplierFormField("contact", shaped.contact);
+    setSupplierFormField("rating", shaped.rating);
+    setSupplierFormField("responseTime", shaped.responseTime);
+    setSupplierFormField("focus", shaped.focus);
+  };
+
+  const renderSupplierRows = () => {
+    if (!supplierRows) return;
+    supplierRows.innerHTML = (marketplace.suppliers || []).map((supplier) => `
+      <tr>
+        <td>
+          <strong>${escapeHtml(supplier.name)}</strong>
+          <small>${escapeHtml(supplier.website || supplier.contact || "Əlaqə əlavə olunmayıb")}</small>
+        </td>
+        <td>${escapeHtml(supplier.type)}</td>
+        <td>${escapeHtml(supplier.region)}</td>
+        <td><span class="status-pill">${escapeHtml(supplier.status)}</span></td>
+        <td>${escapeHtml(supplier.responseTime || "RFQ əsasında")}</td>
+        <td><button class="table-action" type="button" data-admin-edit-supplier="${escapeAttr(supplier.id)}">Redaktə et</button></td>
+      </tr>
+    `).join("");
+  };
+
+  const upsertSupplierInMemory = (supplier) => {
+    const suppliers = marketplace.suppliers || [];
+    const existingIndex = suppliers.findIndex((item) =>
+      item.id === supplier.id || normalize(item.name) === normalize(supplier.name)
+    );
+    if (existingIndex >= 0) {
+      suppliers[existingIndex] = { ...suppliers[existingIndex], ...supplier };
+    } else {
+      suppliers.push(supplier);
+    }
+    marketplace.suppliers = suppliers;
+  };
+
   const getCurrentEntityType = () => entityTypeSelect?.value || "service";
 
   const renderEntityCategoryOptions = (entityType = getCurrentEntityType()) => {
@@ -1799,6 +1899,7 @@ const renderAdmin = () => {
   }
   renderProductRows();
   renderCategoryRows();
+  renderSupplierRows();
   renderEntityCategoryOptions();
   updateEntitySubcategories();
   rerenderAdminEntities();
@@ -1875,6 +1976,42 @@ const renderAdmin = () => {
     const exported = productsToCsv(getFilteredAdminProducts());
     if (csvInput) csvInput.value = exported;
     if (importStatus) importStatus.textContent = "Cari filtrə uyğun məhsullar CSV kimi hazırlandı.";
+  });
+
+  supplierRows?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-admin-edit-supplier]");
+    if (!button) return;
+    const supplier = (marketplace.suppliers || []).find((item) => item.id === button.dataset.adminEditSupplier);
+    if (!supplier) return;
+    fillSupplierForm(supplier);
+    supplierForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  clearSupplierFormButton?.addEventListener("click", () => fillSupplierForm());
+  resetSuppliersButton?.addEventListener("click", () => {
+    saveAdminSuppliers([]);
+    if (importStatus) importStatus.textContent = "Lokal təchizatçı düzəlişləri silindi. Səhifə yenilənir.";
+    window.location.reload();
+  });
+  supplierForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(supplierForm).entries());
+    const existing = (marketplace.suppliers || []).find((supplier) =>
+      (fields.id && supplier.id === fields.id) || normalize(supplier.name) === normalize(fields.name)
+    );
+    const shaped = ensureAdminSupplierShape({
+      ...fields,
+      id: fields.id || existing?.id || ""
+    }, getAdminSuppliers().length);
+    const nextAdminSuppliers = getAdminSuppliers().filter((supplier) =>
+      supplier.id !== shaped.id && normalize(supplier.name) !== normalize(shaped.name)
+    );
+    saveAdminSuppliers([...nextAdminSuppliers, shaped]);
+    upsertSupplierInMemory(shaped);
+    renderStats();
+    renderSupplierRows();
+    fillSupplierForm();
+    if (importStatus) importStatus.textContent = `${shaped.name} təchizatçı panelinə əlavə edildi.`;
   });
 
   entityTypeSelect?.addEventListener("change", () => {
@@ -1966,6 +2103,7 @@ const initRfq = () => {
   const form = document.querySelector("[data-rfq-form]");
   const output = document.querySelector("[data-rfq-output]");
   const productSelect = document.querySelector("[data-product-select]");
+  const supplierSelect = document.querySelector("[data-rfq-supplier-select]");
   if (!form || !output || !productSelect) return;
 
   const serviceOptions = (marketplace.serviceCategories || [])
@@ -2006,6 +2144,14 @@ const initRfq = () => {
     ${packageOptions}
     ${rentalOptions}
   `;
+  if (supplierSelect) {
+    supplierSelect.innerHTML = `
+      <option value="">Açıq RFQ - bütün uyğun təchizatçılar</option>
+      ${(marketplace.suppliers || []).map((supplier) => `
+        <option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)} — ${escapeHtml(supplier.focus)}</option>
+      `).join("")}
+    `;
+  }
 
   const params = new URLSearchParams(window.location.search);
   const productId = params.get("product");
@@ -2024,6 +2170,10 @@ const initRfq = () => {
   if (rentalId && (marketplace.rentals || []).some((rental) => rental.id === rentalId)) {
     productSelect.value = `rental:${rentalId}`;
   }
+  const supplierId = params.get("supplier");
+  if (supplierSelect && supplierId && (marketplace.suppliers || []).some((supplier) => supplier.id === supplierId)) {
+    supplierSelect.value = supplierId;
+  }
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -2034,11 +2184,16 @@ const initRfq = () => {
     const selectedService = (marketplace.services || []).find((service) => selectedType === "service" && service.id === selectedId);
     const selectedPackage = (marketplace.packages || []).find((pack) => selectedType === "package" && pack.id === selectedId);
     const selectedRental = (marketplace.rentals || []).find((rental) => selectedType === "rental" && rental.id === selectedId);
+    const selectedSupplierId = String(data.get("supplierId") || "");
+    const selectedSupplier = (marketplace.suppliers || []).find((supplier) => supplier.id === selectedSupplierId);
     const rfq = {
       id: `rfq-${Date.now()}`,
       type: selectedType || "custom",
       sourceId: selectedId || "",
       status: "Yeni",
+      supplierId: selectedSupplierId,
+      supplier: selectedSupplier?.name || "Açıq RFQ",
+      priority: data.get("priority") || "Normal",
       product: selectedProduct?.name || selectedService?.title || selectedPackage?.title || selectedRental?.name || data.get("customProduct"),
       quantity: data.get("quantity"),
       needDate: data.get("needDate"),
@@ -2060,7 +2215,7 @@ const initRfq = () => {
     output.innerHTML = `
       <strong>RFQ draftı hazırdır.</strong>
       <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
-      <span>${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")} · ${escapeHtml(rfq.budget || "büdcə yazılmayıb")}</span>
+      <span>${escapeHtml(rfq.supplier)} · ${escapeHtml(rfq.priority)} · ${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")}</span>
       <a class="button button-secondary" href="rfq-dashboard.html">RFQ paneldə aç</a>
       <small>Bu demo versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
     `;
@@ -2073,6 +2228,8 @@ const renderRfqDashboard = () => {
   const empty = document.querySelector("[data-rfq-dashboard-empty]");
   const statusFilter = document.querySelector("[data-rfq-status-filter]");
   const typeFilter = document.querySelector("[data-rfq-type-filter]");
+  const supplierFilter = document.querySelector("[data-rfq-supplier-filter]");
+  const exportButton = document.querySelector("[data-rfq-export]");
   if (!stats || !rows) return;
 
   const typeLabels = {
@@ -2082,7 +2239,11 @@ const renderRfqDashboard = () => {
     rental: "İcarə",
     custom: "Sərbəst"
   };
-  const statusList = ["Yeni", "Cavab gözləyir", "Təklif gəldi", "Bağlandı"];
+  const statusList = ["Yeni", "Təchizatçıya göndərildi", "Cavab gözləyir", "Təklif gəldi", "Qiymət müqayisəsi", "Təsdiqləndi", "Bağlandı"];
+  const supplierOptions = () => `
+    <option value="">Açıq RFQ</option>
+    ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
+  `;
 
   const getDrafts = () => {
     let changed = false;
@@ -2091,23 +2252,61 @@ const renderRfqDashboard = () => {
         id: draft.id || `rfq-migrated-${index}-${Date.parse(draft.createdAt || "") || index}`,
         type: draft.type || "custom",
         status: draft.status || "Yeni",
+        supplierId: draft.supplierId || "",
+        supplier: draft.supplier || "Açıq RFQ",
+        priority: draft.priority || "Normal",
         ...draft
       };
-      if (!draft.id || !draft.type || !draft.status) changed = true;
+      if (!draft.id || !draft.type || !draft.status || draft.supplierId === undefined || !draft.priority) changed = true;
       return next;
     });
     if (changed) storage.write("constera-rfq-drafts", drafts);
     return drafts;
   };
 
+  const updateDraft = (id, patch) => {
+    const drafts = getDrafts().map((draft) => draft.id === id ? { ...draft, ...patch } : draft);
+    storage.write("constera-rfq-drafts", drafts);
+    return drafts;
+  };
+
+  const exportDrafts = (drafts) => {
+    const headers = ["id", "status", "tip", "sorğu", "miqdar", "şirkət", "təchizatçı", "prioritet", "əlaqə", "tarix", "büdcə", "qeyd"];
+    const csv = [headers.join(","), ...drafts.map((draft) => [
+      draft.id,
+      draft.status,
+      typeLabels[draft.type] || draft.type,
+      draft.product,
+      draft.quantity,
+      draft.company,
+      draft.supplier,
+      draft.priority,
+      draft.contact,
+      draft.needDate,
+      draft.budget,
+      draft.note || draft.usage
+    ].map(escapeCsvValue).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `constera-rfq-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const render = () => {
     const drafts = getDrafts();
     const activeStatus = statusFilter?.value || "all";
     const activeType = typeFilter?.value || "all";
+    const activeSupplier = supplierFilter?.value || "all";
     const filtered = drafts.filter((draft) => {
       const matchesStatus = activeStatus === "all" || draft.status === activeStatus;
       const matchesType = activeType === "all" || draft.type === activeType;
-      return matchesStatus && matchesType;
+      const matchesSupplier = activeSupplier === "all" ||
+        (activeSupplier === "open" && !draft.supplierId) ||
+        draft.supplierId === activeSupplier;
+      return matchesStatus && matchesType && matchesSupplier;
     });
     const counts = statusList.reduce((acc, status) => {
       acc[status] = drafts.filter((draft) => draft.status === status).length;
@@ -2119,6 +2318,7 @@ const renderRfqDashboard = () => {
       <article class="stat-card"><span class="stat-value">${counts["Yeni"] || 0}</span><p>yeni sorğu</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Cavab gözləyir"] || 0}</span><p>cavab gözləyir</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Təklif gəldi"] || 0}</span><p>təklif gəldi</p></article>
+      <article class="stat-card"><span class="stat-value">${drafts.filter((draft) => draft.supplierId).length}</span><p>təyin olunub</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Bağlandı"] || 0}</span><p>bağlandı</p></article>
     `;
 
@@ -2131,6 +2331,12 @@ const renderRfqDashboard = () => {
         <td data-label="Tip">${escapeHtml(typeLabels[draft.type] || "Sərbəst")}</td>
         <td data-label="Miqdar">${escapeHtml(draft.quantity || "Yazılmayıb")}</td>
         <td data-label="Şirkət">${escapeHtml(draft.company || "Şirkət yoxdur")}</td>
+        <td data-label="Təchizatçı">
+          <select class="table-select" data-rfq-supplier="${escapeAttr(draft.id)}">
+            ${supplierOptions()}
+          </select>
+        </td>
+        <td data-label="Prioritet"><span class="status-pill">${escapeHtml(draft.priority || "Normal")}</span></td>
         <td data-label="Əlaqə">${escapeHtml(draft.contact || "Əlaqə yoxdur")}</td>
         <td data-label="Tarix">${escapeHtml(draft.needDate || "Açıq")}</td>
         <td data-label="Status"><span class="status-pill">${escapeHtml(draft.status)}</span></td>
@@ -2143,6 +2349,10 @@ const renderRfqDashboard = () => {
         </td>
       </tr>
     `).join("");
+    rows.querySelectorAll("[data-rfq-supplier]").forEach((select) => {
+      const draft = filtered.find((item) => item.id === select.dataset.rfqSupplier);
+      if (draft) select.value = draft.supplierId || "";
+    });
     if (empty) empty.hidden = filtered.length > 0;
   };
 
@@ -2157,14 +2367,31 @@ const renderRfqDashboard = () => {
     `;
     typeFilter.addEventListener("change", render);
   }
+  if (supplierFilter) {
+    supplierFilter.innerHTML = `
+      <option value="all">Bütün təchizatçılar</option>
+      <option value="open">Açıq RFQ</option>
+      ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
+    `;
+    supplierFilter.addEventListener("change", render);
+  }
+  exportButton?.addEventListener("click", () => exportDrafts(getDrafts()));
 
   rows.addEventListener("click", (event) => {
     const button = event.target.closest("[data-rfq-status]");
     if (!button) return;
-    const drafts = getDrafts().map((draft) => draft.id === button.dataset.rfqId
-      ? { ...draft, status: button.dataset.rfqStatus }
-      : draft);
-    storage.write("constera-rfq-drafts", drafts);
+    updateDraft(button.dataset.rfqId, { status: button.dataset.rfqStatus });
+    render();
+  });
+  rows.addEventListener("change", (event) => {
+    const select = event.target.closest("[data-rfq-supplier]");
+    if (!select) return;
+    const supplier = (marketplace.suppliers || []).find((item) => item.id === select.value);
+    updateDraft(select.dataset.rfqSupplier, {
+      supplierId: select.value,
+      supplier: supplier?.name || "Açıq RFQ",
+      status: select.value ? "Təchizatçıya göndərildi" : "Yeni"
+    });
     render();
   });
 

@@ -2132,8 +2132,9 @@ dd {
 
 .dashboard-filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  align-items: end;
 }
 
 .dashboard-filter-grid label {
@@ -2151,6 +2152,25 @@ dd {
   outline: 0;
   padding: 0 16px;
   font: inherit;
+}
+
+.table-select {
+  width: 100%;
+  min-width: 180px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  outline: 0;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.table-select:focus {
+  border-color: rgba(212, 166, 79, 0.7);
+  box-shadow: 0 0 0 4px rgba(212, 166, 79, 0.1);
 }
 
 .rfq-guide {

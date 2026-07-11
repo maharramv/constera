@@ -283,6 +283,80 @@
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
+                <p class="eyebrow">Təchizatçı meneceri</p>
+                <h2>Supplier panel üçün şirkətləri idarə et</h2>
+              </div>
+              <a class="card-link" href="suppliers.html">Təchizatçılar səhifəsi</a>
+            </div>
+            <div class="admin-manager-grid">
+              <form class="admin-form" data-admin-supplier-form>
+                <input type="hidden" name="id" />
+                <div class="admin-form-grid">
+                  <label class="admin-field">
+                    <span>Şirkət</span>
+                    <input name="name" type="text" placeholder="Penguin Paints" required />
+                  </label>
+                  <label class="admin-field">
+                    <span>Tip</span>
+                    <input name="type" type="text" placeholder="İstehsalçı / Distribyutor / Briqada" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Region</span>
+                    <input name="region" type="text" placeholder="Bakı / Azərbaycan" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Status</span>
+                    <input name="status" type="text" placeholder="Aktiv / yoxlanılır / rəsmi kataloq" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Sayt</span>
+                    <input name="website" type="text" placeholder="www.example.az" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Əlaqə</span>
+                    <input name="contact" type="text" placeholder="+994..., email və ya WhatsApp" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Reytinq</span>
+                    <input name="rating" type="text" placeholder="Yeni / A / Premium" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Cavab müddəti</span>
+                    <input name="responseTime" type="text" placeholder="2 saat / 1 gün / RFQ əsasında" />
+                  </label>
+                </div>
+                <label class="admin-field admin-field-wide">
+                  <span>Fokus</span>
+                  <textarea name="focus" rows="3" placeholder="Boya, quru qarışıq, elektrik, ağır texnika, təmir briqadası..."></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="submit">Təchizatçını yadda saxla</button>
+                  <button class="button button-secondary" type="button" data-admin-clear-supplier-form>Formu təmizlə</button>
+                  <button class="button button-outline" type="button" data-admin-reset-suppliers>Lokal təchizatçıları sil</button>
+                </div>
+              </form>
+
+              <div class="table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Şirkət</th>
+                      <th>Tip</th>
+                      <th>Region</th>
+                      <th>Status</th>
+                      <th>RFQ</th>
+                      <th>Əməliyyat</th>
+                    </tr>
+                  </thead>
+                  <tbody data-admin-suppliers></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
                 <p class="eyebrow">Məhsullar</p>
                 <h2>İdarə olunan məhsul cədvəli</h2>
               </div>
