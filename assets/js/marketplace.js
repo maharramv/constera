@@ -20,9 +20,15 @@ const storage = {
     }
   },
   write(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // Local admin changes are optional in restricted/private browser modes.
+    }
   }
 };
+
+const adminProductStorageKey = "constera-admin-products";
 
 const getCategory = (id) => marketplace.categories.find((category) => category.id === id);
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
@@ -48,6 +54,88 @@ const countProductsBy = (field, value) =>
   marketplace.products.filter((product) => product[field] === value).length;
 const countItemsBy = (items, field, value) =>
   (items || []).filter((item) => item[field] === value).length;
+const createSlug = (value) =>
+  normalize(value)
+    .replace(/ə/g, "e")
+    .replace(/ö/g, "o")
+    .replace(/ü/g, "u")
+    .replace(/ı/g, "i")
+    .replace(/ğ/g, "g")
+    .replace(/ş/g, "s")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "item";
+const getProductKey = (product) => product?.id || product?.sku || product?.name;
+const normalizeSpecs = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
+  return String(value || "")
+    .split(/[;|]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+const findCategoryByInput = (value) => {
+  const normalized = normalize(value);
+  return marketplace.categories.find((category) =>
+    normalize(category.id) === normalized || normalize(category.title) === normalized
+  );
+};
+const findSubcategoryByInput = (categoryId, value) => {
+  const category = getCategory(categoryId);
+  const normalized = normalize(value);
+  return (category?.subcategories || []).find((item) => normalize(item) === normalized) || value;
+};
+const getAdminProducts = () => storage.read(adminProductStorageKey);
+const saveAdminProducts = (products) => storage.write(adminProductStorageKey, products);
+const ensureAdminProductShape = (product, index = 0) => {
+  const category = findCategoryByInput(product.category)?.id || product.category || marketplace.categories[0]?.id || "general";
+  const subcategory = findSubcategoryByInput(category, product.subcategory) ||
+    getCategory(category)?.subcategories?.[0] ||
+    product.subcategory ||
+    "Ümumi";
+  const sku = product.sku || `ADM-${String(index + 1).padStart(5, "0")}`;
+  const id = product.id || `admin-${createSlug(sku)}-${createSlug(product.name || "mehsul")}`;
+
+  return {
+    id,
+    sku,
+    name: product.name || "Yeni məhsul",
+    brand: product.brand || "Brendsiz",
+    category,
+    subcategory,
+    package: product.package || product.packaging || "Sorğu ilə",
+    origin: product.origin || "Azərbaycan/Import",
+    supplier: product.supplier || "Admin əlavə etdi",
+    price: product.price || "Sorğu əsasında",
+    priceNote: product.priceNote || "Admin paneldən əlavə olunub",
+    priceStatus: product.priceStatus || (normalize(product.price).includes("sorğu") ? "request" : "confirmed"),
+    imageUrl: product.imageUrl || product.image || "",
+    sourceUrl: product.sourceUrl || product.source || "",
+    sourceLabel: product.sourceLabel || (product.sourceUrl ? "Mənbə" : ""),
+    availability: product.availability || "Stok sorğu ilə",
+    specs: normalizeSpecs(product.specs)
+  };
+};
+const syncAdminProductOverlay = () => {
+  const adminProducts = getAdminProducts().map(ensureAdminProductShape);
+  if (!adminProducts.length) return;
+
+  const overlayById = new Map(adminProducts.map((product) => [product.id, product]));
+  const overlayBySku = new Map(adminProducts.map((product) => [normalize(product.sku), product]));
+  const usedIds = new Set();
+
+  marketplace.products = (marketplace.products || []).map((product) => {
+    const overlay = overlayById.get(product.id) || overlayBySku.get(normalize(product.sku));
+    if (!overlay) return product;
+    usedIds.add(overlay.id);
+    return { ...product, ...overlay };
+  });
+
+  adminProducts.forEach((product) => {
+    if (!usedIds.has(product.id) && !marketplace.products.some((item) => item.id === product.id || normalize(item.sku) === normalize(product.sku))) {
+      marketplace.products.push(product);
+    }
+  });
+};
 const getSubcategories = (categories, categoryId) => {
   const selectedCategories = categoryId === "all"
     ? categories
@@ -86,6 +174,8 @@ const getFilteredSubcategoryCount = (items, categoryId, subcategory) =>
     return matchesCategory && item.subcategory === subcategory;
   }).length;
 const getQueryParam = (name) => new URLSearchParams(window.location.search).get(name);
+
+syncAdminProductOverlay();
 
 const renderDetailFallback = (container, title, backHref) => {
   container.innerHTML = `
@@ -1116,6 +1206,130 @@ const renderTaxonomyDetail = () => {
   `;
 };
 
+const parseCsvRows = (text) => {
+  const source = String(text || "").trim();
+  if (!source) return [];
+  const firstLine = source.split(/\r?\n/)[0] || "";
+  const delimiter = firstLine.includes("\t") ? "\t" : firstLine.includes(";") && !firstLine.includes(",") ? ";" : ",";
+  const rows = [];
+  let row = [];
+  let value = "";
+  let quoted = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (char === "\"" && quoted && next === "\"") {
+      value += "\"";
+      index += 1;
+      continue;
+    }
+    if (char === "\"") {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === delimiter && !quoted) {
+      row.push(value.trim());
+      value = "";
+      continue;
+    }
+    if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(value.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      value = "";
+      continue;
+    }
+    value += char;
+  }
+
+  row.push(value.trim());
+  if (row.some(Boolean)) rows.push(row);
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map((header) => normalize(header));
+  return rows.slice(1).map((cells) => headers.reduce((item, header, index) => {
+    item[header] = cells[index] || "";
+    return item;
+  }, {}));
+};
+
+const getCsvValue = (row, aliases) => {
+  for (const alias of aliases) {
+    const value = row[normalize(alias)];
+    if (value) return value;
+  }
+  return "";
+};
+
+const productFromCsvRow = (row, index) => {
+  const sku = getCsvValue(row, ["sku", "kod", "mehsul kodu", "məhsul kodu"]);
+  const name = getCsvValue(row, ["ad", "name", "mehsul", "məhsul", "product", "title"]);
+  const categoryInput = getCsvValue(row, ["kateqoriya", "category", "kategoriya"]);
+  const category = findCategoryByInput(categoryInput)?.id || categoryInput || marketplace.categories[0]?.id;
+  const subcategory = getCsvValue(row, ["subkateqoriya", "alt kateqoriya", "subcategory", "sub category"]);
+
+  return ensureAdminProductShape({
+    sku,
+    name,
+    brand: getCsvValue(row, ["brend", "brand", "marka"]),
+    category,
+    subcategory,
+    package: getCsvValue(row, ["qablaşdırma", "qablashdirma", "package", "packaging"]),
+    price: getCsvValue(row, ["qiymət", "qiymet", "price"]),
+    priceStatus: getCsvValue(row, ["qiymət statusu", "qiymet statusu", "price status", "pricestatus"]),
+    supplier: getCsvValue(row, ["təchizatçı", "techizatci", "supplier"]),
+    availability: getCsvValue(row, ["mövcudluq", "movcudluq", "availability", "stock"]),
+    imageUrl: getCsvValue(row, ["foto url", "şəkil", "sekil", "image", "image url", "imageurl"]),
+    sourceUrl: getCsvValue(row, ["mənbə url", "menbe url", "source", "source url", "sourceurl"]),
+    sourceLabel: getCsvValue(row, ["mənbə", "menbe", "source label", "sourcelabel"]),
+    origin: getCsvValue(row, ["mənşə", "menshe", "origin", "ölkə", "olke"]),
+    specs: getCsvValue(row, ["xüsusiyyətlər", "xususiyyetler", "specs", "features"])
+  }, index);
+};
+
+const escapeCsvValue = (value) => {
+  const text = Array.isArray(value) ? value.join("; ") : String(value ?? "");
+  return /[",\n\r;]/.test(text) ? `"${text.replace(/"/g, "\"\"")}"` : text;
+};
+
+const productsToCsv = (products) => {
+  const headers = [
+    "sku",
+    "ad",
+    "brend",
+    "kateqoriya",
+    "subkateqoriya",
+    "qablaşdırma",
+    "qiymət",
+    "qiymət statusu",
+    "təchizatçı",
+    "mövcudluq",
+    "foto url",
+    "mənbə url",
+    "xüsusiyyətlər"
+  ];
+  const rows = products.map((product) => [
+    product.sku,
+    product.name,
+    product.brand,
+    getCategory(product.category)?.title || product.category,
+    product.subcategory,
+    product.package,
+    product.price,
+    product.priceStatus || "",
+    product.supplier,
+    product.availability,
+    product.imageUrl,
+    product.sourceUrl,
+    product.specs
+  ].map(escapeCsvValue).join(","));
+
+  return [headers.join(","), ...rows].join("\n");
+};
+
 const renderAdmin = () => {
   const stats = document.querySelector("[data-admin-stats]");
   const productRows = document.querySelector("[data-admin-products]");
@@ -1123,32 +1337,147 @@ const renderAdmin = () => {
   const serviceRows = document.querySelector("[data-admin-services]");
   const packageRows = document.querySelector("[data-admin-packages]");
   const rentalRows = document.querySelector("[data-admin-rentals]");
+  const productForm = document.querySelector("[data-admin-product-form]");
+  const formCategory = document.querySelector("[data-admin-form-category]");
+  const formSubcategory = document.querySelector("[data-admin-form-subcategory]");
+  const clearFormButton = document.querySelector("[data-admin-clear-form]");
+  const resetProductsButton = document.querySelector("[data-admin-reset-products]");
+  const csvInput = document.querySelector("[data-admin-csv-input]");
+  const importCsvButton = document.querySelector("[data-admin-import-csv]");
+  const exportCsvButton = document.querySelector("[data-admin-export-csv]");
+  const importStatus = document.querySelector("[data-admin-import-status]");
+  const productSearch = document.querySelector("[data-admin-product-search]");
+  const productCategoryFilter = document.querySelector("[data-admin-product-category]");
+  const productPriceFilter = document.querySelector("[data-admin-product-price-status]");
+  const productCount = document.querySelector("[data-admin-product-count]");
+  const brandList = document.querySelector("#admin-brand-list");
 
-  if (stats) {
+  const renderStats = () => {
+    if (!stats) return;
+    const confirmedPrices = marketplace.products.filter((product) =>
+      product.priceStatus === "confirmed" || !normalize(product.price).includes("sorğu")
+    ).length;
+    const withImages = marketplace.products.filter((product) => product.imageUrl).length;
+    const adminChanges = getAdminProducts().length;
+
     stats.innerHTML = `
       <article class="stat-card"><span class="stat-value">${marketplace.categories.length}</span><p>kateqoriya</p></article>
       <article class="stat-card"><span class="stat-value">${marketplace.brands.length}</span><p>brend</p></article>
       <article class="stat-card"><span class="stat-value">${marketplace.suppliers.length}</span><p>təchizatçı</p></article>
       <article class="stat-card"><span class="stat-value">${marketplace.products.length}</span><p>məhsul</p></article>
-      <article class="stat-card"><span class="stat-value">${(marketplace.services || []).length}</span><p>xidmət</p></article>
-      <article class="stat-card"><span class="stat-value">${(marketplace.packages || []).length}</span><p>hazır paket</p></article>
-      <article class="stat-card"><span class="stat-value">${(marketplace.rentals || []).length}</span><p>icarə avadanlığı</p></article>
+      <article class="stat-card"><span class="stat-value">${confirmedPrices}</span><p>təsdiqli qiymət</p></article>
+      <article class="stat-card"><span class="stat-value">${withImages}</span><p>fotolu məhsul</p></article>
+      <article class="stat-card"><span class="stat-value">${adminChanges}</span><p>lokal düzəliş</p></article>
+      <article class="stat-card"><span class="stat-value">${(marketplace.services || []).length + (marketplace.packages || []).length + (marketplace.rentals || []).length}</span><p>xidmət, paket, icarə</p></article>
     `;
-  }
+  };
 
-  if (productRows) {
-    productRows.innerHTML = marketplace.products.slice(0, 12).map((product) => `
-      <tr>
-        <td>${escapeHtml(product.sku)}</td>
-        <td>${escapeHtml(product.name)}</td>
-        <td>${escapeHtml(product.brand)}</td>
-        <td>${escapeHtml(product.price)}</td>
-        <td>${escapeHtml(product.availability)}</td>
-      </tr>
-    `).join("");
-  }
+  const renderCategoryOptions = (select, allLabel) => {
+    if (!select) return;
+    select.innerHTML = `
+      ${allLabel ? `<option value="all">${escapeHtml(allLabel)}</option>` : ""}
+      ${groupCategories(marketplace.categories).map((group) => `
+        <optgroup label="${escapeAttr(group.name)}">
+          ${group.categories.map((category) => `<option value="${escapeAttr(category.id)}">${escapeHtml(category.title)}</option>`).join("")}
+        </optgroup>
+      `).join("")}
+    `;
+  };
 
-  if (categoryRows) {
+  const updateFormSubcategories = (selectedValue = "") => {
+    if (!formCategory || !formSubcategory) return;
+    const category = getCategory(formCategory.value);
+    const subcategories = category?.subcategories || [];
+    formSubcategory.innerHTML = subcategories.map((item) =>
+      `<option value="${escapeAttr(item)}">${escapeHtml(item)}</option>`
+    ).join("");
+    if (selectedValue && !subcategories.includes(selectedValue)) {
+      formSubcategory.insertAdjacentHTML("beforeend", `<option value="${escapeAttr(selectedValue)}">${escapeHtml(selectedValue)}</option>`);
+    }
+    if (selectedValue) formSubcategory.value = selectedValue;
+  };
+
+  const setFormField = (name, value) => {
+    const field = productForm?.elements.namedItem(name);
+    if (field) field.value = value || "";
+  };
+
+  const fillForm = (product = {}) => {
+    if (!productForm) return;
+    productForm.reset();
+    const shaped = product.id ? ensureAdminProductShape(product) : product;
+    setFormField("id", shaped.id);
+    setFormField("sku", shaped.sku);
+    setFormField("name", shaped.name);
+    setFormField("brand", shaped.brand);
+    setFormField("category", shaped.category || marketplace.categories[0]?.id || "");
+    updateFormSubcategories(shaped.subcategory);
+    setFormField("subcategory", shaped.subcategory);
+    setFormField("package", shaped.package);
+    setFormField("price", shaped.price);
+    setFormField("priceStatus", shaped.priceStatus || "request");
+    setFormField("supplier", shaped.supplier);
+    setFormField("availability", shaped.availability);
+    setFormField("imageUrl", shaped.imageUrl);
+    setFormField("sourceUrl", shaped.sourceUrl);
+    setFormField("specs", normalizeSpecs(shaped.specs).join("; "));
+  };
+
+  const getFilteredAdminProducts = () => {
+    const query = normalize(productSearch?.value);
+    const category = productCategoryFilter?.value || "all";
+    const priceStatus = productPriceFilter?.value || "all";
+
+    return marketplace.products.filter((product) => {
+      const priceIsRequest = product.priceStatus === "request" || normalize(product.price).includes("sorğu");
+      const matchesQuery = !query || [
+        product.sku,
+        product.name,
+        product.brand,
+        product.subcategory,
+        product.supplier
+      ].some((value) => normalize(value).includes(query));
+      const matchesCategory = category === "all" || product.category === category;
+      const matchesPrice = priceStatus === "all" ||
+        (priceStatus === "request" && priceIsRequest) ||
+        (priceStatus === "confirmed" && !priceIsRequest);
+      return matchesQuery && matchesCategory && matchesPrice;
+    });
+  };
+
+  const renderProductRows = () => {
+    if (!productRows) return;
+    const filtered = getFilteredAdminProducts();
+    if (productCount) productCount.textContent = `${filtered.length} məhsul`;
+    productRows.innerHTML = filtered.slice(0, 80).map((product) => {
+      const category = getCategory(product.category);
+      const priceIsRequest = product.priceStatus === "request" || normalize(product.price).includes("sorğu");
+      return `
+        <tr>
+          <td>${escapeHtml(product.sku)}</td>
+          <td>
+            <strong>${escapeHtml(product.name)}</strong>
+            <small>${escapeHtml(product.subcategory || "Ümumi")}</small>
+          </td>
+          <td>${escapeHtml(product.brand)}</td>
+          <td>${escapeHtml(category?.title || product.category)}</td>
+          <td>${escapeHtml(product.price)}</td>
+          <td><span class="status-pill">${priceIsRequest ? "Sorğu" : "Təsdiqli"}</span></td>
+          <td><button class="table-action" type="button" data-admin-edit-product="${escapeAttr(product.id)}">Redaktə et</button></td>
+        </tr>
+      `;
+    }).join("");
+    if (filtered.length > 80) {
+      productRows.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td colspan="7"><small>İlk 80 nəticə göstərilir. Daha dəqiq tapmaq üçün axtarış və filtrdən istifadə et.</small></td>
+        </tr>
+      `);
+    }
+  };
+
+  const renderCategoryRows = () => {
+    if (!categoryRows) return;
     categoryRows.innerHTML = marketplace.categories.map((category) => `
       <tr>
         <td>${escapeHtml(category.group || "Ümumi")}</td>
@@ -1157,7 +1486,99 @@ const renderAdmin = () => {
         <td>${countProductsBy("category", category.id)}</td>
       </tr>
     `).join("");
+  };
+
+  const rerenderAdminProducts = () => {
+    renderStats();
+    renderProductRows();
+    renderCategoryRows();
+  };
+
+  renderStats();
+  renderCategoryOptions(formCategory);
+  renderCategoryOptions(productCategoryFilter, "Bütün kateqoriyalar");
+  updateFormSubcategories();
+  if (brandList) {
+    brandList.innerHTML = marketplace.brands
+      .map((brand) => `<option value="${escapeAttr(brand.name)}"></option>`)
+      .join("");
   }
+  renderProductRows();
+  renderCategoryRows();
+
+  formCategory?.addEventListener("change", () => updateFormSubcategories());
+  productSearch?.addEventListener("input", renderProductRows);
+  productCategoryFilter?.addEventListener("change", renderProductRows);
+  productPriceFilter?.addEventListener("change", renderProductRows);
+  clearFormButton?.addEventListener("click", () => fillForm({ category: marketplace.categories[0]?.id || "" }));
+  resetProductsButton?.addEventListener("click", () => {
+    saveAdminProducts([]);
+    if (importStatus) importStatus.textContent = "Lokal admin düzəlişləri silindi. Səhifə yenilənir.";
+    window.location.reload();
+  });
+
+  productRows?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-admin-edit-product]");
+    if (!button) return;
+    const product = marketplace.products.find((item) => item.id === button.dataset.adminEditProduct);
+    if (!product) return;
+    fillForm(product);
+    productForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  productForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(productForm).entries());
+    const existing = marketplace.products.find((product) =>
+      (fields.id && product.id === fields.id) || normalize(product.sku) === normalize(fields.sku)
+    );
+    const shaped = ensureAdminProductShape({
+      ...fields,
+      id: fields.id || existing?.id || "",
+      specs: fields.specs
+    }, getAdminProducts().length);
+    const nextAdminProducts = getAdminProducts()
+      .filter((product) => product.id !== shaped.id && normalize(product.sku) !== normalize(shaped.sku));
+
+    saveAdminProducts([...nextAdminProducts, shaped]);
+    const existingIndex = marketplace.products.findIndex((product) =>
+      product.id === shaped.id || normalize(product.sku) === normalize(shaped.sku)
+    );
+    if (existingIndex >= 0) {
+      marketplace.products[existingIndex] = { ...marketplace.products[existingIndex], ...shaped };
+    } else {
+      marketplace.products.push(shaped);
+    }
+    if (importStatus) importStatus.textContent = `${shaped.name} yadda saxlanıldı. Kataloq bu brauzerdə yeniləndi.`;
+    fillForm({ category: shaped.category });
+    rerenderAdminProducts();
+  });
+
+  importCsvButton?.addEventListener("click", () => {
+    const rows = parseCsvRows(csvInput?.value || "");
+    const importedProducts = rows.map(productFromCsvRow).filter((product) => product.name && product.sku);
+    if (!importedProducts.length) {
+      if (importStatus) importStatus.textContent = "CSV import üçün ən azı sku və ad sütunları lazımdır.";
+      return;
+    }
+
+    const existingAdminProducts = getAdminProducts();
+    const mergedBySku = new Map(existingAdminProducts.map((product) => [normalize(product.sku), product]));
+    importedProducts.forEach((product) => {
+      const existing = marketplace.products.find((item) => normalize(item.sku) === normalize(product.sku));
+      mergedBySku.set(normalize(product.sku), { ...product, id: existing?.id || product.id });
+    });
+    saveAdminProducts([...mergedBySku.values()]);
+    syncAdminProductOverlay();
+    if (importStatus) importStatus.textContent = `${importedProducts.length} məhsul import edildi.`;
+    rerenderAdminProducts();
+  });
+
+  exportCsvButton?.addEventListener("click", () => {
+    const exported = productsToCsv(getFilteredAdminProducts());
+    if (csvInput) csvInput.value = exported;
+    if (importStatus) importStatus.textContent = "Cari filtrə uyğun məhsullar CSV kimi hazırlandı.";
+  });
 
   if (serviceRows) {
     serviceRows.innerHTML = (marketplace.services || []).map((service) => `

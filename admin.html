@@ -87,6 +87,8 @@
               <span>paket tipi</span>
               <span>müddət</span>
               <span>mövcudluq</span>
+              <span>foto url</span>
+              <span>mənbə url</span>
               <span>xüsusiyyətlər</span>
             </div>
           </div>
@@ -94,10 +96,121 @@
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
+                <p class="eyebrow">Məhsul meneceri</p>
+                <h2>Əl ilə əlavə et və ya CSV import et</h2>
+              </div>
+              <span class="data-badge">lokal admin v1</span>
+            </div>
+            <div class="admin-manager-grid">
+              <form class="admin-form" data-admin-product-form>
+                <input type="hidden" name="id" />
+                <div class="admin-form-grid">
+                  <label class="admin-field">
+                    <span>SKU</span>
+                    <input name="sku" type="text" placeholder="CON-MAT-0001" required />
+                  </label>
+                  <label class="admin-field">
+                    <span>Məhsul adı</span>
+                    <input name="name" type="text" placeholder="Knauf Rotband 30 kq" required />
+                  </label>
+                  <label class="admin-field">
+                    <span>Brend</span>
+                    <input name="brand" type="text" placeholder="Knauf" list="admin-brand-list" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Kateqoriya</span>
+                    <select name="category" data-admin-form-category required></select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Subkateqoriya</span>
+                    <select name="subcategory" data-admin-form-subcategory required></select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Qablaşdırma</span>
+                    <input name="package" type="text" placeholder="30 kq kisə" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Qiymət</span>
+                    <input name="price" type="text" placeholder="Sorğu əsasında" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Qiymət statusu</span>
+                    <select name="priceStatus">
+                      <option value="request">Sorğu əsasında</option>
+                      <option value="confirmed">Təsdiqli qiymət</option>
+                    </select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Təchizatçı</span>
+                    <input name="supplier" type="text" placeholder="Rəsmi distribyutor" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Mövcudluq</span>
+                    <input name="availability" type="text" placeholder="Stok sorğu ilə" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Foto URL</span>
+                    <input name="imageUrl" type="url" placeholder="https://..." />
+                  </label>
+                  <label class="admin-field">
+                    <span>Mənbə URL</span>
+                    <input name="sourceUrl" type="url" placeholder="https://..." />
+                  </label>
+                </div>
+                <label class="admin-field admin-field-wide">
+                  <span>Xüsusiyyətlər</span>
+                  <textarea name="specs" rows="3" placeholder="Suya davamlı; 30 kq; daxili işlər"></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="submit">Yadda saxla</button>
+                  <button class="button button-secondary" type="button" data-admin-clear-form>Formu təmizlə</button>
+                  <button class="button button-outline" type="button" data-admin-reset-products>Demo dəyişiklikləri sil</button>
+                </div>
+              </form>
+
+              <div class="admin-import-box">
+                <datalist id="admin-brand-list"></datalist>
+                <label class="admin-field">
+                  <span>CSV import</span>
+                  <textarea class="admin-textarea" data-admin-csv-input rows="12" placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,foto url,mənbə url"></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="button" data-admin-import-csv>CSV import</button>
+                  <button class="button button-secondary" type="button" data-admin-export-csv>CSV export</button>
+                </div>
+                <p class="admin-import-status" data-admin-import-status>
+                  Excel-dən CSV kimi kopyala və buraya yapışdır. Başlıqlar azərbaycanca və ya ingiliscə ola bilər.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
                 <p class="eyebrow">Məhsullar</p>
-                <h2>Başlanğıc məhsul cədvəli</h2>
+                <h2>İdarə olunan məhsul cədvəli</h2>
               </div>
               <a class="card-link" href="catalog.html">Kataloqda aç</a>
+            </div>
+            <div class="admin-toolbar">
+              <label class="admin-field">
+                <span>Axtarış</span>
+                <input data-admin-product-search type="search" placeholder="Məhsul, SKU, brend..." />
+              </label>
+              <label class="admin-field">
+                <span>Kateqoriya</span>
+                <select data-admin-product-category></select>
+              </label>
+              <label class="admin-field">
+                <span>Qiymət</span>
+                <select data-admin-product-price-status>
+                  <option value="all">Hamısı</option>
+                  <option value="confirmed">Təsdiqli qiymət</option>
+                  <option value="request">Sorğu əsasında</option>
+                </select>
+              </label>
+              <span class="data-badge" data-admin-product-count>0 məhsul</span>
             </div>
             <div class="table-wrap">
               <table class="admin-table">
@@ -106,8 +219,10 @@
                     <th>SKU</th>
                     <th>Məhsul</th>
                     <th>Brend</th>
+                    <th>Kateqoriya</th>
                     <th>Qiymət</th>
                     <th>Vəziyyət</th>
+                    <th>Əməliyyat</th>
                   </tr>
                 </thead>
                 <tbody data-admin-products></tbody>
@@ -218,6 +333,7 @@
 
     <script src="assets/js/catalog-data.js"></script>
     <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
     <script src="assets/js/marketplace.js"></script>
   </body>
