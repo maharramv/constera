@@ -2166,7 +2166,7 @@ dd {
 
 .dashboard-filter-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
   align-items: end;
 }
@@ -2176,6 +2176,7 @@ dd {
   gap: 8px;
 }
 
+.dashboard-filter-grid input,
 .dashboard-filter-grid select {
   width: 100%;
   min-height: 52px;
@@ -2186,6 +2187,95 @@ dd {
   outline: 0;
   padding: 0 16px;
   font: inherit;
+}
+
+.dashboard-filter-grid label:first-child {
+  grid-column: span 2;
+}
+
+.dashboard-filter-grid button {
+  align-self: end;
+}
+
+.rfq-summary-panel {
+  scroll-margin-top: 112px;
+}
+
+.rfq-print-sheet {
+  display: grid;
+  gap: 18px;
+}
+
+.rfq-summary-head {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 18px;
+}
+
+.rfq-summary-head h3 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+
+.rfq-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rfq-summary-grid div,
+.rfq-offer-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+}
+
+.rfq-summary-grid dt,
+.rfq-offer-card span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rfq-summary-grid dd {
+  margin: 6px 0 0;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.rfq-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rfq-offer-card {
+  display: grid;
+  gap: 8px;
+}
+
+.rfq-offer-card strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.22rem;
+  color: #f6d78d;
+}
+
+.rfq-offer-card.is-best {
+  border-color: rgba(212, 166, 79, 0.5);
+  background: rgba(212, 166, 79, 0.1);
+}
+
+.rfq-summary-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .table-select {
@@ -2878,9 +2968,15 @@ dd {
   .detail-grid,
   .calculator-panel,
   .dashboard-filter-grid,
+  .rfq-summary-grid,
+  .rfq-offer-grid,
   .taxonomy-chip-grid,
   .rfq-form {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-filter-grid label:first-child {
+    grid-column: auto;
   }
 
   .sidebar-heading,
@@ -3340,5 +3436,58 @@ dd {
 
   .status-actions button {
     width: 100%;
+  }
+}
+
+@media print {
+  body {
+    color: #111;
+    background: #fff;
+  }
+
+  body::before,
+  .ambient,
+  .header,
+  .market-hero,
+  .admin-panel:not(.rfq-summary-panel),
+  .rfq-summary-panel .market-section-heading,
+  .rfq-summary-panel .admin-import-status {
+    display: none !important;
+  }
+
+  .site-shell,
+  .section,
+  .admin-board,
+  .rfq-summary-panel {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: 0;
+    background: #fff;
+  }
+
+  .rfq-summary-panel {
+    display: block !important;
+  }
+
+  .rfq-print-sheet,
+  .rfq-summary-head,
+  .rfq-summary-grid div,
+  .rfq-offer-card {
+    color: #111;
+    border-color: #d7d7d7;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .rfq-summary-grid,
+  .rfq-offer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rfq-offer-card strong,
+  .rfq-summary-head h3 {
+    color: #111;
   }
 }

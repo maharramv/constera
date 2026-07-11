@@ -76,6 +76,10 @@
             </div>
             <div class="dashboard-filter-grid">
               <label>
+                <span class="field-label">Axtarış</span>
+                <input data-rfq-search type="search" placeholder="məhsul, şirkət, əlaqə, şəhər..." />
+              </label>
+              <label>
                 <span class="field-label">Vəziyyət</span>
                 <select data-rfq-status-filter></select>
               </label>
@@ -86,6 +90,15 @@
               <label>
                 <span class="field-label">Təchizatçı</span>
                 <select data-rfq-supplier-filter></select>
+              </label>
+              <label>
+                <span class="field-label">Sıralama</span>
+                <select data-rfq-sort-filter>
+                  <option value="newest">Ən yeni</option>
+                  <option value="needDate">Tələb tarixi</option>
+                  <option value="offers">Təklif sayı</option>
+                  <option value="priority">Prioritet</option>
+                </select>
               </label>
               <button class="button button-secondary" type="button" data-rfq-export>CSV ixracı</button>
             </div>
@@ -172,6 +185,23 @@
               <strong>sorğu qaralaması yoxdur.</strong>
               <span>Yeni sorğu yarat və paneldə vəziyyətini dəyiş.</span>
             </div>
+          </div>
+
+          <div class="admin-panel glass rfq-summary-panel" data-rfq-summary-panel hidden>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Təklif aktı</p>
+                <h2 data-rfq-summary-title>Seçilmiş sorğu</h2>
+              </div>
+              <div class="admin-actions">
+                <button class="button button-secondary" type="button" data-rfq-copy-summary>Xülasəni kopyala</button>
+                <button class="button button-primary" type="button" data-rfq-print-summary>Çap et</button>
+              </div>
+            </div>
+            <div class="rfq-print-sheet" data-rfq-summary-content></div>
+            <p class="admin-import-status" data-rfq-summary-status>
+              Sorğu cədvəlindən “Aktı aç” düyməsini seç.
+            </p>
           </div>
         </section>
       </main>

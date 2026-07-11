@@ -2360,16 +2360,26 @@ const renderRfqDashboard = () => {
   const stats = document.querySelector("[data-rfq-dashboard-stats]");
   const rows = document.querySelector("[data-rfq-dashboard-rows]");
   const empty = document.querySelector("[data-rfq-dashboard-empty]");
+  const searchInput = document.querySelector("[data-rfq-search]");
   const statusFilter = document.querySelector("[data-rfq-status-filter]");
   const typeFilter = document.querySelector("[data-rfq-type-filter]");
   const supplierFilter = document.querySelector("[data-rfq-supplier-filter]");
+  const sortFilter = document.querySelector("[data-rfq-sort-filter]");
   const exportButton = document.querySelector("[data-rfq-export]");
   const offerForm = document.querySelector("[data-rfq-offer-form]");
   const offerRfqSelect = document.querySelector("[data-rfq-offer-rfq]");
   const offerSupplierSelect = document.querySelector("[data-rfq-offer-supplier]");
   const offerStatus = document.querySelector("[data-rfq-offer-status]");
   const offerExportButton = document.querySelector("[data-rfq-offer-export]");
+  const summaryPanel = document.querySelector("[data-rfq-summary-panel]");
+  const summaryTitle = document.querySelector("[data-rfq-summary-title]");
+  const summaryContent = document.querySelector("[data-rfq-summary-content]");
+  const summaryStatus = document.querySelector("[data-rfq-summary-status]");
+  const copySummaryButton = document.querySelector("[data-rfq-copy-summary]");
+  const printSummaryButton = document.querySelector("[data-rfq-print-summary]");
   if (!stats || !rows) return;
+  let selectedSummaryId = "";
+  let latestSummaryText = "";
 
   const typeLabels = {
     product: "Məhsul",
@@ -2378,7 +2388,7 @@ const renderRfqDashboard = () => {
     rental: "İcarə",
     custom: "Sərbəst"
   };
-  const statusList = ["Yeni", "Təchizatçıya göndərildi", "Cavab gözləyir", "Təklif gəldi", "Qiymət müqayisəsi", "Təsdiqləndi", "Bağlandı"];
+  const statusList = ["Yeni", "Təchizatçıya göndərildi", "Cavab gözləyir", "Təklif gəldi", "Qiymət müqayisəsi", "Qalib seçildi", "Təsdiqləndi", "Bağlandı"];
   const supplierOptions = () => `
     <option value="">Açıq sorğu</option>
     ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
@@ -2394,6 +2404,18 @@ const renderRfqDashboard = () => {
   const getBestOffer = (draft) => {
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
     return [...offers].sort((a, b) => parseOfferPrice(a.price) - parseOfferPrice(b.price))[0];
+  };
+  const getPriorityScore = (priority) => ({
+    "Təcili": 4,
+    "Tender": 3,
+    "Qiymət müqayisəsi": 2,
+    "Normal": 1
+  })[priority] || 0;
+  const formatDisplayDate = (value) => {
+    if (!value) return "Açıq";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("az-AZ");
   };
   const renderOfferText = (draft) => {
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
@@ -2446,6 +2468,98 @@ const renderRfqDashboard = () => {
     const drafts = getDrafts().map((draft) => draft.id === id ? { ...draft, ...patch } : draft);
     storage.write("constera-rfq-drafts", drafts);
     return drafts;
+  };
+  const buildSummaryText = (draft) => {
+    if (!draft) return "";
+    const offers = Array.isArray(draft.offers) ? draft.offers : [];
+    const bestOffer = getBestOffer(draft);
+    return [
+      "ConstEra qiymət sorğusu xülasəsi",
+      `Sorğu: ${draft.product || "Sərbəst sorğu"}`,
+      `Miqdar: ${draft.quantity || "Yazılmayıb"}`,
+      `Şirkət: ${draft.company || "Yazılmayıb"}`,
+      `Əlaqə: ${draft.contact || "Yazılmayıb"}`,
+      `Şəhər/Rayon: ${draft.city || "Açıq"}`,
+      `Təchizatçı: ${draft.supplier || "Açıq sorğu"}`,
+      `Vəziyyət: ${draft.status || "Yeni"}`,
+      `Prioritet: ${draft.priority || "Normal"}`,
+      `Tələb tarixi: ${formatDisplayDate(draft.needDate)}`,
+      `Büdcə: ${draft.budget || "Seçilməyib"}`,
+      `Çatdırılma/operator: ${draft.deliveryMode || "Seçilməyib"}`,
+      `Qeyd: ${draft.note || draft.usage || "Qeyd yoxdur"}`,
+      bestOffer ? `Ən uyğun təklif: ${bestOffer.supplier || "Təchizatçı"} - ${bestOffer.price || "Qiymət yoxdur"} (${bestOffer.leadTime || "müddət açıq"})` : "Ən uyğun təklif: hələ yoxdur",
+      offers.length ? "Təkliflər:" : "",
+      ...offers.map((offer, index) => `${index + 1}. ${offer.supplier || "Təchizatçı"} - ${offer.price || "Qiymət yoxdur"}; müddət: ${offer.leadTime || "açıq"}; çatdırılma: ${offer.delivery || "açıq"}; zəmanət: ${offer.warranty || "açıq"}`)
+    ].filter(Boolean).join("\n");
+  };
+  const copyText = async (text) => {
+    if (!text) return false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // Fallback below handles browsers without clipboard permission.
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  };
+  const renderSummaryPanel = (draft) => {
+    if (!summaryPanel || !summaryContent || !draft) return;
+    const offers = Array.isArray(draft.offers) ? draft.offers : [];
+    const bestOffer = getBestOffer(draft);
+    latestSummaryText = buildSummaryText(draft);
+    selectedSummaryId = draft.id;
+    summaryPanel.hidden = false;
+    if (summaryTitle) summaryTitle.textContent = draft.product || "Sərbəst sorğu";
+    summaryContent.innerHTML = `
+      <article class="rfq-summary-head">
+        <span class="data-badge">${escapeHtml(draft.status || "Yeni")}</span>
+        <h3>${escapeHtml(draft.product || "Sərbəst sorğu")}</h3>
+        <p class="rfq-summary-note">${escapeHtml(draft.note || draft.usage || "Qeyd əlavə edilməyib.")}</p>
+      </article>
+      <dl class="rfq-summary-grid">
+        <div><dt>Miqdar</dt><dd>${escapeHtml(draft.quantity || "Yazılmayıb")}</dd></div>
+        <div><dt>Şirkət</dt><dd>${escapeHtml(draft.company || "Yazılmayıb")}</dd></div>
+        <div><dt>Əlaqə</dt><dd>${escapeHtml(draft.contact || "Yazılmayıb")}</dd></div>
+        <div><dt>Şəhər/Rayon</dt><dd>${escapeHtml(draft.city || "Açıq")}</dd></div>
+        <div><dt>Təchizatçı</dt><dd>${escapeHtml(draft.supplier || "Açıq sorğu")}</dd></div>
+        <div><dt>Prioritet</dt><dd>${escapeHtml(draft.priority || "Normal")}</dd></div>
+        <div><dt>Tələb tarixi</dt><dd>${escapeHtml(formatDisplayDate(draft.needDate))}</dd></div>
+        <div><dt>Büdcə</dt><dd>${escapeHtml(draft.budget || "Seçilməyib")}</dd></div>
+        <div><dt>Çatdırılma/operator</dt><dd>${escapeHtml(draft.deliveryMode || "Seçilməyib")}</dd></div>
+        <div><dt>Ən uyğun təklif</dt><dd>${bestOffer ? `${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.price || "Qiymət yoxdur")}` : "Hələ yoxdur"}</dd></div>
+      </dl>
+      <div class="rfq-offer-grid">
+        ${offers.length ? offers.map((offer) => `
+          <article class="rfq-offer-card ${offer.id === bestOffer?.id ? "is-best" : ""}">
+            <span>${offer.id === bestOffer?.id ? "Ən uyğun təklif" : "Təchizatçı təklifi"}</span>
+            <strong>${escapeHtml(offer.price || "Qiymət yoxdur")}</strong>
+            <small>${escapeHtml(offer.supplier || "Təchizatçı")}</small>
+            <small>Müddət: ${escapeHtml(offer.leadTime || "açıq")}</small>
+            <small>Çatdırılma: ${escapeHtml(offer.delivery || "açıq")}</small>
+            <small>Zəmanət: ${escapeHtml(offer.warranty || "açıq")}</small>
+            <p class="rfq-summary-note">${escapeHtml(offer.note || "Qeyd yoxdur.")}</p>
+          </article>
+        `).join("") : `
+          <article class="rfq-offer-card">
+            <span>Təklif yoxdur</span>
+            <strong>Sorğu gözləyir</strong>
+            <small>Təchizatçı təklifi əlavə olunanda burada görünəcək.</small>
+          </article>
+        `}
+      </div>
+    `;
+    if (summaryStatus) summaryStatus.textContent = "Təklif aktı hazırdır. Xülasəni kopyalaya və ya çap edə bilərsən.";
   };
 
   const exportDrafts = (drafts) => {
@@ -2501,16 +2615,40 @@ const renderRfqDashboard = () => {
 
   const render = () => {
     const drafts = getDrafts();
+    const query = normalize(searchInput?.value);
     const activeStatus = statusFilter?.value || "all";
     const activeType = typeFilter?.value || "all";
     const activeSupplier = supplierFilter?.value || "all";
+    const activeSort = sortFilter?.value || "newest";
     const filtered = drafts.filter((draft) => {
       const matchesStatus = activeStatus === "all" || draft.status === activeStatus;
       const matchesType = activeType === "all" || draft.type === activeType;
       const matchesSupplier = activeSupplier === "all" ||
         (activeSupplier === "open" && !draft.supplierId) ||
         draft.supplierId === activeSupplier;
-      return matchesStatus && matchesType && matchesSupplier;
+      const matchesQuery = !query || [
+        draft.product,
+        draft.quantity,
+        draft.company,
+        draft.contact,
+        draft.city,
+        draft.supplier,
+        draft.note,
+        draft.usage
+      ].some((value) => normalize(value).includes(query));
+      return matchesStatus && matchesType && matchesSupplier && matchesQuery;
+    }).sort((a, b) => {
+      if (activeSort === "needDate") {
+        return (Date.parse(a.needDate || "9999-12-31") || Number.MAX_SAFE_INTEGER) -
+          (Date.parse(b.needDate || "9999-12-31") || Number.MAX_SAFE_INTEGER);
+      }
+      if (activeSort === "offers") {
+        return (b.offers || []).length - (a.offers || []).length;
+      }
+      if (activeSort === "priority") {
+        return getPriorityScore(b.priority) - getPriorityScore(a.priority);
+      }
+      return (Date.parse(b.createdAt || "") || 0) - (Date.parse(a.createdAt || "") || 0);
     });
     const counts = statusList.reduce((acc, status) => {
       acc[status] = drafts.filter((draft) => draft.status === status).length;
@@ -2549,6 +2687,8 @@ const renderRfqDashboard = () => {
         <td data-label="Vəziyyət"><span class="status-pill">${escapeHtml(draft.status)}</span></td>
         <td data-label="Əməliyyat">
           <div class="status-actions">
+            <button type="button" data-rfq-summary="${escapeAttr(draft.id)}">Aktı aç</button>
+            <button type="button" data-rfq-copy="${escapeAttr(draft.id)}">Kopyala</button>
             ${statusList.map((status) => `
               <button type="button" data-rfq-status="${escapeAttr(status)}" data-rfq-id="${escapeAttr(draft.id)}">${escapeHtml(status)}</button>
             `).join("")}
@@ -2562,6 +2702,10 @@ const renderRfqDashboard = () => {
     });
     if (empty) empty.hidden = filtered.length > 0;
     renderOfferControls(drafts);
+    if (selectedSummaryId) {
+      const selectedDraft = drafts.find((draft) => draft.id === selectedSummaryId);
+      if (selectedDraft) renderSummaryPanel(selectedDraft);
+    }
   };
 
   if (statusFilter) {
@@ -2583,8 +2727,21 @@ const renderRfqDashboard = () => {
     `;
     supplierFilter.addEventListener("change", render);
   }
+  searchInput?.addEventListener("input", render);
+  sortFilter?.addEventListener("change", render);
   exportButton?.addEventListener("click", () => exportDrafts(getDrafts()));
   offerExportButton?.addEventListener("click", () => exportOffers(getDrafts()));
+  copySummaryButton?.addEventListener("click", async () => {
+    const copied = await copyText(latestSummaryText);
+    if (summaryStatus) summaryStatus.textContent = copied ? "Xülasə kopyalandı." : "Kopyalama alınmadı. Brauzer icazəsini yoxla.";
+  });
+  printSummaryButton?.addEventListener("click", () => {
+    if (!selectedSummaryId && summaryStatus) {
+      summaryStatus.textContent = "Əvvəlcə cədvəldən sorğu seç.";
+      return;
+    }
+    window.print();
+  });
   offerForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(offerForm);
@@ -2617,6 +2774,23 @@ const renderRfqDashboard = () => {
   });
 
   rows.addEventListener("click", (event) => {
+    const summaryButton = event.target.closest("[data-rfq-summary]");
+    if (summaryButton) {
+      const draft = getDrafts().find((item) => item.id === summaryButton.dataset.rfqSummary);
+      if (!draft) return;
+      renderSummaryPanel(draft);
+      summaryPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const copyButton = event.target.closest("[data-rfq-copy]");
+    if (copyButton) {
+      const draft = getDrafts().find((item) => item.id === copyButton.dataset.rfqCopy);
+      if (!draft) return;
+      copyText(buildSummaryText(draft)).then((copied) => {
+        if (offerStatus) offerStatus.textContent = copied ? "Sorğu xülasəsi kopyalandı." : "Kopyalama alınmadı.";
+      });
+      return;
+    }
     const button = event.target.closest("[data-rfq-status]");
     if (!button) return;
     updateDraft(button.dataset.rfqId, { status: button.dataset.rfqStatus });
