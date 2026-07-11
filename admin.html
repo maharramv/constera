@@ -91,6 +91,101 @@
               <span>mənbə url</span>
               <span>xüsusiyyətlər</span>
             </div>
+            <p class="admin-import-status">
+              CSV şablonları:
+              <a class="source-link" href="docs/csv-templates/products.csv">məhsul</a>
+              <a class="source-link" href="docs/csv-templates/services.csv">xidmət</a>
+              <a class="source-link" href="docs/csv-templates/packages.csv">paket</a>
+              <a class="source-link" href="docs/csv-templates/rentals.csv">icarə</a>
+            </p>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Xidmət, paket və icarə meneceri</p>
+                <h2>Tikinti işləri, hazır paketlər və avadanlıq icarəsini idarə et</h2>
+              </div>
+              <span class="data-badge">3 bölmə import</span>
+            </div>
+            <div class="admin-manager-grid">
+              <form class="admin-form" data-admin-entity-form>
+                <input type="hidden" name="id" />
+                <div class="admin-form-grid">
+                  <label class="admin-field">
+                    <span>Bölmə</span>
+                    <select name="entityType" data-admin-entity-type>
+                      <option value="service">Xidmət</option>
+                      <option value="package">Hazır paket</option>
+                      <option value="rental">İcarə</option>
+                    </select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Ad</span>
+                    <input name="title" type="text" placeholder="Açar təslim təmir / Ekskavator icarəsi" required />
+                  </label>
+                  <label class="admin-field">
+                    <span>Tip</span>
+                    <input name="itemType" type="text" placeholder="Təmir / Tikinti / Operatorla" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Kateqoriya</span>
+                    <select name="category" data-admin-entity-category required></select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Subkateqoriya</span>
+                    <select name="subcategory" data-admin-entity-subcategory required></select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Vahid</span>
+                    <input name="unit" type="text" placeholder="m² / gün / layihə" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Qiymət</span>
+                    <input name="price" type="text" placeholder="Sorğu əsasında" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Müddət / çatdırılma</span>
+                    <input name="time" type="text" placeholder="20-45 gün / obyektə görə" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Komanda / operator</span>
+                    <input name="team" type="text" placeholder="Briqada / operatorla" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Əlavə</span>
+                    <input name="extra" type="text" placeholder="Tutum, ideal müştəri və ya istifadə sahəsi" />
+                  </label>
+                </div>
+                <label class="admin-field admin-field-wide">
+                  <span>Xüsusiyyətlər / daxildir</span>
+                  <textarea name="specs" rows="3" placeholder="Söküntü; elektrik; santexnika; təhvil"></textarea>
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Nəticələr</span>
+                  <textarea name="deliverables" rows="2" placeholder="Smeta; iş qrafiki; təhvil aktı"></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="submit">Yadda saxla</button>
+                  <button class="button button-secondary" type="button" data-admin-clear-entity-form>Formu təmizlə</button>
+                  <button class="button button-outline" type="button" data-admin-reset-entities>Bu bölmənin dəyişikliklərini sil</button>
+                </div>
+              </form>
+
+              <div class="admin-import-box">
+                <label class="admin-field">
+                  <span>CSV import</span>
+                  <textarea class="admin-textarea" data-admin-entity-csv-input rows="13" placeholder="ad,kateqoriya,subkateqoriya,tip,vahid,qiymət,müddət,komanda,xüsusiyyətlər,nəticələr"></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="button" data-admin-import-entity-csv>CSV import</button>
+                  <button class="button button-secondary" type="button" data-admin-export-entity-csv>CSV export</button>
+                </div>
+                <p class="admin-import-status" data-admin-entity-status>
+                  Əvvəlcə bölməni seç, sonra CSV-ni import et. Seçilmiş bölmənin cədvəli və səhifəsi dərhal yenilənir.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div class="admin-panel glass">
@@ -271,6 +366,7 @@
                     <th>Vahid</th>
                     <th>Qiymət</th>
                     <th>Müddət</th>
+                    <th>Əməliyyat</th>
                   </tr>
                 </thead>
                 <tbody data-admin-services></tbody>
@@ -296,6 +392,7 @@
                     <th>Vahid</th>
                     <th>Qiymət</th>
                     <th>Müddət</th>
+                    <th>Əməliyyat</th>
                   </tr>
                 </thead>
                 <tbody data-admin-packages></tbody>
@@ -321,6 +418,7 @@
                     <th>Vahid</th>
                     <th>Operator</th>
                     <th>Qiymət</th>
+                    <th>Əməliyyat</th>
                   </tr>
                 </thead>
                 <tbody data-admin-rentals></tbody>

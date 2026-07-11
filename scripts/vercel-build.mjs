@@ -43,6 +43,7 @@ const staticEntries = [
   "rfq-dashboard.html",
   "admin.html",
   "assets",
+  "docs",
   "robots.txt",
   "sitemap.xml"
 ];

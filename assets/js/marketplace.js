@@ -29,6 +29,32 @@ const storage = {
 };
 
 const adminProductStorageKey = "constera-admin-products";
+const adminEntityConfigs = {
+  service: {
+    storageKey: "constera-admin-services",
+    arrayKey: "services",
+    categoriesKey: "serviceCategories",
+    idPrefix: "admin-service",
+    titleField: "title",
+    label: "xidmət"
+  },
+  package: {
+    storageKey: "constera-admin-packages",
+    arrayKey: "packages",
+    categoriesKey: "packageCategories",
+    idPrefix: "admin-package",
+    titleField: "title",
+    label: "paket"
+  },
+  rental: {
+    storageKey: "constera-admin-rentals",
+    arrayKey: "rentals",
+    categoriesKey: "rentalCategories",
+    idPrefix: "admin-rental",
+    titleField: "name",
+    label: "icarə"
+  }
+};
 
 const getCategory = (id) => marketplace.categories.find((category) => category.id === id);
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
@@ -84,8 +110,83 @@ const findSubcategoryByInput = (categoryId, value) => {
   const normalized = normalize(value);
   return (category?.subcategories || []).find((item) => normalize(item) === normalized) || value;
 };
+const getEntityConfig = (entityType) => adminEntityConfigs[entityType] || adminEntityConfigs.service;
+const getEntityCategories = (entityType) => marketplace[getEntityConfig(entityType).categoriesKey] || [];
+const getEntityItems = (entityType) => marketplace[getEntityConfig(entityType).arrayKey] || [];
+const setEntityItems = (entityType, items) => {
+  marketplace[getEntityConfig(entityType).arrayKey] = items;
+};
+const getAdminEntityItems = (entityType) => storage.read(getEntityConfig(entityType).storageKey);
+const saveAdminEntityItems = (entityType, items) => storage.write(getEntityConfig(entityType).storageKey, items);
+const getEntityTitle = (entityType, item) => item?.[getEntityConfig(entityType).titleField] || item?.title || item?.name || "";
+const findEntityCategoryByInput = (entityType, value) => {
+  const normalized = normalize(value);
+  return getEntityCategories(entityType).find((category) =>
+    normalize(category.id) === normalized || normalize(category.title) === normalized
+  );
+};
+const findEntitySubcategoryByInput = (entityType, categoryId, value) => {
+  const category = getEntityCategories(entityType).find((item) => item.id === categoryId);
+  const normalized = normalize(value);
+  return (category?.subcategories || []).find((item) => normalize(item) === normalized) || value;
+};
 const getAdminProducts = () => storage.read(adminProductStorageKey);
 const saveAdminProducts = (products) => storage.write(adminProductStorageKey, products);
+const ensureAdminEntityShape = (entityType, item, index = 0) => {
+  const config = getEntityConfig(entityType);
+  const categories = getEntityCategories(entityType);
+  const category = findEntityCategoryByInput(entityType, item.category)?.id ||
+    item.category ||
+    categories[0]?.id ||
+    "general";
+  const subcategory = findEntitySubcategoryByInput(entityType, category, item.subcategory) ||
+    categories.find((entry) => entry.id === category)?.subcategories?.[0] ||
+    item.subcategory ||
+    "Ümumi";
+  const title = getEntityTitle(entityType, item) || "Yeni kart";
+  const id = item.id || `${config.idPrefix}-${createSlug(title)}-${String(index + 1).padStart(3, "0")}`;
+  const base = {
+    id,
+    category,
+    subcategory,
+    unit: item.unit || "Sorğu ilə",
+    price: item.price || "Sorğu əsasında",
+    specs: normalizeSpecs(item.specs)
+  };
+
+  if (entityType === "package") {
+    return {
+      ...base,
+      title,
+      type: item.type || item.itemType || "Hazır paket",
+      timeline: item.timeline || item.time || "Layihədən sonra",
+      team: item.team || item.teamOrOperator || "Açar təslim komanda",
+      idealFor: item.idealFor || item.extra || "Müştəri brifinə görə",
+      includes: normalizeSpecs(item.includes || item.specs),
+      deliverables: normalizeSpecs(item.deliverables)
+    };
+  }
+
+  if (entityType === "rental") {
+    return {
+      ...base,
+      name: title,
+      capacity: item.capacity || item.extra || "Layihəyə görə",
+      deposit: item.deposit || "Müqavilə əsasında",
+      delivery: item.delivery || item.time || "Obyekt ünvanına görə",
+      operator: item.operator || item.team || item.teamOrOperator || "Razılaşma ilə"
+    };
+  }
+
+  return {
+    ...base,
+    title,
+    type: item.type || item.itemType || "Xidmət",
+    leadTime: item.leadTime || item.time || "Obyektə baxışdan sonra",
+    team: item.team || item.teamOrOperator || "İxtisaslaşmış briqada",
+    deliverables: normalizeSpecs(item.deliverables)
+  };
+};
 const ensureAdminProductShape = (product, index = 0) => {
   const category = findCategoryByInput(product.category)?.id || product.category || marketplace.categories[0]?.id || "general";
   const subcategory = findSubcategoryByInput(category, product.subcategory) ||
@@ -136,6 +237,28 @@ const syncAdminProductOverlay = () => {
     }
   });
 };
+const syncAdminEntityOverlay = (entityType) => {
+  const adminItems = getAdminEntityItems(entityType).map((item, index) => ensureAdminEntityShape(entityType, item, index));
+  if (!adminItems.length) return;
+
+  const overlayById = new Map(adminItems.map((item) => [item.id, item]));
+  const overlayByTitle = new Map(adminItems.map((item) => [normalize(getEntityTitle(entityType, item)), item]));
+  const usedIds = new Set();
+  const mergedItems = getEntityItems(entityType).map((item) => {
+    const overlay = overlayById.get(item.id) || overlayByTitle.get(normalize(getEntityTitle(entityType, item)));
+    if (!overlay) return item;
+    usedIds.add(overlay.id);
+    return { ...item, ...overlay };
+  });
+
+  adminItems.forEach((item) => {
+    const title = normalize(getEntityTitle(entityType, item));
+    const exists = mergedItems.some((entry) => entry.id === item.id || normalize(getEntityTitle(entityType, entry)) === title);
+    if (!usedIds.has(item.id) && !exists) mergedItems.push(item);
+  });
+
+  setEntityItems(entityType, mergedItems);
+};
 const getSubcategories = (categories, categoryId) => {
   const selectedCategories = categoryId === "all"
     ? categories
@@ -176,6 +299,7 @@ const getFilteredSubcategoryCount = (items, categoryId, subcategory) =>
 const getQueryParam = (name) => new URLSearchParams(window.location.search).get(name);
 
 syncAdminProductOverlay();
+["service", "package", "rental"].forEach(syncAdminEntityOverlay);
 
 const renderDetailFallback = (container, title, backHref) => {
   container.innerHTML = `
@@ -1330,6 +1454,72 @@ const productsToCsv = (products) => {
   return [headers.join(","), ...rows].join("\n");
 };
 
+const entityFromCsvRow = (entityType, row, index) => {
+  const title = getCsvValue(row, ["ad", "name", "title", "xidmət", "xidmet", "paket", "avadanlıq", "avadanliq"]);
+  const categoryInput = getCsvValue(row, ["kateqoriya", "category", "kategoriya"]);
+  const category = findEntityCategoryByInput(entityType, categoryInput)?.id ||
+    categoryInput ||
+    getEntityCategories(entityType)[0]?.id;
+
+  return ensureAdminEntityShape(entityType, {
+    title,
+    name: title,
+    category,
+    subcategory: getCsvValue(row, ["subkateqoriya", "alt kateqoriya", "subcategory", "sub category"]),
+    type: getCsvValue(row, ["tip", "type", "növ", "nov"]),
+    itemType: getCsvValue(row, ["tip", "type", "növ", "nov"]),
+    unit: getCsvValue(row, ["vahid", "unit"]),
+    price: getCsvValue(row, ["qiymət", "qiymet", "price"]),
+    time: getCsvValue(row, ["müddət", "muddet", "lead time", "timeline", "çatdırılma", "catdirilma"]),
+    team: getCsvValue(row, ["komanda", "operator", "team"]),
+    teamOrOperator: getCsvValue(row, ["komanda", "operator", "team"]),
+    extra: getCsvValue(row, ["tutum", "capacity", "kim üçün", "ideal for", "uyğundur", "uygundur"]),
+    specs: getCsvValue(row, ["xüsusiyyətlər", "xususiyyetler", "specs", "features", "daxildir", "includes"]),
+    deliverables: getCsvValue(row, ["nəticələr", "neticeler", "deliverables", "təhvil", "tehvil"]),
+    deposit: getCsvValue(row, ["depozit", "deposit"]),
+    delivery: getCsvValue(row, ["çatdırılma", "catdirilma", "delivery"]),
+    operator: getCsvValue(row, ["operator"])
+  }, index);
+};
+
+const entitiesToCsv = (entityType, items) => {
+  const headers = [
+    "ad",
+    "kateqoriya",
+    "subkateqoriya",
+    "tip",
+    "vahid",
+    "qiymət",
+    "müddət",
+    "komanda/operator",
+    "əlavə",
+    "xüsusiyyətlər",
+    "nəticələr"
+  ];
+  const rows = items.map((item) => {
+    const time = entityType === "service" ? item.leadTime : entityType === "package" ? item.timeline : item.delivery;
+    const team = entityType === "rental" ? item.operator : item.team;
+    const extra = entityType === "rental" ? item.capacity : entityType === "package" ? item.idealFor : "";
+    const specs = entityType === "package" ? item.includes : item.specs;
+
+    return [
+      getEntityTitle(entityType, item),
+      getEntityCategories(entityType).find((category) => category.id === item.category)?.title || item.category,
+      item.subcategory,
+      item.type || "",
+      item.unit,
+      item.price,
+      time,
+      team,
+      extra,
+      specs,
+      item.deliverables || []
+    ].map(escapeCsvValue).join(",");
+  });
+
+  return [headers.join(","), ...rows].join("\n");
+};
+
 const renderAdmin = () => {
   const stats = document.querySelector("[data-admin-stats]");
   const productRows = document.querySelector("[data-admin-products]");
@@ -1351,6 +1541,16 @@ const renderAdmin = () => {
   const productPriceFilter = document.querySelector("[data-admin-product-price-status]");
   const productCount = document.querySelector("[data-admin-product-count]");
   const brandList = document.querySelector("#admin-brand-list");
+  const entityForm = document.querySelector("[data-admin-entity-form]");
+  const entityTypeSelect = document.querySelector("[data-admin-entity-type]");
+  const entityCategorySelect = document.querySelector("[data-admin-entity-category]");
+  const entitySubcategorySelect = document.querySelector("[data-admin-entity-subcategory]");
+  const clearEntityFormButton = document.querySelector("[data-admin-clear-entity-form]");
+  const resetEntitiesButton = document.querySelector("[data-admin-reset-entities]");
+  const entityCsvInput = document.querySelector("[data-admin-entity-csv-input]");
+  const importEntityCsvButton = document.querySelector("[data-admin-import-entity-csv]");
+  const exportEntityCsvButton = document.querySelector("[data-admin-export-entity-csv]");
+  const entityStatus = document.querySelector("[data-admin-entity-status]");
 
   const renderStats = () => {
     if (!stats) return;
@@ -1358,7 +1558,10 @@ const renderAdmin = () => {
       product.priceStatus === "confirmed" || !normalize(product.price).includes("sorğu")
     ).length;
     const withImages = marketplace.products.filter((product) => product.imageUrl).length;
-    const adminChanges = getAdminProducts().length;
+    const adminChanges = getAdminProducts().length +
+      getAdminEntityItems("service").length +
+      getAdminEntityItems("package").length +
+      getAdminEntityItems("rental").length;
 
     stats.innerHTML = `
       <article class="stat-card"><span class="stat-value">${marketplace.categories.length}</span><p>kateqoriya</p></article>
@@ -1494,6 +1697,97 @@ const renderAdmin = () => {
     renderCategoryRows();
   };
 
+  const getCurrentEntityType = () => entityTypeSelect?.value || "service";
+
+  const renderEntityCategoryOptions = (entityType = getCurrentEntityType()) => {
+    if (!entityCategorySelect) return;
+    entityCategorySelect.innerHTML = groupCategories(getEntityCategories(entityType)).map((group) => `
+      <optgroup label="${escapeAttr(group.name)}">
+        ${group.categories.map((category) => `<option value="${escapeAttr(category.id)}">${escapeHtml(category.title)}</option>`).join("")}
+      </optgroup>
+    `).join("");
+  };
+
+  const updateEntitySubcategories = (selectedValue = "") => {
+    if (!entityCategorySelect || !entitySubcategorySelect) return;
+    const entityType = getCurrentEntityType();
+    const category = getEntityCategories(entityType).find((item) => item.id === entityCategorySelect.value);
+    const subcategories = category?.subcategories || [];
+    entitySubcategorySelect.innerHTML = subcategories.map((item) =>
+      `<option value="${escapeAttr(item)}">${escapeHtml(item)}</option>`
+    ).join("");
+    if (selectedValue && !subcategories.includes(selectedValue)) {
+      entitySubcategorySelect.insertAdjacentHTML("beforeend", `<option value="${escapeAttr(selectedValue)}">${escapeHtml(selectedValue)}</option>`);
+    }
+    if (selectedValue) entitySubcategorySelect.value = selectedValue;
+  };
+
+  const setEntityFormField = (name, value) => {
+    const field = entityForm?.elements.namedItem(name);
+    if (field) field.value = value || "";
+  };
+
+  const fillEntityForm = (entityType = getCurrentEntityType(), item = {}) => {
+    if (!entityForm || !entityTypeSelect) return;
+    entityForm.reset();
+    entityTypeSelect.value = entityType;
+    const shaped = item.id ? ensureAdminEntityShape(entityType, item) : item;
+    renderEntityCategoryOptions(entityType);
+    setEntityFormField("id", shaped.id);
+    setEntityFormField("title", getEntityTitle(entityType, shaped));
+    setEntityFormField("itemType", shaped.type || "");
+    setEntityFormField("category", shaped.category || getEntityCategories(entityType)[0]?.id || "");
+    updateEntitySubcategories(shaped.subcategory);
+    setEntityFormField("subcategory", shaped.subcategory);
+    setEntityFormField("unit", shaped.unit);
+    setEntityFormField("price", shaped.price);
+    setEntityFormField("time", entityType === "service" ? shaped.leadTime : entityType === "package" ? shaped.timeline : shaped.delivery);
+    setEntityFormField("team", entityType === "rental" ? shaped.operator : shaped.team);
+    setEntityFormField("extra", entityType === "rental" ? shaped.capacity : entityType === "package" ? shaped.idealFor : "");
+    setEntityFormField("specs", normalizeSpecs(entityType === "package" ? shaped.includes : shaped.specs).join("; "));
+    setEntityFormField("deliverables", normalizeSpecs(shaped.deliverables).join("; "));
+  };
+
+  const upsertEntityInMemory = (entityType, item) => {
+    const items = getEntityItems(entityType);
+    const title = normalize(getEntityTitle(entityType, item));
+    const existingIndex = items.findIndex((entry) => entry.id === item.id || normalize(getEntityTitle(entityType, entry)) === title);
+    if (existingIndex >= 0) {
+      items[existingIndex] = { ...items[existingIndex], ...item };
+    } else {
+      items.push(item);
+    }
+    setEntityItems(entityType, items);
+  };
+
+  const renderManagedEntityRows = (entityType, tbody) => {
+    if (!tbody) return;
+    const rows = getEntityItems(entityType).map((item) => {
+      const category = getEntityCategories(entityType).find((entry) => entry.id === item.category);
+      const title = getEntityTitle(entityType, item);
+      const time = entityType === "service" ? item.leadTime : entityType === "package" ? item.timeline : item.operator;
+      return `
+        <tr>
+          <td>${escapeHtml(title)}</td>
+          <td>${escapeHtml(category?.title || item.category)}</td>
+          <td>${escapeHtml(item.subcategory || "Ümumi")}</td>
+          <td>${escapeHtml(item.unit)}</td>
+          <td>${escapeHtml(entityType === "rental" ? item.operator : item.price)}</td>
+          <td>${escapeHtml(entityType === "rental" ? item.price : time)}</td>
+          <td><button class="table-action" type="button" data-admin-edit-entity="${escapeAttr(item.id)}" data-admin-entity-kind="${escapeAttr(entityType)}">Redaktə et</button></td>
+        </tr>
+      `;
+    }).join("");
+    tbody.innerHTML = rows;
+  };
+
+  const rerenderAdminEntities = () => {
+    renderStats();
+    renderManagedEntityRows("service", serviceRows);
+    renderManagedEntityRows("package", packageRows);
+    renderManagedEntityRows("rental", rentalRows);
+  };
+
   renderStats();
   renderCategoryOptions(formCategory);
   renderCategoryOptions(productCategoryFilter, "Bütün kateqoriyalar");
@@ -1505,6 +1799,9 @@ const renderAdmin = () => {
   }
   renderProductRows();
   renderCategoryRows();
+  renderEntityCategoryOptions();
+  updateEntitySubcategories();
+  rerenderAdminEntities();
 
   formCategory?.addEventListener("change", () => updateFormSubcategories());
   productSearch?.addEventListener("input", renderProductRows);
@@ -1580,44 +1877,89 @@ const renderAdmin = () => {
     if (importStatus) importStatus.textContent = "Cari filtrə uyğun məhsullar CSV kimi hazırlandı.";
   });
 
-  if (serviceRows) {
-    serviceRows.innerHTML = (marketplace.services || []).map((service) => `
-      <tr>
-        <td>${escapeHtml(service.title)}</td>
-        <td>${escapeHtml(getServiceCategory(service.category)?.title || service.category)}</td>
-        <td>${escapeHtml(service.subcategory || "Ümumi")}</td>
-        <td>${escapeHtml(service.unit)}</td>
-        <td>${escapeHtml(service.price)}</td>
-        <td>${escapeHtml(service.leadTime)}</td>
-      </tr>
-    `).join("");
-  }
+  entityTypeSelect?.addEventListener("change", () => {
+    const entityType = getCurrentEntityType();
+    renderEntityCategoryOptions(entityType);
+    updateEntitySubcategories();
+    if (entityStatus) entityStatus.textContent = `${getEntityConfig(entityType).label} bölməsi seçildi.`;
+  });
+  entityCategorySelect?.addEventListener("change", () => updateEntitySubcategories());
+  clearEntityFormButton?.addEventListener("click", () => fillEntityForm(getCurrentEntityType()));
+  resetEntitiesButton?.addEventListener("click", () => {
+    const entityType = getCurrentEntityType();
+    saveAdminEntityItems(entityType, []);
+    if (entityStatus) entityStatus.textContent = `${getEntityConfig(entityType).label} üzrə lokal düzəlişlər silindi. Səhifə yenilənir.`;
+    window.location.reload();
+  });
 
-  if (packageRows) {
-    packageRows.innerHTML = (marketplace.packages || []).map((pack) => `
-      <tr>
-        <td>${escapeHtml(pack.title)}</td>
-        <td>${escapeHtml(getPackageCategory(pack.category)?.title || pack.category)}</td>
-        <td>${escapeHtml(pack.subcategory || "Ümumi")}</td>
-        <td>${escapeHtml(pack.unit)}</td>
-        <td>${escapeHtml(pack.price)}</td>
-        <td>${escapeHtml(pack.timeline)}</td>
-      </tr>
-    `).join("");
-  }
+  [serviceRows, packageRows, rentalRows].forEach((tbody) => {
+    tbody?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-admin-edit-entity]");
+      if (!button) return;
+      const entityType = button.dataset.adminEntityKind || "service";
+      const item = getEntityItems(entityType).find((entry) => entry.id === button.dataset.adminEditEntity);
+      if (!item) return;
+      fillEntityForm(entityType, item);
+      entityForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 
-  if (rentalRows) {
-    rentalRows.innerHTML = (marketplace.rentals || []).map((rental) => `
-      <tr>
-        <td>${escapeHtml(rental.name)}</td>
-        <td>${escapeHtml(getRentalCategory(rental.category)?.title || rental.category)}</td>
-        <td>${escapeHtml(rental.subcategory || "Ümumi")}</td>
-        <td>${escapeHtml(rental.unit)}</td>
-        <td>${escapeHtml(rental.operator)}</td>
-        <td>${escapeHtml(rental.price)}</td>
-      </tr>
-    `).join("");
-  }
+  entityForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(entityForm).entries());
+    const entityType = fields.entityType || getCurrentEntityType();
+    const existing = getEntityItems(entityType).find((item) =>
+      (fields.id && item.id === fields.id) || normalize(getEntityTitle(entityType, item)) === normalize(fields.title)
+    );
+    const shaped = ensureAdminEntityShape(entityType, {
+      ...fields,
+      id: fields.id || existing?.id || "",
+      type: fields.itemType,
+      name: fields.title,
+      title: fields.title,
+      teamOrOperator: fields.team,
+      extra: fields.extra,
+      time: fields.time
+    }, getAdminEntityItems(entityType).length);
+    const title = normalize(getEntityTitle(entityType, shaped));
+    const nextAdminItems = getAdminEntityItems(entityType)
+      .filter((item) => item.id !== shaped.id && normalize(getEntityTitle(entityType, item)) !== title);
+
+    saveAdminEntityItems(entityType, [...nextAdminItems, shaped]);
+    upsertEntityInMemory(entityType, shaped);
+    if (entityStatus) entityStatus.textContent = `${getEntityTitle(entityType, shaped)} yadda saxlanıldı.`;
+    fillEntityForm(entityType, { category: shaped.category });
+    rerenderAdminEntities();
+  });
+
+  importEntityCsvButton?.addEventListener("click", () => {
+    const entityType = getCurrentEntityType();
+    const rows = parseCsvRows(entityCsvInput?.value || "");
+    const importedItems = rows.map((row, index) => entityFromCsvRow(entityType, row, index))
+      .filter((item) => getEntityTitle(entityType, item));
+    if (!importedItems.length) {
+      if (entityStatus) entityStatus.textContent = "CSV import üçün ən azı ad sütunu lazımdır.";
+      return;
+    }
+
+    const mergedByTitle = new Map(getAdminEntityItems(entityType).map((item) => [normalize(getEntityTitle(entityType, item)), item]));
+    importedItems.forEach((item) => {
+      const title = normalize(getEntityTitle(entityType, item));
+      const existing = getEntityItems(entityType).find((entry) => normalize(getEntityTitle(entityType, entry)) === title);
+      const shaped = { ...item, id: existing?.id || item.id };
+      mergedByTitle.set(title, shaped);
+      upsertEntityInMemory(entityType, shaped);
+    });
+    saveAdminEntityItems(entityType, [...mergedByTitle.values()]);
+    if (entityStatus) entityStatus.textContent = `${importedItems.length} ${getEntityConfig(entityType).label} import edildi.`;
+    rerenderAdminEntities();
+  });
+
+  exportEntityCsvButton?.addEventListener("click", () => {
+    const entityType = getCurrentEntityType();
+    if (entityCsvInput) entityCsvInput.value = entitiesToCsv(entityType, getEntityItems(entityType));
+    if (entityStatus) entityStatus.textContent = `${getEntityConfig(entityType).label} bölməsi CSV kimi hazırlandı.`;
+  });
 };
 
 const initRfq = () => {
