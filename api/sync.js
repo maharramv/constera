@@ -105,7 +105,7 @@ const upsertSuppliers = async (suppliers) => {
   return rows.length;
 };
 
-const upsertProducts = async (products) => {
+export const upsertProducts = async (products) => {
   if (!products.length) return 0;
   const rows = products.map((product) => {
     const sourceUrl = safeUrl(product.sourceUrl, "Mənbə URL-i");
@@ -135,6 +135,9 @@ const upsertProducts = async (products) => {
       priceNote: text(product.priceNote, { max: 500 }),
       priceStatus,
       availability: text(product.availability, { max: 160 }) || "Stok sorğu ilə",
+      stockQuantity: parsePriceAmount(product.stockQuantity),
+      minimumOrder: parsePriceAmount(product.minimumOrder),
+      priceVerifiedAt: priceStatus === "confirmed" ? new Date().toISOString() : null,
       imageUrl: safeMediaUrl(product.imageUrl),
       sourceUrl,
       sourceLabel: text(product.sourceLabel, { max: 160 }),
@@ -149,18 +152,22 @@ const upsertProducts = async (products) => {
          subcategory text, "packageText" text, origin text, "supplierName" text,
          "priceAmount" numeric, "priceCurrency" text, "priceText" text, "priceNote" text,
          "priceStatus" text, availability text, "imageUrl" text, "sourceUrl" text,
-         "sourceLabel" text, specs jsonb, "extraData" jsonb
+         "sourceLabel" text, specs jsonb, "extraData" jsonb,
+         "stockQuantity" numeric, "minimumOrder" numeric, "priceVerifiedAt" timestamptz
        )
      )
      INSERT INTO products (
        id, sku, name, slug, brand, category_id, subcategory, package_text, origin, supplier_name,
        supplier_id, price_amount, price_currency, price_text, price_note, price_status,
-       availability, image_url, source_url, source_label, specs, extra_data, status, updated_at
+       availability, stock_quantity, minimum_order, price_verified_at,
+       image_url, source_url, source_label, specs, extra_data, status, updated_at
      )
      SELECT i.id, i.sku, i.name, i.slug, i.brand, i."categoryId", i.subcategory,
             NULLIF(i."packageText", ''), NULLIF(i.origin, ''), NULLIF(i."supplierName", ''),
             s.id, i."priceAmount", i."priceCurrency", i."priceText", NULLIF(i."priceNote", ''),
-            i."priceStatus", i.availability, NULLIF(i."imageUrl", ''), NULLIF(i."sourceUrl", ''),
+            i."priceStatus", i.availability,
+            i."stockQuantity", i."minimumOrder", i."priceVerifiedAt",
+            NULLIF(i."imageUrl", ''), NULLIF(i."sourceUrl", ''),
             NULLIF(i."sourceLabel", ''), i.specs, i."extraData", 'active', now()
        FROM incoming i
        LEFT JOIN suppliers s ON lower(s.name) = lower(i."supplierName")
@@ -172,6 +179,8 @@ const upsertProducts = async (products) => {
        price_amount = EXCLUDED.price_amount, price_currency = EXCLUDED.price_currency,
        price_text = EXCLUDED.price_text, price_note = EXCLUDED.price_note,
        price_status = EXCLUDED.price_status, availability = EXCLUDED.availability,
+       stock_quantity = EXCLUDED.stock_quantity, minimum_order = EXCLUDED.minimum_order,
+       price_verified_at = EXCLUDED.price_verified_at,
        image_url = EXCLUDED.image_url, source_url = EXCLUDED.source_url,
        source_label = EXCLUDED.source_label, specs = EXCLUDED.specs,
        extra_data = products.extra_data || EXCLUDED.extra_data, status = 'active', updated_at = now()`,
@@ -180,7 +189,7 @@ const upsertProducts = async (products) => {
   return rows.length;
 };
 
-const upsertEntities = async (kind, items) => {
+export const upsertEntities = async (kind, items) => {
   if (!items.length) return 0;
   const rows = items.map((item) => {
     const titleValue = item.title || item.name;

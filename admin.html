@@ -39,19 +39,9 @@
           <a href="index.html#home">Ana səhifə</a>
           <a href="catalog.html">Kataloq</a>
           <a href="services.html">Xidmətlər</a>
-          <a href="packages.html">Paketlər</a>
           <a href="rental.html">İcarə</a>
-          <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
-          <a href="supplier-portal.html">Təchizatçı kabineti</a>
-          <a href="price-import.html">Qiymət idxalı</a>
-          <a href="customer-cabinet.html">Kabinet</a>
-          <a href="rfq.html">Qiymət sorğusu</a>
-          <a href="rfq-dashboard.html">Sorğu paneli</a>
-          <a href="tender.html">Tender</a>
-          <a href="ai-smeta.html">Ağıllı smeta</a>
           <a href="admin.html" aria-current="page">İdarəetmə</a>
-          <a class="button button-outline nav-cta" href="catalog.html">Kataloqa bax</a>
         </nav>
       </header>
 
@@ -87,9 +77,40 @@
           <div class="admin-tabs glass" data-admin-tabs>
             <button class="admin-tab-button is-active" type="button" data-admin-tab="overview">Ümumi</button>
             <button class="admin-tab-button" type="button" data-admin-tab="products">Məhsullar</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="categories">Kateqoriyalar</button>
             <button class="admin-tab-button" type="button" data-admin-tab="suppliers">Təchizatçılar</button>
-            <button class="admin-tab-button" type="button" data-admin-tab="services">Xidmət / paket / icarə</button>
-            <button class="admin-tab-button" type="button" data-admin-tab="backup">Ehtiyat nüsxə</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="services">Xidmət və icarə</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="requests">Sorğu və tender</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="users">İstifadəçilər</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="media">Media</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="system">Sistem</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="backup">Ehtiyat</button>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="overview">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Canlı göstəricilər</p>
+                <h2>Platformanın əməliyyat vəziyyəti</h2>
+              </div>
+              <button class="table-action" type="button" data-admin-v2-refresh>Yenilə</button>
+            </div>
+            <div class="admin-v2-kpi-grid" data-admin-v2-kpis></div>
+            <div class="admin-v2-dashboard-grid">
+              <section class="admin-v2-section">
+                <h3>Qiymət keyfiyyəti</h3>
+                <div class="admin-v2-bars" data-admin-v2-prices></div>
+              </section>
+              <section class="admin-v2-section">
+                <h3>İnteqrasiyalar</h3>
+                <div class="admin-v2-integration-list" data-admin-v2-integrations></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <h3>Son fəaliyyətlər</h3>
+                <div class="admin-v2-activity" data-admin-v2-activity></div>
+              </section>
+            </div>
+            <p class="admin-import-status" data-admin-v2-status role="status" aria-live="polite">Canlı məlumatlar üçün administrator sessiyası yoxlanılır.</p>
           </div>
 
           <div class="admin-panel glass" data-admin-panel="overview">
@@ -101,6 +122,7 @@
               <span class="data-badge">v1 hazır</span>
             </div>
             <div class="schema-grid">
+              <span>kod</span>
               <span>sku</span>
               <span>ad</span>
               <span>brend</span>
@@ -322,6 +344,14 @@
                   <label class="admin-field">
                     <span>Mövcudluq</span>
                     <input name="availability" type="text" placeholder="Stok sorğu ilə" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Stok miqdarı</span>
+                    <input name="stockQuantity" type="number" min="0" step="0.01" placeholder="120" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Minimum sifariş</span>
+                    <input name="minimumOrder" type="number" min="0" step="0.01" placeholder="1" />
                   </label>
                   <label class="admin-field">
                     <span>Foto URL</span>
@@ -575,8 +605,195 @@
                     <th>Əməliyyat</th>
                   </tr>
                 </thead>
-                <tbody data-admin-rentals></tbody>
+              <tbody data-admin-rentals></tbody>
               </table>
+            </div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="categories" hidden>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Kateqoriya ağacı</p>
+                <h2>Material, xidmət, paket və icarə təsnifatı</h2>
+              </div>
+              <span class="data-badge" data-admin-v2-category-count>0 qeyd</span>
+            </div>
+            <div class="admin-manager-grid">
+              <form class="admin-form" data-admin-v2-category-form>
+                <input type="hidden" name="id" />
+                <div class="admin-form-grid">
+                  <label class="admin-field">
+                    <span>Bölmə</span>
+                    <select name="kind">
+                      <option value="material">Material</option>
+                      <option value="service">Xidmət</option>
+                      <option value="package">Paket</option>
+                      <option value="rental">İcarə</option>
+                    </select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Ana kateqoriya</span>
+                    <select name="parentId" data-admin-v2-parent-category><option value="">Əsas kateqoriya</option></select>
+                  </label>
+                  <label class="admin-field">
+                    <span>Ad</span>
+                    <input name="title" required placeholder="Tikinti materialları" />
+                  </label>
+                  <label class="admin-field">
+                    <span>URL adı</span>
+                    <input name="slug" placeholder="tikinti-materiallari" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Qrup</span>
+                    <input name="group" placeholder="Konstruksiya" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Sıra</span>
+                    <input name="sortOrder" type="number" min="0" value="0" />
+                  </label>
+                  <label class="admin-field admin-field-wide">
+                    <span>Qısa izah</span>
+                    <textarea name="subtitle" rows="3" placeholder="Kateqoriyanın qısa təsviri"></textarea>
+                  </label>
+                </div>
+                <div class="admin-actions">
+                  <button class="button button-primary" type="submit">Kateqoriyanı yadda saxla</button>
+                  <button class="button button-secondary" type="button" data-admin-v2-category-clear>Formu təmizlə</button>
+                </div>
+                <p class="admin-import-status" data-admin-v2-category-status></p>
+              </form>
+              <div class="admin-import-box">
+                <label class="admin-field">
+                  <span>Bölmə filtri</span>
+                  <select data-admin-v2-category-filter>
+                    <option value="all">Hamısı</option>
+                    <option value="material">Material</option>
+                    <option value="service">Xidmət</option>
+                    <option value="package">Paket</option>
+                    <option value="rental">İcarə</option>
+                  </select>
+                </label>
+                <p class="admin-import-status">Ana kateqoriyalar və alt kateqoriyalar eyni ağacda idarə olunur.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>Bölmə</th><th>Kateqoriya</th><th>Valideyn</th><th>Qrup</th><th>Qeyd</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead>
+                <tbody data-admin-v2-categories></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="requests" hidden>
+            <div class="market-section-heading">
+              <div><p class="eyebrow">Satınalma axını</p><h2>Qiymət sorğuları və tenderlər</h2></div>
+              <button class="table-action" type="button" data-admin-v2-requests-refresh>Yenilə</button>
+            </div>
+            <form class="admin-form admin-v2-tender-form" data-admin-v2-tender-form>
+              <input type="hidden" name="id" />
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Şirkət</span><input name="companyName" required placeholder="Şirkətin adı" /></label>
+                <label class="admin-field"><span>Tender adı</span><input name="title" required placeholder="Material təchizatı" /></label>
+                <label class="admin-field"><span>Şəhər</span><input name="city" placeholder="Bakı" /></label>
+                <label class="admin-field"><span>Son tarix</span><input name="deadline" type="date" /></label>
+                <label class="admin-field"><span>Büdcə</span><input name="budget" placeholder="Sorğu əsasında" /></label>
+                <label class="admin-field"><span>Status</span><select name="status"><option value="draft">Qaralama</option><option value="published">Dərc olunub</option><option value="evaluation">Qiymətləndirmə</option><option value="awarded">Qalib seçilib</option><option value="closed">Bağlanıb</option><option value="cancelled">Ləğv edilib</option></select></label>
+                <label class="admin-field"><span>Görünürlük</span><select name="visibility"><option value="public">Açıq</option><option value="invited">Dəvət ilə</option></select></label>
+                <label class="admin-field"><span>Əlaqə</span><input name="contact" placeholder="E-poçt və ya telefon" /></label>
+                <label class="admin-field admin-field-wide"><span>Təsvir</span><textarea name="description" rows="3"></textarea></label>
+                <label class="admin-field admin-field-wide"><span>Lotlar</span><textarea name="lots" rows="5" required placeholder="Sement 40 kq | 500 | kisə | M400; çatdırılma daxil"></textarea></label>
+                <label class="admin-field admin-field-wide"><span>Tələblər</span><textarea name="requirements" rows="3" placeholder="Sertifikat; zəmanət; çatdırılma"></textarea></label>
+              </div>
+              <div class="admin-actions"><button class="button button-primary" type="submit">Tenderi yadda saxla</button><button class="button button-secondary" type="button" data-admin-v2-tender-clear>Formu təmizlə</button></div>
+              <p class="admin-import-status" data-admin-v2-tender-status></p>
+            </form>
+            <div class="admin-v2-split-tables">
+              <section class="admin-v2-section">
+                <h3>Qiymət sorğuları</h3>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sorğu</th><th>Şirkət</th><th>Əlaqə</th><th>Status</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-rfqs></tbody></table></div>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Tenderlər</h3>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Tender</th><th>Şirkət</th><th>Son tarix</th><th>Lot/təklif</th><th>Status</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-tenders></tbody></table></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="users" hidden>
+            <div class="market-section-heading">
+              <div><p class="eyebrow">Giriş və rollar</p><h2>İstifadəçi hesabları</h2></div>
+              <span class="data-badge" data-admin-v2-user-count>0 istifadəçi</span>
+            </div>
+            <div class="admin-manager-grid">
+              <form class="admin-form" data-admin-v2-user-form>
+                <input type="hidden" name="id" />
+                <div class="admin-form-grid">
+                  <label class="admin-field"><span>Ad</span><input name="name" required /></label>
+                  <label class="admin-field"><span>E-poçt</span><input name="email" type="email" required /></label>
+                  <label class="admin-field"><span>Şirkət</span><input name="companyName" /></label>
+                  <label class="admin-field"><span>Rol</span><select name="role"><option value="customer">Müştəri</option><option value="supplier">Təchizatçı</option><option value="sales">Satış</option><option value="admin">Administrator</option><option value="super_admin">Super administrator</option></select></label>
+                  <label class="admin-field"><span>Status</span><select name="status"><option value="invited">Dəvət edilib</option><option value="active">Aktiv</option><option value="suspended">Dayandırılıb</option></select></label>
+                  <label class="admin-field"><span>Müvəqqəti şifrə</span><input name="temporaryPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Boş olsa avtomatik yaranır" /></label>
+                </div>
+                <div class="admin-actions"><button class="button button-primary" type="submit">Hesabı yadda saxla</button><button class="button button-secondary" type="button" data-admin-v2-user-clear>Formu təmizlə</button></div>
+                <p class="admin-import-status" data-admin-v2-user-status></p>
+              </form>
+              <div class="admin-import-box"><p class="admin-import-status">Yeni hesab üçün müvəqqəti şifrə yalnız yaradılma və sıfırlama anında göstərilir. İstifadəçi ilk girişdən sonra şifrəni dəyişməlidir.</p></div>
+            </div>
+            <div class="table-wrap"><table class="admin-table"><thead><tr><th>İstifadəçi</th><th>Şirkət</th><th>Rol</th><th>Status</th><th>Son giriş</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-users></tbody></table></div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="media" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Vercel Blob</p><h2>Şəkil və sənəd kitabxanası</h2></div><span class="data-badge" data-admin-v2-media-count>0 fayl</span></div>
+            <form class="admin-form" data-admin-v2-media-form>
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Fayl</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp,image/avif,application/pdf" required /></label>
+                <label class="admin-field"><span>Əlaqəli bölmə</span><select name="entityType"><option value="product">Məhsul</option><option value="supplier">Təchizatçı</option><option value="service">Xidmət</option><option value="package">Paket</option><option value="rental">İcarə</option><option value="general">Ümumi</option></select></label>
+                <label class="admin-field"><span>Qeyd ID-si</span><input name="entityId" placeholder="product-..." /></label>
+                <label class="admin-field"><span>Alternativ mətn</span><input name="altText" placeholder="Məhsulun görünüşü" /></label>
+              </div>
+              <div class="admin-actions"><button class="button button-primary" type="submit">Faylı yüklə</button></div>
+              <p class="admin-import-status" data-admin-v2-media-status>JPEG, PNG, WebP, AVIF və PDF. Maksimum 3 MB.</p>
+            </form>
+            <div class="admin-v2-media-grid" data-admin-v2-media></div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="system" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Sistem və təhlükəsizlik</p><h2>Hesab, idxal, bildiriş və audit</h2></div><button class="table-action" type="button" data-admin-v2-system-refresh>Yenilə</button></div>
+            <div class="admin-v2-dashboard-grid">
+              <section class="admin-v2-section">
+                <h3>Şifrəni dəyiş</h3>
+                <form class="admin-form" data-admin-v2-password-form>
+                  <label class="admin-field"><span>Cari şifrə</span><input name="currentPassword" type="password" required autocomplete="current-password" /></label>
+                  <label class="admin-field"><span>Yeni şifrə</span><input name="newPassword" type="password" minlength="12" required autocomplete="new-password" /></label>
+                  <label class="admin-field"><span>Yeni şifrəni təsdiqlə</span><input name="confirmPassword" type="password" minlength="12" required autocomplete="new-password" /></label>
+                  <div class="admin-actions"><button class="button button-primary" type="submit">Şifrəni dəyiş</button><button class="button button-outline" type="button" data-admin-v2-revoke-sessions>Digər sessiyaları bağla</button></div>
+                  <p class="admin-import-status" data-admin-v2-account-status></p>
+                </form>
+              </section>
+              <section class="admin-v2-section">
+                <h3>CSV / Excel idxalı</h3>
+                <form class="admin-form" data-admin-v2-import-form>
+                  <label class="admin-field"><span>Bölmə</span><select name="importType"><option value="product">Məhsul</option><option value="service">Xidmət</option><option value="package">Paket</option><option value="rental">İcarə</option></select></label>
+                  <label class="admin-field"><span>Fayl</span><input name="file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required /></label>
+                  <label class="admin-field admin-checkbox-field"><input name="allowPartial" type="checkbox" /><span>Səhv sətirləri buraxaraq idxal et</span></label>
+                  <div class="admin-actions"><button class="button button-secondary" type="button" data-admin-v2-import-validate>Yoxla</button><button class="button button-primary" type="submit">Bazaya idxal et</button></div>
+                  <p class="admin-import-status" data-admin-v2-import-status></p>
+                </form>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Bildiriş növbəsi</h3>
+                <div class="admin-actions"><button class="button button-secondary" type="button" data-admin-v2-process-notifications>İndi göndər</button></div>
+                <div class="admin-v2-compact-list" data-admin-v2-notifications></div>
+              </section>
+              <section class="admin-v2-section">
+                <h3>İdxal tarixçəsi</h3>
+                <div class="admin-v2-compact-list" data-admin-v2-imports></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Audit jurnalı</h3><button class="button button-outline" type="button" data-admin-v2-cloud-backup>Bulud ehtiyatını endir</button></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Vaxt</th><th>İstifadəçi</th><th>Əməliyyat</th><th>Obyekt</th><th>Təfərrüat</th></tr></thead><tbody data-admin-v2-audit></tbody></table></div>
+              </section>
             </div>
           </div>
         </section>
@@ -589,5 +806,6 @@
     <script src="assets/js/script.js"></script>
     <script src="assets/js/production.js"></script>
     <script src="assets/js/marketplace.js"></script>
+    <script src="assets/js/admin-v2.js"></script>
   </body>
 </html>

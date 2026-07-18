@@ -1,10 +1,11 @@
 (function initConsteraProductionLayer() {
   class ConsteraApiError extends Error {
-    constructor(message, status = 0, code = "request_failed") {
+    constructor(message, status = 0, code = "request_failed", details = null) {
       super(message);
       this.name = "ConsteraApiError";
       this.status = status;
       this.code = code;
+      this.details = details;
     }
   }
 
@@ -23,13 +24,15 @@
       throw new ConsteraApiError(
         payload.error?.message || "Server sorğunu tamamlaya bilmədi.",
         response.status,
-        payload.error?.code
+        payload.error?.code,
+        payload.error?.details || null
       );
     }
     return payload;
   };
 
   const api = {
+    request,
     health: () => request("/api/health"),
     session: () => request("/api/auth?action=session"),
     login: (credentials) => request("/api/auth?action=login", { method: "POST", body: JSON.stringify(credentials) }),
@@ -49,7 +52,38 @@
     saveSupplier: (data, update = false) => request("/api/suppliers", {
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)
-    })
+    }),
+    account: () => request("/api/account"),
+    updateAccount: (data) => request("/api/account", { method: "PATCH", body: JSON.stringify(data) }),
+    analytics: () => request("/api/analytics"),
+    users: () => request("/api/users?limit=500"),
+    saveUser: (data, update = false) => request("/api/users", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
+    categories: (kind = "") => request(`/api/categories?includeArchived=true${kind ? `&kind=${encodeURIComponent(kind)}` : ""}`),
+    saveCategory: (data, update = false) => request("/api/categories", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
+    deleteCategory: (data) => request("/api/categories", { method: "DELETE", body: JSON.stringify(data) }),
+    entities: (kind = "") => request(`/api/entities?limit=1000${kind ? `&kind=${encodeURIComponent(kind)}` : ""}`),
+    saveEntity: (data, update = false) => request("/api/entities", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
+    deleteEntity: (id) => request("/api/entities", { method: "DELETE", body: JSON.stringify({ id }) }),
+    rfqs: () => request("/api/rfqs?limit=500"),
+    updateRfq: (id, status) => request("/api/rfqs", { method: "PATCH", body: JSON.stringify({ id, status }) }),
+    tenders: () => request("/api/tenders?limit=500"),
+    saveTender: (data, update = false) => request("/api/tenders", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
+    deleteTender: (id) => request("/api/tenders", { method: "DELETE", body: JSON.stringify({ id }) }),
+    tenderBids: (tenderId = "") => request(`/api/tender-bids?limit=500${tenderId ? `&tenderId=${encodeURIComponent(tenderId)}` : ""}`),
+    saveTenderBid: (data, update = false) => request("/api/tender-bids", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
+    imports: () => request("/api/imports?limit=100"),
+    runImport: (data) => request("/api/imports", { method: "POST", body: JSON.stringify(data) }),
+    media: (filters = {}) => {
+      const params = new URLSearchParams({ limit: "500", ...filters });
+      return request(`/api/media?${params}`);
+    },
+    uploadMedia: (data) => request("/api/media", { method: "POST", body: JSON.stringify(data) }),
+    deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
+    notifications: () => request("/api/notifications?limit=200"),
+    processNotifications: () => request("/api/notifications", { method: "POST", body: JSON.stringify({ action: "process" }) }),
+    updateNotification: (id, action) => request("/api/notifications", { method: "PATCH", body: JSON.stringify({ id, action }) }),
+    audit: () => request("/api/audit?limit=200"),
+    cloudBackup: () => request("/api/backup")
   };
   window.ConstEraAPI = api;
 
@@ -111,6 +145,13 @@
         const result = await api.login(fields);
         showSession(result.user);
         setStatus("Giriş uğurludur. Yönləndirilirsən...", "success");
+        if (result.user?.mustChangePassword) {
+          try {
+            localStorage.setItem("constera-admin-active-tab", "system");
+          } catch {
+            // Tab yaddaşı könüllüdür.
+          }
+        }
         window.setTimeout(() => window.location.assign(safeNextUrl()), 350);
       } catch (error) {
         setStatus(error.message, "error");

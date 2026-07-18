@@ -27,6 +27,8 @@ const sessionResponse = (user) => ({
     name: user.name,
     email: user.email,
     role: user.role,
+    status: user.status || "active",
+    mustChangePassword: Boolean(user.mustChangePassword),
     companyId: user.companyId,
     companyName: user.companyName
   } : null
@@ -64,8 +66,8 @@ export default withApiErrors(async (req, res) => {
       `WITH company AS (
          INSERT INTO companies (id, name, company_type) VALUES ($1, $2, 'internal') RETURNING id
        )
-       INSERT INTO users (id, company_id, email, name, password_hash, role)
-       SELECT $3, company.id, $4, $5, $6, 'super_admin' FROM company`,
+       INSERT INTO users (id, company_id, email, name, password_hash, role, password_changed_at)
+       SELECT $3, company.id, $4, $5, $6, 'super_admin', now() FROM company`,
       [companyId, "ConstEra", userId, userEmail, name, passwordHash]
     );
     await createSession(req, res, userId);
@@ -79,7 +81,8 @@ export default withApiErrors(async (req, res) => {
     const identityHash = hashOpaque(`${userEmail}:${getClientIp(req)}`);
     await assertLoginAllowed(identityHash);
     const rows = await query(
-      `SELECT u.id, u.name, u.email, u.password_hash, u.role, u.company_id, c.name AS company_name
+      `SELECT u.id, u.name, u.email, u.password_hash, u.role, u.status, u.must_change_password,
+              u.company_id, c.name AS company_name
          FROM users u
          LEFT JOIN companies c ON c.id = u.company_id
         WHERE lower(u.email) = lower($1) AND u.status = 'active'
@@ -100,6 +103,8 @@ export default withApiErrors(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      status: user.status,
+      mustChangePassword: user.must_change_password,
       companyId: user.company_id,
       companyName: user.company_name
     }));

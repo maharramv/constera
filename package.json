@@ -8,6 +8,7 @@
     "node": "24.x"
   },
   "scripts": {
+    "dev": "node scripts/dev-server.mjs",
     "build": "npm run vercel-build",
     "vercel-build": "node scripts/vercel-build.mjs",
     "audit": "node scripts/audit-site.mjs",
@@ -19,6 +20,8 @@
     "check": "npm run audit && npm run check:syntax && npm run test:api && npm run vercel-build"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0"
+    "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.6.1",
+    "read-excel-file": "^9.3.2"
   }
 }

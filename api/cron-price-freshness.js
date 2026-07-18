@@ -14,7 +14,7 @@ export default withApiErrors(async (req, res) => {
             CASE WHEN COALESCE(price_note, '') = '' THEN '' ELSE ' · ' END || '30 gündən köhnə qiymət',
             updated_at = now()
       WHERE price_status = 'confirmed'
-        AND updated_at < now() - interval '30 days'
+        AND COALESCE(price_verified_at, updated_at) < now() - interval '30 days'
       RETURNING id`
   );
   const sessions = await query("DELETE FROM sessions WHERE expires_at <= now() RETURNING id");

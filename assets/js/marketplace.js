@@ -415,6 +415,9 @@ const ensureAdminProductShape = (product, index = 0) => {
     sourceUrl: product.sourceUrl || product.source || "",
     sourceLabel: product.sourceLabel || (product.sourceUrl ? "Mənbə" : ""),
     availability: product.availability || "Stok sorğu ilə",
+    stockQuantity: product.stockQuantity ?? "",
+    minimumOrder: product.minimumOrder ?? "",
+    priceVerifiedAt: product.priceVerifiedAt || "",
     specs: normalizeSpecs(product.specs)
   };
 };
@@ -2017,6 +2020,8 @@ const renderAdmin = () => {
     setFormField("priceStatus", shaped.priceStatus || "request");
     setFormField("supplier", shaped.supplier);
     setFormField("availability", shaped.availability);
+    setFormField("stockQuantity", shaped.stockQuantity);
+    setFormField("minimumOrder", shaped.minimumOrder);
     setFormField("imageUrl", shaped.imageUrl);
     setFormField("sourceUrl", shaped.sourceUrl);
     setFormField("specs", normalizeSpecs(shaped.specs).join("; "));
@@ -2467,6 +2472,13 @@ const renderAdmin = () => {
     if (entityStatus) entityStatus.textContent = `${getEntityTitle(entityType, shaped)} yadda saxlanıldı.`;
     fillEntityForm(entityType, { category: shaped.category });
     rerenderAdminEntities();
+    window.ConstEraAPI?.saveEntity({ ...shaped, entityType }, Boolean(existing)).then(() => {
+      if (entityStatus) entityStatus.textContent = `${getEntityTitle(entityType, shaped)} lokal və PostgreSQL bazasında yadda saxlanıldı.`;
+    }).catch((error) => {
+      if (entityStatus && !["database_not_configured", "authentication_required"].includes(error.code)) {
+        entityStatus.textContent = `${getEntityTitle(entityType, shaped)} lokal saxlanıldı. Bulud xətası: ${error.message}`;
+      }
+    });
   });
 
   importEntityCsvButton?.addEventListener("click", () => {

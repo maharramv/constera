@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getSessionUser, hashOpaque, requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
+import { queueNotification } from "./_lib/notifications.js";
 import { oneOf, parseLimit, stringList, text } from "./_lib/validation.js";
 
 const statuses = ["Yeni", "Baxılır", "Təklif gözləyir", "Təklif alındı", "Bağlandı", "Ləğv edildi"];
@@ -108,5 +109,14 @@ export default withApiErrors(async (req, res) => {
     ]
   );
   await recordAudit({ actorId: session?.id || null, action: "create", entityType: "rfq", entityId: id, details: { type, supplierId } });
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
+  await queueNotification({
+    channel: adminEmail ? "email" : "in_app",
+    recipient: adminEmail || null,
+    subject: "Yeni qiymət sorğusu",
+    body: `${company}: ${title} · ${quantity}`,
+    templateKey: "rfq_created",
+    payload: { rfqId: id, type, supplierId, company, title, quantity }
+  });
   return sendJson(res, 201, { ok: true, data: { id, status: "Yeni", cloud: true } });
 });

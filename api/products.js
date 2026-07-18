@@ -5,7 +5,8 @@ import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, parse
 
 const productFields = `id, sku, name, slug, brand, category_id, subcategory, package_text, origin,
   supplier_name, price_amount, price_currency, price_text, price_note, price_status, availability,
-  image_url, source_url, source_label, specs, status, created_at, updated_at`;
+  stock_quantity, minimum_order, price_verified_at, image_url, source_url, source_label,
+  specs, status, created_at, updated_at`;
 
 const mapProduct = (row) => ({
   id: row.id,
@@ -24,6 +25,9 @@ const mapProduct = (row) => ({
   priceNote: row.price_note || "",
   priceStatus: row.price_status,
   availability: row.availability,
+  stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
+  minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+  priceVerifiedAt: row.price_verified_at,
   imageUrl: row.image_url || "",
   sourceUrl: row.source_url || "",
   sourceLabel: row.source_label || "",
@@ -61,6 +65,11 @@ const normalizeProduct = (body) => {
     priceNote: text(body.priceNote, { field: "Qiymət qeydi", max: 500 }),
     priceStatus,
     availability: text(body.availability, { field: "Mövcudluq", max: 160 }) || "Stok sorğu ilə",
+    stockQuantity: parsePriceAmount(body.stockQuantity),
+    minimumOrder: parsePriceAmount(body.minimumOrder),
+    priceVerifiedAt: priceStatus === "confirmed"
+      ? (Number.isFinite(Date.parse(body.priceVerifiedAt)) ? new Date(body.priceVerifiedAt).toISOString() : new Date().toISOString())
+      : null,
     imageUrl: safeMediaUrl(body.imageUrl),
     sourceUrl,
     sourceLabel: text(body.sourceLabel, { field: "Mənbə adı", max: 160 }),
@@ -114,10 +123,12 @@ export default withApiErrors(async (req, res) => {
       `INSERT INTO products (
          id, sku, name, slug, brand, category_id, subcategory, package_text, origin, supplier_name,
          price_amount, price_currency, price_text, price_note, price_status, availability,
+         stock_quantity, minimum_order, price_verified_at,
          image_url, source_url, source_label, specs, status, updated_at
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20::jsonb, $21, now()
+         $11, $12, $13, $14, $15, $16, $17, $18, $19,
+         $20, $21, $22, $23::jsonb, $24, now()
        )
        ON CONFLICT (id) DO UPDATE SET
          sku = EXCLUDED.sku, name = EXCLUDED.name, slug = EXCLUDED.slug, brand = EXCLUDED.brand,
@@ -125,13 +136,16 @@ export default withApiErrors(async (req, res) => {
          package_text = EXCLUDED.package_text, origin = EXCLUDED.origin, supplier_name = EXCLUDED.supplier_name,
          price_amount = EXCLUDED.price_amount, price_currency = EXCLUDED.price_currency,
          price_text = EXCLUDED.price_text, price_note = EXCLUDED.price_note, price_status = EXCLUDED.price_status,
-         availability = EXCLUDED.availability, image_url = EXCLUDED.image_url, source_url = EXCLUDED.source_url,
+         availability = EXCLUDED.availability, stock_quantity = EXCLUDED.stock_quantity,
+         minimum_order = EXCLUDED.minimum_order, price_verified_at = EXCLUDED.price_verified_at,
+         image_url = EXCLUDED.image_url, source_url = EXCLUDED.source_url,
          source_label = EXCLUDED.source_label, specs = EXCLUDED.specs, status = EXCLUDED.status, updated_at = now()
        RETURNING ${productFields}`,
       [
         item.id, item.sku, item.name, item.slug, item.brand, item.category, item.subcategory,
         item.packageText || null, item.origin || null, item.supplierName || null, item.priceAmount,
         item.priceCurrency, item.priceText, item.priceNote || null, item.priceStatus, item.availability,
+        item.stockQuantity, item.minimumOrder, item.priceVerifiedAt,
         item.imageUrl || null, item.sourceUrl || null, item.sourceLabel || null, JSON.stringify(item.specs), item.status
       ]
     );

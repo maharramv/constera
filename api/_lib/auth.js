@@ -42,6 +42,8 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  status: user.status || "active",
+  mustChangePassword: Boolean(user.must_change_password),
   companyId: user.company_id || null,
   companyName: user.company_name || null
 });
@@ -50,7 +52,8 @@ export const getSessionUser = async (req) => {
   const token = parseCookies(req.headers.cookie)[getCookieName()];
   if (!token) return null;
   const rows = await query(
-    `SELECT u.id, u.name, u.email, u.role, u.company_id, c.name AS company_name, s.id AS session_id
+    `SELECT u.id, u.name, u.email, u.role, u.status, u.must_change_password,
+            u.company_id, c.name AS company_name, s.id AS session_id
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN companies c ON c.id = u.company_id
@@ -61,10 +64,13 @@ export const getSessionUser = async (req) => {
   return rows[0] ? { ...publicUser(rows[0]), sessionId: rows[0].session_id } : null;
 };
 
-export const requireRole = async (req, roles = allowedRoles) => {
+export const requireRole = async (req, roles = allowedRoles, options = {}) => {
   const user = await getSessionUser(req);
   if (!user) throw new ApiError(401, "authentication_required", "Bu əməliyyat üçün daxil olmaq lazımdır.");
   if (!roles.includes(user.role)) throw new ApiError(403, "permission_denied", "Bu əməliyyat üçün icazən yoxdur.");
+  if (user.mustChangePassword && !options.allowPasswordChange) {
+    throw new ApiError(403, "password_change_required", "Davam etməzdən əvvəl müvəqqəti şifrəni dəyişmək lazımdır.");
+  }
   return user;
 };
 
@@ -113,3 +119,5 @@ export const recordLoginAttempt = async (identityHash, succeeded) => {
 };
 
 export const validateRole = (role) => allowedRoles.includes(role) ? role : "customer";
+
+export const availableRoles = Object.freeze([...allowedRoles]);

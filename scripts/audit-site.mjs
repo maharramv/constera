@@ -13,6 +13,19 @@ const requiredProductionFiles = [
   "api/auth.js",
   "api/catalog.js",
   "api/cron-price-freshness.js",
+  "api/cron-notifications.js",
+  "api/account.js",
+  "api/users.js",
+  "api/categories.js",
+  "api/entities.js",
+  "api/analytics.js",
+  "api/audit.js",
+  "api/backup.js",
+  "api/imports.js",
+  "api/media.js",
+  "api/notifications.js",
+  "api/tenders.js",
+  "api/tender-bids.js",
   "api/products.js",
   "api/suppliers.js",
   "api/rfqs.js",
@@ -21,7 +34,8 @@ const requiredProductionFiles = [
   "db/migrations/001_initial.sql",
   "db/migrations/002_indexes.sql",
   "db/migrations/003_marketplace_entities.sql",
-  "db/migrations/004_submission_security.sql"
+  "db/migrations/004_submission_security.sql",
+  "db/migrations/005_admin_v2.sql"
 ];
 
 const report = (collection, file, message) => collection.push(`${file}: ${message}`);
@@ -165,6 +179,8 @@ try {
   if (!packageJson.dependencies?.["@neondatabase/serverless"]) {
     report(errors, "package.json", "Neon PostgreSQL drayveri tapılmadı.");
   }
+  if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
+  if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
   ["db:migrate", "db:seed", "test:api"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
