@@ -298,11 +298,22 @@ const initContactForm = () => {
   });
 };
 
+const initServiceWorker = () => {
+  if (!("serviceWorker" in navigator)) return;
+  if (!window.isSecureContext && window.location.hostname !== "localhost") return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js", { scope: "/" }).catch(() => {
+      // PWA qeydiyyatı əsas kataloq axınını dayandırmamalıdır.
+    });
+  }, { once: true });
+};
+
 initAccessibility();
 initMenu();
 updateMarketplaceCounts();
 initCounters();
 initContactForm();
 initSeoEnhancements();
+initServiceWorker();
 
 window.consteraRefreshSeo = initSeoEnhancements;

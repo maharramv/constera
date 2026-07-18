@@ -19,6 +19,7 @@ const requiredFiles = [
   "supplier-portal.html",
   "price-import.html",
   "customer-cabinet.html",
+  "checkout.html",
   "rfq.html",
   "rfq-dashboard.html",
   "tender.html",
@@ -33,6 +34,7 @@ const requiredFiles = [
   "assets/js/production.js",
   "assets/js/admin-v2.js",
   "assets/js/marketplace.js",
+  "service-worker.js",
   "scripts/site-shell.mjs",
   ...siteShellTemplateFiles
 ];
@@ -54,6 +56,7 @@ const staticEntries = [
   "supplier-portal.html",
   "price-import.html",
   "customer-cabinet.html",
+  "checkout.html",
   "rfq.html",
   "rfq-dashboard.html",
   "tender.html",
@@ -63,7 +66,8 @@ const staticEntries = [
   "assets",
   "docs",
   "robots.txt",
-  "sitemap.xml"
+  "sitemap.xml",
+  "service-worker.js"
 ];
 
 const missingFiles = requiredFiles.filter((file) => {

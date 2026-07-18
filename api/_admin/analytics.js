@@ -14,6 +14,7 @@ export default withApiErrors(async (req, res) => {
       (SELECT count(*) FROM categories WHERE active = true AND parent_id IS NOT NULL)::int AS subcategories,
       (SELECT count(*) FROM rfqs)::int AS rfqs,
       (SELECT count(*) FROM offers)::int AS offers,
+      (SELECT count(*) FROM orders)::int AS orders,
       (SELECT count(*) FROM tenders)::int AS tenders,
       (SELECT count(*) FROM tender_bids)::int AS tender_bids,
       (SELECT count(*) FROM media_assets WHERE status = 'active')::int AS media,

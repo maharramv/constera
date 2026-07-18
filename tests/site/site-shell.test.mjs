@@ -58,3 +58,43 @@ test("render edilmiş səhifələr təkrarlanan id yaratmır", () => {
     assert.equal(new Set(ids).size, ids.length, `${file}: təkrarlanan id var`);
   });
 });
+
+test("checkout indekslənmir və PWA şəxsi/API sorğularını keşləmir", () => {
+  const checkout = render("checkout.html");
+  const serviceWorker = readFileSync(resolve(root, "service-worker.js"), "utf8");
+  const manifest = JSON.parse(readFileSync(resolve(root, "assets/icons/site.webmanifest"), "utf8"));
+
+  assert.match(checkout, /name="robots" content="noindex, nofollow"/i);
+  assert.match(checkout, /data-checkout-form/);
+  assert.match(checkout, /rel="manifest" href="assets\/icons\/site\.webmanifest"/);
+  assert.match(serviceWorker, /pathname\.startsWith\("\/api\/"\)/);
+  assert.match(serviceWorker, /checkout\.html/);
+  assert.equal(manifest.lang, "az");
+  assert.equal(manifest.start_url.startsWith("/"), true);
+});
+
+test("ictimai kataloq server API-si hazır olduqda Neon axtarışına qoşulur", () => {
+  const catalog = render("catalog.html");
+  const product = render("product-detail.html");
+  const productionPosition = catalog.indexOf('src="assets/js/production.js"');
+  const marketplacePosition = catalog.indexOf('src="assets/js/marketplace.js"');
+
+  assert.ok(productionPosition > 0 && productionPosition < marketplacePosition);
+  assert.match(product, /src="assets\/js\/production\.js"/);
+  assert.match(readFileSync(resolve(root, "assets/js/production.js"), "utf8"), /product:\s*\(id\)/);
+});
+
+test("təchizatçı kabineti rol əsaslı server qatını yükləyir", () => {
+  const supplierPortal = render("supplier-portal.html");
+  assert.match(supplierPortal, /src="assets\/js\/production\.js"/);
+  assert.match(supplierPortal, /Neon \+ lokal ehtiyat/);
+  assert.match(readFileSync(resolve(root, "assets/js/production.js"), "utf8"), /myProducts:/);
+});
+
+test("tender səhifəsi server tender və təklif API-lərini yükləyir", () => {
+  const tender = render("tender.html");
+  const production = readFileSync(resolve(root, "assets/js/production.js"), "utf8");
+  assert.match(tender, /src="assets\/js\/production\.js"/);
+  assert.match(production, /saveTender:/);
+  assert.match(production, /saveTenderBid:/);
+});

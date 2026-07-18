@@ -109,6 +109,20 @@ export default withApiErrors(async (req, res) => {
     const lots = normalizeLots(body.lots);
     const companyName = text(body.companyName || user.companyName, { field: "Şirkət", required: true, max: 200 });
     const title = text(body.title, { field: "Tender adı", required: true, max: 260 });
+    const visibility = oneOf(body.visibility, visibilities, "public", "Görünürlük");
+    const invited = Array.isArray(body.supplierIds) ? [...new Set(body.supplierIds.map(String))].slice(0, 200) : [];
+    if (visibility === "invited") {
+      if (!invited.length) {
+        throw new ApiError(400, "supplier_invitation_required", "Dəvətli tender üçün ən azı bir təchizatçı seçilməlidir.");
+      }
+      const availableSuppliers = await query(
+        "SELECT id FROM suppliers WHERE id = ANY($1::text[]) AND status <> 'Arxiv'",
+        [invited]
+      );
+      if (availableSuppliers.length !== invited.length) {
+        throw new ApiError(400, "supplier_not_found", "Seçilmiş təchizatçılardan biri aktiv deyil və ya tapılmadı.");
+      }
+    }
     const allowedStatus = ["super_admin", "admin", "sales"].includes(user.role)
       ? oneOf(body.status, statuses, "draft", "Status")
       : oneOf(body.status, ["draft", "published"], "draft", "Status");
@@ -121,7 +135,7 @@ export default withApiErrors(async (req, res) => {
         id, user.id, user.role === "customer" ? user.id : null, companyName, title,
         text(body.description, { max: 5_000 }) || null, text(body.city, { max: 160 }) || null,
         normalizeDate(body.deadline), text(body.budget, { max: 160 }) || null, allowedStatus,
-        oneOf(body.visibility, visibilities, "public", "Görünürlük"),
+        visibility,
         text(body.contact, { max: 300 }) || null, JSON.stringify(stringList(body.requirements, 50))
       ]
     );
@@ -135,7 +149,6 @@ export default withApiErrors(async (req, res) => {
        SELECT id, $2, title, "quantityText", NULLIF(unit, ''), specifications, "sortOrder" FROM incoming`,
       [JSON.stringify(lots), id]
     );
-    const invited = Array.isArray(body.supplierIds) ? [...new Set(body.supplierIds.map(String))].slice(0, 200) : [];
     if (invited.length) {
       await query(
         `INSERT INTO tender_invitations (tender_id, supplier_id)

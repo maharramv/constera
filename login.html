@@ -54,6 +54,34 @@
             </div>
           </div>
 
+          <details class="auth-setup" data-password-recovery>
+            <summary>Şifrəni unutmuşam</summary>
+            <form class="admin-form auth-form" data-password-reset-request-form>
+              <label class="admin-field">
+                <span>Hesabın e-poçtu</span>
+                <input name="email" type="email" autocomplete="email" required />
+              </label>
+              <button class="button button-secondary" type="submit">Bərpa keçidi göndər</button>
+            </form>
+          </details>
+
+          <form class="admin-form auth-form auth-reset-form" data-password-reset-form hidden>
+            <div class="auth-copy">
+              <p class="eyebrow">Şifrə bərpası</p>
+              <h2>Yeni şifrə yarat</h2>
+            </div>
+            <input name="token" type="hidden" data-password-reset-token />
+            <label class="admin-field">
+              <span>Yeni şifrə</span>
+              <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+            </label>
+            <label class="admin-field">
+              <span>Yeni şifrəni təsdiqlə</span>
+              <input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+            </label>
+            <button class="button button-primary" type="submit">Şifrəni yenilə</button>
+          </form>
+
           <details class="auth-setup">
             <summary>İlk super administratoru yarat</summary>
             <form class="admin-form auth-form" data-setup-form>

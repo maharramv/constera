@@ -14,6 +14,7 @@
     { "source": "/api/imports", "destination": "/api/admin?__route=imports" },
     { "source": "/api/media", "destination": "/api/admin?__route=media" },
     { "source": "/api/notifications", "destination": "/api/admin?__route=notifications" },
+    { "source": "/api/orders", "destination": "/api/admin?__route=orders" },
     { "source": "/api/tender-bids", "destination": "/api/admin?__route=tender-bids" },
     { "source": "/api/tenders", "destination": "/api/admin?__route=tenders" },
     { "source": "/api/users", "destination": "/api/admin?__route=users" }

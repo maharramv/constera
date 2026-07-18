@@ -36,19 +36,32 @@
     health: () => request("/api/health"),
     session: () => request("/api/auth?action=session"),
     login: (credentials) => request("/api/auth?action=login", { method: "POST", body: JSON.stringify(credentials) }),
+    requestPasswordReset: (email) => request("/api/auth?action=request-reset", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    }),
+    resetPassword: (token, password) => request("/api/auth?action=reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password })
+    }),
     setup: (credentials) => request("/api/auth?action=setup", {
       method: "POST",
       headers: { Authorization: `Bearer ${credentials.setupToken}` },
       body: JSON.stringify(credentials)
     }),
     logout: () => request("/api/auth?action=logout", { method: "POST", body: "{}" }),
-    catalog: () => request("/api/catalog?limit=1000"),
+    catalog: (filters = { limit: "1000" }) => {
+      const params = new URLSearchParams(filters);
+      return request(`/api/catalog?${params}`);
+    },
+    product: (id) => request(`/api/products?id=${encodeURIComponent(id)}&limit=1`),
     sync: (data) => request("/api/sync", { method: "POST", body: JSON.stringify(data) }),
     createRfq: (data) => request("/api/rfqs", { method: "POST", body: JSON.stringify(data) }),
     saveProduct: (data, update = false) => request("/api/products", {
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)
     }),
+    myProducts: () => request("/api/products?scope=mine&limit=1000"),
     saveSupplier: (data, update = false) => request("/api/suppliers", {
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)
@@ -80,6 +93,9 @@
     uploadMedia: (data) => request("/api/media", { method: "POST", body: JSON.stringify(data) }),
     deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
     notifications: () => request("/api/notifications?limit=200"),
+    orders: () => request("/api/orders?limit=500"),
+    createOrder: (data) => request("/api/orders", { method: "POST", body: JSON.stringify(data) }),
+    updateOrder: (id, data) => request("/api/orders", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
     processNotifications: () => request("/api/notifications", { method: "POST", body: JSON.stringify({ action: "process" }) }),
     updateNotification: (id, action) => request("/api/notifications", { method: "PATCH", body: JSON.stringify({ id, action }) }),
     audit: () => request("/api/audit?limit=200"),
@@ -106,11 +122,16 @@
   const initLogin = async () => {
     const loginForm = document.querySelector("[data-login-form]");
     const setupForm = document.querySelector("[data-setup-form]");
+    const resetRequestForm = document.querySelector("[data-password-reset-request-form]");
+    const resetForm = document.querySelector("[data-password-reset-form]");
+    const recoveryPanel = document.querySelector("[data-password-recovery]");
+    const resetTokenInput = document.querySelector("[data-password-reset-token]");
     const status = document.querySelector("[data-auth-status]");
     const sessionPanel = document.querySelector("[data-auth-session]");
     const sessionName = document.querySelector("[data-auth-session-name]");
     const logoutButton = document.querySelector("[data-auth-logout]");
     if (!loginForm || !status) return;
+    let resetToken = new URLSearchParams(window.location.search).get("reset") || "";
 
     const setStatus = (message, type = "info") => {
       status.textContent = message;
@@ -118,10 +139,14 @@
     };
     const showSession = (user) => {
       sessionPanel.hidden = !user;
-      loginForm.hidden = Boolean(user);
-      if (setupForm) setupForm.closest("details").hidden = Boolean(user);
+      loginForm.hidden = Boolean(user) || Boolean(resetToken);
+      if (recoveryPanel) recoveryPanel.hidden = Boolean(user) || Boolean(resetToken);
+      if (resetForm) resetForm.hidden = Boolean(user) || !resetToken;
+      if (resetTokenInput) resetTokenInput.value = resetToken;
+      if (setupForm) setupForm.closest("details").hidden = Boolean(user) || Boolean(resetToken);
       if (sessionName && user) sessionName.textContent = `${user.name} · ${user.role}`;
     };
+    showSession(null);
 
     try {
       const health = await api.health();
@@ -131,7 +156,11 @@
       }
       const session = await api.session();
       showSession(session.user);
-      setStatus(session.user ? "Aktiv sessiya tapıldı." : "İdarəetmə hesabına daxil ol.", "success");
+      setStatus(session.user
+        ? "Aktiv sessiya tapıldı."
+        : resetToken
+          ? "Yeni güclü şifrəni iki dəfə yaz."
+          : "İdarəetmə hesabına daxil ol.", "success");
     } catch (error) {
       setStatus(error.message || "API hazırda əlçatan deyil.", "warning");
     }
@@ -153,6 +182,45 @@
           }
         }
         window.setTimeout(() => window.location.assign(safeNextUrl()), 350);
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        setButtonBusy(submit, false);
+      }
+    });
+
+    resetRequestForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = resetRequestForm.querySelector('button[type="submit"]');
+      setButtonBusy(submit, true, "Göndərilir...");
+      try {
+        const fields = Object.fromEntries(new FormData(resetRequestForm).entries());
+        const result = await api.requestPasswordReset(fields.email);
+        resetRequestForm.reset();
+        setStatus(result.message || "Hesab mövcuddursa, bərpa təlimatı göndərildi.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        setButtonBusy(submit, false);
+      }
+    });
+
+    resetForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = resetForm.querySelector('button[type="submit"]');
+      const fields = Object.fromEntries(new FormData(resetForm).entries());
+      if (fields.password !== fields.confirmPassword) {
+        setStatus("Yeni şifrələr eyni olmalıdır.", "error");
+        return;
+      }
+      setButtonBusy(submit, true, "Yenilənir...");
+      try {
+        const result = await api.resetPassword(fields.token, fields.password);
+        resetToken = "";
+        window.history.replaceState({}, "", "login.html");
+        resetForm.reset();
+        showSession(null);
+        setStatus(result.message || "Şifrə yeniləndi.", "success");
       } catch (error) {
         setStatus(error.message, "error");
       } finally {

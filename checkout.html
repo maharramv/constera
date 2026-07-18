@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Səbət və sifariş | Tikinti materialları</title>
+    <meta name="description" content="ConstEra səbətində tikinti materiallarını yoxla, çatdırılma məlumatlarını əlavə et və sifariş sorğusu yarat." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.az/checkout.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="manifest" href="assets/icons/site.webmanifest" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="checkout">
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html" aria-label="ConstEra ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="ConstEra loqosu" />
+          <span class="brand-copy"><strong>CONSTERA</strong><span>Səbət</span></span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Naviqasiya menyusunu aç"></button>
+        <nav class="nav" id="site-nav"><a href="catalog.html">Kataloq</a></nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero checkout-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Səbət və sifariş</p>
+            <h1>Seçilmiş materialları sifarişə çevir.</h1>
+            <p class="hero-text">Təsdiqli qiymətlər avtomatik hesablanır, dəyişkən qiymətli mövqelər isə təchizatçı təsdiqinə göndərilir.</p>
+          </div>
+          <div class="checkout-hero-stat glass">
+            <strong data-checkout-count>0</strong>
+            <span>məhsul mövqeyi</span>
+          </div>
+        </section>
+
+        <section class="section checkout-layout">
+          <div class="checkout-main-column">
+            <article class="admin-panel glass">
+              <div class="market-section-heading">
+                <div><p class="eyebrow">Səbət</p><h2>Məhsullar</h2></div>
+                <button class="button button-outline" type="button" data-checkout-clear>Səbəti təmizlə</button>
+              </div>
+              <div class="checkout-items" data-checkout-items></div>
+              <div class="empty-state" data-checkout-empty hidden>
+                <strong>Səbət boşdur.</strong>
+                <a class="button button-secondary" href="catalog.html">Kataloqa keç</a>
+              </div>
+            </article>
+
+            <article class="admin-panel glass">
+              <div class="market-section-heading">
+                <div><p class="eyebrow">Son sifarişlər</p><h2>Sifariş tarixçəsi</h2></div>
+                <a class="card-link" href="login.html?next=checkout.html">Hesaba daxil ol</a>
+              </div>
+              <div class="cabinet-list" data-customer-orders>
+                <p>Tarixçə hesab sessiyası ilə göstərilir.</p>
+              </div>
+            </article>
+          </div>
+
+          <aside class="checkout-side-column">
+            <article class="admin-panel glass checkout-summary" data-checkout-summary></article>
+
+            <form class="admin-form admin-panel glass checkout-form" data-checkout-form>
+              <div class="market-section-heading"><div><p class="eyebrow">Məlumatlar</p><h2>Sifariş yarat</h2></div></div>
+              <label class="admin-field"><span>Şirkət</span><input name="companyName" required maxlength="200" autocomplete="organization" /></label>
+              <label class="admin-field"><span>Əlaqələndirici şəxs</span><input name="contactName" required maxlength="160" autocomplete="name" /></label>
+              <label class="admin-field"><span>E-poçt</span><input name="email" type="email" required autocomplete="email" /></label>
+              <label class="admin-field"><span>Telefon</span><input name="phone" type="tel" required maxlength="80" autocomplete="tel" /></label>
+              <label class="admin-field"><span>Şəhər / rayon</span><input name="city" required maxlength="160" autocomplete="address-level2" /></label>
+              <label class="admin-field"><span>Çatdırılma ünvanı</span><textarea name="address" rows="3" required maxlength="500" autocomplete="street-address"></textarea></label>
+              <label class="admin-field">
+                <span>Çatdırılma üsulu</span>
+                <select name="deliveryMode">
+                  <option value="delivery">ConstEra çatdırılması</option>
+                  <option value="supplier_delivery">Təchizatçı çatdırılması</option>
+                  <option value="pickup">Özüm götürəcəyəm</option>
+                </select>
+              </label>
+              <label class="admin-field">
+                <span>Ödəniş üsulu</span>
+                <select name="paymentMethod">
+                  <option value="invoice">Elektron hesab</option>
+                  <option value="bank_transfer">Bank köçürməsi</option>
+                </select>
+              </label>
+              <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="3" maxlength="3000"></textarea></label>
+              <label class="admin-field checkout-honeypot" aria-hidden="true"><span>Sayt</span><input name="website" tabindex="-1" autocomplete="off" /></label>
+              <button class="button button-primary" type="submit">Sifarişi göndər</button>
+              <p class="admin-import-status" data-checkout-status role="status" aria-live="polite"></p>
+            </form>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

@@ -5,6 +5,7 @@ import { ApiError, assertSameOrigin } from "../../api/_lib/http.js";
 import { matrixToObjects, parseCsv, readAliased } from "../../api/_lib/imports.js";
 import { categoryPublicId, categoryStorageId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug } from "../../api/_lib/validation.js";
 import { hasExpectedSignature } from "../../api/_admin/media.js";
+import { parseOrderQuantity } from "../../api/_admin/orders.js";
 
 test("şifrə scrypt ilə heşlənir və yoxlanır", async () => {
   const hash = await hashPassword("CoxGucluSifre-2026!");
@@ -72,4 +73,11 @@ test("media yoxlaması fayl imzası ilə saxta MIME dəyərini ayırır", () => 
   assert.equal(hasExpectedSignature(png, "image/png"), true);
   assert.equal(hasExpectedSignature(Buffer.from("%PDF-1.7"), "application/pdf"), true);
   assert.equal(hasExpectedSignature(Buffer.from("not an image"), "image/png"), false);
+});
+
+test("sifariş miqdarı üç onluq dəqiqliyə normallaşdırılır", () => {
+  assert.equal(parseOrderQuantity("2,3456"), 2.346);
+  assert.equal(parseOrderQuantity(1), 1);
+  assert.throws(() => parseOrderQuantity(0), ApiError);
+  assert.throws(() => parseOrderQuantity(1_000_001), ApiError);
 });

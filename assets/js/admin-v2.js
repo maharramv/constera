@@ -9,6 +9,7 @@
     users: [],
     rfqs: [],
     tenders: [],
+    orders: [],
     media: [],
     notifications: [],
     imports: [],
@@ -55,6 +56,21 @@
     awarded: "Qalib seçilib",
     closed: "Bağlanıb",
     cancelled: "Ləğv edilib"
+  };
+  const orderStatusLabels = {
+    submitted: "Göndərilib",
+    confirmed: "Təsdiqlənib",
+    processing: "Hazırlanır",
+    shipped: "Çatdırılır",
+    completed: "Tamamlanıb",
+    cancelled: "Ləğv edilib"
+  };
+  const paymentStatusLabels = {
+    pending: "Gözləyir",
+    awaiting: "Ödəniş gözləyir",
+    paid: "Ödənilib",
+    failed: "Uğursuz",
+    refunded: "Geri qaytarılıb"
   };
   const kindLabels = { material: "Material", service: "Xidmət", package: "Paket", rental: "İcarə" };
   const actionLabels = {
@@ -114,6 +130,7 @@
       [counts.subcategories, "subkateqoriya"],
       [counts.suppliers, "təchizatçı"],
       [counts.rfqs, "qiymət sorğusu"],
+      [counts.orders, "sifariş"],
       [counts.tenders, "tender"],
       [counts.users, "aktiv istifadəçi"],
       [counts.pending_notifications, "gözləyən bildiriş"]
@@ -231,6 +248,16 @@
       <td data-label="Status"><span class="status-pill">${escapeHtml(tenderStatusLabels[item.status] || item.status)}</span></td>
       <td data-label="Əməliyyat"><div class="admin-v2-row-actions"><button class="table-action" type="button" data-tender-edit="${escapeHtml(item.id)}">Redaktə</button>${item.status !== "cancelled" ? `<button class="table-action is-danger" type="button" data-tender-cancel="${escapeHtml(item.id)}">Ləğv et</button>` : ""}</div></td>
     </tr>`).join("") || '<tr><td colspan="6">Tender yoxdur.</td></tr>';
+
+    const orderBody = qs("[data-admin-v2-orders]");
+    if (orderBody) orderBody.innerHTML = state.orders.map((item) => `<tr>
+      <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}</small></td>
+      <td data-label="Şirkət və əlaqə"><strong>${escapeHtml(item.companyName)}</strong><small>${escapeHtml(item.contactName)} · ${escapeHtml(item.phone)}</small></td>
+      <td data-label="Məhsul">${item.items.length}<small>${item.hasPendingPrice ? "Qiymət təsdiqi var" : "Qiymətlər təsdiqlidir"}</small></td>
+      <td data-label="Məbləğ"><strong>${item.totalAmount === null ? "Sorğu əsasında" : Number(item.totalAmount).toLocaleString("az-AZ", { style: "currency", currency: item.currency })}</strong></td>
+      <td data-label="Status"><select class="table-select" data-order-status="${escapeHtml(item.id)}">${Object.entries(orderStatusLabels).map(([value, label]) => `<option value="${value}" ${value === item.status ? "selected" : ""}>${label}</option>`).join("")}</select></td>
+      <td data-label="Ödəniş"><select class="table-select" data-order-payment="${escapeHtml(item.id)}">${Object.entries(paymentStatusLabels).map(([value, label]) => `<option value="${value}" ${value === item.paymentStatus ? "selected" : ""}>${label}</option>`).join("")}</select></td>
+    </tr>`).join("") || '<tr><td colspan="6">Sifariş yoxdur.</td></tr>';
   };
 
   const clearTenderForm = () => {
@@ -294,9 +321,10 @@
     renderUsers();
   };
   const loadRequests = async () => {
-    const [rfqs, tenders] = await Promise.all([api.rfqs(), api.tenders()]);
+    const [rfqs, tenders, orders] = await Promise.all([api.rfqs(), api.tenders(), api.orders()]);
     state.rfqs = rfqs.data || [];
     state.tenders = tenders.data || [];
+    state.orders = orders.data || [];
     renderRequests();
   };
   const loadMedia = async () => {
@@ -432,6 +460,24 @@
     try {
       await api.updateRfq(select.dataset.rfqStatus, select.value);
       setStatus("[data-admin-v2-tender-status]", "Sorğu statusu yeniləndi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-tender-status]", error.message, "error");
+      await loadRequests();
+    }
+  });
+  qs("[data-admin-v2-orders]")?.addEventListener("change", async (event) => {
+    const statusSelect = event.target.closest("[data-order-status]");
+    const paymentSelect = event.target.closest("[data-order-payment]");
+    const id = statusSelect?.dataset.orderStatus || paymentSelect?.dataset.orderPayment;
+    const order = state.orders.find((item) => item.id === id);
+    if (!order) return;
+    const row = event.target.closest("tr");
+    const status = row?.querySelector("[data-order-status]")?.value || order.status;
+    const paymentStatus = row?.querySelector("[data-order-payment]")?.value || order.paymentStatus;
+    try {
+      await api.updateOrder(id, { status, paymentStatus });
+      setStatus("[data-admin-v2-tender-status]", "Sifariş statusu yeniləndi.", "success");
+      await loadRequests();
     } catch (error) {
       setStatus("[data-admin-v2-tender-status]", error.message, "error");
       await loadRequests();

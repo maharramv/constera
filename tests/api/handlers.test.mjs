@@ -4,6 +4,7 @@ import healthHandler from "../../api/health.js";
 import authHandler from "../../api/auth.js";
 import catalogHandler from "../../api/catalog.js";
 import adminHandler from "../../api/admin.js";
+import productsHandler from "../../api/products.js";
 
 const createResponse = () => ({
   headers: {},
@@ -66,8 +67,20 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
   assert.equal(protectedResponse.statusCode, 401);
   assert.equal(protectedResponse.payload.error.code, "authentication_required");
 
+  const ordersResponse = createResponse();
+  await adminHandler({ method: "GET", headers: {}, query: { __route: "orders" } }, ordersResponse);
+  assert.equal(ordersResponse.statusCode, 401);
+  assert.equal(ordersResponse.payload.error.code, "authentication_required");
+
   const missingResponse = createResponse();
   await adminHandler({ method: "GET", headers: {}, query: { __route: "unknown" } }, missingResponse);
   assert.equal(missingResponse.statusCode, 404);
   assert.equal(missingResponse.payload.error.code, "admin_route_not_found");
 });
+
+test("təchizatçının şəxsi məhsul siyahısı anonim sorğuya açılmır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await productsHandler({ method: "GET", headers: {}, query: { scope: "mine" } }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.error.code, "authentication_required");
+}));

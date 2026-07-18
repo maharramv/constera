@@ -66,6 +66,7 @@ const productFromRow = (row, index, categories) => {
       priceAmount: amount,
       priceCurrency: oneOf(String(readAliased(row, "currency") || "AZN").toUpperCase(), ["AZN", "USD", "EUR"], "AZN", "Valyuta"),
       priceStatus: amount !== null && sourceUrl ? "confirmed" : "request",
+      priceVerifiedAt: amount !== null && sourceUrl ? new Date().toISOString() : null,
       availability: text(readAliased(row, "availability"), { max: 160 }) || "Stok sorğu ilə",
       stockQuantity: parsePriceAmount(readAliased(row, "stockQuantity")),
       minimumOrder: parsePriceAmount(readAliased(row, "minimumOrder")),
@@ -116,14 +117,23 @@ const entityFromRow = (row, index, kind, categories) => {
 };
 
 export default withApiErrors(async (req, res) => {
-  const user = await requireRole(req, ["super_admin", "admin"]);
+  const user = await requireRole(req, ["super_admin", "admin", "supplier"]);
+  const privileged = ["super_admin", "admin"].includes(user.role);
+  const ownSupplierRows = user.role === "supplier" && user.companyId
+    ? await query("SELECT id, name FROM suppliers WHERE company_id = $1 AND status <> 'Arxiv' LIMIT 1", [user.companyId])
+    : [];
+  const ownSupplier = ownSupplierRows[0] || null;
+  if (user.role === "supplier" && !ownSupplier) {
+    throw new ApiError(409, "supplier_profile_required", "Hesaba bağlı təchizatçı profili tapılmadı.");
+  }
   if (req.method === "GET") {
     const limit = parseLimit(req.query.limit, 50, 200);
     const rows = await query(
       `SELECT id, import_type, filename, status, total_rows, valid_rows, imported_rows,
               error_rows, summary, error_report, created_at, completed_at
-         FROM import_jobs ORDER BY created_at DESC LIMIT $1`,
-      [limit]
+         FROM import_jobs ${privileged ? "" : "WHERE created_by = $1"}
+        ORDER BY created_at DESC LIMIT $${privileged ? 1 : 2}`,
+      privileged ? [limit] : [user.id, limit]
     );
     return sendJson(res, 200, { ok: true, data: rows });
   }
@@ -132,6 +142,9 @@ export default withApiErrors(async (req, res) => {
   assertSameOrigin(req);
   const body = await readJson(req, 4_200_000);
   const importType = oneOf(body.importType, importTypes, "product", "İdxal tipi");
+  if (!privileged && importType !== "product") {
+    throw new ApiError(403, "permission_denied", "Təchizatçı yalnız məhsul siyahısı idxal edə bilər.");
+  }
   const action = oneOf(body.action, ["validate", "commit"], "validate", "Əməliyyat");
   const filename = text(body.filename, { max: 240 }) || `${importType}.csv`;
   const jobId = `imp-${randomUUID()}`;
@@ -147,7 +160,10 @@ export default withApiErrors(async (req, res) => {
     const checked = rows.map((row, index) => importType === "product"
       ? productFromRow(row, index + 2, categories)
       : entityFromRow(row, index + 2, importType, categories));
-    const valid = checked.filter((entry) => entry.item).map((entry) => entry.item);
+    const valid = checked.filter((entry) => entry.item).map((entry) => ({
+      ...entry.item,
+      ...(ownSupplier ? { supplier: ownSupplier.name, sourceLabel: entry.item.sourceLabel || ownSupplier.name } : {})
+    }));
     const errors = checked.filter((entry) => entry.errors).map((entry) => ({ row: entry.index, errors: entry.errors }));
     const summary = { importType, filename, total: rows.length, valid: valid.length, errors: errors.length };
     if (action === "validate") {
@@ -165,6 +181,19 @@ export default withApiErrors(async (req, res) => {
         [jobId, rows.length, valid.length, errors.length, JSON.stringify(summary), JSON.stringify(errors.slice(0, 200))]
       );
       throw new ApiError(400, "import_validation_failed", "İdxalda səhv sətirlər var. Əvvəl onları düzəlt və ya qismən idxalı seç.", { errors: errors.slice(0, 50) });
+    }
+    if (ownSupplier && valid.length) {
+      const foreignProducts = await query(
+        `SELECT sku FROM products
+          WHERE sku = ANY($1::text[]) AND supplier_id IS DISTINCT FROM $2
+          LIMIT 20`,
+        [valid.map((item) => item.sku), ownSupplier.id]
+      );
+      if (foreignProducts.length) {
+        throw new ApiError(403, "supplier_product_conflict", "Siyahıda başqa təchizatçıya aid SKU var.", {
+          skus: foreignProducts.map((item) => item.sku)
+        });
+      }
     }
     await query("UPDATE import_jobs SET status = 'processing' WHERE id = $1", [jobId]);
     const imported = importType === "product"

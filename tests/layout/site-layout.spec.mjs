@@ -17,6 +17,7 @@ const pages = [
   "supplier-portal.html",
   "price-import.html",
   "customer-cabinet.html",
+  "checkout.html",
   "rfq.html",
   "rfq-dashboard.html",
   "tender.html",
@@ -100,7 +101,7 @@ test("tam naviqasiya desktop və mobile rejimlərində açılır", async ({ page
 test("əsas ekranların vizual artefaktları yaradılır", async ({ page }, testInfo) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
     await page.setViewportSize(viewport);
-    for (const file of ["index.html", "catalog.html"]) {
+    for (const file of ["index.html", "catalog.html", "checkout.html"]) {
       await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
       await expect(page.locator("[data-site-header]")).toBeVisible();
       const screenshot = await page.screenshot({ fullPage: false, animations: "disabled" });

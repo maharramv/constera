@@ -74,7 +74,7 @@ export default withApiErrors(async (req, res) => {
   if (req.method === "POST") {
     if (!privileged && user.role !== "supplier") throw new ApiError(403, "permission_denied", "Tender təklifi göndərmək icazəsi yoxdur.");
     const tenderId = text(body.tenderId, { field: "Tender ID-si", required: true, max: 160 });
-    const tenderRows = await query("SELECT id, title, status FROM tenders WHERE id = $1 LIMIT 1", [tenderId]);
+    const tenderRows = await query("SELECT id, title, status, visibility FROM tenders WHERE id = $1 LIMIT 1", [tenderId]);
     const tender = tenderRows[0];
     if (!tender || !["published", "evaluation"].includes(tender.status)) {
       throw new ApiError(409, "tender_not_open", "Tender təklif qəbulu üçün açıq deyil.");
@@ -83,6 +83,22 @@ export default withApiErrors(async (req, res) => {
       ? text(body.supplierId, { field: "Təchizatçı ID-si", required: true, max: 160 })
       : ownSupplier?.id;
     if (!supplierId) throw new ApiError(409, "supplier_profile_required", "Hesaba bağlı təchizatçı profili tapılmadı.");
+    if (!privileged && tender.visibility === "invited") {
+      const invitations = await query(
+        "SELECT 1 FROM tender_invitations WHERE tender_id = $1 AND supplier_id = $2 LIMIT 1",
+        [tenderId, supplierId]
+      );
+      if (!invitations[0]) {
+        throw new ApiError(403, "tender_invitation_required", "Bu tender yalnız dəvət edilmiş təchizatçılar üçündür.");
+      }
+    }
+    const existingBids = await query(
+      "SELECT id FROM tender_bids WHERE tender_id = $1 AND supplier_id = $2 AND status <> 'withdrawn' LIMIT 1",
+      [tenderId, supplierId]
+    );
+    if (existingBids[0]) {
+      throw new ApiError(409, "tender_bid_exists", "Bu tender üçün aktiv təklif artıq mövcuddur.");
+    }
     const priceAmount = parsePriceAmount(body.priceAmount ?? body.price);
     const priceText = text(body.price, { field: "Qiymət", required: true, max: 160 });
     const id = `tbd-${randomUUID()}`;

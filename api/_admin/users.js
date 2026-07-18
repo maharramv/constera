@@ -70,6 +70,18 @@ export default withApiErrors(async (req, res) => {
     if (duplicate[0]) throw new ApiError(409, "duplicate_user", "Bu e-poçtla istifadəçi artıq mövcuddur.");
     let companyId = text(body.companyId, { max: 160 }) || null;
     const companyName = text(body.companyName, { max: 200 });
+    if (role === "supplier" && !companyId && !companyName) {
+      throw new ApiError(400, "supplier_company_required", "Təchizatçı hesabı üçün şirkət seçilməli və ya yaradılmalıdır.");
+    }
+    if (role === "supplier" && !companyId && companyName) {
+      const linkedSupplier = await query(
+        "SELECT id FROM suppliers WHERE lower(name) = lower($1) AND company_id IS NOT NULL LIMIT 1",
+        [companyName]
+      );
+      if (linkedSupplier[0]) {
+        throw new ApiError(409, "supplier_company_conflict", "Bu adlı təchizatçı artıq başqa şirkət hesabına bağlıdır.");
+      }
+    }
     if (!companyId && companyName) {
       companyId = `com-${randomUUID()}`;
       const companyType = role === "supplier" ? "supplier" : role === "customer" ? "customer" : "internal";
@@ -77,6 +89,18 @@ export default withApiErrors(async (req, res) => {
         "INSERT INTO companies (id, name, company_type, contact_email) VALUES ($1, $2, $3, $4)",
         [companyId, companyName, companyType, userEmail]
       );
+    }
+    let resolvedCompanyName = companyName;
+    if (companyId && !resolvedCompanyName) {
+      const companies = await query("SELECT name FROM companies WHERE id = $1 LIMIT 1", [companyId]);
+      resolvedCompanyName = companies[0]?.name || "";
+    }
+    if (role === "supplier" && companyId && resolvedCompanyName) {
+      const conflicting = await query(
+        "SELECT id, company_id FROM suppliers WHERE lower(name) = lower($1) AND company_id IS NOT NULL AND company_id <> $2 LIMIT 1",
+        [resolvedCompanyName, companyId]
+      );
+      if (conflicting[0]) throw new ApiError(409, "supplier_company_conflict", "Bu adlı təchizatçı başqa şirkət hesabına bağlıdır.");
     }
     const id = `usr-${randomUUID()}`;
     try {
@@ -88,10 +112,25 @@ export default withApiErrors(async (req, res) => {
                    password_changed_at, last_login_at, created_at`,
         [id, companyId, userEmail, name, passwordHash, role, status]
       );
+      if (role === "supplier" && companyId) {
+        const linked = await query("SELECT id FROM suppliers WHERE company_id = $1 LIMIT 1", [companyId]);
+        if (!linked[0]) {
+          const named = await query("SELECT id, company_id FROM suppliers WHERE lower(name) = lower($1) LIMIT 1", [resolvedCompanyName || name]);
+          if (named[0]) {
+            await query("UPDATE suppliers SET company_id = $2, contact = COALESCE(contact, $3), updated_at = now() WHERE id = $1", [named[0].id, companyId, userEmail]);
+          } else {
+            await query(
+              `INSERT INTO suppliers (id, company_id, name, supplier_type, status, region, contact)
+               VALUES ($1, $2, $3, 'Təchizatçı', 'Aktiv', 'Azərbaycan', $4)`,
+              [`sup-${randomUUID()}`, companyId, resolvedCompanyName || name, userEmail]
+            );
+          }
+        }
+      }
       await recordAudit({ actorId: actor.id, action: "create", entityType: "user", entityId: id, details: { role, status } });
       return sendJson(res, 201, {
         ok: true,
-        data: { ...mapUser({ ...rows[0], company_name: companyName || null }), temporaryPassword }
+        data: { ...mapUser({ ...rows[0], company_name: resolvedCompanyName || null }), temporaryPassword }
       });
     } catch (error) {
       if (error?.code === "23505") throw new ApiError(409, "duplicate_user", "Bu e-poçtla istifadəçi artıq mövcuddur.");

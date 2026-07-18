@@ -686,7 +686,7 @@
 
           <div class="admin-panel glass" data-admin-panel="requests" hidden>
             <div class="market-section-heading">
-              <div><p class="eyebrow">Satınalma axını</p><h2>Qiymət sorğuları və tenderlər</h2></div>
+              <div><p class="eyebrow">Satınalma axını</p><h2>Qiymət sorğuları, sifarişlər və tenderlər</h2></div>
               <button class="table-action" type="button" data-admin-v2-requests-refresh>Yenilə</button>
             </div>
             <form class="admin-form admin-v2-tender-form" data-admin-v2-tender-form>
@@ -697,7 +697,7 @@
                 <label class="admin-field"><span>Şəhər</span><input name="city" placeholder="Bakı" /></label>
                 <label class="admin-field"><span>Son tarix</span><input name="deadline" type="date" /></label>
                 <label class="admin-field"><span>Büdcə</span><input name="budget" placeholder="Sorğu əsasında" /></label>
-                <label class="admin-field"><span>Status</span><select name="status"><option value="draft">Qaralama</option><option value="published">Dərc olunub</option><option value="evaluation">Qiymətləndirmə</option><option value="awarded">Qalib seçilib</option><option value="closed">Bağlanıb</option><option value="cancelled">Ləğv edilib</option></select></label>
+                <label class="admin-field"><span>Vəziyyət</span><select name="status"><option value="draft">Qaralama</option><option value="published">Dərc olunub</option><option value="evaluation">Qiymətləndirmə</option><option value="awarded">Qalib seçilib</option><option value="closed">Bağlanıb</option><option value="cancelled">Ləğv edilib</option></select></label>
                 <label class="admin-field"><span>Görünürlük</span><select name="visibility"><option value="public">Açıq</option><option value="invited">Dəvət ilə</option></select></label>
                 <label class="admin-field"><span>Əlaqə</span><input name="contact" placeholder="E-poçt və ya telefon" /></label>
                 <label class="admin-field admin-field-wide"><span>Təsvir</span><textarea name="description" rows="3"></textarea></label>
@@ -710,11 +710,15 @@
             <div class="admin-v2-split-tables">
               <section class="admin-v2-section">
                 <h3>Qiymət sorğuları</h3>
-                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sorğu</th><th>Şirkət</th><th>Əlaqə</th><th>Status</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-rfqs></tbody></table></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sorğu</th><th>Şirkət</th><th>Əlaqə</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-rfqs></tbody></table></div>
               </section>
               <section class="admin-v2-section">
                 <h3>Tenderlər</h3>
-                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Tender</th><th>Şirkət</th><th>Son tarix</th><th>Lot/təklif</th><th>Status</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-tenders></tbody></table></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Tender</th><th>Şirkət</th><th>Son tarix</th><th>Lot/təklif</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-tenders></tbody></table></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <h3>Sifarişlər</h3>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sifariş</th><th>Şirkət və əlaqə</th><th>Məhsul</th><th>Məbləğ</th><th>Vəziyyət</th><th>Ödəniş</th></tr></thead><tbody data-admin-v2-orders></tbody></table></div>
               </section>
             </div>
           </div>
@@ -732,7 +736,7 @@
                   <label class="admin-field"><span>E-poçt</span><input name="email" type="email" required /></label>
                   <label class="admin-field"><span>Şirkət</span><input name="companyName" /></label>
                   <label class="admin-field"><span>Rol</span><select name="role"><option value="customer">Müştəri</option><option value="supplier">Təchizatçı</option><option value="sales">Satış</option><option value="admin">Administrator</option><option value="super_admin">Super administrator</option></select></label>
-                  <label class="admin-field"><span>Status</span><select name="status"><option value="invited">Dəvət edilib</option><option value="active">Aktiv</option><option value="suspended">Dayandırılıb</option></select></label>
+                  <label class="admin-field"><span>Vəziyyət</span><select name="status"><option value="invited">Dəvət edilib</option><option value="active">Aktiv</option><option value="suspended">Dayandırılıb</option></select></label>
                   <label class="admin-field"><span>Müvəqqəti şifrə</span><input name="temporaryPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Boş olsa avtomatik yaranır" /></label>
                 </div>
                 <div class="admin-actions"><button class="button button-primary" type="submit">Hesabı yadda saxla</button><button class="button button-secondary" type="button" data-admin-v2-user-clear>Formu təmizlə</button></div>
@@ -740,7 +744,7 @@
               </form>
               <div class="admin-import-box"><p class="admin-import-status">Yeni hesab üçün müvəqqəti şifrə yalnız yaradılma və sıfırlama anında göstərilir. İstifadəçi ilk girişdən sonra şifrəni dəyişməlidir.</p></div>
             </div>
-            <div class="table-wrap"><table class="admin-table"><thead><tr><th>İstifadəçi</th><th>Şirkət</th><th>Rol</th><th>Status</th><th>Son giriş</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-users></tbody></table></div>
+            <div class="table-wrap"><table class="admin-table"><thead><tr><th>İstifadəçi</th><th>Şirkət</th><th>Rol</th><th>Vəziyyət</th><th>Son giriş</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-users></tbody></table></div>
           </div>
 
           <div class="admin-panel glass" data-admin-panel="media" hidden>

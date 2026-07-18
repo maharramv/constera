@@ -25,8 +25,7 @@ const webhookFor = (channel) => channel === "email"
     ? process.env.WHATSAPP_WEBHOOK_URL
     : "";
 
-const deliverOne = async (item) => {
-  if (item.channel === "in_app") return { sent: true };
+const postWebhook = async (item) => {
   const webhook = webhookFor(item.channel);
   if (!webhook) return { sent: false, skipped: true, reason: `${item.channel} webhook-u qurulmayıb` };
   const response = await fetch(webhook, {
@@ -50,6 +49,28 @@ const deliverOne = async (item) => {
   });
   if (!response.ok) throw new Error(`Webhook HTTP ${response.status}`);
   return { sent: true };
+};
+
+export const deliverNotificationNow = async ({
+  channel,
+  recipient,
+  subject,
+  body,
+  templateKey = null,
+  payload = {}
+}) => postWebhook({
+  id: `direct-${randomUUID()}`,
+  channel,
+  recipient,
+  subject,
+  body,
+  template_key: templateKey,
+  payload
+});
+
+const deliverOne = async (item) => {
+  if (item.channel === "in_app") return { sent: true };
+  return postWebhook(item);
 };
 
 export const deliverPendingNotifications = async (limit = 25) => {

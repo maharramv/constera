@@ -22,25 +22,30 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `rental.html`, `rental-detail.html` - ağır texnika və alət icarəsi
 - `brands.html`, `suppliers.html` - brend və təchizatçı mərkəzləri
 - `rfq.html`, `rfq-dashboard.html` - qiymət sorğusu və təklif axını
-- `tender.html` - lokal tender və lot idarəetməsi
+- `tender.html` - rol əsaslı canlı tender, lot, dəvət və təchizatçı təklifi axını
 - `ai-smeta.html` - qayda əsaslı ilkin material smetası
-- `supplier-portal.html`, `price-import.html` - təchizatçı məlumatı və CSV qiymət idxalı
+- `supplier-portal.html`, `price-import.html` - hesaba bağlı məhsul idarəetməsi və təhlükəsiz CSV/XLSX idxalı
 - `customer-cabinet.html` - sorğu, smeta, seçilmiş və müqayisə məlumatları
-- `admin.html` - kataloq və platforma məlumatlarının lokal idarəetməsi
+- `checkout.html` - server qiymət yoxlaması ilə səbət, sifariş və sifariş tarixçəsi
+- `admin.html` - məhsul, sifariş, tender, istifadəçi və platforma məlumatlarının canlı idarəetməsi
 - `login.html` - HTTP-only sessiya ilə təhlükəsiz giriş və ilk administrator quraşdırması
 
 ## Server imkanları
 
 - `api/health.js` - API və PostgreSQL hazırlıq yoxlaması
-- `api/auth.js` - ilk administrator, giriş, sessiya və çıxış
-- `api/catalog.js` - vahid ictimai kataloq oxuma API-si
-- `api/products.js`, `api/suppliers.js` - rolla qorunan CRUD əməliyyatları
+- `api/auth.js` - ilk administrator, giriş, sessiya, təhlükəsiz şifrə bərpası və çıxış
+- `api/catalog.js` - server axtarışı, facetlər və səhifələmə ilə ictimai kataloq API-si
+- `api/admin.js?__route=orders` - müştəri və təchizatçı sərhədləri ilə sifariş axını
+- `api/products.js`, `api/suppliers.js` - təchizatçı mülkiyyəti ilə rolla qorunan CRUD əməliyyatları
 - `api/rfqs.js`, `api/offers.js` - real qiymət sorğusu və təklif axını
+- `api/admin.js?__route=tenders`, `api/admin.js?__route=tender-bids` - dəvətli və açıq tenderlər, lotlar və təkliflər
+- `api/admin.js?__route=imports` - admin və təchizatçı sərhədləri ilə CSV/XLSX idxalı
 - `api/sync.js` - statik kataloqun PostgreSQL bazasına kütləvi sinxronizasiyası
 - `api/cron-price-freshness.js` - köhnə qiymətləri gündəlik işarələyən və sessiyaları təmizləyən cron
 - `db/migrations/` - istifadəçi, şirkət, kataloq, qiymət tarixçəsi, RFQ və audit sxemi
+- `service-worker.js` - API və şəxsi kabinetləri keşləməyən PWA tətbiq qabığı
 
-Admin panelində lokal ehtiyat rejimi qalır. Baza əlçatan olduqda “Bazaya yaz” və “Bazadan oxu” düymələri ilə bütün kataloq sinxronlaşdırılır.
+Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçatan olduqda dəyişikliklər Neon-a yazılır və rollara uyğun server məlumatı göstərilir.
 
 ## Kod strukturu
 
@@ -88,7 +93,7 @@ Sonra bütün audit, build və layout testlərini bir əmrlə işə sal:
 npm run check:full
 ```
 
-Layout testi 22 səhifəni mobile, `1100/1101 px` menyu sərhədi və desktop ölçülərində yoxlayır. `docs/quality-workflow.yml` şablonu `.github/workflows/quality.yml` yoluna qoşulduqda GitHub Actions nəticəyə Playwright hesabatı və nəzarət şəkilləri əlavə edir.
+Layout testi 23 səhifəni mobile, `1100/1101 px` menyu sərhədi və desktop ölçülərində yoxlayır. `docs/quality-workflow.yml` şablonu `.github/workflows/quality.yml` yoluna qoşulduqda GitHub Actions nəticəyə Playwright hesabatı və nəzarət şəkilləri əlavə edir.
 
 ## PostgreSQL quraşdırılması
 
@@ -100,9 +105,13 @@ Layout testi 22 səhifəni mobile, `1100/1101 px` menyu sərhədi və desktop ö
 ```bash
 npm run db:migrate
 npm run db:seed
+npm run db:audit
+npm run db:smoke
 ```
 
 5. `login.html` səhifəsində “İlk super administratoru yarat” bölməsini bir dəfə doldur. İlk istifadəçi yarandıqdan sonra quraşdırma endpoint-i avtomatik bağlanır.
+
+Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır.
 
 Alternativ olaraq lokal terminaldan administrator yaratmaq olar:
 
@@ -124,3 +133,5 @@ Bu ayarlar `vercel.json` daxilində də saxlanılır. `routes-manifest.json` tə
 ## Məlumat siyasəti
 
 Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstərilir. Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir.
+
+Onlayn kart ödənişi provayder müqaviləsi və açarları olmadan imitasiya edilmir. Hazır sifariş axını faktura və bank köçürməsi üsullarını dəstəkləyir; kart ödənişi ayrıca provayder inteqrasiyası ilə əlavə olunmalıdır.

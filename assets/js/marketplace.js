@@ -42,6 +42,7 @@ document.addEventListener("error", (event) => {
 
 const adminProductStorageKey = "constera-admin-products";
 const adminSupplierStorageKey = "constera-admin-suppliers";
+const cartStorageKey = "constera-cart";
 const adminEntityConfigs = {
   service: {
     storageKey: "constera-admin-services",
@@ -78,8 +79,21 @@ const adminBackupKeys = [
   "constera-tenders",
   "constera-ai-estimates",
   "constera-favorites",
-  "constera-compare"
+  "constera-compare",
+  cartStorageKey
 ];
+
+const getCart = () => storage.read(cartStorageKey)
+  .map((item) => ({ id: String(item?.id || ""), quantity: Number(item?.quantity || 1) }))
+  .filter((item) => item.id && Number.isFinite(item.quantity) && item.quantity > 0);
+const saveCart = (items) => storage.write(cartStorageKey, items.slice(0, 100));
+const getCartCount = () => getCart().reduce((sum, item) => sum + item.quantity, 0);
+const updateCartIndicators = () => {
+  const count = getCartCount();
+  document.querySelectorAll("[data-cart-count]").forEach((node) => {
+    node.textContent = count.toLocaleString("az-AZ");
+  });
+};
 
 const getCategory = (id) => marketplace.categories.find((category) => category.id === id);
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
@@ -222,24 +236,47 @@ const createProgressiveGrid = (grid, pagination, renderItem, pageSize) => {
   const status = pagination?.querySelector("[data-pagination-status]");
   let items = [];
   let visibleCount = pageSize;
+  let totalCount = 0;
+  let requestMore = null;
+  let loading = false;
 
   const paint = () => {
     const visibleItems = items.slice(0, visibleCount);
     grid.innerHTML = visibleItems.map(renderItem).join("");
-    if (status) status.textContent = `${visibleItems.length} / ${items.length} göstərilir`;
-    if (button) button.hidden = visibleItems.length >= items.length;
+    if (status) status.textContent = `${visibleItems.length} / ${totalCount || items.length} göstərilir`;
+    if (button) {
+      button.hidden = visibleItems.length >= items.length && items.length >= totalCount;
+      button.disabled = loading;
+      button.textContent = loading ? "Yüklənir..." : "Daha çox göstər";
+    }
     if (pagination) pagination.hidden = items.length === 0;
   };
 
-  button?.addEventListener("click", () => {
-    visibleCount += pageSize;
+  button?.addEventListener("click", async () => {
+    if (visibleCount < items.length) {
+      visibleCount += pageSize;
+      paint();
+      return;
+    }
+    if (!requestMore || items.length >= totalCount || loading) return;
+    loading = true;
     paint();
+    try {
+      await requestMore();
+    } finally {
+      loading = false;
+      paint();
+    }
   });
 
   return {
-    setItems(nextItems) {
+    setItems(nextItems, options = {}) {
       items = nextItems;
-      visibleCount = pageSize;
+      totalCount = Number(options.total ?? nextItems.length);
+      requestMore = options.requestMore || null;
+      visibleCount = options.preserveVisible
+        ? Math.min(Math.max(visibleCount + pageSize, pageSize), items.length)
+        : pageSize;
       paint();
     }
   };
@@ -259,6 +296,46 @@ const updatePageDescription = (description) => {
   const meta = document.querySelector('meta[name="description"]');
   if (meta) meta.setAttribute("content", text);
   window.consteraRefreshSeo?.();
+};
+
+const parseProductPriceAmount = (product) => {
+  if (product?.priceStatus !== "confirmed") return null;
+  if (Number.isFinite(Number(product.priceAmount))) return Number(product.priceAmount);
+  const match = String(product.price || "").replace(/\s/g, "").replace(",", ".").match(/\d+(?:\.\d{1,2})?/);
+  const value = match ? Number(match[0]) : null;
+  return Number.isFinite(value) ? value : null;
+};
+
+const getPriceFreshness = (product) => {
+  if (product?.priceStatus === "expired") return { label: "Qiymətin vaxtı keçib", className: "is-expired" };
+  if (product?.priceStatus !== "confirmed") return { label: "Qiymət sorğu əsasında", className: "is-request" };
+  const verifiedAt = new Date(product.priceVerifiedAt || "");
+  if (!Number.isFinite(verifiedAt.getTime())) {
+    return { label: "Mənbəli qiymət · sifarişdən əvvəl təsdiqlə", className: "is-source" };
+  }
+  const days = Math.max(0, Math.floor((Date.now() - verifiedAt.getTime()) / 86_400_000));
+  if (days > 90) return { label: "Qiymət yenidən təsdiqlənməlidir", className: "is-expired" };
+  return {
+    label: `${new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium" }).format(verifiedAt)} tarixində yoxlanıb`,
+    className: days > 30 ? "is-aging" : "is-fresh"
+  };
+};
+
+const injectEntitySchema = (id, data, imageUrl = "") => {
+  let script = document.getElementById(id);
+  if (!script) {
+    script = document.createElement("script");
+    script.id = id;
+    script.type = "application/ld+json";
+    document.head.appendChild(script);
+  }
+  script.textContent = JSON.stringify(data);
+  const safeImage = getSafeImageUrl(imageUrl);
+  if (safeImage) {
+    const absoluteImage = new URL(safeImage, window.location.href).toString();
+    document.querySelector('meta[property="og:image"]')?.setAttribute("content", absoluteImage);
+    document.querySelector('meta[name="twitter:image"]')?.setAttribute("content", absoluteImage);
+  }
 };
 
 const countProductsBy = (field, value) =>
@@ -545,11 +622,14 @@ const createProductCard = (product) => {
   const brand = getBrand(product.brand);
   const favoriteIds = storage.read("constera-favorites");
   const compareIds = storage.read("constera-compare");
+  const cartIds = new Set(getCart().map((item) => item.id));
   const isFavorite = favoriteIds.includes(product.id);
   const isCompared = compareIds.includes(product.id);
+  const isInCart = cartIds.has(product.id);
   const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
   const categoryTitle = category?.title || product.category;
   const media = createProductMedia(product, brandMark);
+  const freshness = getPriceFreshness(product);
   const sourceUrl = getSafeHttpsUrl(product.sourceUrl);
   const source = sourceUrl
     ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
@@ -582,6 +662,7 @@ const createProductCard = (product) => {
           <span class="price-label">Qiymət</span>
           <strong>${escapeHtml(product.price)}</strong>
           <small>${escapeHtml(product.priceNote)}</small>
+          <small class="price-freshness ${freshness.className}">${escapeHtml(freshness.label)}</small>
           ${source}
           ${detailLink}
         </div>
@@ -590,7 +671,10 @@ const createProductCard = (product) => {
           <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${escapeAttr(product.id)}" aria-pressed="${isCompared}" aria-label="${isCompared ? "Müqayisədən çıxar" : "Müqayisəyə əlavə et"}">⇄</button>
         </div>
       </div>
-      <a class="button button-secondary product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
+      <div class="product-primary-actions">
+        <button class="button button-secondary product-cart ${isInCart ? "is-active" : ""}" type="button" data-action="cart" data-id="${escapeAttr(product.id)}">${isInCart ? "Səbətdədir" : "Səbətə əlavə et"}</button>
+        <a class="button button-outline product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
+      </div>
     </article>
   `;
 };
@@ -634,6 +718,10 @@ const renderCatalog = () => {
   setupResponsivePanel(categoryToggle, categoryPanel, "Kateqoriyaları göstər", "Kateqoriyaları gizlət");
 
   const progressiveGrid = createProgressiveGrid(productGrid, pagination, createProductCard, 48);
+  let serverPage = 0;
+  let serverProducts = [];
+  let serverRequest = 0;
+  let serverTimer = 0;
 
   const params = new URLSearchParams(window.location.search);
   let activeCategory = marketplace.categories.some((category) => category.id === params.get("category"))
@@ -796,12 +884,68 @@ const renderCatalog = () => {
     }
   };
 
+  const loadServerPage = async (append = false) => {
+    if (!window.ConstEraAPI?.catalog) return;
+    const requestId = ++serverRequest;
+    const page = append ? serverPage + 1 : 1;
+    const filters = {
+      page: String(page),
+      pageSize: "96",
+      scope: "products",
+      sort: searchInput.value.trim() ? "relevance" : "name"
+    };
+    if (searchInput.value.trim()) filters.q = searchInput.value.trim();
+    if (activeCategory !== "all") filters.category = activeCategory;
+    else if (groupSelect?.value && groupSelect.value !== "all") filters.group = groupSelect.value;
+    if (brandSelect.value !== "all") filters.brand = brandSelect.value;
+    if (subcategorySelect?.value && subcategorySelect.value !== "all") filters.subcategory = subcategorySelect.value;
+    if (availabilitySelect?.value && availabilitySelect.value !== "all") filters.availability = availabilitySelect.value;
+    if (priceSelect?.value && priceSelect.value !== "all") filters.priceStatus = priceSelect.value;
+    if (originSelect?.value && originSelect.value !== "all") filters.origin = originSelect.value;
+
+    try {
+      const result = await window.ConstEraAPI.catalog(filters);
+      if (requestId !== serverRequest) return;
+      const products = result.data?.products || [];
+      if (append) {
+        const known = new Set(serverProducts.map((product) => product.id));
+        serverProducts = [...serverProducts, ...products.filter((product) => !known.has(product.id))];
+      } else {
+        serverProducts = products;
+      }
+      serverPage = page;
+      const total = Number(result.meta?.total || serverProducts.length);
+      progressiveGrid.setItems(serverProducts, {
+        total,
+        preserveVisible: append,
+        requestMore: () => loadServerPage(true)
+      });
+      if (resultCount) resultCount.textContent = `${total.toLocaleString("az-AZ")} məhsul`;
+      if (emptyState) emptyState.hidden = total > 0;
+    } catch {
+      if (!append) {
+        serverPage = 0;
+        serverProducts = [];
+      }
+    }
+  };
+
+  const scheduleServerSearch = (delay = 0) => {
+    window.clearTimeout(serverTimer);
+    serverTimer = window.setTimeout(() => loadServerPage(false), delay);
+  };
+
+  const applyCatalogFilters = (delay = 0) => {
+    applyFilters();
+    scheduleServerSearch(delay);
+  };
+
   renderCategoryButtons();
   renderGroupOptions();
   renderBrandOptions();
   applyParamDefaults();
   renderSubcategoryOptions();
-  applyFilters();
+  applyCatalogFilters();
 
   categoryList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-category]");
@@ -812,11 +956,11 @@ const renderCatalog = () => {
       item.classList.toggle("is-active", item === button);
     });
     renderSubcategoryOptions();
-    applyFilters();
+    applyCatalogFilters();
   });
 
-  searchInput.addEventListener("input", applyFilters);
-  brandSelect.addEventListener("change", applyFilters);
+  searchInput.addEventListener("input", () => applyCatalogFilters(250));
+  brandSelect.addEventListener("change", () => applyCatalogFilters());
   groupSelect?.addEventListener("change", () => {
     if (groupSelect.value !== "all") {
       activeCategory = "all";
@@ -825,12 +969,12 @@ const renderCatalog = () => {
       });
     }
     renderSubcategoryOptions();
-    applyFilters();
+    applyCatalogFilters();
   });
-  subcategorySelect?.addEventListener("change", applyFilters);
-  availabilitySelect?.addEventListener("change", applyFilters);
-  priceSelect?.addEventListener("change", applyFilters);
-  originSelect?.addEventListener("change", applyFilters);
+  subcategorySelect?.addEventListener("change", () => applyCatalogFilters());
+  availabilitySelect?.addEventListener("change", () => applyCatalogFilters());
+  priceSelect?.addEventListener("change", () => applyCatalogFilters());
+  originSelect?.addEventListener("change", () => applyCatalogFilters());
 };
 
 const renderBrands = () => {
@@ -1135,36 +1279,34 @@ const renderProductDetail = () => {
   const product = productId
     ? marketplace.products.find((item) => item.id === productId)
     : marketplace.products[0];
-  if (!product) {
-    renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html");
-    return;
-  }
+  const paintProduct = (item) => {
+    const category = getCategory(item.category);
+    const brand = getBrand(item.brand);
+    const brandMark = item.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
+    const media = createProductMedia(item, brandMark);
+    const freshness = getPriceFreshness(item);
+    const sourceUrl = getSafeHttpsUrl(item.sourceUrl);
+    const source = sourceUrl
+      ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>`
+      : "";
 
-  const category = getCategory(product.category);
-  const brand = getBrand(product.brand);
-  const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
-  const media = createProductMedia(product, brandMark);
-  const sourceUrl = getSafeHttpsUrl(product.sourceUrl);
-  const source = sourceUrl
-    ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbəni aç")}</a>`
-    : "";
-
-  document.title = `${product.name} | ConstEra Kataloq`;
-  updatePageDescription(`${product.name}: ${product.brand}, ${product.subcategory}, ${product.price}. ConstEra kataloqunda qiymət sorğusu göndər və təchizatçı məlumatını yoxla.`);
-  container.innerHTML = `
+    document.title = `${item.name} | ConstEra Kataloq`;
+    updatePageDescription(`${item.name}: ${item.brand}, ${item.subcategory}, ${item.price}. ConstEra kataloqunda qiymət sorğusu göndər və təchizatçı məlumatını yoxla.`);
+    container.innerHTML = `
     <div class="detail-hero glass">
       <div class="detail-media">${media}</div>
       <div class="detail-copy">
         <p class="eyebrow">Məhsul detalı</p>
-        <h1>${escapeHtml(product.name)}</h1>
+        <h1>${escapeHtml(item.name)}</h1>
         <div class="product-meta detail-tags">
-          <span>${escapeHtml(category?.title || product.category)}</span>
-          <span>${escapeHtml(product.subcategory)}</span>
-          <span>${escapeHtml(product.brand)}</span>
+          <span>${escapeHtml(category?.title || item.category)}</span>
+          <span>${escapeHtml(item.subcategory)}</span>
+          <span>${escapeHtml(item.brand)}</span>
         </div>
         <p class="hero-text">Bu səhifə qiymət sorğusu, təchizatçı qiyməti və gələcək idarəetmə redaktəsi üçün məhsulun vahid məlumat kartıdır.</p>
         <div class="detail-actions">
-          <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
+          <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}">${getCart().some((entry) => entry.id === item.id) ? "Səbətdədir" : "Səbətə əlavə et"}</button>
+          <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(item.id)}">Sorğu göndər</a>
           <a class="button button-outline" href="catalog.html">Kataloqa qayıt</a>
           ${source}
         </div>
@@ -1174,22 +1316,23 @@ const renderProductDetail = () => {
     <div class="detail-grid">
       <article class="detail-panel glass">
         <span class="price-label">Qiymət</span>
-        <strong>${escapeHtml(product.price)}</strong>
-        <p>${escapeHtml(product.priceNote || "Qiymət təchizatçı tərəfindən təsdiqlənməlidir.")}</p>
+        <strong>${escapeHtml(item.price)}</strong>
+        <p>${escapeHtml(item.priceNote || "Qiymət təchizatçı tərəfindən təsdiqlənməlidir.")}</p>
+        <small class="price-freshness ${freshness.className}">${escapeHtml(freshness.label)}</small>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">SKU</span>
-        <strong>${escapeHtml(product.sku)}</strong>
-        <p>${escapeHtml(product.package)} · ${escapeHtml(product.origin)}</p>
+        <strong>${escapeHtml(item.sku)}</strong>
+        <p>${escapeHtml(item.package)} · ${escapeHtml(item.origin)}</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Təchizatçı</span>
-        <strong>${escapeHtml(product.supplier)}</strong>
-        <p>${escapeHtml(product.availability)}</p>
+        <strong>${escapeHtml(item.supplier)}</strong>
+        <p>${escapeHtml(item.availability)}</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Brend vəziyyəti</span>
-        <strong>${escapeHtml(brand?.country || product.origin)}</strong>
+        <strong>${escapeHtml(brand?.country || item.origin)}</strong>
         <p>${escapeHtml(brand?.certification || "Təchizatçı təsdiqi lazımdır")}</p>
       </article>
     </div>
@@ -1198,7 +1341,7 @@ const renderProductDetail = () => {
       <article class="detail-panel glass">
         <p class="eyebrow">Texniki xüsusiyyətlər</p>
         <ul class="spec-list detail-list">
-          ${(product.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
+          ${(item.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
         </ul>
       </article>
       <article class="detail-panel glass">
@@ -1211,6 +1354,41 @@ const renderProductDetail = () => {
       </article>
     </div>
   `;
+    const amount = parseProductPriceAmount(item);
+    const safeImage = getSafeImageUrl(item.imageUrl);
+    injectEntitySchema("constera-product-schema", {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: item.name,
+      sku: item.sku,
+      description: document.querySelector('meta[name="description"]')?.content || item.name,
+      category: `${category?.title || item.category} > ${item.subcategory}`,
+      brand: { "@type": "Brand", name: item.brand },
+      image: safeImage ? [new URL(safeImage, window.location.href).toString()] : undefined,
+      offers: amount === null ? undefined : {
+        "@type": "Offer",
+        url: window.location.href,
+        priceCurrency: item.priceCurrency || "AZN",
+        price: amount,
+        availability: normalize(item.availability).includes("anbar")
+          ? "https://schema.org/InStock"
+          : "https://schema.org/PreOrder",
+        seller: { "@type": "Organization", name: item.supplier || "ConstEra təchizatçısı" }
+      }
+    }, item.imageUrl);
+  };
+
+  if (product) {
+    paintProduct(product);
+    return;
+  }
+  if (productId && window.ConstEraAPI?.product) {
+    window.ConstEraAPI.product(productId)
+      .then((result) => paintProduct(result.data))
+      .catch(() => renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html"));
+    return;
+  }
+  renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html");
 };
 
 const renderServiceDetail = () => {
@@ -1288,6 +1466,16 @@ const renderServiceDetail = () => {
       </article>
     </div>
   `;
+  injectEntitySchema("constera-service-schema", {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: service.title,
+    serviceType: `${category?.title || service.category} · ${service.subcategory || "Ümumi"}`,
+    description: document.querySelector('meta[name="description"]')?.content || service.title,
+    areaServed: { "@type": "Country", name: "Azərbaycan" },
+    provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
+    url: window.location.href
+  });
 };
 
 const renderPackageDetail = () => {
@@ -1365,6 +1553,16 @@ const renderPackageDetail = () => {
       </article>
     </div>
   `;
+  injectEntitySchema("constera-package-schema", {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: pack.title,
+    serviceType: `${category?.title || pack.category} · ${pack.type}`,
+    description: document.querySelector('meta[name="description"]')?.content || pack.idealFor,
+    areaServed: { "@type": "Country", name: "Azərbaycan" },
+    provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
+    url: window.location.href
+  });
 };
 
 const renderRentalDetail = () => {
@@ -1444,6 +1642,16 @@ const renderRentalDetail = () => {
       </article>
     </div>
   `;
+  injectEntitySchema("constera-rental-schema", {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: rental.name,
+    serviceType: `Tikinti avadanlığı icarəsi · ${category?.title || rental.category}`,
+    description: document.querySelector('meta[name="description"]')?.content || rental.name,
+    areaServed: { "@type": "Country", name: "Azərbaycan" },
+    provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
+    url: window.location.href
+  });
 };
 
 const getTaxonomyConfig = (type) => {
@@ -3121,14 +3329,46 @@ const initTender = () => {
   if (!form || !list) return;
 
   const statusList = ["Yeni", "Təchizatçılara göndərildi", "Təklif toplanır", "Qiymətləndirmə", "Qalib seçildi", "Bağlandı"];
-  const getTenders = () => storage.read("constera-tenders").map((tender, index) => ({
+  const apiStatusLabels = {
+    draft: "Yeni",
+    published: "Təklif toplanır",
+    evaluation: "Qiymətləndirmə",
+    awarded: "Qalib seçildi",
+    closed: "Bağlandı",
+    cancelled: "Bağlandı"
+  };
+  const labelApiStatuses = {
+    "Yeni": "draft",
+    "Təchizatçılara göndərildi": "published",
+    "Təklif toplanır": "published",
+    "Qiymətləndirmə": "evaluation",
+    "Qalib seçildi": "awarded",
+    "Bağlandı": "closed"
+  };
+  let cloudTenders = null;
+  let cloudUser = null;
+  const normalizeCloudTender = (tender) => ({
+    ...tender,
+    company: tender.companyName,
+    supplier: tender.visibility === "invited" ? "Dəvətli tender" : "Açıq tender",
+    status: apiStatusLabels[tender.status] || tender.status,
+    lots: (tender.lots || []).map((lot) => ({
+      ...lot,
+      name: lot.title || lot.name,
+      quantity: lot.quantity || lot.quantityText
+    }))
+  });
+  const getTenders = () => (cloudTenders ?? storage.read("constera-tenders")).map((tender, index) => ({
     id: tender.id || `tender-migrated-${index}`,
     status: tender.status || "Yeni",
     lots: Array.isArray(tender.lots) ? tender.lots : [],
     createdAt: tender.createdAt || new Date().toISOString(),
     ...tender
   }));
-  const saveTenders = (tenders) => storage.write("constera-tenders", tenders);
+  const saveTenders = (tenders) => {
+    if (cloudTenders === null) storage.write("constera-tenders", tenders);
+    else cloudTenders = tenders;
+  };
   const parseLots = (value) => String(value || "")
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -3217,15 +3457,42 @@ const initTender = () => {
             <span>${escapeHtml(lot.name)} · ${escapeHtml(lot.quantity)} ${escapeHtml(lot.unit)}</span>
           `).join("")}
         </div>
-        <div class="status-actions">
-          ${statusList.map((status) => `<button type="button" data-tender-status="${escapeAttr(status)}" data-tender-id="${escapeAttr(tender.id)}">${escapeHtml(status)}</button>`).join("")}
-        </div>
+        ${!cloudUser || ["super_admin", "admin", "sales"].includes(cloudUser.role) ? `
+          <div class="status-actions">
+            ${statusList.map((status) => `<button type="button" data-tender-status="${escapeAttr(status)}" data-tender-id="${escapeAttr(tender.id)}">${escapeHtml(status)}</button>`).join("")}
+          </div>` : ""}
+        ${cloudUser?.role === "supplier" ? `
+          <form class="tender-bid-inline" data-tender-bid-form="${escapeAttr(tender.id)}">
+            <label><span>Təklif qiyməti</span><input name="price" required maxlength="160" placeholder="Məsələn: 12 500 AZN" /></label>
+            <label><span>Çatdırılma</span><input name="delivery" maxlength="200" placeholder="Məsələn: 5 iş günü" /></label>
+            <button class="button button-primary" type="submit">Təklif göndər</button>
+          </form>` : ""}
       </article>
     `).join("");
     if (empty) empty.hidden = filtered.length > 0;
   };
 
-  form.addEventListener("submit", (event) => {
+  const connectTenderAccount = async () => {
+    if (!window.ConstEraAPI?.tenders) return;
+    try {
+      const session = await window.ConstEraAPI.session();
+      cloudUser = session.user;
+      if (!cloudUser) {
+        if (statusOutput) statusOutput.textContent = "Canlı tenderlər üçün hesaba daxil ol. Lokal ehtiyat rejimi aktivdir.";
+        return;
+      }
+      const result = await window.ConstEraAPI.tenders();
+      cloudTenders = (result.data || []).map(normalizeCloudTender);
+      if (form.elements.company && !form.elements.company.value) form.elements.company.value = cloudUser.companyName || "";
+      if (cloudUser.role === "supplier") form.hidden = true;
+      if (statusOutput) statusOutput.textContent = `${cloudUser.name} hesabı Neon tender moduluna qoşuldu.`;
+      render();
+    } catch (error) {
+      if (statusOutput) statusOutput.textContent = `Canlı tenderlər yüklənmədi: ${error.message}`;
+    }
+  };
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
     const tender = {
@@ -3239,13 +3506,35 @@ const initTender = () => {
       supplier: supplierName(data.supplierId),
       description: data.description,
       lots: parseLots(data.lots),
-      status: data.supplierId ? "Təchizatçılara göndərildi" : "Yeni",
+      status: data.supplierId ? "Təchizatçılara göndərildi" : "Təklif toplanır",
       createdAt: new Date().toISOString()
     };
-    saveTenders([tender, ...getTenders()].slice(0, 40));
+    if (cloudUser && window.ConstEraAPI?.saveTender) {
+      try {
+        const result = await window.ConstEraAPI.saveTender({
+          companyName: tender.company,
+          title: tender.title,
+          description: tender.description,
+          city: tender.city,
+          deadline: tender.deadline,
+          budget: tender.budget,
+          status: "published",
+          visibility: tender.supplierId ? "invited" : "public",
+          supplierIds: tender.supplierId ? [tender.supplierId] : [],
+          lots: tender.lots.map((lot) => ({ title: lot.name, quantity: lot.quantity, unit: lot.unit }))
+        });
+        saveTenders([normalizeCloudTender(result.data), ...getTenders().filter((item) => item.id !== result.data.id)].slice(0, 100));
+        if (statusOutput) statusOutput.textContent = `${tender.title} Neon bazasında yaradıldı.`;
+      } catch (error) {
+        if (statusOutput) statusOutput.textContent = `Tender serverə yazılmadı: ${error.message}`;
+        return;
+      }
+    } else {
+      saveTenders([tender, ...getTenders()].slice(0, 40));
+      if (statusOutput) statusOutput.textContent = `${tender.title} lokal ehtiyat rejimində yaradıldı.`;
+    }
     form.reset();
     if (supplierSelect) supplierSelect.value = "";
-    if (statusOutput) statusOutput.textContent = `${tender.title} tenderi yaradıldı.`;
     render();
   });
   clearButton?.addEventListener("click", () => {
@@ -3254,13 +3543,54 @@ const initTender = () => {
   });
   exportButton?.addEventListener("click", () => exportTenders(getTenders()));
   statusFilter?.addEventListener("change", render);
-  list.addEventListener("click", (event) => {
+  list.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-tender-status]");
     if (!button) return;
+    const previousStatus = getTenders().find((item) => item.id === button.dataset.tenderId)?.status;
+    if (cloudUser && window.ConstEraAPI?.saveTender) {
+      button.disabled = true;
+      try {
+        await window.ConstEraAPI.saveTender({
+          id: button.dataset.tenderId,
+          status: labelApiStatuses[button.dataset.tenderStatus] || "draft"
+        }, true);
+        updateTender(button.dataset.tenderId, { status: button.dataset.tenderStatus });
+        if (statusOutput) statusOutput.textContent = "Tender statusu yeniləndi.";
+      } catch (error) {
+        if (previousStatus) updateTender(button.dataset.tenderId, { status: previousStatus });
+        if (statusOutput) statusOutput.textContent = `Tender statusu yenilənmədi: ${error.message}`;
+      } finally {
+        render();
+      }
+      return;
+    }
     updateTender(button.dataset.tenderId, { status: button.dataset.tenderStatus });
     render();
   });
+  list.addEventListener("submit", async (event) => {
+    const bidForm = event.target.closest("[data-tender-bid-form]");
+    if (!bidForm || !window.ConstEraAPI?.saveTenderBid) return;
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(bidForm).entries());
+    const submit = bidForm.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      await window.ConstEraAPI.saveTenderBid({
+        tenderId: bidForm.dataset.tenderBidForm,
+        price: fields.price,
+        currency: "AZN",
+        delivery: fields.delivery
+      });
+      bidForm.reset();
+      if (statusOutput) statusOutput.textContent = "Tender təklifi göndərildi.";
+    } catch (error) {
+      if (statusOutput) statusOutput.textContent = `Tender təklifi göndərilmədi: ${error.message}`;
+    } finally {
+      submit.disabled = false;
+    }
+  });
   render();
+  connectTenderAccount();
 };
 
 const initServiceCalculator = () => {
@@ -3712,9 +4042,11 @@ const initSupplierPortal = () => {
 
   if (!form || !categorySelect || !subcategorySelect) return;
 
+  let cloudProducts = null;
+  let cloudUser = null;
   const supplierNameInput = form.elements.supplier;
   const getSupplierName = () => String(supplierNameInput?.value || "Yeni təchizatçı").trim() || "Yeni təchizatçı";
-  const getSupplierProducts = () => getAdminProducts()
+  const getSupplierProducts = () => (cloudProducts ?? getAdminProducts())
     .map((product, index) => ensureAdminProductShape(product, index))
     .filter((product) => normalize(product.supplier) === normalize(getSupplierName()));
 
@@ -3781,6 +4113,35 @@ const initSupplierPortal = () => {
     if (status) status.textContent = message;
   };
 
+  const refreshCloudProducts = async () => {
+    if (!window.ConstEraAPI?.myProducts || cloudUser?.role !== "supplier") return;
+    const result = await window.ConstEraAPI.myProducts();
+    cloudProducts = result.data || [];
+    renderRows();
+  };
+
+  const connectSupplierAccount = async () => {
+    if (!window.ConstEraAPI) return;
+    try {
+      const session = await window.ConstEraAPI.session();
+      cloudUser = session.user;
+      if (cloudUser?.role !== "supplier") {
+        setStatus(cloudUser
+          ? "Bu səhifədə canlı dəyişiklik üçün təchizatçı rolu tələb olunur."
+          : "Canlı kabinet üçün təchizatçı hesabına daxil ol. Lokal ehtiyat rejimi aktivdir.");
+        return;
+      }
+      if (supplierNameInput) {
+        supplierNameInput.value = cloudUser.companyName || getSupplierName();
+        supplierNameInput.readOnly = true;
+      }
+      await refreshCloudProducts();
+      setStatus(`${cloudUser.companyName || cloudUser.name} hesabı Neon kataloquna qoşuldu.`);
+    } catch (error) {
+      setStatus(`Canlı baza əlçatan deyil: ${error.message}. Lokal ehtiyat rejimi aktivdir.`);
+    }
+  };
+
   const createProductFromForm = () => {
     const data = new FormData(form);
     const price = String(data.get("price") || "").trim() || "Sorğu əsasında";
@@ -3811,12 +4172,27 @@ const initSupplierPortal = () => {
   categorySelect.addEventListener("change", renderSubcategoryOptions);
   supplierNameInput?.addEventListener("input", renderRows);
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const product = createProductFromForm();
     upsertAdminProducts([product]);
     renderRows();
-    setStatus(`${product.name} kataloqa əlavə edildi və admin qatında saxlandı.`);
+    if (cloudUser?.role !== "supplier" || !window.ConstEraAPI?.saveProduct) {
+      setStatus(`${product.name} lokal ehtiyat qatında saxlandı.`);
+      return;
+    }
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      const result = await window.ConstEraAPI.saveProduct(product, false);
+      cloudProducts = [result.data, ...(cloudProducts || []).filter((item) => item.id !== result.data.id && item.sku !== result.data.sku)];
+      renderRows();
+      setStatus(`${product.name} Neon kataloqunda saxlandı.`);
+    } catch (error) {
+      setStatus(`${product.name} yalnız lokal saxlandı. Server: ${error.message}`);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   });
 
   clearFormButton?.addEventListener("click", () => {
@@ -3837,8 +4213,9 @@ const initSupplierPortal = () => {
     setStatus("CSV şablonu dolduruldu. Sətirləri öz qiymət siyahına uyğun dəyişə bilərsən.");
   });
 
-  importButton?.addEventListener("click", () => {
-    const imported = parseCsvRows(csvInput?.value || "")
+  importButton?.addEventListener("click", async () => {
+    const sourceRows = parseCsvRows(csvInput?.value || "");
+    const imported = sourceRows
       .map((row, index) => {
         const product = productFromCsvRow(row, index);
         return ensureAdminProductShape({
@@ -3854,7 +4231,26 @@ const initSupplierPortal = () => {
     }
     upsertAdminProducts(imported);
     renderRows();
-    setStatus(`${imported.length} məhsul təchizatçı kabinetindən idxal edildi.`);
+    if (cloudUser?.role !== "supplier" || !window.ConstEraAPI?.runImport) {
+      setStatus(`${imported.length} məhsul lokal ehtiyat qatına idxal edildi.`);
+      return;
+    }
+    importButton.disabled = true;
+    try {
+      const result = await window.ConstEraAPI.runImport({
+        importType: "product",
+        action: "commit",
+        filename: "supplier-products.csv",
+        rows: sourceRows,
+        allowPartial: true
+      });
+      await refreshCloudProducts();
+      setStatus(`${result.data.imported} məhsul Neon kataloquna idxal edildi.`);
+    } catch (error) {
+      setStatus(`Lokal idxal hazırdır, server idxalı alınmadı: ${error.message}`);
+    } finally {
+      importButton.disabled = false;
+    }
   });
 
   exportButton?.addEventListener("click", () => {
@@ -3862,6 +4258,7 @@ const initSupplierPortal = () => {
     downloadTextFile(`constera-${createSlug(getSupplierName())}-products.csv`, productsToCsv(supplierProducts), "text/csv;charset=utf-8");
     setStatus(`${supplierProducts.length} məhsul CSV faylına hazırlandı.`);
   });
+  connectSupplierAccount();
 };
 
 const initPriceImportCenter = () => {
@@ -4022,6 +4419,7 @@ const renderCustomerCabinet = () => {
   const estimates = storage.read("constera-ai-estimates");
   const favorites = storage.read("constera-favorites");
   const compare = storage.read("constera-compare");
+  const cart = getCart();
   const productsById = new Map((marketplace.products || []).map((product) => [product.id, product]));
   const selectedProducts = (ids) => ids.map((id) => productsById.get(id)).filter(Boolean);
 
@@ -4030,6 +4428,7 @@ const renderCustomerCabinet = () => {
     <article class="stat-card"><span class="stat-value">${estimates.length}</span><p>smeta</p></article>
     <article class="stat-card"><span class="stat-value">${favorites.length}</span><p>seçilmiş</p></article>
     <article class="stat-card"><span class="stat-value">${compare.length}</span><p>müqayisə</p></article>
+    <article class="stat-card"><span class="stat-value">${cart.length}</span><p>səbət mövqeyi</p></article>
   `;
 
   const empty = (title, text) => `
@@ -4114,10 +4513,202 @@ const renderCustomerCabinet = () => {
   printButton?.addEventListener("click", () => window.print());
 };
 
+const formatMoney = (value, currency = "AZN") => Number(value || 0).toLocaleString("az-AZ", {
+  style: "currency",
+  currency,
+  minimumFractionDigits: 2
+});
+
+const initCartDock = () => {
+  const page = document.body.dataset.page;
+  if (!["catalog", "category", "subcategory", "product-detail", "customer-cabinet"].includes(page)) return;
+  const dock = document.createElement("a");
+  dock.className = "cart-dock";
+  dock.href = "checkout.html";
+  dock.setAttribute("aria-label", "Səbəti aç");
+  dock.innerHTML = '<span>Səbət</span><strong data-cart-count>0</strong>';
+  document.body.appendChild(dock);
+  updateCartIndicators();
+};
+
+const renderCheckout = () => {
+  const itemsContainer = document.querySelector("[data-checkout-items]");
+  const emptyState = document.querySelector("[data-checkout-empty]");
+  const summary = document.querySelector("[data-checkout-summary]");
+  const count = document.querySelector("[data-checkout-count]");
+  const clearButton = document.querySelector("[data-checkout-clear]");
+  const form = document.querySelector("[data-checkout-form]");
+  const status = document.querySelector("[data-checkout-status]");
+  const history = document.querySelector("[data-customer-orders]");
+  if (!itemsContainer || !summary || !form) return;
+
+  const productById = new Map((marketplace.products || []).map((product) => [product.id, product]));
+  const setStatus = (message, type = "info") => {
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.type = type;
+  };
+
+  const currentItems = () => getCart()
+    .map((entry) => ({ ...entry, product: productById.get(entry.id) }))
+    .filter((entry) => entry.product);
+
+  const paint = () => {
+    const entries = currentItems();
+    if (count) count.textContent = entries.length.toLocaleString("az-AZ");
+    if (emptyState) emptyState.hidden = entries.length > 0;
+    itemsContainer.hidden = entries.length === 0;
+    if (clearButton) clearButton.disabled = entries.length === 0;
+    form.querySelector('button[type="submit"]').disabled = entries.length === 0;
+    itemsContainer.innerHTML = entries.map(({ product, quantity }) => {
+      const amount = parseProductPriceAmount(product);
+      const lineTotal = amount === null ? null : amount * quantity;
+      const media = createProductMedia(product, product.brand.slice(0, 2).toUpperCase());
+      return `<article class="checkout-item" data-checkout-product="${escapeAttr(product.id)}">
+        <div class="checkout-item-media">${media}</div>
+        <div class="checkout-item-copy">
+          <strong>${escapeHtml(product.name)}</strong>
+          <span>${escapeHtml(product.sku)} · ${escapeHtml(product.package || "Sorğu ilə")}</span>
+          <small>${escapeHtml(product.brand)} · ${escapeHtml(product.supplier || "Təchizatçı")}</small>
+        </div>
+        <label class="checkout-quantity"><span>Miqdar</span><input data-cart-quantity="${escapeAttr(product.id)}" type="number" min="0.001" max="1000000" step="0.001" value="${escapeAttr(quantity)}" /></label>
+        <div class="checkout-item-price"><strong>${lineTotal === null ? "Sorğu əsasında" : formatMoney(lineTotal, product.priceCurrency || "AZN")}</strong><small>${escapeHtml(product.price)}</small></div>
+        <button class="table-action is-danger" type="button" data-checkout-remove="${escapeAttr(product.id)}">Sil</button>
+      </article>`;
+    }).join("");
+
+    const knownLines = entries.map(({ product, quantity }) => {
+      const amount = parseProductPriceAmount(product);
+      return amount === null ? null : amount * quantity;
+    });
+    const pendingCount = knownLines.filter((value) => value === null).length;
+    const subtotal = knownLines.reduce((sum, value) => sum + (value || 0), 0);
+    summary.innerHTML = `
+      <p class="eyebrow">Sifariş yekunu</p>
+      <h2>${entries.length} məhsul mövqeyi</h2>
+      <dl class="checkout-totals">
+        <div><dt>Təsdiqli məbləğ</dt><dd>${formatMoney(subtotal)}</dd></div>
+        <div><dt>Sorğu qiymətli mövqe</dt><dd>${pendingCount}</dd></div>
+        <div><dt>Çatdırılma</dt><dd>Ünvan üzrə hesablanır</dd></div>
+      </dl>
+      <p class="checkout-summary-note">${pendingCount
+        ? "Yekun hesab təchizatçı qiymətləri təsdiqləndikdən sonra hazırlanacaq."
+        : "Məbləğ sifariş göndərilərkən serverdə yenidən yoxlanacaq."}</p>`;
+    updateCartIndicators();
+  };
+
+  const orderStatusLabels = {
+    submitted: "Göndərilib",
+    confirmed: "Təsdiqlənib",
+    processing: "Hazırlanır",
+    shipped: "Çatdırılır",
+    completed: "Tamamlanıb",
+    cancelled: "Ləğv edilib"
+  };
+
+  const loadOrders = async () => {
+    if (!history || !window.ConstEraAPI) return;
+    try {
+      const session = await window.ConstEraAPI.session();
+      if (!session.user) {
+        history.innerHTML = '<article class="cabinet-item"><strong>Hesaba daxil ol</strong><span>Sifariş tarixçəsi təhlükəsiz hesab sessiyasında göstərilir.</span></article>';
+        return;
+      }
+      if (!form.elements.contactName.value) form.elements.contactName.value = session.user.name || "";
+      if (!form.elements.email.value) form.elements.email.value = session.user.email || "";
+      if (!form.elements.companyName.value) form.elements.companyName.value = session.user.companyName || "";
+      const result = await window.ConstEraAPI.orders();
+      const orders = result.data || [];
+      history.innerHTML = orders.length ? orders.slice(0, 20).map((order) => `
+        <article class="cabinet-item">
+          <header><strong>Sifariş #${escapeHtml(order.orderNumber)}</strong><span class="mini-badge">${escapeHtml(orderStatusLabels[order.status] || order.status)}</span></header>
+          <p>${order.items.length} məhsul · ${order.totalAmount === null ? "Qiymət təsdiqi gözlənilir" : formatMoney(order.totalAmount, order.currency)}</p>
+          <span>${new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span>
+        </article>`).join("") : '<article class="cabinet-item"><strong>Sifariş yoxdur.</strong><span>İlk sifarişin burada görünəcək.</span></article>';
+    } catch (error) {
+      history.innerHTML = `<article class="cabinet-item"><strong>Tarixçə yüklənmədi.</strong><span>${escapeHtml(error.message || "Server xətası")}</span></article>`;
+    }
+  };
+
+  const hydrateMissingCartProducts = async () => {
+    if (!window.ConstEraAPI?.product) return;
+    const missingIds = getCart().map((item) => item.id).filter((id) => !productById.has(id));
+    if (!missingIds.length) return;
+    const results = await Promise.allSettled(missingIds.map((id) => window.ConstEraAPI.product(id)));
+    results.forEach((result) => {
+      if (result.status === "fulfilled" && result.value?.data?.id) {
+        productById.set(result.value.data.id, result.value.data);
+      }
+    });
+    paint();
+  };
+
+  itemsContainer.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-cart-quantity]");
+    if (!input) return;
+    const quantity = Math.max(0.001, Math.min(Number(input.value) || 1, 1_000_000));
+    saveCart(getCart().map((item) => item.id === input.dataset.cartQuantity ? { ...item, quantity } : item));
+    paint();
+  });
+  itemsContainer.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-checkout-remove]");
+    if (!button) return;
+    saveCart(getCart().filter((item) => item.id !== button.dataset.checkoutRemove));
+    paint();
+  });
+  clearButton?.addEventListener("click", () => {
+    saveCart([]);
+    paint();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const entries = currentItems();
+    if (!entries.length || !window.ConstEraAPI) {
+      setStatus("Sifariş göndərmək üçün səbət boş olmamalıdır.", "error");
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    const originalLabel = button.textContent;
+    button.textContent = "Göndərilir...";
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      const result = await window.ConstEraAPI.createOrder({
+        ...fields,
+        items: entries.map((entry) => ({ productId: entry.product.id, quantity: entry.quantity, unit: entry.product.package || "ədəd" }))
+      });
+      saveCart([]);
+      paint();
+      setStatus(`Sifariş #${result.data.orderNumber} qəbul edildi.`, "success");
+      await loadOrders();
+    } catch (error) {
+      setStatus(error.message || "Sifariş göndərilmədi.", "error");
+    } finally {
+      button.textContent = originalLabel;
+      button.disabled = currentItems().length === 0;
+    }
+  });
+
+  paint();
+  hydrateMissingCartProducts();
+  loadOrders();
+};
+
 const initActions = () => {
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
+
+    if (button.dataset.action === "cart") {
+      const id = button.dataset.id;
+      const cart = getCart();
+      if (!cart.some((item) => item.id === id)) saveCart([...cart, { id, quantity: 1 }]);
+      button.classList.add("is-active");
+      button.textContent = "Səbətdədir";
+      updateCartIndicators();
+      return;
+    }
 
     const key = button.dataset.action === "favorite" ? "constera-favorites" : "constera-compare";
     const values = storage.read(key);
@@ -4166,5 +4757,7 @@ initAiSmeta();
 initSupplierPortal();
 initPriceImportCenter();
 renderCustomerCabinet();
+renderCheckout();
 initActions();
+initCartDock();
 applyUrlFilters();

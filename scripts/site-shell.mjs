@@ -43,6 +43,7 @@ const activeNavigationByPage = Object.freeze({
   "supplier-portal": "supplier-portal",
   "price-import": "price-import",
   "customer-cabinet": "customer-cabinet",
+  checkout: "customer-cabinet",
   rfq: "rfq",
   "rfq-dashboard": "rfq-dashboard",
   tender: "tender",
@@ -67,6 +68,16 @@ const renderHeader = (pageName) => {
 };
 
 const ensureMainId = (html) => html.replace(/<main(?![^>]*\bid=)([^>]*)>/i, '<main id="main-content"$1>');
+const ensurePwaMetadata = (html) => {
+  const tags = [];
+  if (!/<link\b[^>]*\brel=["']manifest["']/i.test(html)) {
+    tags.push('    <link rel="manifest" href="assets/icons/site.webmanifest" />');
+  }
+  if (!/<link\b[^>]*\brel=["']apple-touch-icon["']/i.test(html)) {
+    tags.push('    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />');
+  }
+  return tags.length ? html.replace(/<\/head>/i, `${tags.join("\n")}\n  </head>`) : html;
+};
 const shouldRenderFooter = (pageName) => !["admin", "login"].includes(pageName);
 
 export const renderSitePage = (source, options = {}) => {
@@ -86,7 +97,7 @@ export const renderSitePage = (source, options = {}) => {
     html = html.replace(footerPattern, "");
   }
 
-  return html;
+  return ensurePwaMetadata(html);
 };
 
 export const siteShellTemplateFiles = Object.freeze([

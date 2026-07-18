@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   assertLoginAllowed,
   createSession,
@@ -11,6 +11,7 @@ import {
 } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
+import { deliverNotificationNow } from "./_lib/notifications.js";
 import { email, text } from "./_lib/validation.js";
 
 const tokenMatches = (provided, expected) => {
@@ -45,6 +46,75 @@ export default withApiErrors(async (req, res) => {
   assertMethod(req, ["POST"]);
   assertSameOrigin(req);
   const body = await readJson(req, 20_000);
+
+  if (action === "request-reset") {
+    const userEmail = email(body.email);
+    const rows = await query(
+      "SELECT id, name, email FROM users WHERE lower(email) = lower($1) AND status = 'active' LIMIT 1",
+      [userEmail]
+    );
+    const user = rows[0];
+    await query("DELETE FROM password_reset_tokens WHERE expires_at <= now() OR used_at IS NOT NULL");
+    if (user && process.env.EMAIL_WEBHOOK_URL) {
+      const recent = await query(
+        "SELECT count(*)::int AS count FROM password_reset_tokens WHERE user_id = $1 AND created_at > now() - interval '1 hour'",
+        [user.id]
+      );
+      if ((recent[0]?.count || 0) < 3) {
+        const token = randomBytes(32).toString("base64url");
+        const resetId = `rst-${randomUUID()}`;
+        await query(
+          `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
+           VALUES ($1, $2, $3, now() + interval '30 minutes')`,
+          [resetId, user.id, hashOpaque(token)]
+        );
+        const origin = String(process.env.APP_ORIGIN || "https://constera.az").replace(/\/$/, "");
+        const resetUrl = `${origin}/login.html?reset=${encodeURIComponent(token)}`;
+        try {
+          await deliverNotificationNow({
+            channel: "email",
+            recipient: user.email,
+            subject: "ConstEra şifrəsinin bərpası",
+            body: `Salam, ${user.name}. Şifrəni 30 dəqiqə ərzində bu keçiddən yenilə: ${resetUrl}`,
+            templateKey: "password_reset",
+            payload: { resetUrl, expiresInMinutes: 30 }
+          });
+          await recordAudit({ actorId: user.id, action: "request_password_reset", entityType: "user", entityId: user.id });
+        } catch {
+          await query("DELETE FROM password_reset_tokens WHERE id = $1", [resetId]);
+        }
+      }
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      message: "Hesab mövcuddursa, şifrə bərpası təlimatı göndərildi."
+    });
+  }
+
+  if (action === "reset-password") {
+    const token = text(body.token, { field: "Bərpa açarı", required: true, max: 200 });
+    const passwordHash = await hashPassword(body.password);
+    const rows = await query(
+      `WITH valid_token AS (
+         UPDATE password_reset_tokens
+            SET used_at = now()
+          WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+          RETURNING user_id
+       )
+       UPDATE users u
+          SET password_hash = $2, must_change_password = false,
+              password_changed_at = now(), updated_at = now()
+         FROM valid_token v
+        WHERE u.id = v.user_id AND u.status = 'active'
+        RETURNING u.id, u.name, u.email`,
+      [hashOpaque(token), passwordHash]
+    );
+    const user = rows[0];
+    if (!user) throw new ApiError(400, "reset_token_invalid", "Bərpa keçidi yanlışdır və ya vaxtı bitib.");
+    await query("DELETE FROM sessions WHERE user_id = $1", [user.id]);
+    await recordAudit({ actorId: user.id, action: "reset_password", entityType: "user", entityId: user.id });
+    return sendJson(res, 200, { ok: true, message: "Şifrə yeniləndi. Yeni şifrə ilə daxil ola bilərsən." });
+  }
 
   if (action === "setup") {
     const setupToken = process.env.ADMIN_SETUP_TOKEN || "";

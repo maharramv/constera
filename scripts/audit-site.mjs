@@ -26,6 +26,7 @@ const requiredProductionFiles = [
   "api/_admin/imports.js",
   "api/_admin/media.js",
   "api/_admin/notifications.js",
+  "api/_admin/orders.js",
   "api/_admin/tenders.js",
   "api/_admin/tender-bids.js",
   "api/products.js",
@@ -34,6 +35,8 @@ const requiredProductionFiles = [
   "api/offers.js",
   "api/sync.js",
   "scripts/site-shell.mjs",
+  "scripts/audit-database.mjs",
+  "scripts/smoke-commerce.mjs",
   ...siteShellTemplateFiles,
   "playwright.config.mjs",
   "tests/layout/site-layout.spec.mjs",
@@ -42,7 +45,10 @@ const requiredProductionFiles = [
   "db/migrations/002_indexes.sql",
   "db/migrations/003_marketplace_entities.sql",
   "db/migrations/004_submission_security.sql",
-  "db/migrations/005_admin_v2.sql"
+  "db/migrations/005_admin_v2.sql",
+  "db/migrations/006_commerce_search.sql",
+  "db/migrations/007_supplier_portal.sql",
+  "service-worker.js"
 ];
 
 const report = (collection, file, message) => collection.push(`${file}: ${message}`);
@@ -202,7 +208,7 @@ try {
   }
   if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
   if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
-  ["db:migrate", "db:seed", "test:api", "test:site", "test:layout", "check:full"].forEach((script) => {
+  ["db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:full"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
 } catch (error) {

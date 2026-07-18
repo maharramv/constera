@@ -10,6 +10,7 @@ const routeLoaders = Object.freeze({
   imports: () => import("./_admin/imports.js"),
   media: () => import("./_admin/media.js"),
   notifications: () => import("./_admin/notifications.js"),
+  orders: () => import("./_admin/orders.js"),
   "tender-bids": () => import("./_admin/tender-bids.js"),
   tenders: () => import("./_admin/tenders.js"),
   users: () => import("./_admin/users.js")

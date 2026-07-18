@@ -1,25 +1,44 @@
 {
   "name": "ConstEra tikinti platforması",
   "short_name": "ConstEra",
+  "id": "/",
   "description": "Tikinti materialları, xidmətlər, hazır paketlər və avadanlıq icarəsi üçün Azərbaycan platforması.",
   "lang": "az",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "icons": [
     {
       "src": "web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "web-app-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "theme_color": "#0b0f14",
   "background_color": "#07090a",
-  "display": "standalone"
+  "display": "standalone",
+  "categories": ["business", "shopping", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Material kataloqu",
+      "short_name": "Kataloq",
+      "url": "/catalog.html?source=pwa"
+    },
+    {
+      "name": "Səbət və sifariş",
+      "short_name": "Səbət",
+      "url": "/checkout.html?source=pwa"
+    },
+    {
+      "name": "Qiymət sorğusu",
+      "short_name": "Sorğu",
+      "url": "/rfq.html?source=pwa"
+    }
+  ]
 }

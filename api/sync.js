@@ -17,6 +17,11 @@ const normalizeImportedWebsite = (value) => {
   return "";
 };
 
+const normalizeVerifiedAt = (value) => {
+  const timestamp = Date.parse(String(value || ""));
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+};
+
 const normalizeCategoryRows = (categories, kind) => {
   const parents = [];
   const children = [];
@@ -137,7 +142,7 @@ export const upsertProducts = async (products) => {
       availability: text(product.availability, { max: 160 }) || "Stok sorğu ilə",
       stockQuantity: parsePriceAmount(product.stockQuantity),
       minimumOrder: parsePriceAmount(product.minimumOrder),
-      priceVerifiedAt: priceStatus === "confirmed" ? new Date().toISOString() : null,
+      priceVerifiedAt: priceStatus === "confirmed" ? normalizeVerifiedAt(product.priceVerifiedAt) : null,
       imageUrl: safeMediaUrl(product.imageUrl),
       sourceUrl,
       sourceLabel: text(product.sourceLabel, { max: 160 }),
