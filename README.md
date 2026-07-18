@@ -1,6 +1,6 @@
 # ConstEra tikinti platforması
 
-ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, hazır paketləri, avadanlıq icarəsini, qiymət sorğularını və ilkin smetanı birləşdirən statik B2B platformadır. Layihə asılılıqsız işləyir və Vercel üçün `dist` qovluğuna ixrac olunur.
+ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, hazır paketləri, avadanlıq icarəsini, qiymət sorğularını və ilkin smetanı birləşdirən B2B platformadır. İctimai hissə sürətli statik sayt kimi `dist` qovluğuna ixrac olunur; istehsal məlumatları və giriş sistemi Vercel Functions + Neon PostgreSQL üzərində işləyir.
 
 ## Hazırkı məlumat bazası
 
@@ -27,6 +27,20 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `supplier-portal.html`, `price-import.html` - təchizatçı məlumatı və CSV qiymət idxalı
 - `customer-cabinet.html` - sorğu, smeta, seçilmiş və müqayisə məlumatları
 - `admin.html` - kataloq və platforma məlumatlarının lokal idarəetməsi
+- `login.html` - HTTP-only sessiya ilə təhlükəsiz giriş və ilk administrator quraşdırması
+
+## Server imkanları
+
+- `api/health.js` - API və PostgreSQL hazırlıq yoxlaması
+- `api/auth.js` - ilk administrator, giriş, sessiya və çıxış
+- `api/catalog.js` - vahid ictimai kataloq oxuma API-si
+- `api/products.js`, `api/suppliers.js` - rolla qorunan CRUD əməliyyatları
+- `api/rfqs.js`, `api/offers.js` - real qiymət sorğusu və təklif axını
+- `api/sync.js` - statik kataloqun PostgreSQL bazasına kütləvi sinxronizasiyası
+- `api/cron-price-freshness.js` - köhnə qiymətləri gündəlik işarələyən və sessiyaları təmizləyən cron
+- `db/migrations/` - istifadəçi, şirkət, kataloq, qiymət tarixçəsi, RFQ və audit sxemi
+
+Admin panelində lokal ehtiyat rejimi qalır. Baza əlçatan olduqda “Bazaya yaz” və “Bazadan oxu” düymələri ilə bütün kataloq sinxronlaşdırılır.
 
 ## Kod strukturu
 
@@ -35,6 +49,7 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `assets/js/taxonomy-expansion.js` - geniş material, xidmət, paket və icarə taksonomiyası
 - `assets/js/azerbaijan-real-products.js` - açıq mənbələrdən yoxlanmış Azərbaycan bazarı məhsulları
 - `assets/js/marketplace.js` - göstərmə, filtr, sorğu, smeta və lokal idarəetmə məntiqi
+- `assets/js/production.js` - API, giriş, bulud sinxronizasiyası və RFQ server ötürməsi
 - `assets/js/script.js` - ümumi naviqasiya, SEO, əlçatanlıq və əlaqə forması
 - `scripts/audit-site.mjs` - səhifə, keçid, SEO, məlumat və SKU bütövlüyü auditi
 - `scripts/vercel-build.mjs` - statik Vercel ixracı
@@ -55,14 +70,36 @@ npm run vercel-build
 
 Hazır nəticə `dist` qovluğunda yaradılır.
 
+## PostgreSQL quraşdırılması
+
+1. Vercel Marketplace-dən Neon inteqrasiyasını layihəyə qoş.
+2. Vercel-in yaratdığı `DATABASE_URL` dəyişənini lokal mühitə çək və `.env.example` əsasında `.env.local` hazırla.
+3. Ən azı 32 simvolluq `ADMIN_SETUP_TOKEN` və ən azı 24 simvolluq `CRON_SECRET` yarat, Vercel Environment Variables bölməsinə əlavə et.
+4. Miqrasiyaları və ilkin kataloq idxalını işə sal:
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+5. `login.html` səhifəsində “İlk super administratoru yarat” bölməsini bir dəfə doldur. İlk istifadəçi yarandıqdan sonra quraşdırma endpoint-i avtomatik bağlanır.
+
+Alternativ olaraq lokal terminaldan administrator yaratmaq olar:
+
+```bash
+ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="cox-guclu-sifre-2026" npm run db:create-admin
+```
+
+Şifrə ən azı 12 simvol olmalıdır. Real şifrə və tokenlər repozitoriyaya əlavə edilməməlidir.
+
 ## Vercel ayarları
 
 - Framework Preset: `Other`
-- Install Command: boş
+- Install Command: `npm ci`
 - Build Command: `npm run vercel-build`
 - Output Directory: `dist`
 
-Bu ayarlar `vercel.json` daxilində də saxlanılır. `routes-manifest.json` tələb olunmur, çünki layihə Next.js deyil və statik ixrac kimi yerləşdirilir.
+Bu ayarlar `vercel.json` daxilində də saxlanılır. `routes-manifest.json` tələb olunmur, çünki layihə Next.js deyil. Statik fayllar `dist` qovluğundan, server endpoint-ləri isə kök `api/` qovluğundan yerləşdirilir.
 
 ## Məlumat siyasəti
 

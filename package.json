@@ -2,11 +2,23 @@
   "name": "constera-enterprise-v2",
   "version": "2.0.0",
   "private": true,
+  "type": "module",
   "description": "ConstEra Korporativ v2 statik bazar platforması.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "npm run vercel-build",
     "vercel-build": "node scripts/vercel-build.mjs",
     "audit": "node scripts/audit-site.mjs",
-    "check": "npm run audit && node --check assets/js/script.js && node --check assets/js/catalog-data.js && node --check assets/js/taxonomy-expansion.js && node --check assets/js/azerbaijan-real-products.js && node --check assets/js/marketplace.js && npm run vercel-build"
+    "check:syntax": "node scripts/check-javascript.mjs",
+    "test:api": "node --test tests/api/*.test.mjs",
+    "db:migrate": "node scripts/migrate-database.mjs",
+    "db:seed": "node scripts/seed-database.mjs",
+    "db:create-admin": "node scripts/create-admin.mjs",
+    "check": "npm run audit && npm run check:syntax && npm run test:api && npm run vercel-build"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
   }
 }

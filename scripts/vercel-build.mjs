@@ -23,11 +23,13 @@ const requiredFiles = [
   "tender.html",
   "ai-smeta.html",
   "admin.html",
+  "login.html",
   "assets/css/styles.css",
   "assets/js/script.js",
   "assets/js/catalog-data.js",
   "assets/js/taxonomy-expansion.js",
   "assets/js/azerbaijan-real-products.js",
+  "assets/js/production.js",
   "assets/js/marketplace.js"
 ];
 
@@ -53,6 +55,7 @@ const staticEntries = [
   "tender.html",
   "ai-smeta.html",
   "admin.html",
+  "login.html",
   "assets",
   "docs",
   "robots.txt",

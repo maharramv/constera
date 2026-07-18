@@ -2335,6 +2335,13 @@ const renderAdmin = () => {
     if (importStatus) importStatus.textContent = `${shaped.name} yadda saxlanıldı. Kataloq bu brauzerdə yeniləndi.`;
     fillForm({ category: shaped.category });
     rerenderAdminProducts();
+    window.ConstEraAPI?.saveProduct(shaped, Boolean(existing)).then(() => {
+      if (importStatus) importStatus.textContent = `${shaped.name} lokal və PostgreSQL bazasında yadda saxlanıldı.`;
+    }).catch((error) => {
+      if (importStatus && !["database_not_configured", "authentication_required"].includes(error.code)) {
+        importStatus.textContent = `${shaped.name} lokal saxlanıldı. Bulud xətası: ${error.message}`;
+      }
+    });
   });
 
   importCsvButton?.addEventListener("click", () => {
@@ -2398,6 +2405,13 @@ const renderAdmin = () => {
     renderBackupSummary();
     fillSupplierForm();
     if (importStatus) importStatus.textContent = `${shaped.name} təchizatçı panelinə əlavə edildi.`;
+    window.ConstEraAPI?.saveSupplier(shaped, Boolean(existing)).then(() => {
+      if (importStatus) importStatus.textContent = `${shaped.name} lokal və PostgreSQL bazasında yadda saxlanıldı.`;
+    }).catch((error) => {
+      if (importStatus && !["database_not_configured", "authentication_required"].includes(error.code)) {
+        importStatus.textContent = `${shaped.name} lokal saxlanıldı. Bulud xətası: ${error.message}`;
+      }
+    });
   });
 
   entityTypeSelect?.addEventListener("change", () => {
@@ -2603,8 +2617,27 @@ const initRfq = () => {
       <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
       <span>${escapeHtml(rfq.supplier)} · ${escapeHtml(rfq.priority)} · ${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")}</span>
       <a class="button button-secondary" href="rfq-dashboard.html">Sorğu panelində aç</a>
-      <small>Bu nümunə versiyada sorğu brauzerdə saxlanır. Server hissəsi qoşulanda avtomatik təchizatçılara göndəriləcək.</small>
+      <small data-rfq-cloud-status>Sorğu lokal ehtiyat nüsxəsində saxlanıldı. Server bağlantısı yoxlanılır...</small>
     `;
+
+    const cloudStatus = output.querySelector("[data-rfq-cloud-status]");
+    if (window.ConstEraAPI?.createRfq) {
+      window.ConstEraAPI.createRfq(rfq).then((result) => {
+        const drafts = storage.read("constera-rfq-drafts").map((draft) =>
+          draft.id === rfq.id ? { ...draft, cloudId: result.data?.id || "", cloudSyncedAt: new Date().toISOString() } : draft
+        );
+        storage.write("constera-rfq-drafts", drafts);
+        if (cloudStatus) cloudStatus.textContent = `Sorğu serverdə qeydə alındı: ${result.data?.id || "qəbul edildi"}.`;
+      }).catch((error) => {
+        if (cloudStatus) {
+          cloudStatus.textContent = error.code === "database_not_configured"
+            ? "PostgreSQL hələ qoşulmayıb. Sorğu lokal ehtiyat nüsxəsində saxlanıldı."
+            : "Serverə göndərilmədi. Sorğu lokal ehtiyat nüsxəsində qorunur və sonradan təkrar göndərilə bilər.";
+        }
+      });
+    } else if (cloudStatus) {
+      cloudStatus.textContent = "Sorğu lokal ehtiyat nüsxəsində saxlanıldı.";
+    }
   });
 };
 

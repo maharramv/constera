@@ -7,7 +7,28 @@ const htmlFiles = readdirSync(root).filter((file) => extname(file) === ".html").
 const errors = [];
 const warnings = [];
 
+const requiredProductionFiles = [
+  ".env.example",
+  "api/health.js",
+  "api/auth.js",
+  "api/catalog.js",
+  "api/cron-price-freshness.js",
+  "api/products.js",
+  "api/suppliers.js",
+  "api/rfqs.js",
+  "api/offers.js",
+  "api/sync.js",
+  "db/migrations/001_initial.sql",
+  "db/migrations/002_indexes.sql",
+  "db/migrations/003_marketplace_entities.sql",
+  "db/migrations/004_submission_security.sql"
+];
+
 const report = (collection, file, message) => collection.push(`${file}: ${message}`);
+
+requiredProductionFiles
+  .filter((file) => !existsSync(resolve(root, file)))
+  .forEach((file) => report(errors, file, "İstehsal infrastrukturu faylı tapılmadı."));
 
 const getAttribute = (tag, name) => {
   const match = tag.match(new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
@@ -128,6 +149,8 @@ try {
   if (vercelConfig.framework !== null) report(errors, "vercel.json", "Statik layihə üçün framework null olmalıdır.");
   if (vercelConfig.buildCommand !== "npm run vercel-build") report(errors, "vercel.json", "Build əmri npm run vercel-build olmalıdır.");
   if (vercelConfig.outputDirectory !== "dist") report(errors, "vercel.json", "Çıxış qovluğu dist olmalıdır.");
+  if (vercelConfig.installCommand !== "npm ci") report(errors, "vercel.json", "Asılılıqlar üçün npm ci işlədilməlidir.");
+  if (!vercelConfig.functions?.["api/*.js"]) report(errors, "vercel.json", "Vercel Functions konfiqurasiyası tapılmadı.");
   const securityHeaders = new Set((vercelConfig.headers || []).flatMap((rule) =>
     (rule.headers || []).map((header) => String(header.key || "").toLowerCase())));
   ["x-content-type-options", "x-frame-options", "referrer-policy", "permissions-policy", "strict-transport-security"]
@@ -136,6 +159,23 @@ try {
 } catch (error) {
   report(errors, "vercel.json", `Vercel konfiqurasiyası oxunmadı: ${error.message}.`);
 }
+
+try {
+  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  if (!packageJson.dependencies?.["@neondatabase/serverless"]) {
+    report(errors, "package.json", "Neon PostgreSQL drayveri tapılmadı.");
+  }
+  ["db:migrate", "db:seed", "test:api"].forEach((script) => {
+    if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
+  });
+} catch (error) {
+  report(errors, "package.json", `Paket konfiqurasiyası oxunmadı: ${error.message}.`);
+}
+
+const envTemplate = readFileSync(join(root, ".env.example"), "utf8");
+["DATABASE_URL", "ADMIN_SETUP_TOKEN", "CRON_SECRET"].forEach((key) => {
+  if (!new RegExp(`^${key}=`, "m").test(envTemplate)) report(errors, ".env.example", `${key} dəyişəni tapılmadı.`);
+});
 
 const sitemap = readFileSync(join(root, "sitemap.xml"), "utf8");
 for (const match of sitemap.matchAll(/<loc>https:\/\/[^/]+\/(.*?)<\/loc>/g)) {

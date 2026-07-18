@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Giriş | Təhlükəsiz idarəetmə sessiyası</title>
+    <meta name="description" content="ConstEra idarəetmə, satış və təchizatçı hesabları üçün təhlükəsiz giriş səhifəsi." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.ru/login.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="login">
+    <div class="site-shell auth-shell">
+      <header class="header auth-header">
+        <a class="brand" href="index.html" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy"><strong>CONSTERA</strong><span>Təhlükəsiz giriş</span></span>
+        </a>
+        <a class="button button-outline" href="index.html">Ana səhifə</a>
+      </header>
+
+      <main class="auth-main">
+        <section class="auth-card glass">
+          <div class="auth-copy">
+            <p class="eyebrow">Korporativ hesab</p>
+            <h1>İdarəetmə panelinə daxil ol</h1>
+            <p>Server sessiyası HTTP-only cookie ilə qorunur. Şifrə brauzerdə saxlanmır.</p>
+          </div>
+
+          <p class="auth-status" data-auth-status role="status" aria-live="polite">API vəziyyəti yoxlanılır...</p>
+
+          <form class="admin-form auth-form" data-login-form>
+            <label class="admin-field">
+              <span>E-poçt</span>
+              <input name="email" type="email" autocomplete="username" required />
+            </label>
+            <label class="admin-field">
+              <span>Şifrə</span>
+              <input name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required />
+            </label>
+            <button class="button button-primary" type="submit">Daxil ol</button>
+          </form>
+
+          <div class="auth-session" data-auth-session hidden>
+            <strong data-auth-session-name>Aktiv sessiya</strong>
+            <div class="admin-actions">
+              <a class="button button-primary" href="admin.html">İdarəetməyə keç</a>
+              <button class="button button-secondary" type="button" data-auth-logout>Çıxış et</button>
+            </div>
+          </div>
+
+          <details class="auth-setup">
+            <summary>İlk super administratoru yarat</summary>
+            <form class="admin-form auth-form" data-setup-form>
+              <label class="admin-field">
+                <span>Ad</span>
+                <input name="name" type="text" autocomplete="name" minlength="2" maxlength="120" required />
+              </label>
+              <label class="admin-field">
+                <span>E-poçt</span>
+                <input name="email" type="email" autocomplete="username" required />
+              </label>
+              <label class="admin-field">
+                <span>Yeni şifrə</span>
+                <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+              </label>
+              <label class="admin-field">
+                <span>ADMIN_SETUP_TOKEN</span>
+                <input name="setupToken" type="password" autocomplete="off" minlength="32" required />
+              </label>
+              <button class="button button-secondary" type="submit">İlk hesabı yarat</button>
+            </form>
+          </details>
+        </section>
+      </main>
+    </div>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+  </body>
+</html>

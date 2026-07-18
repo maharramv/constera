@@ -59,16 +59,31 @@
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
             <p class="eyebrow">Korporativ idarəetmə v2</p>
-            <h1>Kataloq, paket, xidmət, icarə və təchizatçı idarəetməsi üçün başlanğıc panel.</h1>
+            <h1>Kataloq, paket, xidmət, icarə və təchizatçı idarəetmə mərkəzi.</h1>
             <p class="hero-text">
-              Bu hələ real giriş sistemi olan idarəetmə paneli deyil. Amma strukturu göstərir:
-              məhsullar, hazır paketlər, xidmətlər, avadanlıq icarəsi, qiymət idxalı və təchizatçı vəziyyətləri.
+              Lokal ehtiyat rejimi ilə işləyir, PostgreSQL qoşulduqda isə təhlükəsiz giriş, rol nəzarəti,
+              bulud sinxronizasiyası və dəyişiklik tarixçəsi aktiv olur.
             </p>
           </div>
           <div class="admin-stat-grid" data-admin-stats></div>
         </section>
 
         <section class="section admin-board">
+          <div class="cloud-control-band" data-cloud-panel>
+            <div>
+              <p class="eyebrow">İstehsal infrastrukturu</p>
+              <h2>PostgreSQL və bulud sinxronizasiyası</h2>
+              <p class="cloud-status" data-cloud-status role="status" aria-live="polite">API vəziyyəti yoxlanılır...</p>
+            </div>
+            <div class="cloud-control-actions">
+              <span class="data-badge" data-cloud-user>Lokal rejim</span>
+              <a class="button button-outline" href="login.html?next=admin.html">Daxil ol</a>
+              <button class="button button-primary" type="button" data-cloud-push disabled>Bazaya yaz</button>
+              <button class="button button-secondary" type="button" data-cloud-pull disabled>Bazadan oxu</button>
+              <button class="button button-outline" type="button" data-cloud-logout hidden>Çıxış et</button>
+            </div>
+          </div>
+
           <div class="admin-tabs glass" data-admin-tabs>
             <button class="admin-tab-button is-active" type="button" data-admin-tab="overview">Ümumi</button>
             <button class="admin-tab-button" type="button" data-admin-tab="products">Məhsullar</button>
@@ -572,6 +587,7 @@
     <script src="assets/js/taxonomy-expansion.js"></script>
     <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
     <script src="assets/js/marketplace.js"></script>
   </body>
 </html>
