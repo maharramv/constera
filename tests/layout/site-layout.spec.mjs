@@ -118,11 +118,13 @@ test("mənbəli paket və texnika icarəsi axını responsiv işləyir", async (
   await page.setViewportSize({ width: 1280, height: 900 });
 
   await page.goto("/packages.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-package-grid] .market-card").first()).toHaveClass(/is-official-card/);
   await page.locator("[data-package-provider-filter]").selectOption({ label: "Hazırev" });
   await expect(page.locator("[data-package-count]")).toHaveText("3 paket");
   await expect(page.locator('[data-package-id^="az-market-hazirev-"]')).toHaveCount(3);
 
   await page.goto("/rental.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-rental-grid] .market-card").first()).toHaveClass(/is-sourced-card/);
   await page.locator("[data-rental-city-filter]").selectOption({ label: "Bakı və Azərbaycan" });
   await expect(page.locator("[data-rental-count]")).toHaveText("3 avadanlıq");
   await expect(page.locator('[data-rental-id^="az-rental-naf-"]')).toHaveCount(3);
@@ -147,4 +149,18 @@ test("mənbəli paket və texnika icarəsi axını responsiv işləyir", async (
   }
   await expect(page.locator('[name="address"]')).toHaveAttribute("required", "");
   await expect(page.locator('[name="rentalDuration"]')).toHaveAttribute("required", "");
+});
+
+test("mənbəli məhsullar əsas səhifə və kataloqda əvvəl göstərilir", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-home-sourced-products] .is-sourced-card")).toHaveCount(3);
+  await expect(page.locator("[data-home-sourced-packages] .is-official-card")).toHaveCount(3);
+  await expect(page.locator("[data-home-sourced-rentals] .is-sourced-card")).toHaveCount(3);
+
+  await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-product-grid] .market-card").first()).toHaveClass(/is-sourced-card/);
+  await page.locator("[data-source-filter]").selectOption("sourced-image");
+  await expect(page.locator("[data-product-grid] .market-card").first()).toHaveClass(/has-real-media/);
+  await expect(page.locator("[data-active-filter-list]")).toContainText("Mənbə + real foto");
 });

@@ -225,6 +225,23 @@ const getSafeImageUrl = (value) => {
   if (/^(?:\/|assets\/)[^\\]*$/i.test(path) && !path.startsWith("//")) return path;
   return getSafeHttpsUrl(path);
 };
+const marketplaceRanking = window.CONSTERA_MARKETPLACE_RANKING || {};
+const hasSourcedData = (item) => marketplaceRanking.hasHttpsSource
+  ? marketplaceRanking.hasHttpsSource(item)
+  : Boolean(getSafeHttpsUrl(item?.sourceUrl));
+const hasRealMedia = (item) => marketplaceRanking.hasUsableImage
+  ? marketplaceRanking.hasUsableImage(item)
+  : Boolean(getSafeImageUrl(item?.imageUrl));
+const getSourceQualityScore = (item, kind = "product") => marketplaceRanking.getSourceQualityScore
+  ? marketplaceRanking.getSourceQualityScore(item, kind)
+  : (hasSourcedData(item) ? 500 : 0) + (hasRealMedia(item) ? 180 : 0);
+const compareSourceQuality = (left, right, kind = "product") => marketplaceRanking.compareSourceQuality
+  ? marketplaceRanking.compareSourceQuality(left, right, kind)
+  : getSourceQualityScore(right, kind) - getSourceQualityScore(left, kind)
+    || String(left?.name || left?.title || "").localeCompare(String(right?.name || right?.title || ""), "az");
+const sortBySourceQuality = (items, kind = "product") => marketplaceRanking.sortBySourceQuality
+  ? marketplaceRanking.sortBySourceQuality(items, kind)
+  : [...(items || [])].sort((left, right) => compareSourceQuality(left, right, kind));
 const createProductMedia = (product, fallbackText) => {
   const imageUrl = getSafeImageUrl(product.imageUrl);
   return imageUrl
@@ -611,6 +628,9 @@ const getQueryParam = (name) => new URLSearchParams(window.location.search).get(
 syncAdminProductOverlay();
 syncAdminSupplierOverlay();
 ["service", "package", "rental"].forEach(syncAdminEntityOverlay);
+marketplace.products = sortBySourceQuality(marketplace.products, "product");
+marketplace.packages = sortBySourceQuality(marketplace.packages, "package");
+marketplace.rentals = sortBySourceQuality(marketplace.rentals, "rental");
 
 const renderDetailFallback = (container, title, backHref) => {
   container.innerHTML = `
@@ -637,18 +657,26 @@ const createProductCard = (product) => {
   const media = createProductMedia(product, brandMark);
   const freshness = getPriceFreshness(product);
   const sourceUrl = getSafeHttpsUrl(product.sourceUrl);
+  const sourced = Boolean(sourceUrl);
+  const realMedia = hasRealMedia(product);
+  const sourceBadge = sourced
+    ? product.priceStatus === "confirmed" && realMedia ? "Mənbəli qiymət + foto"
+      : product.priceStatus === "confirmed" ? "Mənbəli qiymət"
+        : realMedia ? "Mənbə + foto" : "Mənbəli məlumat"
+    : "";
   const source = sourceUrl
-    ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
+    ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
     : "";
   const detailLink = `<a class="source-link" href="product-detail.html?product=${encodeURIComponent(product.id)}">Detallı bax</a>`;
 
   return `
-    <article class="market-card product-card" data-product-id="${escapeAttr(product.id)}">
+    <article class="market-card product-card${sourced ? " is-sourced-card" : ""}${sourced && realMedia ? " has-real-media" : ""}" data-product-id="${escapeAttr(product.id)}" data-source-priority="${getSourceQualityScore(product, "product")}">
       <div class="product-media">
         ${media}
       </div>
       <div class="product-card-body">
         <div class="product-meta">
+          ${sourceBadge ? `<span class="source-priority-badge">${escapeHtml(sourceBadge)}</span>` : ""}
           <span>${escapeHtml(categoryTitle)}</span>
           <span>${escapeHtml(product.subcategory)}</span>
         </div>
@@ -693,6 +721,8 @@ const renderCatalog = () => {
   const subcategorySelect = document.querySelector("[data-subcategory-filter]");
   const availabilitySelect = document.querySelector("[data-availability-filter]");
   const priceSelect = document.querySelector("[data-price-filter]");
+  const sourceSelect = document.querySelector("[data-source-filter]");
+  const sortSelect = document.querySelector("[data-catalog-sort]");
   const originSelect = document.querySelector("[data-origin-filter]");
   const searchInput = document.querySelector("[data-search]");
   const resultCount = document.querySelector("[data-result-count]");
@@ -770,8 +800,22 @@ const renderCatalog = () => {
   };
 
   const renderBrandOptions = () => {
-    const options = marketplace.brands
+    const brandProducts = new Map();
+    marketplace.products.forEach((product) => {
+      const current = brandProducts.get(product.brand) || { total: 0, quality: 0 };
+      current.total += 1;
+      if (hasSourcedData(product)) current.quality += 1;
+      brandProducts.set(product.brand, current);
+    });
+    const options = [...marketplace.brands]
       .filter((brand) => marketplace.products.some((product) => product.brand === brand.name))
+      .sort((left, right) => {
+        const leftCounts = brandProducts.get(left.name) || { total: 0, quality: 0 };
+        const rightCounts = brandProducts.get(right.name) || { total: 0, quality: 0 };
+        return rightCounts.quality - leftCounts.quality
+          || rightCounts.total - leftCounts.total
+          || left.name.localeCompare(right.name, "az");
+      })
       .map((brand) => `<option value="${escapeAttr(brand.name)}">${escapeHtml(brand.name)}</option>`)
       .join("");
 
@@ -780,6 +824,16 @@ const renderCatalog = () => {
     if (brandParam && [...brandSelect.options].some((option) => option.value === brandParam)) {
       brandSelect.value = brandParam;
     }
+  };
+
+  const renderAvailabilityOptions = () => {
+    if (!availabilitySelect) return;
+    const values = [...new Set(marketplace.products.map((product) => product.availability).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right, "az"));
+    availabilitySelect.innerHTML = `
+      <option value="all">Bütün vəziyyətlər</option>
+      ${values.map((value) => `<option value="${escapeAttr(value)}">${escapeHtml(value)} (${countProductsBy("availability", value)})</option>`).join("")}
+    `;
   };
 
   const getCategoryPool = () => {
@@ -815,6 +869,8 @@ const renderCatalog = () => {
     if (params.get("q")) searchInput.value = params.get("q");
     if (availabilitySelect && params.get("availability")) availabilitySelect.value = params.get("availability");
     if (priceSelect && params.get("price")) priceSelect.value = params.get("price");
+    if (sourceSelect && params.get("source")) sourceSelect.value = params.get("source");
+    if (sortSelect && params.get("sort")) sortSelect.value = params.get("sort");
     if (originSelect && params.get("origin")) originSelect.value = params.get("origin");
   };
 
@@ -825,11 +881,15 @@ const renderCatalog = () => {
     const subcategory = subcategorySelect?.value || "all";
     const availability = availabilitySelect?.value || "all";
     const priceStatus = priceSelect?.value || "all";
+    const sourceStatus = sourceSelect?.value || "all";
+    const sortMode = sortSelect?.value || "quality";
     const origin = originSelect?.value || "all";
 
     const filtered = marketplace.products.filter((product) => {
       const category = getCategory(product.category);
-      const priceIsRequest = normalize(product.price) === normalize("Sorğu əsasında");
+      const priceIsRequest = product.priceStatus !== "confirmed";
+      const sourced = hasSourcedData(product);
+      const realMedia = hasRealMedia(product);
       const matchesCategory = activeCategory === "all" || product.category === activeCategory;
       const matchesGroup = group === "all" || category?.group === group;
       const matchesSubcategory = subcategory === "all" || product.subcategory === subcategory;
@@ -838,6 +898,10 @@ const renderCatalog = () => {
       const matchesPrice = priceStatus === "all" ||
         (priceStatus === "request" && priceIsRequest) ||
         (priceStatus === "confirmed" && !priceIsRequest);
+      const matchesSource = sourceStatus === "all" ||
+        (sourceStatus === "sourced" && sourced) ||
+        (sourceStatus === "sourced-image" && sourced && realMedia) ||
+        (sourceStatus === "unsourced" && !sourced);
       const originValue = normalize(product.origin);
       const isImported = originValue.includes("idxal") || originValue.includes("import");
       const matchesOrigin = origin === "all" ||
@@ -863,14 +927,33 @@ const renderCatalog = () => {
         matchesBrand &&
         matchesAvailability &&
         matchesPrice &&
+        matchesSource &&
         matchesOrigin &&
         matchesQuery;
     });
 
-    if (normalize(query)) {
-      filtered.sort((left, right) =>
-        getProductSearchRelevance(right, query) - getProductSearchRelevance(left, query));
-    }
+    filtered.sort((left, right) => {
+      if (sortMode === "name") return left.name.localeCompare(right.name, "az");
+      if (sortMode === "price-asc") {
+        const leftPrice = parseProductPriceAmount(left);
+        const rightPrice = parseProductPriceAmount(right);
+        if (leftPrice === null && rightPrice !== null) return 1;
+        if (leftPrice !== null && rightPrice === null) return -1;
+        if (leftPrice !== rightPrice) return Number(leftPrice || 0) - Number(rightPrice || 0);
+      }
+      if (sortMode === "price-desc") {
+        const leftPrice = parseProductPriceAmount(left);
+        const rightPrice = parseProductPriceAmount(right);
+        if (leftPrice === null && rightPrice !== null) return 1;
+        if (leftPrice !== null && rightPrice === null) return -1;
+        if (leftPrice !== rightPrice) return Number(rightPrice || 0) - Number(leftPrice || 0);
+      }
+      if (normalize(query)) {
+        const relevance = getProductSearchRelevance(right, query) - getProductSearchRelevance(left, query);
+        if (relevance) return relevance;
+      }
+      return compareSourceQuality(left, right, "product");
+    });
 
     progressiveGrid.setItems(filtered);
     if (resultCount) resultCount.textContent = `${filtered.length} məhsul`;
@@ -883,6 +966,7 @@ const renderCatalog = () => {
         brand !== "all" ? brand : "",
         availability !== "all" ? availability : "",
         priceStatus === "request" ? "Sorğu qiyməti" : priceStatus === "confirmed" ? "Təsdiqli qiymət" : "",
+        sourceStatus === "sourced" ? "Mənbəli məlumat" : sourceStatus === "sourced-image" ? "Mənbə + real foto" : sourceStatus === "unsourced" ? "Mənbəsiz struktur" : "",
         origin === "local" ? "Azərbaycan" : origin === "import" ? "İdxal" : origin === "mixed" ? "Qarışıq mənşə" : ""
       ].filter(Boolean);
       activeFilterList.innerHTML = chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("");
@@ -898,7 +982,9 @@ const renderCatalog = () => {
       page: String(page),
       pageSize: "96",
       scope: "products",
-      sort: searchInput.value.trim() ? "relevance" : "name"
+      sort: searchInput.value.trim() ? "relevance" : (sortSelect?.value === "name" ? "name"
+        : sortSelect?.value === "price-asc" ? "price_asc"
+          : sortSelect?.value === "price-desc" ? "price_desc" : "quality")
     };
     if (searchInput.value.trim()) filters.q = searchInput.value.trim();
     if (activeCategory !== "all") filters.category = activeCategory;
@@ -907,6 +993,7 @@ const renderCatalog = () => {
     if (subcategorySelect?.value && subcategorySelect.value !== "all") filters.subcategory = subcategorySelect.value;
     if (availabilitySelect?.value && availabilitySelect.value !== "all") filters.availability = availabilitySelect.value;
     if (priceSelect?.value && priceSelect.value !== "all") filters.priceStatus = priceSelect.value;
+    if (sourceSelect?.value && sourceSelect.value !== "all") filters.source = sourceSelect.value;
     if (originSelect?.value && originSelect.value !== "all") filters.origin = originSelect.value;
 
     try {
@@ -949,6 +1036,7 @@ const renderCatalog = () => {
   renderCategoryButtons();
   renderGroupOptions();
   renderBrandOptions();
+  renderAvailabilityOptions();
   applyParamDefaults();
   renderSubcategoryOptions();
   applyCatalogFilters();
@@ -980,6 +1068,8 @@ const renderCatalog = () => {
   subcategorySelect?.addEventListener("change", () => applyCatalogFilters());
   availabilitySelect?.addEventListener("change", () => applyCatalogFilters());
   priceSelect?.addEventListener("change", () => applyCatalogFilters());
+  sourceSelect?.addEventListener("change", () => applyCatalogFilters());
+  sortSelect?.addEventListener("change", () => applyCatalogFilters());
   originSelect?.addEventListener("change", () => applyCatalogFilters());
 };
 
@@ -987,8 +1077,20 @@ const renderBrands = () => {
   const grid = document.querySelector("[data-brand-grid]");
   if (!grid) return;
 
-  grid.innerHTML = marketplace.brands.map((brand) => {
-    const productCount = marketplace.products.filter((product) => product.brand === brand.name).length;
+  const brands = [...marketplace.brands].sort((left, right) => {
+    const leftProducts = marketplace.products.filter((product) => product.brand === left.name);
+    const rightProducts = marketplace.products.filter((product) => product.brand === right.name);
+    const leftSourced = leftProducts.filter(hasSourcedData).length;
+    const rightSourced = rightProducts.filter(hasSourcedData).length;
+    return rightSourced - leftSourced
+      || rightProducts.length - leftProducts.length
+      || left.name.localeCompare(right.name, "az");
+  });
+
+  grid.innerHTML = brands.map((brand) => {
+    const brandProducts = marketplace.products.filter((product) => product.brand === brand.name);
+    const productCount = brandProducts.length;
+    const sourcedCount = brandProducts.filter(hasSourcedData).length;
     const segmentNames = brand.segments
       .map((segment) => getCategory(segment)?.title || segment)
       .join(", ");
@@ -1001,6 +1103,7 @@ const renderBrands = () => {
         <p>${escapeHtml(segmentNames)}</p>
         <div class="market-card-metrics">
           <span>${productCount} məhsul</span>
+          ${sourcedCount ? `<span class="source-priority-badge">${sourcedCount} mənbəli</span>` : ""}
           <span>${escapeHtml(brand.certification)}</span>
         </div>
         <a class="card-link" href="catalog.html?brand=${encodeURIComponent(brand.name)}">${escapeHtml(brand.website)}</a>
@@ -1013,8 +1116,14 @@ const renderSuppliers = () => {
   const grid = document.querySelector("[data-supplier-grid]");
   if (!grid) return;
 
-  grid.innerHTML = marketplace.suppliers.map((supplier) => `
-    <article class="market-card supplier-card">
+  const suppliers = [...marketplace.suppliers].sort((left, right) => {
+    const leftOfficial = normalize(left.status).includes("rəsmi") ? 1 : 0;
+    const rightOfficial = normalize(right.status).includes("rəsmi") ? 1 : 0;
+    return rightOfficial - leftOfficial || left.name.localeCompare(right.name, "az");
+  });
+
+  grid.innerHTML = suppliers.map((supplier) => `
+    <article class="market-card supplier-card${normalize(supplier.status).includes("rəsmi") ? " is-sourced-card" : ""}">
       <span class="card-topline">${escapeHtml(supplier.type)}</span>
       <h3>${escapeHtml(supplier.name)}</h3>
       <p>${escapeHtml(supplier.focus)}</p>
@@ -1085,11 +1194,12 @@ const getPackageSourceStatus = (pack) => {
 const createPackageCard = (pack) => {
   const category = getPackageCategory(pack.category);
   const sourceUrl = getSafeHttpsUrl(pack.sourceUrl);
+  const sourced = Boolean(sourceUrl);
   const levelLabel = packageLevelLabels[pack.level] || "Paket";
   const oldPrice = Number(pack.oldPriceAmount);
 
   return `
-    <article class="market-card service-card" data-package-id="${escapeAttr(pack.id)}">
+    <article class="market-card service-card${sourced ? " is-sourced-card" : ""}${pack.providerVerified ? " is-official-card" : ""}" data-package-id="${escapeAttr(pack.id)}" data-source-priority="${getSourceQualityScore(pack, "package")}">
       <div class="product-card-body">
         <div class="product-meta">
           <span>${escapeHtml(category?.title || pack.category)}</span>
@@ -1136,12 +1246,14 @@ const createPackageCard = (pack) => {
 const createRentalCard = (rental) => {
   const category = getRentalCategory(rental.category);
   const sourceUrl = getSafeHttpsUrl(rental.sourceUrl);
+  const sourced = Boolean(sourceUrl);
+  const realMedia = hasRealMedia(rental);
   const sourceStatus = rental.sourceOfficial
     ? "Rəsmi kataloq"
     : rental.sourceVerified ? "Mənbəli elan" : rental.sourceUrl ? "Açıq elan" : "Sorğu kataloqu";
 
   return `
-    <article class="market-card rental-card" data-rental-id="${escapeAttr(rental.id)}">
+    <article class="market-card rental-card${sourced ? " is-sourced-card" : ""}${rental.sourceOfficial ? " is-official-card" : ""}${sourced && realMedia ? " has-real-media" : ""}" data-rental-id="${escapeAttr(rental.id)}" data-source-priority="${getSourceQualityScore(rental, "rental")}">
       <div class="product-media rental-media">
         ${createProductMedia(rental, "İC")}
       </div>
@@ -1179,6 +1291,38 @@ const createRentalCard = (rental) => {
       <a class="button button-secondary product-rfq" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu</a>
     </article>
   `;
+};
+
+const renderHomeSourcedShowcase = () => {
+  const productGrid = document.querySelector("[data-home-sourced-products]");
+  const packageGrid = document.querySelector("[data-home-sourced-packages]");
+  const rentalGrid = document.querySelector("[data-home-sourced-rentals]");
+  if (!productGrid || !packageGrid || !rentalGrid) return;
+
+  const sourcedProducts = sortBySourceQuality(
+    (marketplace.products || []).filter((item) => hasSourcedData(item) && hasRealMedia(item)),
+    "product"
+  );
+  const sourcedPackages = sortBySourceQuality(
+    (marketplace.packages || []).filter(hasSourcedData),
+    "package"
+  );
+  const sourcedRentals = sortBySourceQuality(
+    (marketplace.rentals || []).filter(hasSourcedData),
+    "rental"
+  );
+
+  productGrid.innerHTML = sourcedProducts.slice(0, 3).map(createProductCard).join("");
+  packageGrid.innerHTML = sourcedPackages.slice(0, 3).map(createPackageCard).join("");
+  rentalGrid.innerHTML = sourcedRentals.slice(0, 3).map(createRentalCard).join("");
+  document.querySelectorAll("[data-home-source-count]").forEach((node) => {
+    const counts = {
+      products: sourcedProducts.length,
+      packages: sourcedPackages.length,
+      rentals: sourcedRentals.length
+    };
+    node.textContent = Number(counts[node.dataset.homeSourceCount] || 0).toLocaleString("az-AZ");
+  });
 };
 
 const renderServices = () => {
@@ -1233,6 +1377,7 @@ const renderPackages = () => {
   const subcategoryFilter = document.querySelector("[data-package-subcategory-filter]");
   const levelFilter = document.querySelector("[data-package-level-filter]");
   const providerFilter = document.querySelector("[data-package-provider-filter]");
+  const sourceFilter = document.querySelector("[data-package-source-filter]");
   const priceFilter = document.querySelector("[data-package-price-filter]");
   const count = document.querySelector("[data-package-count]");
   const pagination = document.querySelector("[data-package-pagination]");
@@ -1268,16 +1413,22 @@ const renderPackages = () => {
     const subcategoryValue = subcategoryFilter?.value || "all";
     const levelValue = levelFilter?.value || "all";
     const providerValue = providerFilter?.value || "all";
+    const sourceValue = sourceFilter?.value || "all";
     const maximumPrice = Number(priceFilter?.value || 0);
     const filtered = packages.filter((pack) => {
       const matchesCategory = categoryValue === "all" || pack.category === categoryValue;
       const matchesSubcategory = subcategoryValue === "all" || pack.subcategory === subcategoryValue;
       const matchesLevel = levelValue === "all" || pack.level === levelValue;
       const matchesProvider = providerValue === "all" || pack.providerName === providerValue;
+      const sourced = hasSourcedData(pack);
+      const matchesSource = sourceValue === "all"
+        || (sourceValue === "official" && sourced && pack.providerVerified)
+        || (sourceValue === "market" && sourced && !pack.providerVerified)
+        || (sourceValue === "structure" && !sourced);
       const amount = getPackagePriceAmount(pack);
       const matchesPrice = !maximumPrice || (amount !== null && amount <= maximumPrice);
-      return matchesCategory && matchesSubcategory && matchesLevel && matchesProvider && matchesPrice;
-    });
+      return matchesCategory && matchesSubcategory && matchesLevel && matchesProvider && matchesSource && matchesPrice;
+    }).sort((left, right) => compareSourceQuality(left, right, "package"));
     progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} paket`;
   };
@@ -1289,6 +1440,7 @@ const renderPackages = () => {
   subcategoryFilter?.addEventListener("change", render);
   levelFilter?.addEventListener("change", render);
   providerFilter?.addEventListener("change", render);
+  sourceFilter?.addEventListener("change", render);
   priceFilter?.addEventListener("change", render);
   renderSubcategoryOptions();
   render();
@@ -1300,6 +1452,7 @@ const renderRentals = () => {
   const subcategoryFilter = document.querySelector("[data-rental-subcategory-filter]");
   const cityFilter = document.querySelector("[data-rental-city-filter]");
   const periodFilter = document.querySelector("[data-rental-period-filter]");
+  const sourceFilter = document.querySelector("[data-rental-source-filter]");
   const priceFilter = document.querySelector("[data-rental-price-filter]");
   const count = document.querySelector("[data-rental-count]");
   const pagination = document.querySelector("[data-rental-pagination]");
@@ -1339,18 +1492,26 @@ const renderRentals = () => {
     const subcategoryValue = subcategoryFilter?.value || "all";
     const cityValue = cityFilter?.value || "all";
     const periodValue = periodFilter?.value || "all";
+    const sourceValue = sourceFilter?.value || "all";
     const priceValue = priceFilter?.value || "all";
     const filtered = rentals.filter((rental) => {
       const matchesCategory = categoryValue === "all" || rental.category === categoryValue;
       const matchesSubcategory = subcategoryValue === "all" || rental.subcategory === subcategoryValue;
       const matchesCity = cityValue === "all" || rental.city === cityValue;
       const matchesPeriod = periodValue === "all" || (rental.rentalPeriods || []).includes(periodValue);
+      const sourced = hasSourcedData(rental);
+      const realMedia = hasRealMedia(rental);
+      const matchesSource = sourceValue === "all"
+        || (sourceValue === "official" && sourced && rental.sourceOfficial)
+        || (sourceValue === "sourced-image" && sourced && realMedia)
+        || (sourceValue === "sourced" && sourced)
+        || (sourceValue === "structure" && !sourced);
       const amount = Number(rental.priceAmount);
       const hasAmount = rental.priceAmount !== null && rental.priceAmount !== undefined && Number.isFinite(amount) && amount >= 0;
       const matchesPrice = priceValue === "all"
         || (priceValue === "request" ? !hasAmount : hasAmount && amount <= Number(priceValue));
-      return matchesCategory && matchesSubcategory && matchesCity && matchesPeriod && matchesPrice;
-    });
+      return matchesCategory && matchesSubcategory && matchesCity && matchesPeriod && matchesSource && matchesPrice;
+    }).sort((left, right) => compareSourceQuality(left, right, "rental"));
     progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} avadanlıq`;
   };
@@ -1362,6 +1523,7 @@ const renderRentals = () => {
   subcategoryFilter?.addEventListener("change", render);
   cityFilter?.addEventListener("change", render);
   periodFilter?.addEventListener("change", render);
+  sourceFilter?.addEventListener("change", render);
   priceFilter?.addEventListener("change", render);
   renderSubcategoryOptions();
   render();
@@ -1383,7 +1545,7 @@ const renderProductDetail = () => {
     const freshness = getPriceFreshness(item);
     const sourceUrl = getSafeHttpsUrl(item.sourceUrl);
     const source = sourceUrl
-      ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>`
+      ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>`
       : "";
 
     document.title = `${item.name} | ConstEra Kataloq`;
@@ -1845,7 +2007,7 @@ const renderTaxonomyDetail = () => {
     const matchesCategory = item.category === category.id;
     const matchesSubcategory = !visibleSubcategory || item.subcategory === visibleSubcategory;
     return matchesCategory && matchesSubcategory;
-  });
+  }).sort((left, right) => compareSourceQuality(left, right, type === "material" ? "product" : type));
   const pageTitle = visibleSubcategory || category.title;
   const baseUrl = `category.html?type=${encodeURIComponent(type)}&category=${encodeURIComponent(category.id)}`;
 
@@ -3937,7 +4099,7 @@ const initAiSmeta = () => {
         return { product, score };
       })
       .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || compareSourceQuality(a.product, b.product, "product"))
       .slice(0, 3)
       .map((entry) => entry.product);
   };
@@ -5228,6 +5390,7 @@ const applyUrlFilters = () => {
   }
 };
 
+renderHomeSourcedShowcase();
 renderCatalog();
 renderBrands();
 renderSuppliers();

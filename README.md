@@ -11,6 +11,7 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - 15 icarə kateqoriyası və 108 avadanlıq mövqeyi
 - yerli mənbələrdən 9 hazır tikinti-təmir paketi və 8 texnika icarəsi
 - mənbəli qiymətlər və şəkillər üçün açıq məhsul keçidləri
+- kataloq, ana səhifə, brend, paket və icarə bölmələrində mənbə keyfiyyətinə görə vahid prioritet sıralaması
 - qiyməti təsdiqlənməyən mövqelər üçün `Sorğu əsasında` vəziyyəti
 
 ## Əsas səhifələr
@@ -55,7 +56,7 @@ Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçat
 - `assets/css/styles.css` - bütün səhifələrin responsiv görünüşü
 - `assets/js/catalog-data.js` - əsas kataloq məlumatları
 - `assets/js/taxonomy-expansion.js` - geniş material, xidmət, paket və icarə taksonomiyası
-- `assets/js/azerbaijan-real-products.js` - açıq mənbələrdən yoxlanmış Azərbaycan bazarı məhsulları
+- `assets/js/azerbaijan-real-products.js` - açıq mənbələrdən yoxlanmış Azərbaycan bazarı məhsulları və mənbə keyfiyyəti sıralaması
 - `assets/js/marketplace.js` - göstərmə, filtr, sorğu, smeta və lokal idarəetmə məntiqi
 - `assets/js/production.js` - API, giriş, bulud sinxronizasiyası və RFQ server ötürməsi
 - `assets/js/script.js` - ümumi naviqasiya, SEO, əlçatanlıq və əlaqə forması
@@ -135,6 +136,8 @@ Bu ayarlar `vercel.json` daxilində də saxlanılır. `routes-manifest.json` tə
 
 ## Məlumat siyasəti
 
-Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstərilir. Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir.
+Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstərilir. Mənbə, real foto, təsdiqli qiymət, yoxlama tarixi və rəsmi provayder statusu birlikdə məlumat keyfiyyəti balını yaradır; daha yüksək balı olan məhsul, paket və icarə mövqeləri standart olaraq əvvəl göstərilir. İstifadəçi kataloq filtrləri ilə yalnız mənbəli və ya mənbə + foto olan nəticələri ayrıca aça bilər.
+
+Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir. Mənbəsiz mövqelər silinmir: gələcək təchizatçı məlumatı üçün taksonomiya strukturu kimi mənbəli nəticələrdən sonra saxlanılır.
 
 Onlayn kart ödənişi provayder müqaviləsi və açarları olmadan imitasiya edilmir. Hazır sifariş axını faktura və bank köçürməsi üsullarını dəstəkləyir; kart ödənişi ayrıca provayder inteqrasiyası ilə əlavə olunmalıdır.

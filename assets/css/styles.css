@@ -2073,6 +2073,15 @@ dd {
   overflow: hidden;
 }
 
+.market-card.is-sourced-card {
+  border-color: rgba(66, 194, 143, 0.38);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.22), inset 0 2px 0 rgba(66, 194, 143, 0.16);
+}
+
+.market-card.is-official-card {
+  border-color: rgba(212, 166, 79, 0.52);
+}
+
 .market-card,
 .product-card,
 .detail-panel,
@@ -2224,6 +2233,56 @@ dd {
   border-color: rgba(66, 194, 143, 0.36);
   color: #bff5df;
   background: rgba(66, 194, 143, 0.11);
+}
+
+.source-priority-badge {
+  border-color: rgba(66, 194, 143, 0.38) !important;
+  color: #bff5df !important;
+  background: rgba(66, 194, 143, 0.12) !important;
+}
+
+.sourced-showcase {
+  display: grid;
+  gap: 38px;
+}
+
+.source-count-band {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.source-count-band article {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 18px 22px;
+}
+
+.source-count-band article + article {
+  border-left: 1px solid var(--line);
+}
+
+.source-count-band strong {
+  color: #bff5df;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.8rem;
+}
+
+.source-count-band span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.sourced-showcase-lane {
+  display: grid;
+  gap: 18px;
+}
+
+.sourced-showcase-lane .market-section-heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
 }
 
 .package-old-price {
@@ -4833,6 +4892,19 @@ body[data-page="admin"] .admin-panel > .market-section-heading h2 {
 }
 
 @media (max-width: 720px) {
+  .source-count-band {
+    grid-template-columns: 1fr;
+  }
+
+  .source-count-band article + article {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .sourced-showcase {
+    gap: 30px;
+  }
+
   body[data-page="tender"] .admin-stat-grid,
   body[data-page="supplier-portal"] .admin-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

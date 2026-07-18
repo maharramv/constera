@@ -283,13 +283,59 @@ for (const [categoryKey, itemKey, titleKey] of collections) {
   });
 }
 
+const isLocalMediaPath = (value) => /^\/?assets\//i.test(String(value || ""));
+const validateMedia = (item, collection) => {
+  if (!item.imageUrl) return;
+  if (/^https:\/\//i.test(item.imageUrl)) return;
+  if (!isLocalMediaPath(item.imageUrl)) {
+    report(errors, collection, `${item.id} şəkil URL-i təhlükəsiz HTTPS və ya lokal assets yolu deyil.`);
+    return;
+  }
+  const localPath = String(item.imageUrl).replace(/^\/+/, "");
+  if (!existsSync(resolve(root, localPath))) report(errors, collection, `${item.id} lokal şəkli tapılmadı: ${localPath}.`);
+};
+
 (marketplace.products || []).forEach((product) => {
   const hasConfirmedPrice = product.price && product.price !== "Sorğu əsasında";
   if (hasConfirmedPrice && !product.sourceUrl) report(errors, "products", `${product.id} təsdiqli qiymət üçün mənbə URL-i daşımır.`);
   if (hasConfirmedPrice && !product.sourceLabel) report(errors, "products", `${product.id} təsdiqli qiymət üçün mənbə adı daşımır.`);
   if (product.sourceUrl && !/^https:\/\//i.test(product.sourceUrl)) report(errors, "products", `${product.id} mənbə URL-i HTTPS deyil.`);
-  if (product.imageUrl && !/^https:\/\//i.test(product.imageUrl)) report(errors, "products", `${product.id} şəkil URL-i HTTPS deyil.`);
+  validateMedia(product, "products");
 });
+
+[
+  ["packages", marketplace.packages || []],
+  ["rentals", marketplace.rentals || []]
+].forEach(([collection, items]) => {
+  items.forEach((item) => {
+    if (item.sourceUrl && !/^https:\/\//i.test(item.sourceUrl)) report(errors, collection, `${item.id} mənbə URL-i HTTPS deyil.`);
+    if (item.priceAmount !== null && item.priceAmount !== undefined && item.priceAmount !== "" && !item.sourceUrl) {
+      report(errors, collection, `${item.id} rəqəmli qiymət üçün mənbə URL-i daşımır.`);
+    }
+    validateMedia(item, collection);
+  });
+});
+
+const ranking = context.window.CONSTERA_MARKETPLACE_RANKING;
+if (!ranking?.getSourceQualityScore) {
+  report(errors, "ranking", "Mənbəli məlumat prioritet modulu tapılmadı.");
+} else {
+  [
+    ["products", "product"],
+    ["packages", "package"],
+    ["rentals", "rental"]
+  ].forEach(([collection, kind]) => {
+    const items = marketplace[collection] || [];
+    items.forEach((item, index) => {
+      if (!index) return;
+      const previousScore = ranking.getSourceQualityScore(items[index - 1], kind);
+      const currentScore = ranking.getSourceQualityScore(item, kind);
+      if (currentScore > previousScore) {
+        report(errors, collection, `${item.id} mənbə keyfiyyəti sıralamasında yanlış mövqedədir.`);
+      }
+    });
+  });
+}
 
 const productSkus = (marketplace.products || [])
   .map((product) => String(product.sku || "").trim().toUpperCase())

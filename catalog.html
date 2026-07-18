@@ -66,7 +66,8 @@
             <p class="hero-text">
               Materiallar konstruksiya, kimya, fasad, elektrik, HVAC, santexnika,
               interyer, enerji və sahə sistemləri üzrə daha məntiqli kateqoriya
-              ağacına bölünüb. Qiymətlər canlı bazaya qoşulana qədər sorğu əsasında idarə olunur.
+              ağacına bölünüb. Mənbəli qiymət və real fotosu olan məhsullar əvvəl göstərilir,
+              qalan mövqelər isə sorğu əsasında idarə olunur.
             </p>
           </div>
           <button
@@ -111,6 +112,24 @@
               </select>
             </label>
             <label>
+              <span>Məlumat mənbəyi</span>
+              <select data-source-filter>
+                <option value="all">Bütün məlumatlar</option>
+                <option value="sourced">Mənbəli məhsullar</option>
+                <option value="sourced-image">Mənbə + real foto</option>
+                <option value="unsourced">Mənbəsiz struktur</option>
+              </select>
+            </label>
+            <label>
+              <span>Sıralama</span>
+              <select data-catalog-sort>
+                <option value="quality">Mənbəli seçimlər əvvəl</option>
+                <option value="name">Ada görə</option>
+                <option value="price-asc">Qiymət: aşağıdan yuxarı</option>
+                <option value="price-desc">Qiymət: yuxarıdan aşağı</option>
+              </select>
+            </label>
+            <label>
               <span>Mövcudluq</span>
               <select data-availability-filter>
                 <option value="all">Bütün vəziyyətlər</option>
@@ -142,7 +161,7 @@
           <div class="catalog-results">
             <div class="market-section-heading">
               <div>
-                <p class="eyebrow">Platforma</p>
+                <p class="eyebrow">Mənbəli seçimlər əvvəl</p>
                 <h2>Genişləndirilmiş məhsul bazası</h2>
               </div>
               <a class="card-link" href="admin.html">İdarəetmə strukturuna bax</a>

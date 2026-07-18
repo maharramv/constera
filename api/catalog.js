@@ -41,13 +41,14 @@ export default withApiErrors(async (req, res) => {
   const subcategory = text(req.query.subcategory, { max: 200 });
   const availability = text(req.query.availability, { max: 160 });
   const priceStatus = text(req.query.priceStatus, { max: 40 });
+  const sourceStatus = text(req.query.source, { max: 40 });
   const origin = text(req.query.origin, { max: 40 });
   const productsOnly = req.query.scope === "products";
   const minPrice = parsePriceAmount(req.query.minPrice);
   const maxPrice = parsePriceAmount(req.query.maxPrice);
-  const sort = ["relevance", "newest", "name", "price_asc", "price_desc"].includes(String(req.query.sort || ""))
+  const sort = ["quality", "relevance", "newest", "name", "price_asc", "price_desc"].includes(String(req.query.sort || ""))
     ? String(req.query.sort)
-    : queryText ? "relevance" : "newest";
+    : queryText ? "relevance" : "quality";
   const values = [];
   const where = ["p.status = 'active'"];
   const searchExpression = `lower(coalesce(p.name, '') || ' ' || coalesce(p.sku, '') || ' ' || coalesce(p.brand, '') || ' ' || coalesce(p.subcategory, ''))`;
@@ -85,6 +86,11 @@ export default withApiErrors(async (req, res) => {
     values.push(priceStatus);
     where.push(`p.price_status = $${values.length}`);
   }
+  if (sourceStatus === "sourced") where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL");
+  if (sourceStatus === "sourced-image") {
+    where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL AND NULLIF(trim(coalesce(p.image_url, '')), '') IS NOT NULL");
+  }
+  if (sourceStatus === "unsourced") where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL");
   if (origin === "local") where.push("lower(coalesce(p.origin, '')) LIKE '%azərbaycan%' AND lower(coalesce(p.origin, '')) NOT LIKE '%idxal%'");
   if (origin === "import") where.push("(lower(coalesce(p.origin, '')) LIKE '%idxal%' OR lower(coalesce(p.origin, '')) LIKE '%import%')");
   if (origin === "mixed") where.push("coalesce(p.origin, '') LIKE '%/%' AND lower(coalesce(p.origin, '')) LIKE '%azərbaycan%'");
@@ -97,6 +103,13 @@ export default withApiErrors(async (req, res) => {
     where.push(`p.price_amount <= $${values.length}`);
   }
 
+  const qualityExpression = `(
+    CASE WHEN NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL THEN 500 ELSE 0 END +
+    CASE WHEN NULLIF(trim(coalesce(p.image_url, '')), '') IS NOT NULL THEN 180 ELSE 0 END +
+    CASE WHEN p.price_amount > 0 THEN 120 ELSE 0 END +
+    CASE WHEN p.price_status = 'confirmed' AND NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL THEN 180 ELSE 0 END +
+    CASE WHEN p.price_verified_at IS NOT NULL THEN 25 ELSE 0 END
+  )`;
   const orderBy = sort === "price_asc"
     ? "p.price_amount ASC NULLS LAST, p.name ASC"
     : sort === "price_desc"
@@ -104,8 +117,10 @@ export default withApiErrors(async (req, res) => {
       : sort === "name"
         ? "p.name ASC"
         : sort === "relevance" && relevanceIndex
-          ? `similarity(${searchExpression}, $${relevanceIndex}) DESC, p.name ASC`
-          : "p.updated_at DESC, p.name ASC";
+          ? `similarity(${searchExpression}, $${relevanceIndex}) DESC, ${qualityExpression} DESC, p.name ASC`
+          : sort === "newest"
+            ? "p.updated_at DESC, p.name ASC"
+            : `${qualityExpression} DESC, p.name ASC`;
   const filteredValues = [...values];
   const productValues = [...values, pageSize, offset];
   const limitIndex = productValues.length - 1;

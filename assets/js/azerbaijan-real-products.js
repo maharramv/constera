@@ -1907,6 +1907,48 @@
   ];
   appendUnique("rentals", sourcedRentalRows);
 
+  const hasHttpsSource = (item) => /^https:\/\//i.test(String(item?.sourceUrl || ""));
+  const hasUsableImage = (item) => /^(?:https:\/\/|\/?assets\/)/i.test(String(item?.imageUrl || ""));
+  const hasPositiveAmount = (item) => {
+    if (item?.priceAmount === null || item?.priceAmount === undefined || item?.priceAmount === "") return false;
+    const amount = Number(item.priceAmount);
+    return Number.isFinite(amount) && amount > 0;
+  };
+  const getSourceQualityScore = (item, kind = "product") => {
+    let score = 0;
+    const sourced = hasHttpsSource(item);
+    const imaged = hasUsableImage(item);
+    const priced = hasPositiveAmount(item);
+
+    if (sourced) score += 500;
+    if (imaged) score += 180;
+    if (priced) score += 120;
+    if (kind === "product" && item?.priceStatus === "confirmed" && sourced) score += 180;
+    if (kind === "package" && item?.providerVerified) score += 160;
+    if (kind === "rental" && item?.sourceOfficial) score += 160;
+    else if (kind === "rental" && item?.sourceVerified) score += 80;
+    if (item?.priceVerifiedAt || item?.lastVerified) score += 25;
+    if (item?.providerName || item?.supplier) score += 10;
+    return score;
+  };
+  const getItemTitle = (item) => String(item?.name || item?.title || item?.sku || item?.id || "");
+  const compareSourceQuality = (left, right, kind = "product") =>
+    getSourceQualityScore(right, kind) - getSourceQualityScore(left, kind)
+      || getItemTitle(left).localeCompare(getItemTitle(right), "az");
+  const sortBySourceQuality = (items, kind = "product") =>
+    [...(items || [])].sort((left, right) => compareSourceQuality(left, right, kind));
+
+  data.products = sortBySourceQuality(data.products, "product");
+  data.packages = sortBySourceQuality(data.packages, "package");
+  data.rentals = sortBySourceQuality(data.rentals, "rental");
+  window.CONSTERA_MARKETPLACE_RANKING = Object.freeze({
+    hasHttpsSource,
+    hasUsableImage,
+    getSourceQualityScore,
+    compareSourceQuality,
+    sortBySourceQuality
+  });
+
   data.updatedAt = "2026-07-18";
   data.marketSourceSummary = {
     updatedAt: "2026-07-18",
