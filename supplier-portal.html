@@ -111,12 +111,28 @@
                   <input name="package" type="text" placeholder="15 L, 25 kg, 1 ədəd..." />
                 </label>
                 <label class="admin-field">
-                  <span>Qiymət</span>
-                  <input name="price" type="text" placeholder="72.90 AZN və ya Sorğu əsasında" />
+                  <span>Qiymət, AZN</span>
+                  <input name="price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="72.90" />
                 </label>
                 <label class="admin-field">
-                  <span>Stok</span>
-                  <input name="availability" type="text" placeholder="Anbarda var / Sorğu əsasında" />
+                  <span>Qiymət statusu</span>
+                  <select name="priceStatus">
+                    <option value="request">Sorğu əsasında</option>
+                    <option value="confirmed">Təsdiqli</option>
+                    <option value="expired">Vaxtı keçib</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Stok miqdarı</span>
+                  <input name="stockQuantity" type="number" min="0" step="0.01" inputmode="decimal" placeholder="120" />
+                </label>
+                <label class="admin-field">
+                  <span>Minimum sifariş</span>
+                  <input name="minimumOrder" type="number" min="0" step="0.01" inputmode="decimal" placeholder="1" />
+                </label>
+                <label class="admin-field">
+                  <span>Mövcudluq qeydi</span>
+                  <input name="availability" type="text" placeholder="Anbarda var / 3 günə" />
                 </label>
                 <label class="admin-field">
                   <span>Foto URL</span>
@@ -175,20 +191,51 @@
               </div>
               <span class="data-badge" data-supplier-product-count>0 məhsul</span>
             </div>
+            <div class="inventory-toolbar">
+              <label class="admin-field">
+                <span>Axtarış</span>
+                <input data-inventory-search type="search" placeholder="SKU, məhsul və ya brend" />
+              </label>
+              <label class="admin-field">
+                <span>Görünüş</span>
+                <select data-inventory-filter>
+                  <option value="all">Bütün məhsullar</option>
+                  <option value="stale">Qiyməti köhnəlib</option>
+                  <option value="low-stock">Az stok</option>
+                  <option value="missing-stock">Stok yazılmayıb</option>
+                  <option value="request">Qiymət sorğusu ilə</option>
+                </select>
+              </label>
+              <button class="button button-primary" type="button" data-inventory-save-all>Bütün dəyişiklikləri saxla</button>
+            </div>
+            <p class="admin-import-status" data-inventory-status>Canlı inventar mərkəzi üçün təchizatçı hesabına daxil ol.</p>
             <div class="admin-table-wrap">
-              <table class="admin-table">
+              <table class="admin-table inventory-table">
                 <thead>
                   <tr>
                     <th>Məhsul</th>
-                    <th>Brend</th>
-                    <th>Kateqoriya</th>
                     <th>Qiymət</th>
                     <th>Stok</th>
+                    <th>Min. sifariş</th>
+                    <th>Status</th>
+                    <th>Mənbə</th>
+                    <th>Əməliyyat</th>
                   </tr>
                 </thead>
                 <tbody data-supplier-product-rows></tbody>
               </table>
             </div>
+          </div>
+
+          <div class="admin-panel glass portal-wide" data-inventory-history-panel hidden>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Qiymət tarixçəsi</p>
+                <h2 data-inventory-history-title>Məhsul seçilməyib</h2>
+              </div>
+              <button class="button button-outline" type="button" data-inventory-history-close>Bağla</button>
+            </div>
+            <div class="price-history-list" data-inventory-history></div>
           </div>
         </section>
       </main>

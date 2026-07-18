@@ -113,3 +113,38 @@ test("əsas ekranların vizual artefaktları yaradılır", async ({ page }, test
     }
   }
 });
+
+test("mənbəli paket və texnika icarəsi axını responsiv işləyir", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  await page.goto("/packages.html", { waitUntil: "domcontentloaded" });
+  await page.locator("[data-package-provider-filter]").selectOption({ label: "Hazırev" });
+  await expect(page.locator("[data-package-count]")).toHaveText("3 paket");
+  await expect(page.locator('[data-package-id^="az-market-hazirev-"]')).toHaveCount(3);
+
+  await page.goto("/rental.html", { waitUntil: "domcontentloaded" });
+  await page.locator("[data-rental-city-filter]").selectOption({ label: "Bakı və Azərbaycan" });
+  await expect(page.locator("[data-rental-count]")).toHaveText("3 avadanlıq");
+  await expect(page.locator('[data-rental-id^="az-rental-naf-"]')).toHaveCount(3);
+  await expect.poll(() => page.locator('[data-rental-id^="az-rental-naf-"] img').evaluateAll((images) =>
+    images.length === 3 && images.every((image) => image.complete && image.naturalWidth > 0)
+  )).toBe(true);
+  await testInfo.attach("rental-sourced-desktop.png", {
+    body: await page.screenshot({ fullPage: false, animations: "disabled" }),
+    contentType: "image/png"
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/rental-detail.html?rental=az-rental-avtokran-xcmg-25t", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".detail-media img")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("undefined");
+  const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  await page.goto("/rfq.html?rental=az-rental-avtokran-xcmg-25t", { waitUntil: "domcontentloaded" });
+  for (const name of ["address", "rentalDuration", "operatorPreference"]) {
+    await expect(page.locator(`[name="${name}"]`)).toBeVisible();
+  }
+  await expect(page.locator('[name="address"]')).toHaveAttribute("required", "");
+  await expect(page.locator('[name="rentalDuration"]')).toHaveAttribute("required", "");
+});

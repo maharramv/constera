@@ -48,6 +48,9 @@ const [schema] = await query(`
     to_regclass('public.orders') IS NOT NULL AS orders_ready,
     to_regclass('public.order_items') IS NOT NULL AS order_items_ready,
     to_regclass('public.password_reset_tokens') IS NOT NULL AS password_reset_ready,
+    to_regclass('public.customer_projects') IS NOT NULL AS customer_projects_ready,
+    to_regclass('public.saved_products') IS NOT NULL AS saved_products_ready,
+    to_regclass('public.customer_estimates') IS NOT NULL AS customer_estimates_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready
 `);
@@ -55,10 +58,10 @@ const [schema] = await query(`
 const minimums = {
   material_categories: 70,
   material_subcategories: 695,
-  products: 788,
+  products: 826,
   services: 118,
-  packages: 66,
-  rentals: 100
+  packages: 75,
+  rentals: 108
 };
 const problems = [];
 

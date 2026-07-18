@@ -86,9 +86,24 @@ test("ictimai kataloq server API-si hazır olduqda Neon axtarışına qoşulur",
 
 test("təchizatçı kabineti rol əsaslı server qatını yükləyir", () => {
   const supplierPortal = render("supplier-portal.html");
+  const production = readFileSync(resolve(root, "assets/js/production.js"), "utf8");
   assert.match(supplierPortal, /src="assets\/js\/production\.js"/);
   assert.match(supplierPortal, /Neon \+ lokal ehtiyat/);
-  assert.match(readFileSync(resolve(root, "assets/js/production.js"), "utf8"), /myProducts:/);
+  assert.match(supplierPortal, /data-inventory-save-all/);
+  assert.match(production, /myProducts:/);
+  assert.match(production, /inventory:/);
+  assert.match(production, /updateInventory:/);
+});
+
+test("müştəri kabineti layihə, sifariş və saxlanmış məhsulları serverdən sinxronlaşdırır", () => {
+  const cabinet = render("customer-cabinet.html");
+  const production = readFileSync(resolve(root, "assets/js/production.js"), "utf8");
+  assert.match(cabinet, /data-customer-project-form/);
+  assert.match(cabinet, /data-customer-orders/);
+  assert.match(cabinet, /src="assets\/js\/production\.js"/);
+  assert.match(production, /cabinet:/);
+  assert.match(production, /syncSavedProducts:/);
+  assert.match(production, /saveProject:/);
 });
 
 test("tender səhifəsi server tender və təklif API-lərini yükləyir", () => {

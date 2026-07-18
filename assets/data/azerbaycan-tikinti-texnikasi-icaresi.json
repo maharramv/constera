@@ -1,0 +1,138 @@
+{
+  "schema_version": "1.0",
+  "dataset": "azerbaycan_tikinti_texnikasi_icaresi",
+  "language": "az",
+  "currency": "AZN",
+  "last_verified": "2026-07-18",
+  "usage_notice": "Qiymətlər açıq elan qiymətləridir və sifariş zamanı yenidən təsdiqlənməlidir.",
+  "equipment": [
+    {
+      "id": "avtokran-xcmg-25t",
+      "slug": "avtokran-xcmg-25-ton",
+      "name": "XCMG avtokran — 25 ton",
+      "category": "avtokran",
+      "city": "Bakı",
+      "price": 350,
+      "price_unit": "elan_qiymeti",
+      "price_is_conditional": true,
+      "rental_periods": [
+        "günlük",
+        "aylıq"
+      ],
+      "operator_included": true,
+      "specifications": {
+        "lifting_capacity_ton": 25,
+        "boom_length_m": 48
+      },
+      "image": "/images/equipment/avtokran-25t-xcmg.jpg",
+      "image_credit": "Tap.az elan şəkli",
+      "source_url": "https://tap.az/elanlar/xidmetler/neqliyyat-icaresi/46171461",
+      "verified": true
+    },
+    {
+      "id": "mini-ekskavator-new-holland-e50",
+      "slug": "mini-ekskavator-new-holland-e50",
+      "name": "Mini ekskavator New Holland Kobelco E50.2SR",
+      "category": "mini_ekskavator",
+      "city": "Bakı",
+      "price": 250,
+      "price_unit": "elan_qiymeti",
+      "price_is_conditional": true,
+      "rental_periods": [
+        "günlük",
+        "razılaşma ilə"
+      ],
+      "applications": [
+        "xəndək qazılması",
+        "kommunikasiya xətləri",
+        "landşaft",
+        "kiçik söküntü"
+      ],
+      "image": "/images/equipment/mini-ekskavator-new-holland.jpg",
+      "image_credit": "insaat.az elan şəkli",
+      "source_url": "https://insaat.az/mini-ekskavator-icareye-verilir-32397.html",
+      "verified": true
+    },
+    {
+      "id": "naf-telehandler",
+      "slug": "teleskopik-yukleyici-telehandler",
+      "name": "Teleskopik yükləyici / Telehandler",
+      "category": "teleskopik_yukleyici",
+      "city": "Bakı və Azərbaycan",
+      "price": null,
+      "price_unit": "sorğu_əsasında",
+      "price_is_conditional": true,
+      "image": "/images/equipment/teleskopik-yukleyici.jpg",
+      "image_credit": "NAF Texnika rəsmi kataloqu",
+      "source_url": "https://www.naftexnika.az/",
+      "verified": true
+    },
+    {
+      "id": "naf-bekolader",
+      "slug": "bekolader-jcb",
+      "name": "JCB bekolader",
+      "category": "bekolader",
+      "city": "Bakı və Azərbaycan",
+      "price": null,
+      "price_unit": "sorğu_əsasında",
+      "price_is_conditional": true,
+      "image": "/images/equipment/bekolader-jcb.webp",
+      "image_credit": "NAF Texnika rəsmi kataloqu",
+      "source_url": "https://www.naftexnika.az/",
+      "verified": true
+    },
+    {
+      "id": "naf-tekerli-ekskavator",
+      "slug": "tekerli-ekskavator-cat",
+      "name": "CAT təkərli ekskavator",
+      "category": "tekerli_ekskavator",
+      "city": "Bakı və Azərbaycan",
+      "price": null,
+      "price_unit": "sorğu_əsasında",
+      "price_is_conditional": true,
+      "image": "/images/equipment/tekerli-ekskavator-cat.webp",
+      "image_credit": "NAF Texnika rəsmi kataloqu",
+      "source_url": "https://www.naftexnika.az/",
+      "verified": true
+    },
+    {
+      "id": "market-verdene-130",
+      "slug": "verdene-icaresi-130",
+      "name": "Vərdənə icarəsi",
+      "category": "verdene",
+      "city": "Bakı",
+      "price": 130,
+      "price_unit": "elan_qiymeti",
+      "price_is_conditional": true,
+      "image": null,
+      "source_url": "https://tap.az/elanlar/xidmetler/neqliyyat-icaresi?q%5Bkeywords%5D=tikinti+texnikalari",
+      "verified": false
+    },
+    {
+      "id": "market-katok-150",
+      "slug": "katok-icaresi-150",
+      "name": "Katok icarəsi",
+      "category": "katok",
+      "city": "Bakı",
+      "price": 150,
+      "price_unit": "elan_qiymeti",
+      "price_is_conditional": true,
+      "image": null,
+      "source_url": "https://tap.az/elanlar/xidmetler/neqliyyat-icaresi?q%5Bkeywords%5D=tikinti+texnikalari",
+      "verified": false
+    },
+    {
+      "id": "market-qayci-platforma-70",
+      "slug": "qayci-sebet-platforma-70",
+      "name": "Qayçı səbət platforma",
+      "category": "qaldirici_platforma",
+      "city": "Bakı",
+      "price": 70,
+      "price_unit": "elan_qiymeti",
+      "price_is_conditional": true,
+      "image": null,
+      "source_url": "https://tap.az/elanlar/xidmetler/neqliyyat-icaresi?q%5Bkeywords%5D=tikinti+texnikalari",
+      "verified": false
+    }
+  ]
+}

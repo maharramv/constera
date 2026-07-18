@@ -1,0 +1,229 @@
+{
+  "schema_version": "1.0",
+  "dataset": "azerbaycan_hazir_tikinti_temir_paketleri",
+  "language": "az",
+  "currency": "AZN",
+  "price_unit_default": "m2",
+  "last_verified": "2026-07-18",
+  "notes": [
+    "Qiymətlər açıq mənbələrdə göstərilən təkliflər əsasında daxil edilib.",
+    "Elan və sosial media qiymətləri dəyişə bilər; sifarişdən əvvəl qiymət sorğusu ilə təsdiqlənməlidir.",
+    "Hazırev paketləri rəsmi şirkət saytından götürülüb."
+  ],
+  "providers": [
+    {
+      "id": "hazirev",
+      "name": "Hazırev",
+      "provider_type": "company",
+      "website": "https://hazirev.az/",
+      "phone": "+994125600000",
+      "city": "Bakı",
+      "verified_source": true,
+      "packages": [
+        {
+          "id": "hazirev-praktik",
+          "slug": "hazirev-praktik",
+          "name": "Praktik",
+          "category": "temir",
+          "level": "ekonom",
+          "price": 189,
+          "price_unit": "m2",
+          "pricing_basis": "100 m² nümunəsi üzrə saytda göstərilir",
+          "short_description": "Sadə və cəsur hazır təmir paketi.",
+          "included_summary": [
+            "təmir işləri",
+            "tikinti materiallarının çatdırılması və qaldırılması",
+            "tullantıların təmizlənməsi",
+            "təhvildən əvvəl yekun təmizlik"
+          ],
+          "warranty_months": 12,
+          "price_confirmation_required": true,
+          "source_url": "https://hazirev.az/"
+        },
+        {
+          "id": "hazirev-trend",
+          "slug": "hazirev-trend",
+          "name": "Trend",
+          "category": "temir",
+          "level": "standart",
+          "price": 249,
+          "price_unit": "m2",
+          "pricing_basis": "100 m² nümunəsi üzrə saytda göstərilir",
+          "short_description": "Yüngül və təravətli hazır təmir paketi.",
+          "included_summary": [
+            "təmir işləri",
+            "tikinti materiallarının çatdırılması və qaldırılması",
+            "tullantıların təmizlənməsi",
+            "təhvildən əvvəl yekun təmizlik"
+          ],
+          "warranty_months": 12,
+          "price_confirmation_required": true,
+          "source_url": "https://hazirev.az/"
+        },
+        {
+          "id": "hazirev-premium",
+          "slug": "hazirev-premium",
+          "name": "Premium",
+          "category": "temir",
+          "level": "premium",
+          "price": 299,
+          "price_unit": "m2",
+          "pricing_basis": "100 m² nümunəsi üzrə saytda göstərilir",
+          "short_description": "Klassik və möhtəşəm hazır təmir paketi.",
+          "included_summary": [
+            "təmir işləri",
+            "xüsusi interyer elementləri",
+            "tikinti materiallarının çatdırılması və qaldırılması",
+            "tullantıların təmizlənməsi",
+            "təhvildən əvvəl yekun təmizlik"
+          ],
+          "warranty_months": 12,
+          "price_confirmation_required": true,
+          "source_url": "https://hazirev.az/kalk/3"
+        }
+      ]
+    },
+    {
+      "id": "baki-acar-teslim-270",
+      "name": "Bakı açar təslim təmir xidməti",
+      "provider_type": "market_listing",
+      "website": "https://tap.az/elanlar/xidmetler/temir-tikinti/47811374",
+      "city": "Bakı",
+      "verified_source": false,
+      "packages": [
+        {
+          "id": "baki-acar-teslim-270-paket",
+          "slug": "baki-acar-teslim-270",
+          "name": "Açar təslim təmir və tikinti",
+          "category": "tikinti_temir",
+          "level": "standart",
+          "price": 270,
+          "price_unit": "m2",
+          "price_prefix": "from",
+          "pricing_basis": "elanda göstərilən başlanğıc qiymət",
+          "short_description": "Fərdi layihə, təmir, tikinti və interyer dizaynı daxil açar təslim xidmət.",
+          "included_summary": [
+            "fərdi layihə",
+            "əsaslı təmir",
+            "interyer dizaynı",
+            "eskiz və işçi layihə",
+            "material və işçilik",
+            "müqavilə və zəmanət"
+          ],
+          "price_confirmation_required": true,
+          "source_url": "https://tap.az/elanlar/xidmetler/temir-tikinti/47811374"
+        }
+      ]
+    },
+    {
+      "id": "market-standard-450",
+      "name": "Standart təmir paketi",
+      "provider_type": "social_listing",
+      "website": "https://www.instagram.com/p/DXi5K-blljg/",
+      "city": "Bakı",
+      "verified_source": false,
+      "packages": [
+        {
+          "id": "market-standard-450-paket",
+          "slug": "standart-temir-450",
+          "name": "Standart təmir",
+          "category": "temir",
+          "level": "standart",
+          "price": 450,
+          "price_unit": "m2",
+          "pricing_basis": "sosial media paylaşımında göstərilən qiymət",
+          "short_description": "Elektrik, santexnika, suvaq və üzləmə işlərini əhatə edən standart paket.",
+          "included_summary": ["elektrik sistemi", "santexnika sistemi", "suvaq", "üzləmə işləri"],
+          "price_confirmation_required": true,
+          "source_url": "https://www.instagram.com/p/DXi5K-blljg/"
+        }
+      ]
+    },
+    {
+      "id": "market-tikinti-temir-500",
+      "name": "Tikinti və təmir birgə paket",
+      "provider_type": "social_listing",
+      "website": "https://www.instagram.com/p/DVF5NeZCAlQ/",
+      "city": "Bakı",
+      "verified_source": false,
+      "packages": [
+        {
+          "id": "market-tikinti-temir-500-paket",
+          "slug": "tikinti-temir-500-den",
+          "name": "Tikinti + təmir",
+          "category": "tikinti_temir",
+          "level": "standart",
+          "price": 500,
+          "price_unit": "m2",
+          "price_prefix": "from",
+          "pricing_basis": "sosial media paylaşımında göstərilən başlanğıc qiymət",
+          "short_description": "Tikinti və təmir işlərinin birlikdə təqdim edildiyi açar təslim paket.",
+          "included_summary": ["tikinti", "təmir", "material", "işçilik", "açar təslim"],
+          "price_confirmation_required": true,
+          "source_url": "https://www.instagram.com/p/DVF5NeZCAlQ/"
+        }
+      ]
+    },
+    {
+      "id": "market-qaba-insaat-250",
+      "name": "Qaba inşaat və tam təmir paketləri",
+      "provider_type": "social_listing",
+      "website": "https://www.instagram.com/reel/DRuRqHjiM3R/",
+      "city": "Bakı",
+      "verified_source": false,
+      "packages": [
+        {
+          "id": "market-qaba-insaat-250-paket",
+          "slug": "qaba-insaat-250",
+          "name": "Qaba inşaat",
+          "category": "tikinti",
+          "level": "ekonom",
+          "price": 250,
+          "price_unit": "m2",
+          "short_description": "Qaba inşaat mərhələsi üçün paket.",
+          "included_summary": ["qaba tikinti işləri"],
+          "price_confirmation_required": true,
+          "source_url": "https://www.instagram.com/reel/DRuRqHjiM3R/"
+        },
+        {
+          "id": "market-tam-temir-500-paket",
+          "slug": "tam-temir-acar-teslim-500",
+          "name": "Tam təmir və açar təhvil",
+          "category": "tikinti_temir",
+          "level": "standart",
+          "price": 500,
+          "price_unit": "m2",
+          "short_description": "Material, işçilik və dizayn daxil tam açar təhvil paket.",
+          "included_summary": ["material", "işçilik", "dizayn", "açar təhvil"],
+          "price_confirmation_required": true,
+          "source_url": "https://www.instagram.com/reel/DRuRqHjiM3R/"
+        }
+      ]
+    },
+    {
+      "id": "market-standart-219",
+      "name": "Standart və komfort təmir təklifi",
+      "provider_type": "social_listing",
+      "website": "https://www.instagram.com/reel/DVZvd2FAqdH/",
+      "city": "Bakı",
+      "verified_source": false,
+      "packages": [
+        {
+          "id": "market-standart-219-paket",
+          "slug": "standart-temir-219",
+          "name": "Standart təmir",
+          "category": "temir",
+          "level": "standart",
+          "price": 219,
+          "old_price": 230,
+          "price_unit": "m2",
+          "pricing_basis": "kampaniya qiyməti kimi göstərilib",
+          "short_description": "Materiallar daxil standart təmir paketi.",
+          "included_summary": ["təmir materialları", "təmir işləri"],
+          "price_confirmation_required": true,
+          "source_url": "https://www.instagram.com/reel/DVZvd2FAqdH/"
+        }
+      ]
+    }
+  ]
+}

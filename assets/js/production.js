@@ -50,6 +50,31 @@
       body: JSON.stringify(credentials)
     }),
     logout: () => request("/api/auth?action=logout", { method: "POST", body: "{}" }),
+    cabinet: () => request("/api/cabinet"),
+    syncSavedProducts: (listType, productIds) => request("/api/cabinet", {
+      method: "POST",
+      body: JSON.stringify({ action: "sync-list", listType, productIds })
+    }),
+    saveProject: (data) => request("/api/cabinet", {
+      method: "POST",
+      body: JSON.stringify({ action: "save-project", ...data })
+    }),
+    deleteProject: (id) => request("/api/cabinet", {
+      method: "DELETE",
+      body: JSON.stringify({ action: "delete-project", id })
+    }),
+    saveEstimate: (data) => request("/api/cabinet", {
+      method: "POST",
+      body: JSON.stringify({ action: "save-estimate", ...data })
+    }),
+    syncEstimates: (estimates) => request("/api/cabinet", {
+      method: "POST",
+      body: JSON.stringify({ action: "sync-estimates", estimates })
+    }),
+    deleteEstimate: (id) => request("/api/cabinet", {
+      method: "DELETE",
+      body: JSON.stringify({ action: "delete-estimate", id })
+    }),
     catalog: (filters = { limit: "1000" }) => {
       const params = new URLSearchParams(filters);
       return request(`/api/catalog?${params}`);
@@ -62,6 +87,14 @@
       body: JSON.stringify(data)
     }),
     myProducts: () => request("/api/products?scope=mine&limit=1000"),
+    inventory: (filters = {}) => {
+      const params = new URLSearchParams({ limit: "1000", ...filters });
+      return request(`/api/inventory?${params}`);
+    },
+    updateInventory: (items, supplierId = "") => request("/api/inventory", {
+      method: "PATCH",
+      body: JSON.stringify({ items, supplierId })
+    }),
     saveSupplier: (data, update = false) => request("/api/suppliers", {
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)

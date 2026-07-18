@@ -486,6 +486,8 @@ const ensureAdminProductShape = (product, index = 0) => {
     origin: product.origin || "Azərbaycan/İdxal",
     supplier: product.supplier || "İdarəetmə paneli əlavə etdi",
     price: product.price || "Sorğu əsasında",
+    priceAmount: product.priceAmount ?? null,
+    priceCurrency: product.priceCurrency || "AZN",
     priceNote: product.priceNote || "İdarəetmə panelindən əlavə olunub",
     priceStatus: product.priceStatus || (normalize(product.price).includes("sorğu") ? "request" : "confirmed"),
     imageUrl: product.imageUrl || product.image || "",
@@ -495,6 +497,10 @@ const ensureAdminProductShape = (product, index = 0) => {
     stockQuantity: product.stockQuantity ?? "",
     minimumOrder: product.minimumOrder ?? "",
     priceVerifiedAt: product.priceVerifiedAt || "",
+    priceHistory: Array.isArray(product.priceHistory) ? product.priceHistory : [],
+    supplierId: product.supplierId || null,
+    status: product.status || "active",
+    updatedAt: product.updatedAt || "",
     specs: normalizeSpecs(product.specs)
   };
 };
@@ -1061,19 +1067,45 @@ const createServiceCard = (service) => {
   `;
 };
 
+const packageLevelLabels = {
+  ekonom: "Ekonom",
+  standart: "Standart",
+  premium: "Premium"
+};
+const getPackagePriceAmount = (pack) => {
+  if (pack?.priceAmount === null || pack?.priceAmount === undefined || pack?.priceAmount === "") return null;
+  const value = Number(pack?.priceAmount);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+};
+const getPackageSourceStatus = (pack) => {
+  if (!pack?.sourceUrl) return "ConstEra paket strukturu";
+  return pack.providerVerified ? "Rəsmi mənbə" : "Açıq bazar mənbəyi";
+};
+
 const createPackageCard = (pack) => {
   const category = getPackageCategory(pack.category);
+  const sourceUrl = getSafeHttpsUrl(pack.sourceUrl);
+  const levelLabel = packageLevelLabels[pack.level] || "Paket";
+  const oldPrice = Number(pack.oldPriceAmount);
 
   return `
-    <article class="market-card service-card">
+    <article class="market-card service-card" data-package-id="${escapeAttr(pack.id)}">
       <div class="product-card-body">
         <div class="product-meta">
           <span>${escapeHtml(category?.title || pack.category)}</span>
           <span>${escapeHtml(pack.subcategory || "Ümumi")}</span>
-          <span>${escapeHtml(pack.type)}</span>
+          <span>${escapeHtml(levelLabel)}</span>
+          ${pack.providerName ? `<span>${escapeHtml(pack.providerName)}</span>` : ""}
         </div>
         <h3>${escapeHtml(pack.title)}</h3>
         <p class="product-sku">${escapeHtml(pack.idealFor)}</p>
+        ${pack.providerName ? `
+          <div class="package-source-row">
+            <span class="mini-badge${pack.providerVerified ? " is-verified" : ""}">${escapeHtml(getPackageSourceStatus(pack))}</span>
+            <span>${escapeHtml(pack.providerName)}</span>
+            <span>${escapeHtml(levelLabel)}</span>
+          </div>
+        ` : ""}
         <div class="product-attributes">
           <span>${escapeHtml(pack.unit)}</span>
           <span>${escapeHtml(pack.timeline)}</span>
@@ -1090,8 +1122,10 @@ const createPackageCard = (pack) => {
         <div>
           <span class="price-label">Paket qiyməti</span>
           <strong>${escapeHtml(pack.price)}</strong>
-          <small>${escapeHtml(pack.timeline)}</small>
+          ${Number.isFinite(oldPrice) ? `<small class="package-old-price">Əvvəl ${escapeHtml(`${oldPrice} ${pack.priceCurrency || "AZN"} / ${pack.priceUnit || "m²"}`)}</small>` : ""}
+          <small>${escapeHtml(pack.priceConfirmationRequired ? "Qiymət sorğusu ilə təsdiqlənir" : pack.timeline)}</small>
           <a class="source-link" href="package-detail.html?package=${encodeURIComponent(pack.id)}">Detallı bax</a>
+          ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu</a>
@@ -1101,9 +1135,16 @@ const createPackageCard = (pack) => {
 
 const createRentalCard = (rental) => {
   const category = getRentalCategory(rental.category);
+  const sourceUrl = getSafeHttpsUrl(rental.sourceUrl);
+  const sourceStatus = rental.sourceOfficial
+    ? "Rəsmi kataloq"
+    : rental.sourceVerified ? "Mənbəli elan" : rental.sourceUrl ? "Açıq elan" : "Sorğu kataloqu";
 
   return `
-    <article class="market-card rental-card">
+    <article class="market-card rental-card" data-rental-id="${escapeAttr(rental.id)}">
+      <div class="product-media rental-media">
+        ${createProductMedia(rental, "İC")}
+      </div>
       <div class="product-card-body">
         <div class="product-meta">
           <span>${escapeHtml(category?.title || rental.category)}</span>
@@ -1111,6 +1152,12 @@ const createRentalCard = (rental) => {
           <span>${escapeHtml(rental.operator)}</span>
         </div>
         <h3>${escapeHtml(rental.name)}</h3>
+        ${rental.city || rental.sourceUrl ? `
+          <div class="package-source-row">
+            <span class="mini-badge${rental.sourceOfficial ? " is-verified" : ""}">${escapeHtml(sourceStatus)}</span>
+            ${rental.city ? `<span>${escapeHtml(rental.city)}</span>` : ""}
+          </div>
+        ` : ""}
         <div class="product-attributes">
           <span>${escapeHtml(rental.capacity)}</span>
           <span>${escapeHtml(rental.unit)}</span>
@@ -1124,8 +1171,9 @@ const createRentalCard = (rental) => {
         <div>
           <span class="price-label">İcarə qiyməti</span>
           <strong>${escapeHtml(rental.price)}</strong>
-          <small>${escapeHtml(rental.deposit)}</small>
+          <small>${escapeHtml(rental.priceConfirmationRequired ? "Qiymət və müddət sifariş zamanı təsdiqlənir" : rental.deposit)}</small>
           <a class="source-link" href="rental-detail.html?rental=${encodeURIComponent(rental.id)}">Detallı bax</a>
+          ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu</a>
@@ -1183,6 +1231,9 @@ const renderPackages = () => {
   const grid = document.querySelector("[data-package-grid]");
   const categoryFilter = document.querySelector("[data-package-category-filter]");
   const subcategoryFilter = document.querySelector("[data-package-subcategory-filter]");
+  const levelFilter = document.querySelector("[data-package-level-filter]");
+  const providerFilter = document.querySelector("[data-package-provider-filter]");
+  const priceFilter = document.querySelector("[data-package-price-filter]");
   const count = document.querySelector("[data-package-count]");
   const pagination = document.querySelector("[data-package-pagination]");
   if (!grid || !categoryFilter) return;
@@ -1192,6 +1243,14 @@ const renderPackages = () => {
   const progressiveGrid = createProgressiveGrid(grid, pagination, createPackageCard, 24);
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, packages, "Bütün paketlər");
+  if (providerFilter) {
+    const providers = [...new Set(packages.map((pack) => pack.providerName).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right, "az"));
+    providerFilter.innerHTML = `
+      <option value="all">Bütün provayderlər</option>
+      ${providers.map((provider) => `<option value="${escapeAttr(provider)}">${escapeHtml(provider)}</option>`).join("")}
+    `;
+  }
 
   const renderSubcategoryOptions = () => {
     if (!subcategoryFilter) return;
@@ -1207,10 +1266,17 @@ const renderPackages = () => {
   const render = () => {
     const categoryValue = categoryFilter.value;
     const subcategoryValue = subcategoryFilter?.value || "all";
+    const levelValue = levelFilter?.value || "all";
+    const providerValue = providerFilter?.value || "all";
+    const maximumPrice = Number(priceFilter?.value || 0);
     const filtered = packages.filter((pack) => {
       const matchesCategory = categoryValue === "all" || pack.category === categoryValue;
       const matchesSubcategory = subcategoryValue === "all" || pack.subcategory === subcategoryValue;
-      return matchesCategory && matchesSubcategory;
+      const matchesLevel = levelValue === "all" || pack.level === levelValue;
+      const matchesProvider = providerValue === "all" || pack.providerName === providerValue;
+      const amount = getPackagePriceAmount(pack);
+      const matchesPrice = !maximumPrice || (amount !== null && amount <= maximumPrice);
+      return matchesCategory && matchesSubcategory && matchesLevel && matchesProvider && matchesPrice;
     });
     progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} paket`;
@@ -1221,6 +1287,9 @@ const renderPackages = () => {
     render();
   });
   subcategoryFilter?.addEventListener("change", render);
+  levelFilter?.addEventListener("change", render);
+  providerFilter?.addEventListener("change", render);
+  priceFilter?.addEventListener("change", render);
   renderSubcategoryOptions();
   render();
 };
@@ -1229,6 +1298,9 @@ const renderRentals = () => {
   const grid = document.querySelector("[data-rental-grid]");
   const categoryFilter = document.querySelector("[data-rental-category-filter]") || document.querySelector("[data-rental-filter]");
   const subcategoryFilter = document.querySelector("[data-rental-subcategory-filter]");
+  const cityFilter = document.querySelector("[data-rental-city-filter]");
+  const periodFilter = document.querySelector("[data-rental-period-filter]");
+  const priceFilter = document.querySelector("[data-rental-price-filter]");
   const count = document.querySelector("[data-rental-count]");
   const pagination = document.querySelector("[data-rental-pagination]");
   if (!grid || !categoryFilter) return;
@@ -1238,6 +1310,18 @@ const renderRentals = () => {
   const progressiveGrid = createProgressiveGrid(grid, pagination, createRentalCard, 24);
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, rentals, "Bütün kateqoriyalar");
+  if (cityFilter) {
+    const cities = [...new Set(rentals.map((rental) => rental.city).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right, "az"));
+    cityFilter.innerHTML = `<option value="all">Bütün şəhərlər</option>${cities
+      .map((city) => `<option value="${escapeAttr(city)}">${escapeHtml(city)}</option>`).join("")}`;
+  }
+  if (periodFilter) {
+    const periods = [...new Set(rentals.flatMap((rental) => rental.rentalPeriods || []))]
+      .sort((left, right) => left.localeCompare(right, "az"));
+    periodFilter.innerHTML = `<option value="all">Bütün müddətlər</option>${periods
+      .map((period) => `<option value="${escapeAttr(period)}">${escapeHtml(period)}</option>`).join("")}`;
+  }
 
   const renderSubcategoryOptions = () => {
     if (!subcategoryFilter) return;
@@ -1253,10 +1337,19 @@ const renderRentals = () => {
   const render = () => {
     const categoryValue = categoryFilter.value;
     const subcategoryValue = subcategoryFilter?.value || "all";
+    const cityValue = cityFilter?.value || "all";
+    const periodValue = periodFilter?.value || "all";
+    const priceValue = priceFilter?.value || "all";
     const filtered = rentals.filter((rental) => {
       const matchesCategory = categoryValue === "all" || rental.category === categoryValue;
       const matchesSubcategory = subcategoryValue === "all" || rental.subcategory === subcategoryValue;
-      return matchesCategory && matchesSubcategory;
+      const matchesCity = cityValue === "all" || rental.city === cityValue;
+      const matchesPeriod = periodValue === "all" || (rental.rentalPeriods || []).includes(periodValue);
+      const amount = Number(rental.priceAmount);
+      const hasAmount = rental.priceAmount !== null && rental.priceAmount !== undefined && Number.isFinite(amount) && amount >= 0;
+      const matchesPrice = priceValue === "all"
+        || (priceValue === "request" ? !hasAmount : hasAmount && amount <= Number(priceValue));
+      return matchesCategory && matchesSubcategory && matchesCity && matchesPeriod && matchesPrice;
     });
     progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} avadanlıq`;
@@ -1267,6 +1360,9 @@ const renderRentals = () => {
     render();
   });
   subcategoryFilter?.addEventListener("change", render);
+  cityFilter?.addEventListener("change", render);
+  periodFilter?.addEventListener("change", render);
+  priceFilter?.addEventListener("change", render);
   renderSubcategoryOptions();
   render();
 };
@@ -1492,6 +1588,9 @@ const renderPackageDetail = () => {
   }
 
   const category = getPackageCategory(pack.category);
+  const sourceUrl = getSafeHttpsUrl(pack.sourceUrl);
+  const providerUrl = getSafeHttpsUrl(pack.providerWebsite);
+  const levelLabel = packageLevelLabels[pack.level] || pack.type;
   document.title = `${pack.title} | ConstEra Paketlər`;
   updatePageDescription(`${pack.title}: ${category?.title || "hazır paket"}, ${pack.subcategory || "ümumi paket"}, ${pack.price}. Təmir və tikinti paketləri üçün sorğu göndər.`);
   container.innerHTML = `
@@ -1505,11 +1604,13 @@ const renderPackageDetail = () => {
         <div class="product-meta detail-tags">
           <span>${escapeHtml(category?.title || pack.category)}</span>
           <span>${escapeHtml(pack.subcategory || "Ümumi")}</span>
-          <span>${escapeHtml(pack.type)}</span>
+          <span>${escapeHtml(levelLabel)}</span>
+          ${pack.providerName ? `<span>${escapeHtml(pack.providerName)}</span>` : ""}
         </div>
         <p class="hero-text">${escapeHtml(pack.idealFor)}</p>
         <div class="detail-actions">
           <a class="button button-primary" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu yarat</a>
+          ${sourceUrl ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
           <a class="button button-outline" href="packages.html">Paketlərə qayıt</a>
         </div>
       </div>
@@ -1519,7 +1620,8 @@ const renderPackageDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">Paket qiyməti</span>
         <strong>${escapeHtml(pack.price)}</strong>
-        <p>Obyekt ölçüsü, material səviyyəsi və icra şərtləri Qiymət sorğusundan sonra dəqiqləşir.</p>
+        <p>${escapeHtml(pack.pricingBasis || "Obyekt ölçüsü, material səviyyəsi və icra şərtləri qiymət sorğusundan sonra dəqiqləşir.")}</p>
+        ${pack.priceConfirmationRequired ? `<span class="price-freshness is-aging">Qiymət sifarişdən əvvəl təsdiqlənir</span>` : ""}
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Müddət</span>
@@ -1527,9 +1629,10 @@ const renderPackageDetail = () => {
         <p>${escapeHtml(pack.unit)}</p>
       </article>
       <article class="detail-panel glass">
-        <span class="price-label">Komanda</span>
-        <strong>${escapeHtml(pack.team)}</strong>
-        <p>İş həcminə görə briqada və nəzarət tərkibi dəyişir.</p>
+        <span class="price-label">Provayder</span>
+        <strong>${escapeHtml(pack.providerName || pack.team)}</strong>
+        <p>${escapeHtml(pack.providerName ? getPackageSourceStatus(pack) : "İş həcminə görə briqada və nəzarət tərkibi dəyişir.")}</p>
+        ${providerUrl && providerUrl !== sourceUrl ? `<a class="source-link" href="${escapeAttr(providerUrl)}" target="_blank" rel="noopener noreferrer">Provayder saytı</a>` : ""}
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Təhvil</span>
@@ -1550,6 +1653,7 @@ const renderPackageDetail = () => {
         <div class="service-deliverables">
           ${(pack.deliverables || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
         </div>
+        ${pack.warrantyMonths ? `<p>${escapeHtml(`${pack.warrantyMonths} ay zəmanət mənbədə göstərilib; müqavilədə yenidən təsdiqlənməlidir.`)}</p>` : ""}
       </article>
     </div>
   `;
@@ -1560,7 +1664,20 @@ const renderPackageDetail = () => {
     serviceType: `${category?.title || pack.category} · ${pack.type}`,
     description: document.querySelector('meta[name="description"]')?.content || pack.idealFor,
     areaServed: { "@type": "Country", name: "Azərbaycan" },
-    provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
+    provider: {
+      "@type": "Organization",
+      name: pack.providerName || "ConstEra",
+      url: providerUrl || "https://constera.az/"
+    },
+    ...(getPackagePriceAmount(pack) !== null ? {
+      offers: {
+        "@type": "Offer",
+        price: getPackagePriceAmount(pack),
+        priceCurrency: pack.priceCurrency || "AZN",
+        unitText: pack.priceUnit || pack.unit || "m²",
+        url: sourceUrl || window.location.href
+      }
+    } : {}),
     url: window.location.href
   });
 };
@@ -1579,13 +1696,16 @@ const renderRentalDetail = () => {
   }
 
   const category = getRentalCategory(rental.category);
+  const sourceUrl = getSafeHttpsUrl(rental.sourceUrl);
+  const imageUrl = getSafeImageUrl(rental.imageUrl);
+  const rentalMedia = imageUrl
+    ? `<div class="detail-media"><img data-product-image data-product-fallback="İC" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(rental.name)}" referrerpolicy="no-referrer"></div>`
+    : `<div class="detail-symbol"><span>İC</span></div>`;
   document.title = `${rental.name} | ConstEra İcarə`;
   updatePageDescription(`${rental.name}: ${category?.title || "avadanlıq icarəsi"}, ${rental.capacity || rental.subcategory}, ${rental.price}. Tikinti avadanlığı icarəsi üçün sorğu yarat.`);
   container.innerHTML = `
     <div class="detail-hero glass">
-      <div class="detail-symbol">
-        <span>İC</span>
-      </div>
+      ${rentalMedia}
       <div class="detail-copy">
         <p class="eyebrow">İcarə detalı</p>
         <h1>${escapeHtml(rental.name)}</h1>
@@ -1593,10 +1713,12 @@ const renderRentalDetail = () => {
           <span>${escapeHtml(category?.title || rental.category)}</span>
           <span>${escapeHtml(rental.subcategory || "Ümumi")}</span>
           <span>${escapeHtml(rental.operator)}</span>
+          ${rental.city ? `<span>${escapeHtml(rental.city)}</span>` : ""}
         </div>
         <p class="hero-text">Avadanlıq gücü, operator şərti, depozit, çatdırılma və rezervasiya qiymət sorğusu üçün əsas kart.</p>
         <div class="detail-actions">
           <a class="button button-primary" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu yarat</a>
+          ${sourceUrl ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
           <a class="button button-outline" href="rental.html">İcarəyə qayıt</a>
         </div>
       </div>
@@ -1606,7 +1728,8 @@ const renderRentalDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">İcarə qiyməti</span>
         <strong>${escapeHtml(rental.price)}</strong>
-        <p>Gün, həftə, ay və obyekt şərtinə görə dəqiqləşir.</p>
+        <p>${escapeHtml(rental.priceConfirmationRequired ? "Mənbədə göstərilən məbləğ, qiymət vahidi və mövcudluq sifariş zamanı təsdiqlənir." : "Gün, həftə, ay və obyekt şərtinə görə dəqiqləşir.")}</p>
+        ${rental.priceConfirmationRequired ? `<span class="price-freshness is-aging">Sifarişdən əvvəl təsdiq tələb olunur</span>` : ""}
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Güc / tutum</span>
@@ -1639,6 +1762,8 @@ const renderRentalDetail = () => {
           <li>Operator, yanacaq və daşınma şərtləri ayrıca təsdiqlənir.</li>
           <li>Depozit və təhvil-qəbul aktı müqavilə əsasında bağlanır.</li>
         </ul>
+        ${rental.imageCredit ? `<p>Şəkil mənbəyi: ${escapeHtml(rental.imageCredit)}</p>` : ""}
+        ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(rental.sourceLabel || "Mənbəni aç")}</a>` : ""}
       </article>
     </div>
   `;
@@ -1651,7 +1776,7 @@ const renderRentalDetail = () => {
     areaServed: { "@type": "Country", name: "Azərbaycan" },
     provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
     url: window.location.href
-  });
+  }, rental.imageUrl);
 };
 
 const getTaxonomyConfig = (type) => {
@@ -2795,6 +2920,20 @@ const initRfq = () => {
     supplierSelect.value = supplierId;
   }
 
+  const rentalRequestFields = [...form.querySelectorAll("[data-rental-request-field]")];
+  const updateRentalRequestFields = () => {
+    const isRental = String(productSelect.value || "").startsWith("rental:");
+    rentalRequestFields.forEach((field) => {
+      field.hidden = !isRental;
+      field.querySelectorAll("input, select, textarea").forEach((input) => {
+        input.disabled = !isRental;
+        if (input.name === "address" || input.name === "rentalDuration") input.required = isRental;
+      });
+    });
+  };
+  productSelect.addEventListener("change", updateRentalRequestFields);
+  updateRentalRequestFields();
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(form);
@@ -2806,6 +2945,15 @@ const initRfq = () => {
     const selectedRental = (marketplace.rentals || []).find((rental) => selectedType === "rental" && rental.id === selectedId);
     const selectedSupplierId = String(data.get("supplierId") || "");
     const selectedSupplier = (marketplace.suppliers || []).find((supplier) => supplier.id === selectedSupplierId);
+    const contactName = String(data.get("contactName") || "").trim();
+    const phone = String(data.get("phone") || "").trim();
+    const email = String(data.get("contact") || "").trim();
+    const address = String(data.get("address") || "").trim();
+    const rentalDuration = String(data.get("rentalDuration") || "").trim();
+    const operatorPreference = String(data.get("operatorPreference") || "").trim();
+    const rentalNote = selectedType === "rental"
+      ? [`Ünvan: ${address}`, `İcarə müddəti: ${rentalDuration}`, `Operator: ${operatorPreference || "sorğuda dəqiqləşsin"}`].join("\n")
+      : "";
     const rfq = {
       id: `rfq-${Date.now()}`,
       type: selectedType || "custom",
@@ -2821,9 +2969,15 @@ const initRfq = () => {
       deliveryMode: data.get("deliveryMode"),
       usage: data.get("usage"),
       company: data.get("company"),
-      contact: data.get("contact"),
+      contactName,
+      phone,
+      email,
+      contact: [contactName, phone, email].filter(Boolean).join(" · "),
       city: data.get("city"),
-      note: data.get("note"),
+      address,
+      rentalDuration,
+      operatorPreference,
+      note: [String(data.get("note") || "").trim(), rentalNote].filter(Boolean).join("\n"),
       createdAt: new Date().toISOString()
     };
 
@@ -2833,9 +2987,10 @@ const initRfq = () => {
 
     output.hidden = false;
     output.innerHTML = `
-      <strong>Sorğu qaralaması hazırdır.</strong>
+      <strong>Sorğu hazırdır.</strong>
       <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
       <span>${escapeHtml(rfq.supplier)} · ${escapeHtml(rfq.priority)} · ${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")}</span>
+      ${rfq.type === "rental" ? `<span>${escapeHtml(rfq.rentalDuration)} · ${escapeHtml(rfq.address)} · ${escapeHtml(rfq.operatorPreference || "operator sorğuda dəqiqləşir")}</span>` : ""}
       <a class="button button-secondary" href="rfq-dashboard.html">Sorğu panelində aç</a>
       <small data-rfq-cloud-status>Sorğu lokal ehtiyat nüsxəsində saxlanıldı. Server bağlantısı yoxlanılır...</small>
     `;
@@ -4039,16 +4194,32 @@ const initSupplierPortal = () => {
   const count = document.querySelector("[data-supplier-product-count]");
   const stats = document.querySelector("[data-supplier-portal-stats]");
   const status = document.querySelector("[data-supplier-status]");
+  const inventorySearch = document.querySelector("[data-inventory-search]");
+  const inventoryFilter = document.querySelector("[data-inventory-filter]");
+  const inventorySaveAll = document.querySelector("[data-inventory-save-all]");
+  const inventoryStatus = document.querySelector("[data-inventory-status]");
+  const historyPanel = document.querySelector("[data-inventory-history-panel]");
+  const historyTitle = document.querySelector("[data-inventory-history-title]");
+  const historyList = document.querySelector("[data-inventory-history]");
+  const historyClose = document.querySelector("[data-inventory-history-close]");
 
   if (!form || !categorySelect || !subcategorySelect) return;
 
   let cloudProducts = null;
   let cloudUser = null;
+  let inventoryState = null;
+  const inventoryDrafts = new Map();
+  const inventoryDirty = new Set();
   const supplierNameInput = form.elements.supplier;
   const getSupplierName = () => String(supplierNameInput?.value || "Yeni təchizatçı").trim() || "Yeni təchizatçı";
-  const getSupplierProducts = () => (cloudProducts ?? getAdminProducts())
-    .map((product, index) => ensureAdminProductShape(product, index))
-    .filter((product) => normalize(product.supplier) === normalize(getSupplierName()));
+  const getSupplierProducts = () => {
+    const serverProducts = inventoryState?.products ?? cloudProducts;
+    const products = (serverProducts ?? getAdminProducts())
+      .map((product, index) => ensureAdminProductShape(product, index));
+    return serverProducts === null || serverProducts === undefined
+      ? products.filter((product) => normalize(product.supplier) === normalize(getSupplierName()))
+      : products;
+  };
 
   const renderCategoryOptions = () => {
     categorySelect.innerHTML = groupCategories(marketplace.categories).map((group) => `
@@ -4068,41 +4239,85 @@ const initSupplierPortal = () => {
   const renderStats = () => {
     if (!stats) return;
     const supplierProducts = getSupplierProducts();
-    const confirmed = supplierProducts.filter((product) =>
-      product.priceStatus === "confirmed" || !normalize(product.price).includes("sorğu")
+    const metrics = inventoryState?.metrics;
+    const confirmed = metrics?.confirmed ?? supplierProducts.filter((product) => product.priceStatus === "confirmed").length;
+    const stale = metrics?.stale ?? supplierProducts.filter((product) => product.priceStatus === "expired").length;
+    const lowStock = metrics?.lowStock ?? supplierProducts.filter((product) =>
+      product.stockQuantity !== "" && Number(product.stockQuantity) <= Math.max(Number(product.minimumOrder || 0), 5)
     ).length;
-    const withImages = supplierProducts.filter((product) => product.imageUrl).length;
+    const inventoryValue = metrics?.inventoryValue ?? supplierProducts.reduce((sum, product) =>
+      sum + Number(product.priceAmount || 0) * Number(product.stockQuantity || 0), 0
+    );
     stats.innerHTML = `
       <article class="stat-card"><span class="stat-value">${supplierProducts.length}</span><p>məhsulum</p></article>
       <article class="stat-card"><span class="stat-value">${confirmed}</span><p>təsdiqli qiymət</p></article>
-      <article class="stat-card"><span class="stat-value">${withImages}</span><p>foto linki</p></article>
-      <article class="stat-card"><span class="stat-value">${marketplace.categories.length}</span><p>kateqoriya bazası</p></article>
+      <article class="stat-card"><span class="stat-value">${stale}</span><p>köhnəlmiş qiymət</p></article>
+      <article class="stat-card"><span class="stat-value">${lowStock}</span><p>az stok</p></article>
+      <article class="stat-card"><span class="stat-value">${Number(inventoryValue).toLocaleString("az-AZ", { maximumFractionDigits: 0 })}</span><p>stok dəyəri, AZN</p></article>
     `;
   };
 
   const renderRows = () => {
     if (!rows) return;
-    const supplierProducts = getSupplierProducts().slice(0, 80);
-    if (count) count.textContent = `${supplierProducts.length} məhsul`;
-    rows.innerHTML = supplierProducts.length ? supplierProducts.map((product) => `
-      <tr>
-        <td>
+    const query = normalize(inventorySearch?.value);
+    const filter = inventoryFilter?.value || "all";
+    const now = Date.now();
+    const allProducts = getSupplierProducts();
+    const supplierProducts = allProducts.filter((product) => {
+      const searchable = normalize([product.sku, product.name, product.brand, product.subcategory].join(" "));
+      const stale = !product.priceVerifiedAt || now - new Date(product.priceVerifiedAt).getTime() > 30 * 86_400_000;
+      const lowStock = product.stockQuantity !== "" && product.stockQuantity !== null && Number(product.stockQuantity) <= Math.max(Number(product.minimumOrder || 0), 5);
+      const matchesFilter = filter === "all"
+        || (filter === "stale" && stale)
+        || (filter === "low-stock" && lowStock)
+        || (filter === "missing-stock" && (product.stockQuantity === "" || product.stockQuantity === null))
+        || (filter === "request" && product.priceStatus !== "confirmed");
+      return (!query || searchable.includes(query)) && matchesFilter;
+    }).slice(0, 500);
+    if (count) count.textContent = `${supplierProducts.length} / ${allProducts.length} məhsul`;
+    rows.innerHTML = supplierProducts.length ? supplierProducts.map((product) => {
+      const draft = inventoryDrafts.get(product.id) || {};
+      const view = { ...product, ...draft };
+      return `
+      <tr data-inventory-row="${escapeAttr(product.id)}" class="${inventoryDirty.has(product.id) ? "is-dirty" : ""}">
+        <td data-label="Məhsul">
           <strong>${escapeHtml(product.name)}</strong>
-          <small>${escapeHtml(product.sku)} · ${escapeHtml(product.package)}</small>
+          <small>${escapeHtml(product.sku)} · ${escapeHtml(product.brand)} · ${escapeHtml(product.package)}</small>
         </td>
-        <td>${escapeHtml(product.brand)}</td>
-        <td>
-          <strong>${escapeHtml(getCategory(product.category)?.title || product.category)}</strong>
-          <small>${escapeHtml(product.subcategory)}</small>
+        <td data-label="Qiymət">
+          <input class="inventory-input" data-inventory-field="priceAmount" type="number" min="0" step="0.01" inputmode="decimal" value="${escapeAttr(view.priceAmount ?? "")}" aria-label="${escapeAttr(product.name)} qiyməti" />
+          <small>${escapeHtml(product.priceCurrency || "AZN")}</small>
         </td>
-        <td>${escapeHtml(product.price || "Sorğu əsasında")}</td>
-        <td>${escapeHtml(product.availability || "Sorğu əsasında")}</td>
+        <td data-label="Stok">
+          <input class="inventory-input" data-inventory-field="stockQuantity" type="number" min="0" step="0.01" inputmode="decimal" value="${escapeAttr(view.stockQuantity ?? "")}" aria-label="${escapeAttr(product.name)} stok miqdarı" />
+        </td>
+        <td data-label="Min. sifariş">
+          <input class="inventory-input" data-inventory-field="minimumOrder" type="number" min="0" step="0.01" inputmode="decimal" value="${escapeAttr(view.minimumOrder ?? "")}" aria-label="${escapeAttr(product.name)} minimum sifariş" />
+        </td>
+        <td data-label="Status">
+          <select class="inventory-input" data-inventory-field="priceStatus" aria-label="${escapeAttr(product.name)} qiymət statusu">
+            <option value="confirmed" ${view.priceStatus === "confirmed" ? "selected" : ""}>Təsdiqli</option>
+            <option value="request" ${view.priceStatus === "request" ? "selected" : ""}>Sorğu ilə</option>
+            <option value="expired" ${view.priceStatus === "expired" ? "selected" : ""}>Vaxtı keçib</option>
+          </select>
+          <small>${product.priceVerifiedAt ? new Date(product.priceVerifiedAt).toLocaleDateString("az-AZ") : "Yoxlanmayıb"}</small>
+        </td>
+        <td data-label="Mənbə">
+          <input class="inventory-input inventory-source-input" data-inventory-field="sourceUrl" type="url" value="${escapeAttr(view.sourceUrl || "")}" placeholder="https://..." aria-label="${escapeAttr(product.name)} qiymət mənbəsi" />
+        </td>
+        <td data-label="Əməliyyat">
+          <div class="inventory-actions">
+            <button class="table-action" type="button" data-inventory-save="${escapeAttr(product.id)}">Saxla</button>
+            <button class="table-action" type="button" data-inventory-history-open="${escapeAttr(product.id)}">Tarixçə</button>
+          </div>
+        </td>
       </tr>
-    `).join("") : `
+    `;
+    }).join("") : `
       <tr>
-        <td colspan="5">
-          <strong>Məhsul yoxdur.</strong>
-          <small>Formadan və ya CSV idxalından ilk məhsulu əlavə et.</small>
+        <td colspan="7">
+          <strong>Uyğun məhsul yoxdur.</strong>
+          <small>Filtri dəyiş və ya formadan ilk məhsulu əlavə et.</small>
         </td>
       </tr>
     `;
@@ -4112,11 +4327,19 @@ const initSupplierPortal = () => {
   const setStatus = (message) => {
     if (status) status.textContent = message;
   };
+  const setInventoryStatus = (message, type = "info") => {
+    if (!inventoryStatus) return;
+    inventoryStatus.textContent = message;
+    inventoryStatus.dataset.type = type;
+  };
 
   const refreshCloudProducts = async () => {
-    if (!window.ConstEraAPI?.myProducts || cloudUser?.role !== "supplier") return;
-    const result = await window.ConstEraAPI.myProducts();
-    cloudProducts = result.data || [];
+    if (!window.ConstEraAPI?.inventory || cloudUser?.role !== "supplier") return;
+    const result = await window.ConstEraAPI.inventory();
+    inventoryState = result.data || null;
+    cloudProducts = inventoryState?.products || [];
+    inventoryDrafts.clear();
+    inventoryDirty.clear();
     renderRows();
   };
 
@@ -4137,14 +4360,20 @@ const initSupplierPortal = () => {
       }
       await refreshCloudProducts();
       setStatus(`${cloudUser.companyName || cloudUser.name} hesabı Neon kataloquna qoşuldu.`);
+      setInventoryStatus("Qiymət və stok mərkəzi Neon bazasına qoşuldu.", "success");
     } catch (error) {
       setStatus(`Canlı baza əlçatan deyil: ${error.message}. Lokal ehtiyat rejimi aktivdir.`);
+      setInventoryStatus(`Canlı inventar yüklənmədi: ${error.message}`, "error");
     }
   };
 
   const createProductFromForm = () => {
     const data = new FormData(form);
-    const price = String(data.get("price") || "").trim() || "Sorğu əsasında";
+    const priceAmount = String(data.get("price") || "").trim();
+    const priceStatus = String(data.get("priceStatus") || "request");
+    const price = priceStatus === "confirmed" && priceAmount
+      ? `${Number(priceAmount).toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AZN`
+      : "Sorğu əsasında";
     return ensureAdminProductShape({
       sku: data.get("sku"),
       name: data.get("name"),
@@ -4153,15 +4382,18 @@ const initSupplierPortal = () => {
       subcategory: data.get("subcategory"),
       package: data.get("package"),
       price,
-      priceStatus: normalize(price).includes("sorğu") ? "request" : "confirmed",
+      priceAmount: priceStatus === "confirmed" ? Number(priceAmount) : null,
+      priceStatus,
       supplier: data.get("supplier"),
       availability: data.get("availability"),
+      stockQuantity: data.get("stockQuantity"),
+      minimumOrder: data.get("minimumOrder"),
       imageUrl: data.get("imageUrl"),
       sourceUrl: data.get("sourceUrl"),
       sourceLabel: data.get("supplier"),
       origin: data.get("origin"),
       specs: data.get("specs"),
-      priceNote: normalize(price).includes("sorğu") ? "Qiymət təchizatçı ilə dəqiqləşdirilir" : "Təchizatçı tərəfindən daxil edilib"
+      priceNote: priceStatus === "confirmed" ? "Təchizatçı tərəfindən təsdiqlənib" : "Qiymət təchizatçı ilə dəqiqləşdirilir"
     }, Date.now());
   };
 
@@ -4185,8 +4417,7 @@ const initSupplierPortal = () => {
     if (submit) submit.disabled = true;
     try {
       const result = await window.ConstEraAPI.saveProduct(product, false);
-      cloudProducts = [result.data, ...(cloudProducts || []).filter((item) => item.id !== result.data.id && item.sku !== result.data.sku)];
-      renderRows();
+      await refreshCloudProducts();
       setStatus(`${product.name} Neon kataloqunda saxlandı.`);
     } catch (error) {
       setStatus(`${product.name} yalnız lokal saxlandı. Server: ${error.message}`);
@@ -4258,6 +4489,94 @@ const initSupplierPortal = () => {
     downloadTextFile(`constera-${createSlug(getSupplierName())}-products.csv`, productsToCsv(supplierProducts), "text/csv;charset=utf-8");
     setStatus(`${supplierProducts.length} məhsul CSV faylına hazırlandı.`);
   });
+
+  const collectInventoryUpdate = (id) => {
+    const product = getSupplierProducts().find((item) => item.id === id);
+    if (!product) return null;
+    const draft = inventoryDrafts.get(id) || {};
+    return {
+      id,
+      priceAmount: draft.priceAmount ?? product.priceAmount ?? "",
+      priceCurrency: product.priceCurrency || "AZN",
+      priceStatus: draft.priceStatus ?? product.priceStatus ?? "request",
+      stockQuantity: draft.stockQuantity ?? product.stockQuantity ?? "",
+      minimumOrder: draft.minimumOrder ?? product.minimumOrder ?? "",
+      sourceUrl: draft.sourceUrl ?? product.sourceUrl ?? "",
+      priceNote: "Təchizatçı inventar mərkəzindən yenilənib"
+    };
+  };
+
+  const saveInventoryUpdates = async (ids) => {
+    if (cloudUser?.role !== "supplier" || !window.ConstEraAPI?.updateInventory) {
+      setInventoryStatus("Canlı yeniləmə üçün təchizatçı hesabına daxil ol.", "warning");
+      return;
+    }
+    const updates = ids.map(collectInventoryUpdate).filter(Boolean);
+    if (!updates.length) {
+      setInventoryStatus("Saxlanacaq dəyişiklik yoxdur.");
+      return;
+    }
+    if (inventorySaveAll) inventorySaveAll.disabled = true;
+    rows?.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+    setInventoryStatus(`${updates.length} məhsul yenilənir...`);
+    try {
+      const result = await window.ConstEraAPI.updateInventory(updates);
+      inventoryState = result.data;
+      cloudProducts = inventoryState.products || [];
+      updates.forEach((item) => {
+        inventoryDrafts.delete(item.id);
+        inventoryDirty.delete(item.id);
+      });
+      renderRows();
+      setInventoryStatus(`${updates.length} məhsulun qiymət və stok məlumatı Neon bazasında saxlandı.`, "success");
+    } catch (error) {
+      setInventoryStatus(error.message || "İnventar yenilənmədi.", "error");
+      renderRows();
+    } finally {
+      if (inventorySaveAll) inventorySaveAll.disabled = false;
+    }
+  };
+
+  const renderPriceHistory = (id) => {
+    const product = getSupplierProducts().find((item) => item.id === id);
+    if (!product || !historyPanel || !historyList) return;
+    historyPanel.hidden = false;
+    if (historyTitle) historyTitle.textContent = `${product.name} · ${product.sku}`;
+    historyList.innerHTML = (product.priceHistory || []).length ? product.priceHistory.map((entry) => `
+      <article class="price-history-item">
+        <strong>${entry.amount === null ? escapeHtml(entry.price) : Number(entry.amount).toLocaleString("az-AZ", { style: "currency", currency: entry.currency || "AZN" })}</strong>
+        <span>${new Date(entry.capturedAt).toLocaleString("az-AZ")}</span>
+      </article>
+    `).join("") : '<article class="cabinet-item"><strong>Tarixçə boşdur.</strong><span>İlk təsdiqli qiymət yeniləməsindən sonra burada görünəcək.</span></article>';
+    historyPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  rows?.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-inventory-field]");
+    const row = input?.closest("[data-inventory-row]");
+    if (!input || !row) return;
+    const id = row.dataset.inventoryRow;
+    inventoryDrafts.set(id, { ...(inventoryDrafts.get(id) || {}), [input.dataset.inventoryField]: input.value });
+    inventoryDirty.add(id);
+    row.classList.add("is-dirty");
+    setInventoryStatus(`${inventoryDirty.size} məhsulda saxlanmamış dəyişiklik var.`, "warning");
+  });
+  rows?.addEventListener("change", (event) => {
+    if (event.target.matches("[data-inventory-field]")) event.target.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  rows?.addEventListener("click", (event) => {
+    const saveButton = event.target.closest("[data-inventory-save]");
+    if (saveButton) {
+      saveInventoryUpdates([saveButton.dataset.inventorySave]);
+      return;
+    }
+    const historyButton = event.target.closest("[data-inventory-history-open]");
+    if (historyButton) renderPriceHistory(historyButton.dataset.inventoryHistoryOpen);
+  });
+  inventorySearch?.addEventListener("input", renderRows);
+  inventoryFilter?.addEventListener("change", renderRows);
+  inventorySaveAll?.addEventListener("click", () => saveInventoryUpdates([...inventoryDirty]));
+  historyClose?.addEventListener("click", () => { if (historyPanel) historyPanel.hidden = true; });
   connectSupplierAccount();
 };
 
@@ -4403,33 +4722,24 @@ const initPriceImportCenter = () => {
   });
 };
 
-const renderCustomerCabinet = () => {
+const initCustomerCabinet = () => {
   const stats = document.querySelector("[data-customer-stats]");
+  const sessionStatus = document.querySelector("[data-customer-session]");
+  const projectForm = document.querySelector("[data-customer-project-form]");
+  const projectStatus = document.querySelector("[data-customer-project-status]");
+  const projectCount = document.querySelector("[data-customer-project-count]");
+  const projectList = document.querySelector("[data-customer-projects]");
+  const orderList = document.querySelector("[data-customer-orders]");
   const rfqList = document.querySelector("[data-customer-rfqs]");
   const estimateList = document.querySelector("[data-customer-estimates]");
   const favoriteGrid = document.querySelector("[data-customer-favorites]");
   const compareGrid = document.querySelector("[data-customer-compare]");
+  const notificationList = document.querySelector("[data-customer-notifications]");
   const exportRfqsButton = document.querySelector("[data-customer-export-rfqs]");
   const exportEstimatesButton = document.querySelector("[data-customer-export-estimates]");
   const printButton = document.querySelector("[data-customer-print]");
 
-  if (!stats || !rfqList || !estimateList || !favoriteGrid || !compareGrid) return;
-
-  const rfqs = storage.read("constera-rfq-drafts");
-  const estimates = storage.read("constera-ai-estimates");
-  const favorites = storage.read("constera-favorites");
-  const compare = storage.read("constera-compare");
-  const cart = getCart();
-  const productsById = new Map((marketplace.products || []).map((product) => [product.id, product]));
-  const selectedProducts = (ids) => ids.map((id) => productsById.get(id)).filter(Boolean);
-
-  stats.innerHTML = `
-    <article class="stat-card"><span class="stat-value">${rfqs.length}</span><p>sorğu</p></article>
-    <article class="stat-card"><span class="stat-value">${estimates.length}</span><p>smeta</p></article>
-    <article class="stat-card"><span class="stat-value">${favorites.length}</span><p>seçilmiş</p></article>
-    <article class="stat-card"><span class="stat-value">${compare.length}</span><p>müqayisə</p></article>
-    <article class="stat-card"><span class="stat-value">${cart.length}</span><p>səbət mövqeyi</p></article>
-  `;
+  if (!stats || !projectForm || !projectList || !orderList || !rfqList || !estimateList || !favoriteGrid || !compareGrid) return;
 
   const empty = (title, text) => `
     <article class="cabinet-item">
@@ -4437,29 +4747,46 @@ const renderCustomerCabinet = () => {
       <span>${escapeHtml(text)}</span>
     </article>
   `;
+  const localState = () => {
+    const productsById = new Map((marketplace.products || []).map((product) => [product.id, product]));
+    return {
+      user: null,
+      cloud: false,
+      orders: [],
+      rfqs: storage.read("constera-rfq-drafts"),
+      projects: storage.read("constera-customer-projects"),
+      estimates: storage.read("constera-ai-estimates").map((payload) => ({
+        id: payload.id,
+        title: payload.projectLabel || "Smeta",
+        payload,
+        createdAt: payload.createdAt,
+        updatedAt: payload.createdAt
+      })),
+      saved: {
+        favorites: storage.read("constera-favorites").map((id) => productsById.get(id)).filter(Boolean),
+        compare: storage.read("constera-compare").map((id) => productsById.get(id)).filter(Boolean)
+      },
+      notifications: []
+    };
+  };
+  let state = localState();
 
-  rfqList.innerHTML = rfqs.length ? rfqs.slice(0, 8).map((rfq) => `
-    <article class="cabinet-item">
-      <header>
-        <strong>${escapeHtml(rfq.product || "Qiymət sorğusu")}</strong>
-        <span class="mini-badge">${escapeHtml(rfq.status || "Yeni")}</span>
-      </header>
-      <p>${escapeHtml(rfq.quantity || "Miqdar yoxdur")} · ${escapeHtml(rfq.city || "Şəhər seçilməyib")} · ${escapeHtml(rfq.budget || "Büdcə açıq")}</p>
-      <span>${escapeHtml(rfq.note || "Qeyd yoxdur")}</span>
-    </article>
-  `).join("") : empty("Qiymət sorğusu yoxdur.", "Kataloqdan və ya ağıllı smetadan ilk qiymət sorğunu yarat.");
-
-  estimateList.innerHTML = estimates.length ? estimates.slice(0, 8).map((estimate) => `
-    <article class="cabinet-item">
-      <header>
-        <strong>${escapeHtml(estimate.projectLabel || "Smeta")} · ${escapeHtml(estimate.area || 0)} m²</strong>
-        <span class="mini-badge">${escapeHtml(estimate.rows?.length || 0)} qrup</span>
-      </header>
-      <p>${escapeHtml(estimate.scopeLabel || "İş həcmi")} · ${escapeHtml(estimate.finishLabel || "Səviyyə")} · ehtiyat ${escapeHtml(estimate.wastePercent || estimate.riskReserve || 0)}%</p>
-      <span>${estimate.createdAt ? new Date(estimate.createdAt).toLocaleString("az-AZ") : "Tarix yoxdur"}</span>
-    </article>
-  `).join("") : empty("Smeta yoxdur.", "Ağıllı smeta modulunda ilk hesablamanı hazırla.");
-
+  const projectStatusLabels = {
+    planning: "Planlama",
+    estimating: "Smeta hazırlanır",
+    procurement: "Satınalma",
+    active: "İcradadır",
+    completed: "Tamamlanıb",
+    archived: "Arxiv"
+  };
+  const orderStatusLabels = {
+    submitted: "Göndərilib",
+    confirmed: "Təsdiqlənib",
+    processing: "Hazırlanır",
+    shipped: "Çatdırılır",
+    completed: "Tamamlanıb",
+    cancelled: "Ləğv edilib"
+  };
   const renderProductMiniCards = (products, emptyTitle) => products.length ? products.map((product) => `
     <article class="cabinet-product-card">
       <header>
@@ -4474,17 +4801,89 @@ const renderCustomerCabinet = () => {
     </article>
   `).join("") : empty(emptyTitle, "Kataloqdan məhsul seç və bu blok avtomatik dolacaq.");
 
-  favoriteGrid.innerHTML = renderProductMiniCards(selectedProducts(favorites), "Seçilmiş məhsul yoxdur.");
-  compareGrid.innerHTML = renderProductMiniCards(selectedProducts(compare), "Müqayisə siyahısı boşdur.");
+  const applyCabinetData = (data) => {
+    state = { ...data, cloud: true };
+    render();
+  };
+
+  const render = () => {
+    const cart = getCart();
+    const favorites = state.saved?.favorites || [];
+    const compare = state.saved?.compare || [];
+    stats.innerHTML = `
+      <article class="stat-card"><span class="stat-value">${state.projects.length}</span><p>layihə</p></article>
+      <article class="stat-card"><span class="stat-value">${state.orders.length}</span><p>sifariş</p></article>
+      <article class="stat-card"><span class="stat-value">${state.rfqs.length}</span><p>sorğu</p></article>
+      <article class="stat-card"><span class="stat-value">${state.estimates.length}</span><p>smeta</p></article>
+      <article class="stat-card"><span class="stat-value">${favorites.length + compare.length}</span><p>saxlanmış məhsul</p></article>
+      <article class="stat-card"><span class="stat-value">${cart.length}</span><p>səbət mövqeyi</p></article>
+    `;
+    if (sessionStatus) {
+      sessionStatus.innerHTML = state.user
+        ? `${escapeHtml(state.user.name)} · ${escapeHtml(state.user.companyName || state.user.email)} · <strong>Neon sinxronizasiyası aktivdir</strong>`
+        : 'Lokal baxış aktivdir. Cihazlararası sinxronizasiya üçün <a class="source-link" href="login.html?next=customer-cabinet.html">hesaba daxil ol</a>.';
+      sessionStatus.dataset.type = state.user ? "success" : "warning";
+    }
+    if (projectCount) projectCount.textContent = `${state.projects.length} layihə`;
+    projectList.innerHTML = state.projects.length ? state.projects.map((project) => `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(project.title)}</strong><span class="mini-badge">${escapeHtml(projectStatusLabels[project.status] || project.status)}</span></header>
+        <p>${escapeHtml(project.city || "Məkan qeyd edilməyib")} · ${project.area === null || project.area === "" ? "Sahə açıq" : `${escapeHtml(project.area)} m²`} · ${project.budget === null || project.budget === "" ? "Büdcə açıq" : formatMoney(project.budget, project.currency || "AZN")}</p>
+        <span>${escapeHtml(project.note || "Əlavə qeyd yoxdur.")}</span>
+        <div class="cabinet-item-actions">
+          <a class="table-action" href="rfq.html?project=${encodeURIComponent(project.id)}">Sorğu yarat</a>
+          <button class="table-action is-danger" type="button" data-customer-project-delete="${escapeAttr(project.id)}">Sil</button>
+        </div>
+      </article>
+    `).join("") : empty("Layihə yoxdur.", "İlk layihəni formadan yarat və satınalma axınını bir yerdə saxla.");
+    orderList.innerHTML = state.orders.length ? state.orders.slice(0, 20).map((order) => `
+      <article class="cabinet-item">
+        <header><strong>Sifariş #${escapeHtml(order.orderNumber)}</strong><span class="mini-badge">${escapeHtml(orderStatusLabels[order.status] || order.status)}</span></header>
+        <p>${(order.items || []).length} məhsul · ${order.totalAmount === null ? "Qiymət təsdiqi gözlənilir" : formatMoney(order.totalAmount, order.currency)}</p>
+        <span>${new Date(order.createdAt).toLocaleString("az-AZ")}</span>
+      </article>
+    `).join("") : empty("Sifariş yoxdur.", "Kataloqdan məhsulları səbətə əlavə et və ilk sifarişi göndər.");
+    rfqList.innerHTML = state.rfqs.length ? state.rfqs.slice(0, 20).map((rfq) => {
+      const offers = rfq.offers || [];
+      const pricedOffers = offers.filter((offer) => offer.priceAmount !== null && Number.isFinite(Number(offer.priceAmount)));
+      const lowest = pricedOffers.length ? Math.min(...pricedOffers.map((offer) => Number(offer.priceAmount))) : null;
+      const quantity = rfq.quantity || rfq.items?.[0]?.quantity || "Miqdar yoxdur";
+      return `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(rfq.title || rfq.product || "Qiymət sorğusu")}</strong><span class="mini-badge">${escapeHtml(rfq.status || "Yeni")}</span></header>
+        <p>${escapeHtml(quantity)} · ${escapeHtml(rfq.city || "Şəhər seçilməyib")} · ${offers.length} təklif</p>
+        <span>${lowest === null ? escapeHtml(rfq.budget || "Büdcə açıq") : `Ən aşağı təklif: ${formatMoney(lowest)}`}</span>
+      </article>`;
+    }).join("") : empty("Qiymət sorğusu yoxdur.", "Kataloqdan və ya ağıllı smetadan ilk qiymət sorğunu yarat.");
+    estimateList.innerHTML = state.estimates.length ? state.estimates.slice(0, 20).map((entry) => {
+      const estimate = entry.payload || entry;
+      return `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(entry.title || estimate.projectLabel || "Smeta")} · ${escapeHtml(estimate.area || 0)} m²</strong><span class="mini-badge">${escapeHtml(estimate.rows?.length || 0)} qrup</span></header>
+        <p>${escapeHtml(estimate.scopeLabel || "İş həcmi")} · ${escapeHtml(estimate.finishLabel || "Səviyyə")} · ehtiyat ${escapeHtml(estimate.wastePercent || estimate.riskReserve || 0)}%</p>
+        <span>${entry.updatedAt || estimate.createdAt ? new Date(entry.updatedAt || estimate.createdAt).toLocaleString("az-AZ") : "Tarix yoxdur"}</span>
+      </article>`;
+    }).join("") : empty("Smeta yoxdur.", "Ağıllı smeta modulunda ilk hesablamanı hazırla.");
+    favoriteGrid.innerHTML = renderProductMiniCards(favorites, "Seçilmiş məhsul yoxdur.");
+    compareGrid.innerHTML = renderProductMiniCards(compare, "Müqayisə siyahısı boşdur.");
+    if (notificationList) notificationList.innerHTML = state.notifications.length ? state.notifications.map((notification) => `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(notification.subject)}</strong><span class="mini-badge">${escapeHtml(notification.status)}</span></header>
+        <p>${escapeHtml(notification.body)}</p>
+        <span>${new Date(notification.createdAt).toLocaleString("az-AZ")}</span>
+      </article>
+    `).join("") : empty("Yeni bildiriş yoxdur.", "Sifariş və sorğu statusları dəyişdikdə burada görünəcək.");
+  };
 
   exportRfqsButton?.addEventListener("click", () => {
+    const rfqs = state.rfqs;
     const headers = ["id", "status", "sorğu", "miqdar", "şirkət", "əlaqə", "şəhər", "büdcə", "qeyd"];
     const csv = [headers.join(","), ...rfqs.map((rfq) => [
       rfq.id,
       rfq.status,
-      rfq.product,
-      rfq.quantity,
-      rfq.company,
+      rfq.title || rfq.product,
+      rfq.quantity || rfq.items?.[0]?.quantity,
+      rfq.companyName || rfq.company,
       rfq.contact,
       rfq.city,
       rfq.budget,
@@ -4494,6 +4893,7 @@ const renderCustomerCabinet = () => {
   });
 
   exportEstimatesButton?.addEventListener("click", () => {
+    const estimates = state.estimates.map((entry) => entry.payload || entry);
     const headers = ["id", "layihə", "sahə", "mərtəbə", "otaq", "yaş zona", "iş həcmi", "səviyyə", "material qrupu", "tarix"];
     const csv = [headers.join(","), ...estimates.map((estimate) => [
       estimate.id,
@@ -4510,7 +4910,90 @@ const renderCustomerCabinet = () => {
     downloadTextFile(`constera-kabinet-smeta-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
   });
 
+  projectForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(projectForm).entries());
+    if (!state.user || !window.ConstEraAPI?.saveProject) {
+      const project = { id: `project-${Date.now()}`, ...fields, currency: "AZN", createdAt: new Date().toISOString() };
+      storage.write("constera-customer-projects", [project, ...state.projects].slice(0, 100));
+      state = localState();
+      render();
+      if (projectStatus) projectStatus.textContent = "Layihə lokal saxlandı. Bulud sinxronizasiyası üçün hesaba daxil ol.";
+      projectForm.reset();
+      return;
+    }
+    const button = projectForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const result = await window.ConstEraAPI.saveProject({ ...fields, currency: "AZN" });
+      applyCabinetData(result.data);
+      projectForm.reset();
+      if (projectStatus) projectStatus.textContent = "Layihə Neon bazasında saxlandı.";
+    } catch (error) {
+      if (projectStatus) projectStatus.textContent = error.message || "Layihə saxlanmadı.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+  projectList.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-customer-project-delete]");
+    if (!button) return;
+    const id = button.dataset.customerProjectDelete;
+    if (state.user && window.ConstEraAPI?.deleteProject) {
+      button.disabled = true;
+      try {
+        const result = await window.ConstEraAPI.deleteProject(id);
+        applyCabinetData(result.data);
+        if (projectStatus) projectStatus.textContent = "Layihə silindi.";
+      } catch (error) {
+        button.disabled = false;
+        if (projectStatus) projectStatus.textContent = error.message || "Layihə silinmədi.";
+      }
+      return;
+    }
+    storage.write("constera-customer-projects", state.projects.filter((project) => project.id !== id));
+    state = localState();
+    render();
+  });
   printButton?.addEventListener("click", () => window.print());
+  render();
+
+  const connectCabinet = async () => {
+    if (!window.ConstEraAPI?.cabinet) return;
+    try {
+      const session = await window.ConstEraAPI.session();
+      if (!session.user) return;
+      let result = await window.ConstEraAPI.cabinet();
+      const cloud = result.data;
+      const localFavorites = storage.read("constera-favorites");
+      const localCompare = storage.read("constera-compare");
+      const mergedFavorites = [...new Set([...(cloud.saved?.favorites || []).map((product) => product.id), ...localFavorites])].slice(0, 100);
+      const mergedCompare = [...new Set([...(cloud.saved?.compare || []).map((product) => product.id), ...localCompare])].slice(0, 5);
+      const cloudEstimateIds = new Set((cloud.estimates || []).map((estimate) => estimate.id));
+      const missingEstimates = storage.read("constera-ai-estimates")
+        .filter((estimate) => estimate.id && !cloudEstimateIds.has(estimate.id))
+        .slice(0, 20)
+        .map((estimate) => ({ id: estimate.id, title: estimate.projectLabel || "Smeta", payload: estimate }));
+      const favoriteChanged = mergedFavorites.length !== (cloud.saved?.favorites || []).length;
+      const compareChanged = mergedCompare.length !== (cloud.saved?.compare || []).length;
+      if (favoriteChanged || compareChanged || missingEstimates.length) {
+        await Promise.all([
+          favoriteChanged ? window.ConstEraAPI.syncSavedProducts("favorite", mergedFavorites) : Promise.resolve(),
+          compareChanged ? window.ConstEraAPI.syncSavedProducts("compare", mergedCompare) : Promise.resolve(),
+          missingEstimates.length ? window.ConstEraAPI.syncEstimates(missingEstimates) : Promise.resolve()
+        ]);
+        result = await window.ConstEraAPI.cabinet();
+      }
+      applyCabinetData(result.data);
+      if (projectStatus) projectStatus.textContent = "Layihələr Neon bazasında saxlanılır.";
+    } catch (error) {
+      if (sessionStatus) {
+        sessionStatus.textContent = `Canlı kabinet yüklənmədi: ${error.message}`;
+        sessionStatus.dataset.type = "error";
+      }
+    }
+  };
+  connectCabinet();
 };
 
 const formatMoney = (value, currency = "AZN") => Number(value || 0).toLocaleString("az-AZ", {
@@ -4714,6 +5197,10 @@ const initActions = () => {
     const values = storage.read(key);
     const id = button.dataset.id;
     const exists = values.includes(id);
+    if (!exists && button.dataset.action === "compare" && values.length >= 5) {
+      button.setAttribute("title", "Müqayisədə maksimum 5 məhsul ola bilər.");
+      return;
+    }
     const next = exists ? values.filter((value) => value !== id) : [...values, id];
     const isActive = !exists;
 
@@ -4723,6 +5210,12 @@ const initActions = () => {
     button.setAttribute("aria-label", button.dataset.action === "favorite"
       ? (isActive ? "Seçilmişlərdən çıxar" : "Seçilmişlərə əlavə et")
       : (isActive ? "Müqayisədən çıxar" : "Müqayisəyə əlavə et"));
+    if (window.ConstEraAPI?.syncSavedProducts) {
+      const listType = button.dataset.action === "favorite" ? "favorite" : "compare";
+      window.ConstEraAPI.session()
+        .then((session) => session.user ? window.ConstEraAPI.syncSavedProducts(listType, next) : null)
+        .catch(() => null);
+    }
   });
 };
 
@@ -4756,7 +5249,7 @@ initRentalCalculator();
 initAiSmeta();
 initSupplierPortal();
 initPriceImportCenter();
-renderCustomerCabinet();
+initCustomerCabinet();
 renderCheckout();
 initActions();
 initCartDock();

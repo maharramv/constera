@@ -5,10 +5,11 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 ## Hazırkı məlumat bazası
 
 - 70 material kateqoriyası və 695 subkateqoriya
-- 788 məhsul kartı
+- 826 məhsul kartı
 - 12 xidmət kateqoriyası, 116 subkateqoriya və 118 xidmət
-- 7 paket kateqoriyası və 66 hazır paket
-- 15 icarə kateqoriyası və 100 avadanlıq mövqeyi
+- 7 paket kateqoriyası və 75 hazır paket
+- 15 icarə kateqoriyası və 108 avadanlıq mövqeyi
+- yerli mənbələrdən 9 hazır tikinti-təmir paketi və 8 texnika icarəsi
 - mənbəli qiymətlər və şəkillər üçün açıq məhsul keçidləri
 - qiyməti təsdiqlənməyən mövqelər üçün `Sorğu əsasında` vəziyyəti
 
@@ -40,6 +41,8 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `api/rfqs.js`, `api/offers.js` - real qiymət sorğusu və təklif axını
 - `api/admin.js?__route=tenders`, `api/admin.js?__route=tender-bids` - dəvətli və açıq tenderlər, lotlar və təkliflər
 - `api/admin.js?__route=imports` - admin və təchizatçı sərhədləri ilə CSV/XLSX idxalı
+- `api/admin.js?__route=cabinet` - layihə, smeta, seçilmişlər və müqayisə üçün server kabineti
+- `api/admin.js?__route=inventory` - təchizatçı qiymət, stok və mənbə idarəetmə mərkəzi
 - `api/sync.js` - statik kataloqun PostgreSQL bazasına kütləvi sinxronizasiyası
 - `api/cron-price-freshness.js` - köhnə qiymətləri gündəlik işarələyən və sessiyaları təmizləyən cron
 - `db/migrations/` - istifadəçi, şirkət, kataloq, qiymət tarixçəsi, RFQ və audit sxemi

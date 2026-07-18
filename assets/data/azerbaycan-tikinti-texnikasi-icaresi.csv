@@ -1,0 +1,9 @@
+﻿id,name,category,city,price,price_unit,image,source_url,verified
+avtokran-xcmg-25t,XCMG avtokran — 25 ton,avtokran,Bakı,350,elan_qiymeti,/images/equipment/avtokran-25t-xcmg.jpg,https://tap.az/elanlar/xidmetler/neqliyyat-icaresi/46171461,True
+mini-ekskavator-new-holland-e50,Mini ekskavator New Holland Kobelco E50.2SR,mini_ekskavator,Bakı,250,elan_qiymeti,/images/equipment/mini-ekskavator-new-holland.jpg,https://insaat.az/mini-ekskavator-icareye-verilir-32397.html,True
+naf-telehandler,Teleskopik yükləyici / Telehandler,teleskopik_yukleyici,Bakı və Azərbaycan,,sorğu_əsasında,/images/equipment/teleskopik-yukleyici.jpg,https://www.naftexnika.az/,True
+naf-bekolader,JCB bekolader,bekolader,Bakı və Azərbaycan,,sorğu_əsasında,/images/equipment/bekolader-jcb.webp,https://www.naftexnika.az/,True
+naf-tekerli-ekskavator,CAT təkərli ekskavator,tekerli_ekskavator,Bakı və Azərbaycan,,sorğu_əsasında,/images/equipment/tekerli-ekskavator-cat.webp,https://www.naftexnika.az/,True
+market-verdene-130,Vərdənə icarəsi,verdene,Bakı,130,elan_qiymeti,,https://tap.az/elanlar/xidmetler/neqliyyat-icaresi?q%5Bkeywords%5D=tikinti+texnikalari,False
+market-katok-150,Katok icarəsi,katok,Bakı,150,elan_qiymeti,,https://tap.az/elanlar/xidmetler/neqliyyat-icaresi?q%5Bkeywords%5D=tikinti+texnikalari,False
+market-qayci-platforma-70,Qayçı səbət platforma,qaldirici_platforma,Bakı,70,elan_qiymeti,,https://tap.az/elanlar/xidmetler/neqliyyat-icaresi?q%5Bkeywords%5D=tikinti+texnikalari,False

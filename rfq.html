@@ -58,9 +58,9 @@
             <p class="eyebrow">Qiymət sorğusu</p>
             <h1>Material, paket, xidmət və icarə sorğusunu vahid qiymət sorğusu axınına bağla.</h1>
             <p class="hero-text">
-              Bu nümunə mərhələdə qiymət sorğusu brauzerdə qaralama kimi saxlanır. Server hissəsi əlavə
-              olunanda eyni forma məhsul təchizatçılarına, paket komandalarına, iş briqadalarına və icarə
-              operatorlarına avtomatik təklif sorğusu göndərəcək.
+              Sorğu Neon bazasında qeydə alınır və bağlantı kəsildikdə brauzerdə ehtiyat nüsxəsi saxlanır.
+              Məhsul təchizatçıları, paket komandaları, iş briqadaları və icarə operatorları eyni axından
+              təklif hazırlaya bilir.
             </p>
           </div>
           <div class="market-kpi-strip glass">
@@ -127,12 +127,37 @@
               <input type="text" name="company" placeholder="Şirkət adı" required />
             </label>
             <label class="form-field">
-              <span class="field-label">Əlaqə</span>
-              <input type="text" name="contact" placeholder="Telefon və ya e-poçt" required />
+              <span class="field-label">Əlaqələndirici şəxs</span>
+              <input type="text" name="contactName" placeholder="Ad və soyad" required />
+            </label>
+            <label class="form-field">
+              <span class="field-label">Telefon</span>
+              <input type="tel" name="phone" inputmode="tel" placeholder="+994 50 000 00 00" required />
+            </label>
+            <label class="form-field">
+              <span class="field-label">E-poçt</span>
+              <input type="email" name="contact" placeholder="ad@shirket.az" />
             </label>
             <label class="form-field">
               <span class="field-label">Şəhər / Rayon</span>
               <input type="text" name="city" placeholder="Bakı, Sumqayıt, Gəncə..." />
+            </label>
+            <label class="form-field" data-rental-request-field hidden>
+              <span class="field-label">Obyekt ünvanı</span>
+              <input type="text" name="address" maxlength="500" placeholder="Texnikanın çatdırılacağı ünvan" />
+            </label>
+            <label class="form-field" data-rental-request-field hidden>
+              <span class="field-label">İcarə müddəti</span>
+              <input type="text" name="rentalDuration" maxlength="160" placeholder="Məsələn: 3 gün, 1 ay" />
+            </label>
+            <label class="form-field" data-rental-request-field hidden>
+              <span class="field-label">Operator seçimi</span>
+              <select name="operatorPreference">
+                <option value="">Sorğuda dəqiqləşsin</option>
+                <option value="Operatorla">Operatorla</option>
+                <option value="Operatorsuz">Operatorsuz</option>
+                <option value="Servis dəstəyi ilə">Servis dəstəyi ilə</option>
+              </select>
             </label>
             <label class="form-field rfq-wide">
               <span class="field-label">Təyinat / istifadə məqsədi</span>
@@ -142,7 +167,7 @@
               <span class="field-label">Qeyd</span>
               <textarea name="note" rows="5" placeholder="Çatdırılma, marka, ölçü, iş həcmi, operator, sertifikat və digər tələblər"></textarea>
             </label>
-            <button class="button button-primary rfq-wide" type="submit">Sorğu qaralaması yarat</button>
+            <button class="button button-primary rfq-wide" type="submit">Sorğunu göndər</button>
             <div class="rfq-output rfq-wide" data-rfq-output hidden></div>
           </form>
 

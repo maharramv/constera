@@ -62,16 +62,100 @@
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
             <p class="eyebrow">Müştəri kabineti</p>
-            <h1>Sorğuları, smetaları, seçilmişləri və müqayisəni bir iş masasında topla.</h1>
+            <h1>Layihələri, sifarişləri, sorğuları və smetaları təhlükəsiz hesabda idarə et.</h1>
             <p class="hero-text">
-              Kabinet hazırda lokal brauzer məlumatları ilə işləyir. Bu struktur gələcəkdə giriş sistemi,
-              şirkət profili, faktura, sənəd və satınalma axını üçün əsas olacaq.
+              Neon bazasına qoşulan kabinet sifariş tarixçəsini, təchizatçı təkliflərini, layihələri,
+              smetaları, seçilmişləri və müqayisəni cihazlar arasında sinxron saxlayır.
             </p>
+            <p class="admin-import-status" data-customer-session>Hesab sessiyası yoxlanılır...</p>
           </div>
           <div class="admin-stat-grid" data-customer-stats></div>
         </section>
 
         <section class="section admin-board cabinet-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Layihə mərkəzi</p>
+                <h2>Yeni layihə yarat</h2>
+              </div>
+              <span class="data-badge">Neon hesabı</span>
+            </div>
+            <form class="admin-form" data-customer-project-form>
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Layihə adı</span>
+                  <input name="title" type="text" maxlength="240" placeholder="Mərdəkan villa layihəsi" required />
+                </label>
+                <label class="admin-field">
+                  <span>Layihə tipi</span>
+                  <select name="projectType">
+                    <option value="apartment">Mənzil</option>
+                    <option value="villa">Villa</option>
+                    <option value="office">Ofis</option>
+                    <option value="commercial">Kommersiya obyekti</option>
+                    <option value="industrial">Sənaye obyekti</option>
+                    <option value="landscape">Landşaft</option>
+                    <option value="other">Digər</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Şəhər / rayon</span>
+                  <input name="city" type="text" maxlength="160" placeholder="Bakı, Xəzər rayonu" />
+                </label>
+                <label class="admin-field">
+                  <span>Status</span>
+                  <select name="status">
+                    <option value="planning">Planlama</option>
+                    <option value="estimating">Smeta hazırlanır</option>
+                    <option value="procurement">Satınalma</option>
+                    <option value="active">İcradadır</option>
+                    <option value="completed">Tamamlanıb</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Sahə, m²</span>
+                  <input name="area" type="number" min="0" step="0.01" inputmode="decimal" />
+                </label>
+                <label class="admin-field">
+                  <span>Büdcə, AZN</span>
+                  <input name="budget" type="number" min="0" step="0.01" inputmode="decimal" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Qeyd</span>
+                  <textarea name="note" rows="3" maxlength="3000" placeholder="İş həcmi, material səviyyəsi və vacib tarixlər"></textarea>
+                </label>
+              </div>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Layihəni saxla</button>
+                <a class="button button-outline" href="ai-smeta.html">Smeta hazırla</a>
+              </div>
+              <p class="admin-import-status" data-customer-project-status>Layihə yaratmaq üçün hesaba daxil ol.</p>
+            </form>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Layihələrim</p>
+                <h2>Aktiv iş portfeli</h2>
+              </div>
+              <span class="data-badge" data-customer-project-count>0 layihə</span>
+            </div>
+            <div class="cabinet-list" data-customer-projects></div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Sifarişlər</p>
+                <h2>Satınalma tarixçəsi</h2>
+              </div>
+              <a class="button button-secondary" href="checkout.html">Səbəti aç</a>
+            </div>
+            <div class="cabinet-list" data-customer-orders></div>
+          </div>
+
           <div class="admin-panel glass">
             <div class="market-section-heading">
               <div>
@@ -122,6 +206,17 @@
             </div>
             <div class="cabinet-product-grid" data-customer-compare></div>
           </div>
+
+          <div class="admin-panel glass portal-wide">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Bildirişlər</p>
+                <h2>Son hesab yenilikləri</h2>
+              </div>
+              <span class="data-badge">Canlı status</span>
+            </div>
+            <div class="cabinet-list cabinet-notification-grid" data-customer-notifications></div>
+          </div>
         </section>
       </main>
     </div>
@@ -130,6 +225,7 @@
     <script src="assets/js/taxonomy-expansion.js"></script>
     <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
     <script src="assets/js/marketplace.js"></script>
   </body>
 </html>

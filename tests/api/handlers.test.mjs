@@ -72,6 +72,13 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
   assert.equal(ordersResponse.statusCode, 401);
   assert.equal(ordersResponse.payload.error.code, "authentication_required");
 
+  for (const route of ["cabinet", "inventory"]) {
+    const response = createResponse();
+    await adminHandler({ method: "GET", headers: {}, query: { __route: route } }, response);
+    assert.equal(response.statusCode, 401, route);
+    assert.equal(response.payload.error.code, "authentication_required", route);
+  }
+
   const missingResponse = createResponse();
   await adminHandler({ method: "GET", headers: {}, query: { __route: "unknown" } }, missingResponse);
   assert.equal(missingResponse.statusCode, 404);

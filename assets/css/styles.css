@@ -2087,10 +2087,18 @@ dd {
   grid-template-rows: 164px 1fr auto auto;
 }
 
-.service-card,
-.rental-card {
+.service-card {
   display: grid;
   grid-template-rows: 1fr auto auto;
+}
+
+.rental-card {
+  display: grid;
+  grid-template-rows: 164px 1fr auto auto;
+}
+
+.rental-media img {
+  object-fit: contain;
 }
 
 .product-media {
@@ -2202,6 +2210,26 @@ dd {
   font-weight: 600;
 }
 
+.package-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.mini-badge.is-verified {
+  border-color: rgba(66, 194, 143, 0.36);
+  color: #bff5df;
+  background: rgba(66, 194, 143, 0.11);
+}
+
+.package-old-price {
+  text-decoration: line-through;
+}
+
 .taxonomy-subcategory-panel,
 .taxonomy-results {
   margin-top: 26px;
@@ -2276,6 +2304,10 @@ dd {
   color: #f4d99d;
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.product-card-footer .source-link + .source-link {
+  margin-left: 12px;
 }
 
 .price-label {
@@ -2799,6 +2831,29 @@ dd {
   justify-content: space-between;
 }
 
+.cabinet-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cabinet-item-actions .table-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.table-action.is-danger {
+  border-color: rgba(244, 100, 91, 0.3);
+  color: #ffc0bb;
+}
+
+.cabinet-notification-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .mini-badge {
   display: inline-flex;
   align-items: center;
@@ -3125,6 +3180,88 @@ dd {
   line-height: 1.55;
 }
 
+.admin-import-status[data-type="success"] {
+  color: #9fe0c4;
+}
+
+.admin-import-status[data-type="warning"] {
+  color: #f2cf88;
+}
+
+.admin-import-status[data-type="error"] {
+  color: #ffaaa2;
+}
+
+.inventory-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(220px, 0.6fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.inventory-table {
+  min-width: 1180px;
+}
+
+.inventory-table tr.is-dirty td {
+  background: rgba(212, 166, 79, 0.07);
+}
+
+.inventory-input {
+  width: 100%;
+  min-width: 108px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  outline: 0;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.inventory-input:focus {
+  border-color: rgba(212, 166, 79, 0.66);
+  box-shadow: 0 0 0 3px rgba(212, 166, 79, 0.08);
+}
+
+.inventory-source-input {
+  min-width: 230px;
+}
+
+.inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.price-history-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.price-history-item {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px;
+}
+
+.price-history-item strong {
+  color: #f6d78d;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.price-history-item span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .admin-backup-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
@@ -3315,6 +3452,16 @@ dd {
   .ai-smeta-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .inventory-toolbar,
+  .cabinet-notification-grid,
+  .price-history-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inventory-toolbar .button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 760px) {
@@ -3352,7 +3499,10 @@ dd {
   .rfq-summary-grid,
   .rfq-offer-grid,
   .taxonomy-chip-grid,
-  .rfq-form {
+  .rfq-form,
+  .inventory-toolbar,
+  .cabinet-notification-grid,
+  .price-history-list {
     grid-template-columns: 1fr;
   }
 
@@ -3421,6 +3571,10 @@ dd {
 
   .product-card {
     grid-template-rows: auto 1fr auto auto;
+  }
+
+  .rental-card {
+    grid-template-rows: 136px 1fr auto auto;
   }
 
   .product-media,
@@ -3557,6 +3711,16 @@ dd {
 
   .admin-table:not(.rfq-dashboard-table) td:last-child {
     border-bottom: 0;
+  }
+
+  .inventory-input,
+  .inventory-source-input {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .inventory-actions .table-action {
+    flex: 1 1 120px;
   }
 
   .status-actions {

@@ -23,7 +23,9 @@ const requiredProductionFiles = [
   "api/_admin/analytics.js",
   "api/_admin/audit.js",
   "api/_admin/backup.js",
+  "api/_admin/cabinet.js",
   "api/_admin/imports.js",
+  "api/_admin/inventory.js",
   "api/_admin/media.js",
   "api/_admin/notifications.js",
   "api/_admin/orders.js",
@@ -48,6 +50,15 @@ const requiredProductionFiles = [
   "db/migrations/005_admin_v2.sql",
   "db/migrations/006_commerce_search.sql",
   "db/migrations/007_supplier_portal.sql",
+  "db/migrations/008_customer_inventory_centers.sql",
+  "assets/data/azerbaycan-tikinti-temir-paketleri.json",
+  "assets/data/azerbaycan-tikinti-texnikasi-icaresi.json",
+  "assets/data/azerbaycan-tikinti-texnikasi-icaresi.csv",
+  "assets/images/equipment/avtokran-25t-xcmg.jpg",
+  "assets/images/equipment/mini-ekskavator-new-holland.jpg",
+  "assets/images/equipment/teleskopik-yukleyici.webp",
+  "assets/images/equipment/bekolader-jcb.webp",
+  "assets/images/equipment/tekerli-ekskavator-cat.webp",
   "service-worker.js"
 ];
 
