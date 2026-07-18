@@ -12,20 +12,21 @@ const requiredProductionFiles = [
   "api/health.js",
   "api/auth.js",
   "api/catalog.js",
+  "api/admin.js",
   "api/cron-price-freshness.js",
   "api/cron-notifications.js",
-  "api/account.js",
-  "api/users.js",
-  "api/categories.js",
-  "api/entities.js",
-  "api/analytics.js",
-  "api/audit.js",
-  "api/backup.js",
-  "api/imports.js",
-  "api/media.js",
-  "api/notifications.js",
-  "api/tenders.js",
-  "api/tender-bids.js",
+  "api/_admin/account.js",
+  "api/_admin/users.js",
+  "api/_admin/categories.js",
+  "api/_admin/entities.js",
+  "api/_admin/analytics.js",
+  "api/_admin/audit.js",
+  "api/_admin/backup.js",
+  "api/_admin/imports.js",
+  "api/_admin/media.js",
+  "api/_admin/notifications.js",
+  "api/_admin/tenders.js",
+  "api/_admin/tender-bids.js",
   "api/products.js",
   "api/suppliers.js",
   "api/rfqs.js",
@@ -43,6 +44,13 @@ const report = (collection, file, message) => collection.push(`${file}: ${messag
 requiredProductionFiles
   .filter((file) => !existsSync(resolve(root, file)))
   .forEach((file) => report(errors, file, "İstehsal infrastrukturu faylı tapılmadı."));
+
+const serverlessFunctionCount = readdirSync(resolve(root, "api"), { withFileTypes: true })
+  .filter((entry) => entry.isFile() && extname(entry.name) === ".js")
+  .length;
+if (serverlessFunctionCount > 12) {
+  report(errors, "api", `Vercel Hobby limiti aşılır: ${serverlessFunctionCount} funksiya (maksimum 12).`);
+}
 
 const getAttribute = (tag, name) => {
   const match = tag.match(new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));

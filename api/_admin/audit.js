@@ -1,7 +1,7 @@
-import { requireRole } from "./_lib/auth.js";
-import { query } from "./_lib/db.js";
-import { assertMethod, sendJson, withApiErrors } from "./_lib/http.js";
-import { parseLimit, text } from "./_lib/validation.js";
+import { requireRole } from "../_lib/auth.js";
+import { query } from "../_lib/db.js";
+import { assertMethod, sendJson, withApiErrors } from "../_lib/http.js";
+import { parseLimit, text } from "../_lib/validation.js";
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET"]);

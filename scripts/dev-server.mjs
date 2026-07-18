@@ -44,12 +44,16 @@ const readBody = (req) => new Promise((resolveBody, reject) => {
 const handleApi = async (req, res, url) => {
   const route = url.pathname.replace(/^\/api\//, "");
   if (!/^[a-z0-9-]+$/i.test(route)) return false;
-  const file = resolve(root, "api", `${route}.js`);
+  const directFile = resolve(root, "api", `${route}.js`);
+  const gatewayFile = resolve(root, "api", "admin.js");
+  const useGateway = !existsSync(directFile);
+  const file = useGateway ? gatewayFile : directFile;
   if (!existsSync(file)) return false;
 
   const bodyBuffer = ["GET", "HEAD"].includes(req.method) ? Buffer.alloc(0) : await readBody(req);
   req.body = bodyBuffer;
   req.query = Object.fromEntries(url.searchParams.entries());
+  if (useGateway) req.query.__route = route;
   req.url = `${url.pathname}${url.search}`;
   res.status = (code) => {
     res.statusCode = code;

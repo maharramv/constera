@@ -4,6 +4,20 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/account", "destination": "/api/admin?__route=account" },
+    { "source": "/api/analytics", "destination": "/api/admin?__route=analytics" },
+    { "source": "/api/audit", "destination": "/api/admin?__route=audit" },
+    { "source": "/api/backup", "destination": "/api/admin?__route=backup" },
+    { "source": "/api/categories", "destination": "/api/admin?__route=categories" },
+    { "source": "/api/entities", "destination": "/api/admin?__route=entities" },
+    { "source": "/api/imports", "destination": "/api/admin?__route=imports" },
+    { "source": "/api/media", "destination": "/api/admin?__route=media" },
+    { "source": "/api/notifications", "destination": "/api/admin?__route=notifications" },
+    { "source": "/api/tender-bids", "destination": "/api/admin?__route=tender-bids" },
+    { "source": "/api/tenders", "destination": "/api/admin?__route=tenders" },
+    { "source": "/api/users", "destination": "/api/admin?__route=users" }
+  ],
   "functions": {
     "api/*.js": {
       "maxDuration": 30

@@ -1,7 +1,7 @@
-import { requireRole } from "./_lib/auth.js";
-import { query, recordAudit } from "./_lib/db.js";
-import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, stableItemSlug, stringList, text } from "./_lib/validation.js";
+import { requireRole } from "../_lib/auth.js";
+import { query, recordAudit } from "../_lib/db.js";
+import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, stableItemSlug, stringList, text } from "../_lib/validation.js";
 
 const kinds = ["service", "package", "rental"];
 

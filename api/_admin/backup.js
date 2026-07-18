@@ -1,6 +1,6 @@
-import { requireRole } from "./_lib/auth.js";
-import { query, recordAudit } from "./_lib/db.js";
-import { assertMethod, sendJson, withApiErrors } from "./_lib/http.js";
+import { requireRole } from "../_lib/auth.js";
+import { query, recordAudit } from "../_lib/db.js";
+import { assertMethod, sendJson, withApiErrors } from "../_lib/http.js";
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET"]);

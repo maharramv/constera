@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import readXlsxFile from "read-excel-file/node";
-import { requireRole } from "./_lib/auth.js";
-import { query, recordAudit } from "./_lib/db.js";
-import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { matrixToObjects, parseCsv, readAliased, splitList } from "./_lib/imports.js";
-import { categoryPublicId, oneOf, parseLimit, parsePriceAmount, slugify, text } from "./_lib/validation.js";
-import { upsertEntities, upsertProducts } from "./sync.js";
+import { requireRole } from "../_lib/auth.js";
+import { query, recordAudit } from "../_lib/db.js";
+import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { matrixToObjects, parseCsv, readAliased, splitList } from "../_lib/imports.js";
+import { categoryPublicId, oneOf, parseLimit, parsePriceAmount, slugify, text } from "../_lib/validation.js";
+import { upsertEntities, upsertProducts } from "../sync.js";
 
 const importTypes = ["product", "service", "package", "rental"];
 

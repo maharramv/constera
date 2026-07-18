@@ -1,8 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { availableRoles, hashPassword, requireRole } from "./_lib/auth.js";
-import { query, recordAudit } from "./_lib/db.js";
-import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { email, oneOf, parseLimit, text } from "./_lib/validation.js";
+import { availableRoles, hashPassword, requireRole } from "../_lib/auth.js";
+import { query, recordAudit } from "../_lib/db.js";
+import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { email, oneOf, parseLimit, text } from "../_lib/validation.js";
 
 const editableStatuses = ["active", "invited", "suspended"];
 const lowerRoles = ["sales", "supplier", "customer"];

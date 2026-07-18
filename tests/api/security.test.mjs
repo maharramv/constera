@@ -4,7 +4,7 @@ import { hashOpaque, hashPassword, verifyPassword } from "../../api/_lib/auth.js
 import { ApiError, assertSameOrigin } from "../../api/_lib/http.js";
 import { matrixToObjects, parseCsv, readAliased } from "../../api/_lib/imports.js";
 import { categoryPublicId, categoryStorageId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug } from "../../api/_lib/validation.js";
-import { hasExpectedSignature } from "../../api/media.js";
+import { hasExpectedSignature } from "../../api/_admin/media.js";
 
 test("şifrə scrypt ilə heşlənir və yoxlanır", async () => {
   const hash = await hashPassword("CoxGucluSifre-2026!");

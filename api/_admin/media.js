@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { del, put } from "@vercel/blob";
-import { requireRole } from "./_lib/auth.js";
-import { query, recordAudit } from "./_lib/db.js";
-import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { oneOf, parseLimit, text } from "./_lib/validation.js";
+import { requireRole } from "../_lib/auth.js";
+import { query, recordAudit } from "../_lib/db.js";
+import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { oneOf, parseLimit, text } from "../_lib/validation.js";
 
 const entityTypes = ["product", "supplier", "service", "package", "rental", "general"];
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"]);

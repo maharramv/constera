@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import healthHandler from "../../api/health.js";
 import authHandler from "../../api/auth.js";
 import catalogHandler from "../../api/catalog.js";
+import adminHandler from "../../api/admin.js";
 
 const createResponse = () => ({
   headers: {},
@@ -58,3 +59,15 @@ test("kataloq endpoint-i baza qoşulmayanda idarə olunan 503 qaytarır", async 
   assert.equal(response.statusCode, 503);
   assert.equal(response.payload.error.code, "database_not_configured");
 }));
+
+test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönləndirir", async () => {
+  const protectedResponse = createResponse();
+  await adminHandler({ method: "GET", headers: {}, query: { __route: "analytics" } }, protectedResponse);
+  assert.equal(protectedResponse.statusCode, 401);
+  assert.equal(protectedResponse.payload.error.code, "authentication_required");
+
+  const missingResponse = createResponse();
+  await adminHandler({ method: "GET", headers: {}, query: { __route: "unknown" } }, missingResponse);
+  assert.equal(missingResponse.statusCode, 404);
+  assert.equal(missingResponse.payload.error.code, "admin_route_not_found");
+});
