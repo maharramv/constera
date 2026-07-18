@@ -43,6 +43,8 @@
   };
 
   const marketCategories = [
+    { id: "drywall-ceilings", group: "Tamamlama və dekor", subcategories: ["Sement əsaslı lövhə"] },
+    { id: "facade-systems", group: "Dam və fasad", subcategories: ["Fasad lövhəsi", "Fibrosement lövhə"] },
     { id: "tools", group: "Alətlər və sərfiyyat", subcategories: ["Drel və şurupbağlayan", "Perforator", "Elektrik mişarı", "Lobzik", "Cilalama maşını", "Kafel kəsici", "Boya püskürdücü", "İnşaat feni", "Neyler və stepler", "Qayka açan", "Açar dəsti", "Lehim aparatı", "Qaynaq avadanlığı", "Renovator"] },
     { id: "electrical", group: "Elektrik və zəif axın", subcategories: ["Rozetka və açarlar", "Uzadıcı və baraban", "Elektrik çəngəl", "Montaj kabeli", "CCTV kabel", "Şəbəkə kabeli", "Paylama bloku", "Rele və avtomatika", "Multimetr", "Gərginlik göstəricisi", "Elektrik qutusu", "Xamut və qövs"] },
     { id: "lighting", group: "Elektrik və zəif axın", subcategories: ["LED lampa", "LED lent", "LED projektor", "Spot işıq", "Trek işıq", "Divar lampası", "Günəş lampası", "Küçə çırağı", "Tavan paneli", "Fasad işığı"] },
@@ -1317,7 +1319,76 @@
     };
   });
 
-  const sourcedBrands = [...new Set([...birmarketProducts, ...officialProducts].map((product) => product.brand))]
+  const tvimRows = [
+    ["001", "A tip İzospan membranı", "İzospan", "insulation", "Membran", "1 m² / ədəd (dəqiqləşdirilməlidir)", 0.69, "Satışda", "https://tvim.az/image/cache/catalog/izospan_A-removebg-preview-240x240.png", "https://tvim.az/az/a-tip-i-zospan", ["Su və küləkdən qoruyucu membran", "Qiymət vahidi satıcı ilə dəqiqləşdirilməlidir"]],
+    ["002", "AF+ İzospan membranı", "İzospan", "insulation", "Membran", "1 m² / ədəd (dəqiqləşdirilməlidir)", 2.86, "Satışda", "https://tvim.az/image/cache/catalog/_af_1_-removebg-preview-240x240.png", "https://tvim.az/az/af-i-zospan", ["İstilik əks etdirən membran", "Qiymət vahidi satıcı ilə dəqiqləşdirilməlidir"]],
+    ["003", "Mr.Fix Akdeniz mavi fuga 1 kq", "Mr.Fix", "adhesives-sealants", "Fuga", "1 kq", 2.78, "Satışda", "https://tvim.az/image/cache/catalog/mrmrmrmrmrmrfix-240x240.png", "https://tvim.az/az/akdeniz-mavi-1kq-mr-fix", ["Kafel arası üçün rəngli fuga", "Akdeniz mavi rəng"]],
+    ["004", "Knauf Diamant alçıpan 12,5 × 2500 × 1200 mm", "Knauf", "drywall-ceilings", "Alçıpan lövhə", "1 lövhə", 19.4, "Sifarişlə", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Jun%2020,%202025,%2010_52_26%20AM-240x240.png", "https://tvim.az/az/alcipan-diamant-12-5x2500x1200mm-knauf", ["12,5 mm qalınlıq", "2500 × 1200 mm ölçü", "Məhsul kodu: YM08366"]],
+    ["005", "Gilan Knauf EKOGIP-A alçıpan 9,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Alçıpan lövhə", "1 lövhə", 3.1, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-ekogip-a-9-5x2500x1200mm-gilan-knauf", ["9,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["006", "Gilan Knauf EKOGIP-H3 nəmə davamlı alçıpan 9,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Yaşıl alçıpan", "1 lövhə", 3.45, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-ekogip-h3-9-5x2500x1200mm-gilan-knauf", ["Nəmə davamlı H3 lövhə", "9,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["007", "Gilan Knauf GKL alçıpan 9,5 mm, 1 lövhə = 3 m²", "Gilan Knauf", "drywall-ceilings", "Alçıpan lövhə", "1 lövhə / 3 m²", 3.83, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Jun%2020,%202025,%2010_38_17%20AM-240x240.png", "https://tvim.az/az/alcipan-gkl-9-5mm-1p-3m2-gilan-knauf", ["9,5 mm qalınlıq", "Bir lövhənin sahəsi 3 m²"]],
+    ["008", "Gilan Knauf GKL-A alçıpan 12,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Alçıpan lövhə", "1 lövhə", 3.85, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-gkl-a-12-5x2500x1200mm-gilan-knauf", ["12,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["009", "Gilan Knauf GKL-A alçıpan 9,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Alçıpan lövhə", "1 lövhə", 3.35, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-gkl-a-9-5x2500x1200mm-gilan-knauf", ["9,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["010", "Gilan Knauf GKL-DFIR yanğına davamlı alçıpan 12,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Yanğına davamlı alçıpan", "1 lövhə", 4.45, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-gkl-dfir-12-5x2500x1200mm-gilan-knauf", ["Yanğına davamlı DFIR lövhə", "12,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["011", "Gilan Knauf GKL-H2 nəmə davamlı alçıpan 12,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Yaşıl alçıpan", "1 lövhə", 4.2, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-gkl-h2-12-5x2500x1200mm-gilan-knauf", ["Nəmə davamlı H2 lövhə", "12,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["012", "Gilan Knauf GKL-H2 nəmə davamlı alçıpan 9,5 × 2500 × 1200 mm", "Gilan Knauf", "drywall-ceilings", "Yaşıl alçıpan", "1 lövhə", 3.7, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Aug%209,%202025,%2001_41_32%20PM-240x240.png", "https://tvim.az/az/alcipan-gkl-h2-9-5x2500x1200mm-gilan-knauf", ["Nəmə davamlı H2 lövhə", "9,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["013", "Primet C tipli alçıpan profili", "Primet", "drywall-ceilings", "CD/UD profil", "1 ədəd", 1.5, "Satışda", "https://tvim.az/image/cache/catalog/duvar-u-alcipan-profil-50mm-3-mt-e7092a-500x500-240x240.webp", "https://tvim.az/az/alcipan-profili-c-primet", ["C tipli karkas profili", "Ölçü satıcı ilə dəqiqləşdirilməlidir"]],
+    ["014", "Primet U tipli alçıpan profili", "Primet", "drywall-ceilings", "CD/UD profil", "1 ədəd", 0.9, "Satışda", "https://tvim.az/image/cache/catalog/duvar-u-alcipan-profil-50mm-3-mt-e7092a-240x240.webp", "https://tvim.az/az/alcipan-profili-u-primet", ["U tipli karkas profili", "Ölçü satıcı ilə dəqiqləşdirilməlidir"]],
+    ["015", "Knauf Sapfir alçıpan 12,5 × 2500 × 1200 mm", "Knauf", "drywall-ceilings", "Alçıpan lövhə", "1 lövhə", 8.25, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Jun%2020,%202025,%2010_52_26%20AM-240x240.png", "https://tvim.az/az/alcipan-sapfir-12-5x2500x1200mm-knauf", ["12,5 mm qalınlıq", "2500 × 1200 mm ölçü"]],
+    ["016", "AQ Proff İzospan membranı", "İzospan", "insulation", "Membran", "1 m² / ədəd (dəqiqləşdirilməlidir)", 2.3, "Satışda", "https://tvim.az/image/cache/catalog/_aq-kopiya__1_-removebg-preview-240x240.png", "https://tvim.az/az/aq-proff-i-zospan", ["Peşəkar su və külək izolyasiya membranı", "Qiymət vahidi satıcı ilə dəqiqləşdirilməlidir"]],
+    ["017", "Knauf Aquapanel Indoor 1200 × 2400 × 12,5 mm", "Knauf", "drywall-ceilings", "Sement əsaslı lövhə", "1 lövhə", 27, "Satışda", "https://tvim.az/image/cache/catalog/Aquapanel0000000-240x240.png", "https://tvim.az/az/aquapanel-i-ndoor-knauf-1200x2400-12-5mm", ["Sement əsaslı daxili lövhə", "1200 × 2400 × 12,5 mm", "Məhsul kodu: YM08522"]],
+    ["018", "Knauf Aquapanel Outdoor 1200 × 2400 × 12,5 mm", "Knauf", "drywall-ceilings", "Sement əsaslı lövhə", "1 lövhə", 28, "Satışda", "https://tvim.az/image/cache/catalog/aquout-240x240.jpeg", "https://tvim.az/az/aquapanel-out-knauf-1200x2400-12-5mm", ["Sement əsaslı xarici lövhə", "1200 × 2400 × 12,5 mm"]],
+    ["019", "Knauf Aquapanel Universal 900 × 1200 × 8 mm", "Knauf", "drywall-ceilings", "Sement əsaslı lövhə", "1 lövhə", 20, "Satışda", "https://tvim.az/image/cache/catalog/c87de45d-2861-48e0-ac2a-901839e5992a-removebg-preview-240x240.png", "https://tvim.az/az/aquapanel-universal-knauf-900x1200-8mm", ["Universal sement əsaslı lövhə", "900 × 1200 × 8 mm"]],
+    ["020", "AS 130 Proff İzospan membranı", "İzospan", "insulation", "Membran", "1 m² / ədəd (dəqiqləşdirilməlidir)", 1.55, "Satışda", "https://tvim.az/image/cache/catalog/100.-removebg-preview-240x240.png", "https://tvim.az/az/as-130-proff-izospan", ["Peşəkar diffuziya membranı", "Qiymət vahidi satıcı ilə dəqiqləşdirilməlidir"]],
+    ["021", "Dalsan Boardex fasad lövhəsi 1200 × 2400 × 12,5 mm", "Dalsan", "facade-systems", "Fasad lövhəsi", "1 lövhə", 19.79, "Satışda", "https://tvim.az/image/cache/catalog/boardex-240x240.png", "https://tvim.az/az/boardex-1200x2400-12-5mm-dalsan", ["Fasad və nəm zonalar üçün lövhə", "1200 × 2400 × 12,5 mm"]],
+    ["022", "Hekimboard fibrosement Betopan 1250 × 2500 × 8 mm", "Hekimboard", "facade-systems", "Fibrosement lövhə", "1 lövhə", 48.35, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%205%20Eyl%202025%2009_42_02-240x240.png", "https://tvim.az/az/fibrosement-lovheleri-betopan-1250x2500x8mm-hekimboard", ["Fibrosement lövhə", "1250 × 2500 × 8 mm"]],
+    ["023", "Hekimboard fibrosement Betopan 1250 × 2500 × 10 mm", "Hekimboard", "facade-systems", "Fibrosement lövhə", "1 lövhə", 58, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%205%20Eyl%202025%2009_42_02-240x240.png", "https://tvim.az/az/fibrosement-lovheleri-betopan-1250x2500x10mm-hekimboard", ["Fibrosement lövhə", "1250 × 2500 × 10 mm"]],
+    ["024", "Hekimboard fibrosement Betopan 1250 × 2500 × 12 mm", "Hekimboard", "facade-systems", "Fibrosement lövhə", "1 lövhə", 70, "Satışda", "https://tvim.az/image/cache/catalog/ChatGPT%20Image%205%20Eyl%202025%2009_42_02-240x240.png", "https://tvim.az/az/fibrosement-lovheleri-betopan-1250x2500x12mm-hekimboard", ["Fibrosement lövhə", "1250 × 2500 × 12 mm"]],
+    ["025", "Knauf Guardex fasad lövhəsi 1200 × 2400 × 12,5 mm", "Knauf", "facade-systems", "Fasad lövhəsi", "1 lövhə", 19.5, "Satışda", "https://tvim.az/image/cache/catalog/89oCOglyj6pibEII-240x240.jpeg", "https://tvim.az/az/guardex-knauf-1200x2400-12-5mm", ["Xarici divar və fasad üçün lövhə", "1200 × 2400 × 12,5 mm"]],
+    ["026", "Mətanət A Parakontakt astarı 20 kq", "Mətanət A", "construction-chemicals", "Astar və primer", "20 kq", 40, "Satışda", "https://tvim.az/image/cache/catalog/products-97-240x240.webp", "https://tvim.az/az/parakontakt-20kq-metanet-a", ["Beton səthlər üçün kontakt astar", "20 kq qablaşdırma"]],
+    ["027", "Panda Panplus Premium ağ interyer boyası 25 kq / 15 L", "Panda", "paints", "Interyer boya", "25 kq / 15 L", 85.5, "Satışda", "https://tvim.az/image/cache/catalog/1745301874_gLo26ualaW-240x240.jpg", "https://tvim.az/az/panplus-premium-ic-cebhe-boyasi-ag-25kq-15l-panda", ["Ağ, mat interyer boyası", "25 kq / 15 L qablaşdırma"]],
+    ["028", "Panda Panakril mat fasad boyası 3,5 kq", "Panda", "paints", "Eksteryer boya", "3,5 kq", 12.1, "Satışda", "", "https://tvim.az/az/panakril-fasad-mat-3-5kq-panda", ["Mat fasad boyası", "3,5 kq qablaşdırma", "Mənbədə yalnız placeholder şəkil göstərilir"]],
+    ["029", "Turkaz şəffaf akvarium silikonu 280 ml", "Turkaz", "construction-chemicals", "Silikon", "280 ml", 7.5, "Satışda", "https://tvim.az/image/cache/catalog/75e8e6e4-5500-4d75-9681-b864e1577eee-240x240.jpg", "https://tvim.az/az/akvarium-silikonu-280ml-seffaf-turkaz", ["Şəffaf akvarium silikonu", "280 ml patron"]],
+    ["030", "Metylan Premium Universal oboy yapışqanı 500 q", "Metylan", "wall-decor", "Oboy yapışqanı", "500 q", 15.5, "Satışda", "https://tvim.az/image/cache/catalog/235390-5813cc9b063df60d34d4029cf21857a4-240x240.webp", "https://tvim.az/az/oboy-kleyi-premium-universal-500qr-metylan", ["Universal divar kağızı yapışqanı", "500 q qablaşdırma"]],
+    ["031", "METAK PP kanalizasiya borusu Ø75, 50 sm", "METAK", "drainage-sewer", "Kanalizasiya borusu", "1 ədəd", 2.13, "Satışda", "https://tvim.az/image/cache/catalog/ff6a6764-2b5d-4921-9c41-61b38faf565a-removebg-preview-240x240.png", "https://tvim.az/az/pp-boru-75-50sm-metak", ["Ø75 mm PP boru", "50 sm uzunluq"]],
+    ["032", "METAK PP üçlük Ø110, 90°", "METAK", "plumbing", "Fitinqlər", "1 ədəd", 2.62, "Satışda", "https://tvim.az/image/cache/catalog/eecc7aa3-a770-436c-aec1-615cdd6213e5-removebg-preview-240x240.png", "https://tvim.az/az/pp-ucluk-110-90-metak", ["Ø110 mm PP üçlük", "90° bucaq"]],
+    ["033", "METAK PPRC amerikanka iç diş 25 × 25", "METAK", "plumbing", "Fitinqlər", "1 ədəd", 2.62, "Satışda", "https://tvim.az/image/cache/catalog/metakkkkkkkkk-240x240.png", "https://tvim.az/az/pprc-amerikanka-i-c-dis-25x25-metak", ["PPRC birləşdirici", "İç diş 25 × 25"]],
+    ["034", "Fırat 5 çıxışlı kollektor", "Fırat", "plumbing", "Kollektor", "1 ədəd", 90, "Satışda", "https://tvim.az/image/cache/catalog/WhatsApp_G%C3%B6rsel_2025-06-24_saat_11.39.50_87b32c78-removebg-preview-240x240.png", "https://tvim.az/az/kollektor-5-cixisli-firat", ["5 çıxışlı su kollektoru", "Fitinq ölçüləri satıcı ilə dəqiqləşdirilməlidir"]],
+    ["035", "Gold Banyo BO 607 unitaz", "Gold Banyo", "sanitary-ware", "Döşəmə unitaz", "1 ədəd", 175, "Satışda", "https://tvim.az/image/cache/catalog/tm-dg-snt-1119-cm-0021_1-240x240.webp", "https://tvim.az/az/unitaz-bo-607-gold-banyo", ["BO 607 model döşəmə unitazı", "Komplektasiya satıcı ilə dəqiqləşdirilməlidir"]],
+    ["036", "Derya keramik lavabo 55 sm", "Derya", "sanitary-ware", "Lavabo", "1 ədəd", 65, "Satışda", "", "https://tvim.az/", ["55 sm keramik lavabo", "Birbaşa məhsul səhifəsi və foto yenidən yoxlanmalıdır"]],
+    ["037", "Bosch GSB 600 zərbəli drel", "Bosch", "tools", "Drel", "1 ədəd", 90, "Satışda", "https://tvim.az/image/cache/catalog/827136-fd02f2a7fbfad48eacbfb1d4d67e73a6-240x240.webp", "https://tvim.az/az/drel-gsb-600-bosch", ["GSB 600 model zərbəli drel", "Şəbəkədən qidalanma"]],
+    ["038", "Bosch GSB 13 RE zərbəli drel", "Bosch", "tools", "Drel", "1 ədəd", 140, "Satışda", "https://tvim.az/image/cache/catalog/impact-drill-gsb-13-re-6634-1000x1000-240x240.webp", "https://tvim.az/az/drel-gsb-13-re-bosch", ["GSB 13 RE model zərbəli drel", "Sürət tənzimlənməsi"]],
+    ["039", "INGCO ID8508-2 drel 850 W", "INGCO", "tools", "Drel", "1 ədəd", 73.92, "Satışda", "https://tvim.az/image/cache/catalog/923da399-f6c1-11e7-a01d-000c29bb375f-240x240.webp", "https://tvim.az/az/drel-850w-ingco", ["850 W güc", "Model: ID8508-2"]],
+    ["040", "INGCO HLL306505 lazer səviyyə 30 m", "INGCO", "measuring-surveying", "Lazer nivelir", "1 ədəd", 171, "Satışda", "", "https://tvim.az/", ["30 m iş məsafəsi", "Model: HLL306505", "Birbaşa məhsul səhifəsi və foto yenidən yoxlanmalıdır"]]
+  ];
+
+  const tvimProducts = tvimRows.map(([sku, name, brand, category, subcategory, packageText, price, availability, imageUrl, sourceUrl, specs]) => ({
+    id: "tvim-20260718-" + sku,
+    sku: "TVIM-20260718-" + sku,
+    name,
+    brand,
+    category,
+    subcategory,
+    supplier: "TVIM",
+    origin: "Azərbaycan bazarı / idxal",
+    package: packageText,
+    price: Number(price).toLocaleString("az-AZ", { minimumFractionDigits: Number.isInteger(price) ? 0 : 2, maximumFractionDigits: 2 }) + " AZN",
+    priceAmount: price,
+    priceCurrency: "AZN",
+    priceNote: "TVIM pərakəndə qiyməti, 18.07.2026 tarixində yoxlanılıb; stok, ƏDV və çatdırılma sifarişdən əvvəl təsdiqlənməlidir",
+    priceStatus: "confirmed",
+    priceVerifiedAt: "2026-07-18T00:00:00.000Z",
+    imageUrl,
+    sourceUrl,
+    sourceLabel: sourceUrl === "https://tvim.az/" ? "TVIM kataloqu" : "TVIM məhsul səhifəsi",
+    availability,
+    specs: [
+      ...specs,
+      "Pərakəndə qiymət; topdan sifariş və çatdırılma ayrıca təsdiqlənir"
+    ]
+  }));
+
+  const sourcedBrands = [...new Set([...birmarketProducts, ...officialProducts, ...tvimProducts].map((product) => product.brand))]
     .filter(Boolean)
     .map((brand, index) => ({
       id: slugify(brand) || "market-brand-" + String(index + 1).padStart(2, "0"),
@@ -1331,6 +1402,7 @@
   appendUnique("brands", sourcedBrands);
   appendUnique("products", officialProducts);
   appendUnique("products", birmarketProducts);
+  appendUnique("products", tvimProducts);
 
   const existingProductKeys = new Set((data.products || []).map((item) => item.category + "::" + item.subcategory));
   const generatedMarketProducts = [];
@@ -1363,11 +1435,12 @@
   });
   appendUnique("products", generatedMarketProducts);
 
-  data.updatedAt = "2026-07-11";
+  data.updatedAt = "2026-07-18";
   data.marketSourceSummary = {
-    updatedAt: "2026-07-11",
+    updatedAt: "2026-07-18",
     birmarketProducts: birmarketProducts.length,
     officialProducts: officialProducts.length,
+    tvimProducts: tvimProducts.length,
     generatedRfqProducts: generatedMarketProducts.length,
     note: "Qiymətlər açıq mənbələrdən götürülüb və dəyişə bilər. Sifarişdən əvvəl təchizatçı təsdiqi lazımdır. Şəkillər xarici mənbə URL-ləri kimi saxlanılıb."
   };

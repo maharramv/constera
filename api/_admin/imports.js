@@ -3,7 +3,7 @@ import readXlsxFile from "read-excel-file/node";
 import { requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
-import { matrixToObjects, parseCsv, readAliased, splitList } from "../_lib/imports.js";
+import { firstWorksheetMatrix, matrixToObjects, normalizeXlsxForImport, parseCsv, readAliased, splitList } from "../_lib/imports.js";
 import { categoryPublicId, oneOf, parseLimit, parsePriceAmount, slugify, text } from "../_lib/validation.js";
 import { upsertEntities, upsertProducts } from "../sync.js";
 
@@ -16,9 +16,18 @@ const decodeRows = async (body) => {
   const buffer = Buffer.from(encoded.replace(/^data:[^;]+;base64,/, ""), "base64");
   if (!buffer.length || buffer.length > 3_000_000) throw new ApiError(413, "file_too_large", "İdxal faylı maksimum 3 MB ola bilər.");
   const filename = text(body.filename, { max: 240 }).toLowerCase();
-  const matrix = filename.endsWith(".xlsx") || body.fileType === "xlsx"
-    ? await readXlsxFile(buffer)
-    : parseCsv(buffer.toString("utf8"));
+  let matrix;
+  if (filename.endsWith(".xlsx") || body.fileType === "xlsx") {
+    try {
+      matrix = firstWorksheetMatrix(await readXlsxFile(buffer, { sheets: [1] }));
+    } catch (error) {
+      const normalized = normalizeXlsxForImport(buffer);
+      if (normalized === buffer) throw error;
+      matrix = firstWorksheetMatrix(await readXlsxFile(normalized, { sheets: [1] }));
+    }
+  } else {
+    matrix = parseCsv(buffer.toString("utf8"));
+  }
   return matrixToObjects(matrix).slice(0, 1_000);
 };
 
