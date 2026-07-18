@@ -1,13 +1,13 @@
 import { query } from "./_lib/db.js";
 import { assertMethod, sendJson, withApiErrors } from "./_lib/http.js";
-import { parseLimit, text } from "./_lib/validation.js";
+import { categoryPublicId, categoryStorageId, parseLimit, text } from "./_lib/validation.js";
 
 const mapProduct = (row) => ({
   id: row.id,
   sku: row.sku,
   name: row.name,
   brand: row.brand,
-  category: row.category_id,
+  category: categoryPublicId(row.category_id),
   subcategory: row.subcategory,
   package: row.package_text || "Sorğu ilə",
   origin: row.origin || "Azərbaycan/İdxal",
@@ -37,7 +37,7 @@ export default withApiErrors(async (req, res) => {
     where.push(`(p.name ILIKE $${values.length} OR p.sku ILIKE $${values.length} OR p.brand ILIKE $${values.length} OR p.subcategory ILIKE $${values.length})`);
   }
   if (category) {
-    values.push(category);
+    values.push(categoryStorageId("material", category));
     where.push(`p.category_id = $${values.length}`);
   }
   values.push(limit);
@@ -53,7 +53,7 @@ export default withApiErrors(async (req, res) => {
   ]);
 
   const parentCategories = categoryRows.filter((item) => !item.parent_id).map((parent) => ({
-    id: parent.id,
+    id: categoryPublicId(parent.id),
     kind: parent.kind,
     title: parent.title,
     subtitle: parent.subtitle || "",

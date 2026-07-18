@@ -6,3 +6,5 @@ dist/
 .env.local
 .env.*.local
 !.env.example
+.agents/
+skills-lock.json

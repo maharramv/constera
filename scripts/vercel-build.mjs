@@ -99,7 +99,7 @@ staticEntries.forEach((entry) => {
   "project3.png"
 ].forEach((file) => rmSync(`dist/assets/images/${file}`, { force: true }));
 
-const siteOrigin = "https://constera.ru";
+const siteOrigin = "https://constera.az";
 const dataContext = { window: {}, console };
 vm.createContext(dataContext);
 [

@@ -1,7 +1,7 @@
 import { requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { entityId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stringList, text } from "./_lib/validation.js";
+import { categoryStorageId, entityId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug, stringList, text } from "./_lib/validation.js";
 
 const limitArray = (value, limit, label) => {
   if (!Array.isArray(value)) return [];
@@ -21,7 +21,8 @@ const normalizeCategoryRows = (categories, kind) => {
   const parents = [];
   const children = [];
   categories.forEach((category, index) => {
-    const id = entityId(category.id, `${kind}-category`);
+    const sourceId = entityId(category.id, `${kind}-category`);
+    const id = categoryStorageId(kind, sourceId);
     const title = text(category.title, { field: "Kateqoriya adı", required: true, max: 200 });
     const groupName = text(category.group, { max: 160 }) || "Ümumi";
     parents.push({
@@ -29,7 +30,7 @@ const normalizeCategoryRows = (categories, kind) => {
       parentId: null,
       kind,
       title,
-      slug: slugify(category.slug || id || title),
+      slug: slugify(category.slug || sourceId || title),
       subtitle: text(category.subtitle, { max: 500 }),
       groupName,
       sortOrder: index
@@ -40,7 +41,7 @@ const normalizeCategoryRows = (categories, kind) => {
         parentId: id,
         kind,
         title: subcategory,
-        slug: `${slugify(id)}-${slugify(subcategory)}`.slice(0, 220),
+        slug: `${slugify(sourceId)}-${slugify(subcategory)}`.slice(0, 220),
         subtitle: "",
         groupName,
         sortOrder: subIndex
@@ -123,7 +124,7 @@ const upsertProducts = async (products) => {
       name,
       slug: slugify(product.slug || name),
       brand: text(product.brand, { max: 160 }) || "Brendsiz",
-      categoryId: text(product.category, { field: "Kateqoriya", required: true, max: 160 }),
+      categoryId: categoryStorageId("material", text(product.category, { field: "Kateqoriya", required: true, max: 160 })),
       subcategory: text(product.subcategory, { max: 200 }) || "Ümumi",
       packageText: text(product.package, { max: 160 }),
       origin: text(product.origin, { max: 160 }),
@@ -184,13 +185,14 @@ const upsertEntities = async (kind, items) => {
   const rows = items.map((item) => {
     const titleValue = item.title || item.name;
     const title = text(titleValue, { field: "Kart adı", required: true, max: 260 });
+    const id = entityId(item.id, kind);
     return {
-      id: entityId(item.id, kind),
+      id,
       entityKind: kind,
-      categoryId: text(item.category, { max: 160 }) || null,
+      categoryId: item.category ? categoryStorageId(kind, text(item.category, { max: 160 })) : null,
       subcategory: text(item.subcategory, { max: 200 }) || "Ümumi",
       title,
-      slug: slugify(title),
+      slug: stableItemSlug(title, id),
       unit: text(item.unit, { max: 160 }),
       priceText: text(item.price, { max: 160 }) || "Sorğu əsasında",
       extraData: item

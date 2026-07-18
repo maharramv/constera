@@ -5,7 +5,7 @@
   "type": "module",
   "description": "ConstEra Korporativ v2 statik bazar platforması.",
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "scripts": {
     "build": "npm run vercel-build",

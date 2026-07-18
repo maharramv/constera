@@ -62,8 +62,8 @@ for (const file of htmlFiles) {
   if (!/<meta\b[^>]*\bname=["']robots["'][^>]*\bcontent=["'](?:index|noindex),\s*(?:follow|nofollow)["'][^>]*>/i.test(html)) {
     report(errors, file, "robots meta teqi yoxdur və ya düzgün deyil.");
   }
-  if (!/<link\b[^>]*\brel=["']canonical["'][^>]*\bhref=["']https:\/\/[^"']+["'][^>]*>/i.test(html)) {
-    report(errors, file, "HTTPS canonical link tapılmadı.");
+  if (!/<link\b[^>]*\brel=["']canonical["'][^>]*\bhref=["']https:\/\/constera\.az(?:\/[^"']*)?["'][^>]*>/i.test(html)) {
+    report(errors, file, "constera.az domeninə canonical link tapılmadı.");
   }
 
   const title = html.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1].trim();
@@ -173,11 +173,18 @@ try {
 }
 
 const envTemplate = readFileSync(join(root, ".env.example"), "utf8");
-["DATABASE_URL", "ADMIN_SETUP_TOKEN", "CRON_SECRET"].forEach((key) => {
+["DATABASE_URL", "ADMIN_SETUP_TOKEN", "CRON_SECRET", "APP_ORIGIN"].forEach((key) => {
   if (!new RegExp(`^${key}=`, "m").test(envTemplate)) report(errors, ".env.example", `${key} dəyişəni tapılmadı.`);
 });
 
+if (!/^APP_ORIGIN=https:\/\/constera\.az$/m.test(envTemplate)) {
+  report(errors, ".env.example", "APP_ORIGIN istehsal domeni https://constera.az olmalıdır.");
+}
+
 const sitemap = readFileSync(join(root, "sitemap.xml"), "utf8");
+if (/<loc>https:\/\/(?!constera\.az\/)/i.test(sitemap)) {
+  report(errors, "sitemap.xml", "Sitemap yalnız constera.az domenindən istifadə etməlidir.");
+}
 for (const match of sitemap.matchAll(/<loc>https:\/\/[^/]+\/(.*?)<\/loc>/g)) {
   const target = match[1] || "index.html";
   if (target && !existsSync(resolve(root, target))) report(errors, "sitemap.xml", `Səhifə tapılmadı: ${target}.`);

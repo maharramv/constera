@@ -64,6 +64,20 @@ export const entityId = (value, prefix = "item") => {
   return `${prefix}-${randomUUID()}`;
 };
 
+const categoryKinds = new Set(["material", "service", "package", "rental"]);
+
+export const categoryStorageId = (kind, value) => {
+  const normalizedKind = categoryKinds.has(kind) ? kind : "material";
+  const publicId = String(value || "").replace(/^(?:material|service|package|rental):/, "");
+  return `${normalizedKind}:${entityId(publicId, `${normalizedKind}-category`)}`;
+};
+
+export const categoryPublicId = (value) =>
+  String(value || "").replace(/^(?:material|service|package|rental):/, "");
+
+export const stableItemSlug = (title, id) =>
+  `${slugify(title)}-${slugify(id)}`.slice(0, 220);
+
 export const stringList = (value, maxItems = 30) => {
   const items = Array.isArray(value) ? value : String(value || "").split(/[;|]/);
   return items.slice(0, maxItems).map((item) => text(item, { max: 300 })).filter(Boolean);

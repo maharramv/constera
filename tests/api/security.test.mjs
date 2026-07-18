@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { hashOpaque, hashPassword, verifyPassword } from "../../api/_lib/auth.js";
 import { ApiError, assertSameOrigin } from "../../api/_lib/http.js";
-import { parsePriceAmount, safeMediaUrl, safeUrl, slugify } from "../../api/_lib/validation.js";
+import { categoryPublicId, categoryStorageId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug } from "../../api/_lib/validation.js";
 
 test("şifrə scrypt ilə heşlənir və yoxlanır", async () => {
   const hash = await hashPassword("CoxGucluSifre-2026!");
@@ -16,9 +16,9 @@ test("qısa şifrə qəbul edilmir", async () => {
 });
 
 test("origin yoxlaması fərqli domeni rədd edir", () => {
-  assert.doesNotThrow(() => assertSameOrigin({ headers: { origin: "https://constera.ru", host: "constera.ru" } }));
+  assert.doesNotThrow(() => assertSameOrigin({ headers: { origin: "https://constera.az", host: "constera.az" } }));
   assert.throws(
-    () => assertSameOrigin({ headers: { origin: "https://example.com", host: "constera.ru" } }),
+    () => assertSameOrigin({ headers: { origin: "https://example.com", host: "constera.az" } }),
     (error) => error instanceof ApiError && error.code === "origin_rejected"
   );
 });
@@ -35,4 +35,17 @@ test("qiymət, slug və opaque heş deterministikdir", () => {
   assert.equal(parsePriceAmount("Sorğu əsasında"), null);
   assert.equal(slugify("Boya və örtüklər"), "boya-ve-ortukler");
   assert.equal(hashOpaque("test"), hashOpaque("test"));
+});
+
+test("eyni açıq kateqoriya ID-si növlər üzrə bazada toqquşmur", () => {
+  assert.equal(categoryStorageId("material", "concrete-equipment"), "material:concrete-equipment");
+  assert.equal(categoryStorageId("rental", "concrete-equipment"), "rental:concrete-equipment");
+  assert.equal(categoryPublicId("rental:concrete-equipment"), "concrete-equipment");
+});
+
+test("eyni adlı bazar kartları fərqli sabit slug alır", () => {
+  const first = stableItemSlug("Sənaye döşəməsi xidməti", "service-floor-a");
+  const second = stableItemSlug("Sənaye döşəməsi xidməti", "service-floor-b");
+  assert.notEqual(first, second);
+  assert.equal(first, "senaye-dosemesi-xidmeti-service-floor-a");
 });

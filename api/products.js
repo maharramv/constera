@@ -1,7 +1,7 @@
 import { query, recordAudit } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { entityId, oneOf, parseLimit, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stringList, text } from "./_lib/validation.js";
+import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stringList, text } from "./_lib/validation.js";
 
 const productFields = `id, sku, name, slug, brand, category_id, subcategory, package_text, origin,
   supplier_name, price_amount, price_currency, price_text, price_note, price_status, availability,
@@ -13,7 +13,7 @@ const mapProduct = (row) => ({
   name: row.name,
   slug: row.slug,
   brand: row.brand,
-  category: row.category_id,
+  category: categoryPublicId(row.category_id),
   subcategory: row.subcategory,
   package: row.package_text || "",
   origin: row.origin || "",
@@ -50,7 +50,7 @@ const normalizeProduct = (body) => {
     name,
     slug: slugify(body.slug || name),
     brand: text(body.brand, { field: "Brend", max: 160 }) || "Brendsiz",
-    category: text(body.category, { field: "Kateqoriya", required: true, max: 160 }),
+    category: categoryStorageId("material", text(body.category, { field: "Kateqoriya", required: true, max: 160 })),
     subcategory: text(body.subcategory, { field: "Subkateqoriya", required: true, max: 200 }),
     packageText: text(body.package, { field: "Qablaşdırma", max: 160 }),
     origin: text(body.origin, { field: "Mənşə", max: 160 }),

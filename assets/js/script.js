@@ -1,4 +1,4 @@
-const siteOrigin = "https://constera.ru";
+const siteOrigin = "https://constera.az";
 
 const upsertMeta = (selector, attributes) => {
   let tag = document.head.querySelector(selector);
