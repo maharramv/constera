@@ -1,8 +1,9 @@
 import "./load-local-env.mjs";
 import { createServer } from "node:http";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { extname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { renderSitePage } from "./site-shell.mjs";
 
 const root = resolve(".");
 const port = Number(process.env.PORT || 3000);
@@ -80,8 +81,14 @@ const handleStatic = (req, res, url) => {
     return;
   }
   res.statusCode = 200;
-  res.setHeader("Content-Type", mimeTypes[extname(file).toLowerCase()] || "application/octet-stream");
+  const extension = extname(file).toLowerCase();
+  res.setHeader("Content-Type", mimeTypes[extension] || "application/octet-stream");
   res.setHeader("Cache-Control", "no-store");
+  if (extension === ".html") {
+    const rendered = renderSitePage(readFileSync(file, "utf8"), { file: localPath });
+    res.setHeader("Content-Length", Buffer.byteLength(rendered));
+    return res.end(req.method === "HEAD" ? undefined : rendered);
+  }
   if (req.method === "HEAD") return res.end();
   createReadStream(file).pipe(res);
 };

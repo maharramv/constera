@@ -1,5 +1,6 @@
 import { accessSync, constants, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import vm from "node:vm";
+import { renderSitePage, siteShellTemplateFiles } from "./site-shell.mjs";
 
 const requiredFiles = [
   "index.html",
@@ -31,7 +32,9 @@ const requiredFiles = [
   "assets/js/azerbaijan-real-products.js",
   "assets/js/production.js",
   "assets/js/admin-v2.js",
-  "assets/js/marketplace.js"
+  "assets/js/marketplace.js",
+  "scripts/site-shell.mjs",
+  ...siteShellTemplateFiles
 ];
 
 const staticEntries = [
@@ -89,6 +92,13 @@ staticEntries.forEach((entry) => {
     // Könüllü fayllar statik ixracı dayandırmadan buraxıla bilər.
   }
 });
+
+staticEntries
+  .filter((entry) => entry.endsWith(".html"))
+  .forEach((entry) => {
+    const rendered = renderSitePage(readFileSync(entry, "utf8"), { file: entry });
+    writeFileSync(`dist/${entry}`, rendered);
+  });
 
 [
   "AdvancedManufacturing.png",

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import vm from "node:vm";
+import { renderSitePage, siteShellTemplateFiles } from "./site-shell.mjs";
 
 const root = process.cwd();
 const htmlFiles = readdirSync(root).filter((file) => extname(file) === ".html").sort();
@@ -32,6 +33,11 @@ const requiredProductionFiles = [
   "api/rfqs.js",
   "api/offers.js",
   "api/sync.js",
+  "scripts/site-shell.mjs",
+  ...siteShellTemplateFiles,
+  "playwright.config.mjs",
+  "tests/layout/site-layout.spec.mjs",
+  "docs/quality-workflow.yml",
   "db/migrations/001_initial.sql",
   "db/migrations/002_indexes.sql",
   "db/migrations/003_marketplace_entities.sql",
@@ -70,7 +76,10 @@ const resolveLocalReference = (sourceFile, value) => {
   return normalize(relative);
 };
 
-const htmlByFile = new Map(htmlFiles.map((file) => [file, readFileSync(join(root, file), "utf8")]));
+const htmlByFile = new Map(htmlFiles.map((file) => {
+  const source = readFileSync(join(root, file), "utf8");
+  return [file, renderSitePage(source, { file })];
+}));
 
 for (const file of htmlFiles) {
   const html = htmlByFile.get(file);
@@ -86,6 +95,10 @@ for (const file of htmlFiles) {
   }
   if (!/<link\b[^>]*\brel=["']canonical["'][^>]*\bhref=["']https:\/\/constera\.az(?:\/[^"']*)?["'][^>]*>/i.test(html)) {
     report(errors, file, "constera.az domeninə canonical link tapılmadı.");
+  }
+  if (!/<header\b[^>]*\bdata-site-header\b/i.test(html)) report(errors, file, "Ümumi site header tətbiq edilməyib.");
+  if (file !== "login.html" && file !== "admin.html" && !/<footer\b[^>]*\bdata-site-footer\b/i.test(html)) {
+    report(errors, file, "Ümumi site footer tətbiq edilməyib.");
   }
 
   const title = html.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1].trim();
@@ -189,7 +202,7 @@ try {
   }
   if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
   if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
-  ["db:migrate", "db:seed", "test:api"].forEach((script) => {
+  ["db:migrate", "db:seed", "test:api", "test:site", "test:layout", "check:full"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
 } catch (error) {

@@ -51,8 +51,12 @@ Admin panelində lokal ehtiyat rejimi qalır. Baza əlçatan olduqda “Bazaya y
 - `assets/js/marketplace.js` - göstərmə, filtr, sorğu, smeta və lokal idarəetmə məntiqi
 - `assets/js/production.js` - API, giriş, bulud sinxronizasiyası və RFQ server ötürməsi
 - `assets/js/script.js` - ümumi naviqasiya, SEO, əlçatanlıq və əlaqə forması
+- `templates/` - bütün səhifələr üçün vahid header, giriş header-i və footer şablonları
+- `scripts/site-shell.mjs` - şablonları səhifəyə tətbiq edən build və lokal server renderer-i
 - `scripts/audit-site.mjs` - səhifə, keçid, SEO, məlumat və SKU bütövlüyü auditi
 - `scripts/vercel-build.mjs` - statik Vercel ixracı
+- `tests/layout/` - bütün səhifələrin mobile və desktop ölçülərində Playwright layout testləri
+- `docs/quality-workflow.yml` - GitHub tokeninə `workflow` icazəsi verildikdən sonra `.github/workflows/quality.yml` yoluna köçürüləcək hazır CI audit və brauzer yoxlaması
 
 ## Lokal yoxlama
 
@@ -69,6 +73,22 @@ npm run vercel-build
 ```
 
 Hazır nəticə `dist` qovluğunda yaradılır.
+
+Header və footer dəyişiklikləri ayrı-ayrı HTML fayllarında deyil, `templates/` qovluğunda edilməlidir. Lokal server və production build həmin şablonları avtomatik bütün səhifələrə tətbiq edir.
+
+İlk browser yoxlamasından əvvəl Chromium-u quraşdır:
+
+```bash
+npx playwright install chromium
+```
+
+Sonra bütün audit, build və layout testlərini bir əmrlə işə sal:
+
+```bash
+npm run check:full
+```
+
+Layout testi 22 səhifəni mobile, `1100/1101 px` menyu sərhədi və desktop ölçülərində yoxlayır. `docs/quality-workflow.yml` şablonu `.github/workflows/quality.yml` yoluna qoşulduqda GitHub Actions nəticəyə Playwright hesabatı və nəzarət şəkilləri əlavə edir.
 
 ## PostgreSQL quraşdırılması
 
