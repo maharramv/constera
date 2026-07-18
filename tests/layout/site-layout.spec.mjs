@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { navigationItems } from "../../scripts/site-shell.mjs";
 
 const pages = [
   "index.html",
@@ -94,7 +95,7 @@ test("tam naviqasiya desktop və mobile rejimlərində açılır", async ({ page
     await expect(page.locator("#site-nav")).toHaveClass(/\bis-open\b/);
     const visibleLinks = await page.locator("#site-nav").evaluate((nav) =>
       [...nav.querySelectorAll("a")].filter((link) => getComputedStyle(link).display !== "none").length);
-    expect(visibleLinks).toBe(15);
+    expect(visibleLinks).toBe(navigationItems.length + 1);
   }
 });
 
