@@ -1798,6 +1798,69 @@ dd {
   min-width: 0;
 }
 
+.platform-command {
+  padding-top: 46px;
+}
+
+.platform-command-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.command-card {
+  display: grid;
+  gap: 12px;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(13, 19, 27, 0.78);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  overflow-wrap: anywhere;
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    background 180ms ease;
+}
+
+.command-card:hover,
+.command-card:focus-visible {
+  border-color: rgba(212, 166, 79, 0.42);
+  background:
+    linear-gradient(180deg, rgba(212, 166, 79, 0.1), rgba(255, 255, 255, 0.035)),
+    rgba(13, 19, 27, 0.82);
+  transform: translateY(-3px);
+}
+
+.command-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(212, 166, 79, 0.3);
+  border-radius: 14px;
+  color: #f4d99d;
+  background: rgba(212, 166, 79, 0.08);
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 800;
+}
+
+.command-card strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+
+.command-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 .product-grid,
 .market-grid {
   display: grid;
@@ -2434,6 +2497,127 @@ dd {
   line-height: 1.45;
 }
 
+.portal-board,
+.import-board,
+.cabinet-board {
+  align-items: start;
+}
+
+.portal-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-import-area {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.055);
+  outline: 0;
+  padding: 16px;
+  font: 0.86rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  resize: vertical;
+}
+
+.admin-import-area:focus {
+  border-color: rgba(212, 166, 79, 0.66);
+  box-shadow: 0 0 0 4px rgba(212, 166, 79, 0.08);
+}
+
+.quality-list,
+.cabinet-list,
+.cabinet-product-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.quality-item,
+.cabinet-item,
+.cabinet-product-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px;
+  overflow-wrap: anywhere;
+}
+
+.quality-item {
+  display: grid;
+  gap: 10px;
+}
+
+.quality-item header,
+.cabinet-item header,
+.cabinet-product-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.quality-item strong,
+.cabinet-item strong,
+.cabinet-product-card strong {
+  display: block;
+  line-height: 1.35;
+}
+
+.quality-item span,
+.cabinet-item span,
+.cabinet-product-card span,
+.cabinet-item p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.quality-meter {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.quality-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+}
+
+.cabinet-product-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cabinet-product-card {
+  display: grid;
+  gap: 10px;
+}
+
+.cabinet-product-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mini-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(212, 166, 79, 0.24);
+  border-radius: 999px;
+  color: #f4d99d;
+  background: rgba(212, 166, 79, 0.08);
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .rfq-guide {
   display: grid;
   gap: 14px;
@@ -2785,7 +2969,8 @@ dd {
   gap: 10px;
 }
 
-.table-wrap {
+.table-wrap,
+.admin-table-wrap {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
@@ -2919,7 +3104,8 @@ dd {
   .product-grid,
   .market-grid,
   .detail-grid,
-  .taxonomy-chip-grid {
+  .taxonomy-chip-grid,
+  .platform-command-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2956,6 +3142,7 @@ dd {
 
   .product-grid,
   .market-grid,
+  .platform-command-grid,
   .market-kpi-strip,
   .admin-stat-grid,
   .admin-manager-grid,
@@ -2972,6 +3159,14 @@ dd {
   .rfq-offer-grid,
   .taxonomy-chip-grid,
   .rfq-form {
+    grid-template-columns: 1fr;
+  }
+
+  .command-card {
+    min-height: 0;
+  }
+
+  .cabinet-product-grid {
     grid-template-columns: 1fr;
   }
 

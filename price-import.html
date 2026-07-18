@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Qiymət idxalı | CSV və qiymət siyahısı mərkəzi</title>
+    <meta
+      name="description"
+      content="ConstEra Qiymət idxalı mərkəzi təchizatçı qiymət siyahılarını CSV formatında yoxlamaq, məhsul bazasına əlavə etmək və keyfiyyət göstəricilərini izləmək üçündür."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.ru/price-import.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="price-import">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Qiymət idxalı</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
+          <a href="supplier-portal.html">Təchizatçı kabineti</a>
+          <a href="price-import.html" aria-current="page">Qiymət idxalı</a>
+          <a href="customer-cabinet.html">Kabinet</a>
+          <a href="rfq.html">Qiymət sorğusu</a>
+          <a href="rfq-dashboard.html">Sorğu paneli</a>
+          <a href="tender.html">Tender</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="admin.html">İdarəetmə</a>
+          <a class="button button-outline nav-cta" href="admin.html">Adminə keç</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Qiymət siyahısı mərkəzi</p>
+            <h1>Penguin, EPO, Zink və digər təchizatçı qiymətlərini vahid kataloqa çevir.</h1>
+            <p class="hero-text">
+              CSV idxalı məhsul kodlarını, real qiymət statusunu, foto linklərini və mənbə URL-lərini yoxlayır.
+              Qiyməti təsdiqlənməyən kartlar avtomatik “Sorğu əsasında” kimi qalır.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-price-quality-stats></div>
+        </section>
+
+        <section class="section admin-board import-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Mənbə</p>
+                <h2>Qiymət siyahısı məlumatı</h2>
+              </div>
+              <span class="data-badge">CSV / Excel uyğun</span>
+            </div>
+            <div class="admin-form-grid">
+              <label class="admin-field">
+                <span>Təchizatçı</span>
+                <select data-price-import-source>
+                  <option value="Ümumi təchizatçı">Ümumi təchizatçı</option>
+                  <option value="Penguin">Penguin</option>
+                  <option value="EPO">EPO</option>
+                  <option value="Zink">Zink</option>
+                  <option value="Knauf">Knauf</option>
+                  <option value="Kəpəz / Nur / Kars">Kəpəz / Nur / Kars</option>
+                </select>
+              </label>
+              <label class="admin-field">
+                <span>Qiymət statusu</span>
+                <select data-price-import-status-select>
+                  <option value="confirmed">Təsdiqli qiymət</option>
+                  <option value="request">Sorğu əsasında</option>
+                </select>
+              </label>
+            </div>
+            <textarea
+              class="admin-import-area"
+              data-price-import-input
+              rows="14"
+              placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər"
+            ></textarea>
+            <div class="admin-actions">
+              <button class="button button-primary" type="button" data-price-import-run>Yoxla və idxal et</button>
+              <button class="button button-secondary" type="button" data-price-import-preview-button>Ön baxış</button>
+              <button class="button button-secondary" type="button" data-price-import-template>Şablon doldur</button>
+              <button class="button button-outline" type="button" data-price-import-export-template>CSV şablonu endir</button>
+            </div>
+            <p class="admin-import-status" data-price-import-status>
+              Real qiymət yalnız mənbə göstərildikdə təsdiqli sayılır. Foto yoxdursa məhsul placeholder ilə qalır.
+            </p>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Keyfiyyət</p>
+                <h2>Kataloq məlumatlarının vəziyyəti</h2>
+              </div>
+              <a class="card-link" href="catalog.html">Kataloqa bax</a>
+            </div>
+            <div class="quality-list" data-price-quality-list></div>
+          </div>
+
+          <div class="admin-panel glass portal-wide">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Ön baxış</p>
+                <h2>İdxal olunacaq məhsullar</h2>
+              </div>
+              <span class="data-badge" data-price-preview-count>0 sətir</span>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Məhsul</th>
+                    <th>Brend</th>
+                    <th>Kateqoriya</th>
+                    <th>Qiymət</th>
+                    <th>Foto</th>
+                    <th>Mənbə</th>
+                  </tr>
+                </thead>
+                <tbody data-price-import-preview></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

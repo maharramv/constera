@@ -46,6 +46,9 @@
           <a href="rental.html">İcarə</a>
           <a href="brands.html">Brendlər</a>
           <a href="suppliers.html">Təchizatçılar</a>
+          <a href="supplier-portal.html">Təchizatçı kabineti</a>
+          <a href="price-import.html">Qiymət idxalı</a>
+          <a href="customer-cabinet.html">Kabinet</a>
           <a href="rfq.html">Qiymət sorğusu</a>
           <a href="rfq-dashboard.html">Sorğu paneli</a>
           <a href="tender.html">Tender</a>
@@ -97,6 +100,14 @@
                   <input name="floors" type="number" min="1" max="20" step="1" value="1" />
                 </label>
                 <label class="admin-field">
+                  <span>Otaq sayı</span>
+                  <input name="rooms" type="number" min="1" max="80" step="1" value="4" />
+                </label>
+                <label class="admin-field">
+                  <span>Yaş zona</span>
+                  <input name="wetZones" type="number" min="0" max="30" step="1" value="2" />
+                </label>
+                <label class="admin-field">
                   <span>İş həcmi</span>
                   <select name="scope">
                     <option value="shell">Qara karkas</option>
@@ -114,8 +125,36 @@
                   </select>
                 </label>
                 <label class="admin-field">
+                  <span>Layihə mürəkkəbliyi</span>
+                  <select name="complexity">
+                    <option value="simple">Sadə</option>
+                    <option value="standard" selected>Standart</option>
+                    <option value="complex">Mürəkkəb</option>
+                  </select>
+                </label>
+                <label class="admin-field">
                   <span>Şəhər / rayon</span>
                   <input name="city" type="text" placeholder="Bakı, Abşeron..." />
+                </label>
+                <label class="admin-field">
+                  <span>Material ehtiyatı, %</span>
+                  <input name="wastePercent" type="number" min="0" max="35" step="1" value="10" />
+                </label>
+                <label class="admin-field">
+                  <span>Çatdırılma/logistika, %</span>
+                  <input name="deliveryPercent" type="number" min="0" max="25" step="1" value="5" />
+                </label>
+                <label class="admin-field">
+                  <span>İşçilik indeksi, %</span>
+                  <input name="laborPercent" type="number" min="0" max="80" step="1" value="28" />
+                </label>
+                <label class="admin-field">
+                  <span>Sənəd formatı</span>
+                  <select name="docType">
+                    <option value="rfq">Qiymət sorğusu üçün material siyahısı</option>
+                    <option value="client">Müştəri təklifi</option>
+                    <option value="supplier">Təchizatçı müqayisəsi</option>
+                  </select>
                 </label>
               </div>
               <label class="admin-field admin-field-wide">

@@ -79,6 +79,65 @@ const getRentalCategory = (id) =>
   (marketplace.rentalCategories || []).find((category) => category.id === id);
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
+const searchSynonymMap = {
+  boya: ["kraska", "paint", "emulsiya", "emulsion", "interyer boya", "eksteryer boya"],
+  kraska: ["boya", "paint", "emulsiya"],
+  paint: ["boya", "kraska"],
+  sement: ["cement", "simento", "beton", "m400", "m500"],
+  cement: ["sement", "beton"],
+  beton: ["hazır beton", "sement", "concrete"],
+  armatur: ["rebar", "metal", "demir", "dəmir"],
+  demir: ["dəmir", "armatur", "metal"],
+  dəmir: ["demir", "armatur", "metal"],
+  suvaq: ["shtukaturka", "plaster", "gips", "rotband"],
+  shtukaturka: ["suvaq", "plaster"],
+  gips: ["suvaq", "rotband", "alcipan", "gipsokarton"],
+  macun: ["şpaklyovka", "spaklyovka", "putty", "şpatlevka"],
+  şpaklyovka: ["macun", "spaklyovka", "putty"],
+  spaklyovka: ["macun", "şpaklyovka", "putty"],
+  kabel: ["cable", "elektrik kabeli", "provod"],
+  cable: ["kabel", "elektrik"],
+  rozetka: ["socket", "elektrik rozetkası"],
+  avtomat: ["avtomatik açar", "mcb", "schneider", "legrand"],
+  boru: ["pipe", "ppr", "pvc", "hdpe", "truba"],
+  truba: ["boru", "pipe"],
+  kafel: ["plitka", "plitə", "keramoqranit", "tile"],
+  plitka: ["kafel", "plitə", "tile"],
+  laminat: ["laminate", "flooring", "döşəmə"],
+  dosheme: ["döşəmə", "flooring", "laminat", "parket"],
+  döşəmə: ["dosheme", "flooring", "laminat", "parket"],
+  izolyasiya: ["insulation", "xps", "eps", "daş yun", "mineral yun"],
+  dam: ["roof", "profnastil", "kirəmit", "membran"],
+  alət: ["alet", "tool", "makita", "bosch", "dewalt"],
+  alet: ["alət", "tool"],
+  icare: ["icarə", "rental", "kirayə", "avadanlıq icarəsi"],
+  icarə: ["icare", "rental", "kirayə"],
+  temir: ["təmir", "renovasiya", "repair"],
+  təmir: ["temir", "renovasiya", "repair"],
+  dizayn: ["design", "interyer", "memarlıq"],
+  smeta: ["estimate", "xərc", "material hesabı"]
+};
+const expandSearchTokens = (value) => {
+  const tokens = normalize(value)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1);
+  const expanded = new Set(tokens);
+  tokens.forEach((token) => {
+    (searchSynonymMap[token] || []).forEach((synonym) => {
+      normalize(synonym).split(/\s+/).forEach((part) => {
+        if (part.length > 1) expanded.add(part);
+      });
+    });
+  });
+  return [...expanded];
+};
+const matchesExpandedSearch = (searchable, value) => {
+  const tokens = expandSearchTokens(value);
+  if (!tokens.length) return true;
+  const text = normalize(searchable);
+  return tokens.some((token) => text.includes(token));
+};
 const escapeHtml = (value) =>
   String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
@@ -88,6 +147,15 @@ const escapeHtml = (value) =>
     "'": "&#039;"
   })[char]);
 const escapeAttr = escapeHtml;
+const downloadTextFile = (filename, text, mime = "text/plain;charset=utf-8") => {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 const updatePageDescription = (description) => {
   const text = String(description || "").trim();
   if (!text) return;
@@ -534,7 +602,7 @@ const renderCatalog = () => {
   };
 
   const applyFilters = () => {
-    const query = normalize(searchInput.value);
+    const query = searchInput.value;
     const brand = brandSelect.value;
     const group = groupSelect?.value || "all";
     const subcategory = subcategorySelect?.value || "all";
@@ -566,9 +634,11 @@ const renderCatalog = () => {
         product.sku,
         product.package,
         product.origin,
+        product.supplier,
+        product.sourceLabel,
         ...(product.specs || [])
       ].join(" "));
-      const matchesQuery = !query || searchable.includes(query);
+      const matchesQuery = matchesExpandedSearch(searchable, query);
       return matchesCategory &&
         matchesGroup &&
         matchesSubcategory &&
@@ -1522,6 +1592,57 @@ const productsToCsv = (products) => {
   return [headers.join(","), ...rows].join("\n");
 };
 
+const upsertAdminProducts = (products) => {
+  const existingProducts = getAdminProducts().map((product, index) => ensureAdminProductShape(product, index));
+  const byKey = new Map(existingProducts.map((product) => [normalize(product.sku || product.id), product]));
+
+  products.forEach((product, index) => {
+    const shaped = ensureAdminProductShape(product, index);
+    const key = normalize(shaped.sku || shaped.id);
+    const previous = byKey.get(key);
+    byKey.set(key, {
+      ...(previous || {}),
+      ...shaped,
+      id: previous?.id || shaped.id
+    });
+  });
+
+  const nextProducts = [...byKey.values()];
+  saveAdminProducts(nextProducts);
+  syncAdminProductOverlay();
+  return nextProducts;
+};
+
+const getDataQualitySnapshot = () => {
+  const products = marketplace.products || [];
+  const total = products.length || 1;
+  const confirmedPrices = products.filter((product) =>
+    product.priceStatus === "confirmed" || !normalize(product.price).includes("sorğu")
+  ).length;
+  const requestPrices = products.filter((product) =>
+    product.priceStatus === "request" || normalize(product.price).includes("sorğu")
+  ).length;
+  const withImages = products.filter((product) => product.imageUrl).length;
+  const withSources = products.filter((product) => product.sourceUrl).length;
+  const withSpecs = products.filter((product) => (product.specs || []).length >= 2).length;
+  const localChanges = getAdminProducts().length;
+  const percent = (value) => Math.round((value / total) * 100);
+
+  return {
+    total: products.length,
+    confirmedPrices,
+    requestPrices,
+    withImages,
+    withSources,
+    withSpecs,
+    localChanges,
+    imagePercent: percent(withImages),
+    sourcePercent: percent(withSources),
+    pricePercent: percent(confirmedPrices),
+    specPercent: percent(withSpecs)
+  };
+};
+
 const entityFromCsvRow = (entityType, row, index) => {
   const title = getCsvValue(row, ["ad", "name", "title", "xidmət", "xidmet", "paket", "avadanlıq", "avadanliq"]);
   const categoryInput = getCsvValue(row, ["kateqoriya", "category", "kategoriya"]);
@@ -1771,19 +1892,19 @@ const renderAdmin = () => {
   };
 
   const getFilteredAdminProducts = () => {
-    const query = normalize(productSearch?.value);
+    const query = productSearch?.value || "";
     const category = productCategoryFilter?.value || "all";
     const priceStatus = productPriceFilter?.value || "all";
 
     return marketplace.products.filter((product) => {
       const priceIsRequest = product.priceStatus === "request" || normalize(product.price).includes("sorğu");
-      const matchesQuery = !query || [
+      const matchesQuery = matchesExpandedSearch([
         product.sku,
         product.name,
         product.brand,
         product.subcategory,
         product.supplier
-      ].some((value) => normalize(value).includes(query));
+      ].join(" "), query);
       const matchesCategory = category === "all" || product.category === category;
       const matchesPrice = priceStatus === "all" ||
         (priceStatus === "request" && priceIsRequest) ||
@@ -2615,7 +2736,7 @@ const renderRfqDashboard = () => {
 
   const render = () => {
     const drafts = getDrafts();
-    const query = normalize(searchInput?.value);
+    const query = searchInput?.value || "";
     const activeStatus = statusFilter?.value || "all";
     const activeType = typeFilter?.value || "all";
     const activeSupplier = supplierFilter?.value || "all";
@@ -2626,7 +2747,7 @@ const renderRfqDashboard = () => {
       const matchesSupplier = activeSupplier === "all" ||
         (activeSupplier === "open" && !draft.supplierId) ||
         draft.supplierId === activeSupplier;
-      const matchesQuery = !query || [
+      const matchesQuery = matchesExpandedSearch([
         draft.product,
         draft.quantity,
         draft.company,
@@ -2635,7 +2756,7 @@ const renderRfqDashboard = () => {
         draft.supplier,
         draft.note,
         draft.usage
-      ].some((value) => normalize(value).includes(query));
+      ].join(" "), query);
       return matchesStatus && matchesType && matchesSupplier && matchesQuery;
     }).sort((a, b) => {
       if (activeSort === "needDate") {
@@ -3088,6 +3209,11 @@ const initAiSmeta = () => {
     standard: "Standart",
     premium: "Premium"
   };
+  const complexityLabels = {
+    simple: "Sadə",
+    standard: "Standart",
+    complex: "Mürəkkəb"
+  };
   const scopeMultipliers = {
     shell: 0.78,
     white: 0.9,
@@ -3098,6 +3224,11 @@ const initAiSmeta = () => {
     economy: 0.86,
     standard: 1,
     premium: 1.22
+  };
+  const complexityMultipliers = {
+    simple: 0.94,
+    standard: 1,
+    complex: 1.14
   };
   const projectProfiles = {
     villa: { concrete: 0.24, rebar: 0.034, block: 12.2, plaster: 1.75, paint: 0.24, tile: 0.42, cable: 5.6, pipe: 1.05, insulation: 0.9, roof: 0.72 },
@@ -3149,22 +3280,31 @@ const initAiSmeta = () => {
       .slice(0, 3)
       .map((entry) => entry.product);
   };
-  const createMaterialRows = ({ projectType, area, floors, scope, finishLevel }) => {
+  const createMaterialRows = ({ projectType, area, floors, rooms, wetZones, scope, finishLevel, complexity, wastePercent }) => {
     const profile = projectProfiles[projectType] || projectProfiles.villa;
     const floorFactor = projectType === "apartment" ? 1 : Math.max(floors, 1) ** 0.18;
     const scopeFactor = scopeMultipliers[scope] || 1;
     const levelFactor = levelMultipliers[finishLevel] || 1;
+    const complexityFactor = complexityMultipliers[complexity] || 1;
+    const roomFactor = Math.max(0.86, Math.min(1.22, 0.92 + rooms * 0.025));
+    const wetFactor = Math.max(0.9, Math.min(1.32, 0.96 + wetZones * 0.055));
+    const wasteFactor = 1 + Math.max(0, Math.min(wastePercent, 35)) / 100;
 
     return materialRules
       .filter((rule) => rule.scopes.includes(scope))
       .map((rule) => {
         const base = profile[rule.key] || 0;
         const finishSensitive = ["paint", "tile", "plaster", "cable", "pipe"].includes(rule.key);
-        const rawQty = area * base * floorFactor * scopeFactor * (finishSensitive ? levelFactor : 1);
+        const roomSensitive = ["paint", "plaster", "cable"].includes(rule.key) ? roomFactor : 1;
+        const wetSensitive = ["tile", "pipe"].includes(rule.key) ? wetFactor : 1;
+        const rawQty = area * base * floorFactor * scopeFactor * complexityFactor * roomSensitive * wetSensitive * (finishSensitive ? levelFactor : 1);
+        const qtyWithWaste = rawQty * wasteFactor;
         const quantity = rule.key === "rebar" ? Math.max(rawQty, 0.1) : Math.ceil(rawQty);
         return {
           ...rule,
-          quantity: rule.key === "rebar" ? Math.round(quantity * 10) / 10 : quantity,
+          baseQuantity: rule.key === "rebar" ? Math.round(quantity * 10) / 10 : quantity,
+          quantity: rule.key === "rebar" ? Math.round(Math.max(qtyWithWaste, 0.1) * 10) / 10 : Math.ceil(qtyWithWaste),
+          wastePercent,
           products: recommendProducts(rule)
         };
       })
@@ -3176,8 +3316,16 @@ const initAiSmeta = () => {
     const finishLevel = String(data.get("finishLevel") || "standard");
     const area = asNumber(data.get("area"), 120);
     const floors = Math.max(1, Math.round(asNumber(data.get("floors"), 1)));
-    const rows = createMaterialRows({ projectType, area, floors, scope, finishLevel });
-    const riskReserve = finishLevel === "premium" ? 15 : finishLevel === "economy" ? 8 : 12;
+    const rooms = Math.max(1, Math.round(asNumber(data.get("rooms"), 4)));
+    const wetZones = Math.max(0, Math.round(asNumber(data.get("wetZones"), 2)));
+    const complexity = String(data.get("complexity") || "standard");
+    const wastePercent = Math.max(0, Math.min(35, Math.round(asNumber(data.get("wastePercent"), 10))));
+    const deliveryPercent = Math.max(0, Math.min(25, Math.round(asNumber(data.get("deliveryPercent"), 5))));
+    const laborPercent = Math.max(0, Math.min(80, Math.round(asNumber(data.get("laborPercent"), 28))));
+    const docType = String(data.get("docType") || "rfq");
+    const rows = createMaterialRows({ projectType, area, floors, rooms, wetZones, scope, finishLevel, complexity, wastePercent });
+    const baseRisk = finishLevel === "premium" ? 15 : finishLevel === "economy" ? 8 : 12;
+    const riskReserve = baseRisk + (complexity === "complex" ? 5 : complexity === "simple" ? -2 : 0);
 
     return {
       id: `smeta-${Date.now()}`,
@@ -3185,10 +3333,18 @@ const initAiSmeta = () => {
       projectLabel: projectLabels[projectType] || projectType,
       area,
       floors,
+      rooms,
+      wetZones,
       scope,
       scopeLabel: scopeLabels[scope] || scope,
       finishLevel,
       finishLabel: levelLabels[finishLevel] || finishLevel,
+      complexity,
+      complexityLabel: complexityLabels[complexity] || complexity,
+      wastePercent,
+      deliveryPercent,
+      laborPercent,
+      docType,
       city: String(data.get("city") || "").trim(),
       note: String(data.get("note") || "").trim(),
       riskReserve,
@@ -3215,7 +3371,7 @@ const initAiSmeta = () => {
       company: "",
       contact: "",
       city: estimate.city,
-      note: `${summary}${estimate.note ? ` | Qeyd: ${estimate.note}` : ""}`,
+      note: `${summary} | Ehtiyat: ${estimate.wastePercent || 0}% | İşçilik indeksi: ${estimate.laborPercent || 0}% | Logistika: ${estimate.deliveryPercent || 0}%${estimate.note ? ` | Qeyd: ${estimate.note}` : ""}`,
       createdAt: new Date().toISOString()
     };
     const drafts = storage.read("constera-rfq-drafts");
@@ -3224,23 +3380,19 @@ const initAiSmeta = () => {
   };
   const exportEstimate = (estimate) => {
     if (!estimate) return;
-    const headers = ["kateqoriya", "material", "miqdar", "vahid", "etibar", "tövsiyə olunan məhsullar"];
+    const headers = ["kateqoriya", "material", "baza miqdar", "ehtiyatli miqdar", "vahid", "etibar", "ehtiyat %", "tövsiyə olunan məhsullar"];
     const rows = estimate.rows.map((row) => [
       row.category,
       row.title,
+      formatQty(row.baseQuantity || row.quantity),
       formatQty(row.quantity),
       row.unit,
       row.confidence,
+      row.wastePercent || estimate.wastePercent || 0,
       row.products.map((product) => `${product.name} (${product.price || "Sorğu əsasında"})`).join("; ")
     ].map(escapeCsvValue).join(","));
     const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `constera-ai-smeta-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(`constera-ai-smeta-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
   };
   const renderStats = () => {
     if (!stats) return;
@@ -3282,6 +3434,10 @@ const initAiSmeta = () => {
         <article><strong>${escapeHtml(estimate.floors)}</strong><span>mərtəbə</span></article>
         <article><strong>${escapeHtml(estimate.riskReserve)}%</strong><span>ehtiyat</span></article>
         <article><strong>${escapeHtml(estimate.rows.length)}</strong><span>material qrupu</span></article>
+        <article><strong>${escapeHtml(estimate.rooms || 0)}</strong><span>otaq</span></article>
+        <article><strong>${escapeHtml(estimate.wetZones || 0)}</strong><span>yaş zona</span></article>
+        <article><strong>${escapeHtml(estimate.deliveryPercent || 0)}%</strong><span>logistika</span></article>
+        <article><strong>${escapeHtml(estimate.laborPercent || 0)}%</strong><span>işçilik indeksi</span></article>
       </div>
       <div class="ai-smeta-table">
         ${estimate.rows.map((row) => `
@@ -3289,11 +3445,11 @@ const initAiSmeta = () => {
             <div>
               <span class="status-pill">${escapeHtml(row.category)}</span>
               <h3>${escapeHtml(row.title)}</h3>
-              <p>${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)} · Qiymət sorğusu ilə dəqiqləşdirilməlidir</p>
+              <p>Baza: ${formatQty(row.baseQuantity || row.quantity)} ${escapeHtml(row.unit)} · ehtiyatla: ${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)} · Qiymət sorğusu ilə dəqiqləşdirilməlidir</p>
             </div>
             <div class="ai-smeta-products">
               ${row.products.length ? row.products.map((product) => `
-                <a href="product-detail.html?id=${encodeURIComponent(product.id)}">
+                <a href="product-detail.html?product=${encodeURIComponent(product.id)}">
                   <strong>${escapeHtml(product.name)}</strong>
                   <span>${escapeHtml(product.brand || "Brend")} · ${escapeHtml(product.price || "Sorğu əsasında")}</span>
                 </a>
@@ -3305,6 +3461,7 @@ const initAiSmeta = () => {
       <div class="admin-actions">
         <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}">Sorğu qaralaması yarat</button>
         <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV-yə ixrac et</button>
+        <button class="button button-secondary" type="button" data-ai-smeta-print>PDF üçün çap et</button>
         <a class="button button-outline" href="catalog.html">Kataloqda bax</a>
       </div>
     `;
@@ -3350,6 +3507,10 @@ const initAiSmeta = () => {
       exportEstimate(estimate);
       return;
     }
+    if (event.target.closest("[data-ai-smeta-print]")) {
+      window.print();
+      return;
+    }
     const rfqButton = event.target.closest("[data-ai-smeta-rfq]");
     if (!rfqButton) return;
     const estimate = readEstimates().find((item) => item.id === rfqButton.dataset.aiSmetaRfq) || currentEstimate;
@@ -3357,6 +3518,424 @@ const initAiSmeta = () => {
     const rfq = estimateToRfq(estimate);
     if (status) status.innerHTML = `Sorğu qaralaması yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
   });
+};
+
+const initSupplierPortal = () => {
+  const form = document.querySelector("[data-supplier-product-form]");
+  const categorySelect = document.querySelector("[data-supplier-category]");
+  const subcategorySelect = document.querySelector("[data-supplier-subcategory]");
+  const clearFormButton = document.querySelector("[data-supplier-clear-form]");
+  const csvInput = document.querySelector("[data-supplier-price-csv]");
+  const importButton = document.querySelector("[data-supplier-import-csv]");
+  const exportButton = document.querySelector("[data-supplier-export-csv]");
+  const templateButton = document.querySelector("[data-supplier-template]");
+  const rows = document.querySelector("[data-supplier-product-rows]");
+  const count = document.querySelector("[data-supplier-product-count]");
+  const stats = document.querySelector("[data-supplier-portal-stats]");
+  const status = document.querySelector("[data-supplier-status]");
+
+  if (!form || !categorySelect || !subcategorySelect) return;
+
+  const supplierNameInput = form.elements.supplier;
+  const getSupplierName = () => String(supplierNameInput?.value || "Yeni təchizatçı").trim() || "Yeni təchizatçı";
+  const getSupplierProducts = () => getAdminProducts()
+    .map((product, index) => ensureAdminProductShape(product, index))
+    .filter((product) => normalize(product.supplier) === normalize(getSupplierName()));
+
+  const renderCategoryOptions = () => {
+    categorySelect.innerHTML = groupCategories(marketplace.categories).map((group) => `
+      <optgroup label="${escapeAttr(group.name)}">
+        ${group.categories.map((category) => `<option value="${escapeAttr(category.id)}">${escapeHtml(category.title)}</option>`).join("")}
+      </optgroup>
+    `).join("");
+  };
+
+  const renderSubcategoryOptions = () => {
+    const category = getCategory(categorySelect.value);
+    subcategorySelect.innerHTML = (category?.subcategories || ["Ümumi"]).map((subcategory) =>
+      `<option value="${escapeAttr(subcategory)}">${escapeHtml(subcategory)}</option>`
+    ).join("");
+  };
+
+  const renderStats = () => {
+    if (!stats) return;
+    const supplierProducts = getSupplierProducts();
+    const confirmed = supplierProducts.filter((product) =>
+      product.priceStatus === "confirmed" || !normalize(product.price).includes("sorğu")
+    ).length;
+    const withImages = supplierProducts.filter((product) => product.imageUrl).length;
+    stats.innerHTML = `
+      <article class="stat-card"><span class="stat-value">${supplierProducts.length}</span><p>məhsulum</p></article>
+      <article class="stat-card"><span class="stat-value">${confirmed}</span><p>təsdiqli qiymət</p></article>
+      <article class="stat-card"><span class="stat-value">${withImages}</span><p>foto linki</p></article>
+      <article class="stat-card"><span class="stat-value">${marketplace.categories.length}</span><p>kateqoriya bazası</p></article>
+    `;
+  };
+
+  const renderRows = () => {
+    if (!rows) return;
+    const supplierProducts = getSupplierProducts().slice(0, 80);
+    if (count) count.textContent = `${supplierProducts.length} məhsul`;
+    rows.innerHTML = supplierProducts.length ? supplierProducts.map((product) => `
+      <tr>
+        <td>
+          <strong>${escapeHtml(product.name)}</strong>
+          <small>${escapeHtml(product.sku)} · ${escapeHtml(product.package)}</small>
+        </td>
+        <td>${escapeHtml(product.brand)}</td>
+        <td>
+          <strong>${escapeHtml(getCategory(product.category)?.title || product.category)}</strong>
+          <small>${escapeHtml(product.subcategory)}</small>
+        </td>
+        <td>${escapeHtml(product.price || "Sorğu əsasında")}</td>
+        <td>${escapeHtml(product.availability || "Sorğu əsasında")}</td>
+      </tr>
+    `).join("") : `
+      <tr>
+        <td colspan="5">
+          <strong>Məhsul yoxdur.</strong>
+          <small>Formadan və ya CSV idxalından ilk məhsulu əlavə et.</small>
+        </td>
+      </tr>
+    `;
+    renderStats();
+  };
+
+  const setStatus = (message) => {
+    if (status) status.textContent = message;
+  };
+
+  const createProductFromForm = () => {
+    const data = new FormData(form);
+    const price = String(data.get("price") || "").trim() || "Sorğu əsasında";
+    return ensureAdminProductShape({
+      sku: data.get("sku"),
+      name: data.get("name"),
+      brand: data.get("brand"),
+      category: data.get("category"),
+      subcategory: data.get("subcategory"),
+      package: data.get("package"),
+      price,
+      priceStatus: normalize(price).includes("sorğu") ? "request" : "confirmed",
+      supplier: data.get("supplier"),
+      availability: data.get("availability"),
+      imageUrl: data.get("imageUrl"),
+      sourceUrl: data.get("sourceUrl"),
+      sourceLabel: data.get("supplier"),
+      origin: data.get("origin"),
+      specs: data.get("specs"),
+      priceNote: normalize(price).includes("sorğu") ? "Qiymət təchizatçı ilə dəqiqləşdirilir" : "Təchizatçı tərəfindən daxil edilib"
+    }, Date.now());
+  };
+
+  renderCategoryOptions();
+  renderSubcategoryOptions();
+  renderRows();
+
+  categorySelect.addEventListener("change", renderSubcategoryOptions);
+  supplierNameInput?.addEventListener("input", renderRows);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const product = createProductFromForm();
+    upsertAdminProducts([product]);
+    renderRows();
+    setStatus(`${product.name} kataloqa əlavə edildi və admin qatında saxlandı.`);
+  });
+
+  clearFormButton?.addEventListener("click", () => {
+    const supplierName = getSupplierName();
+    form.reset();
+    if (supplierNameInput) supplierNameInput.value = supplierName;
+    renderSubcategoryOptions();
+    setStatus("Forma təmizləndi.");
+  });
+
+  templateButton?.addEventListener("click", () => {
+    if (!csvInput) return;
+    csvInput.value = [
+      "sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər",
+      "PNG-PENPLUS-15L,Penguin Penplus 15 L,Penguin,Boya və örtüklər,Daxili boya,15 L,72.90 AZN,Penguin,Anbarda var,,https://www.penguin.az/,daxili boya; mat; 15 L",
+      "EPO-EPOMIX-25KG,EPO EPOMIX 25 kg,EPO,Tikinti kimyası,Epoksi sistemlər,25 kg,7.30 AZN,EPO,Stok sorğu ilə,,https://www.epo.com.az/,sement əsaslı qarışıq; 25 kg"
+    ].join("\n");
+    setStatus("CSV şablonu dolduruldu. Sətirləri öz qiymət siyahına uyğun dəyişə bilərsən.");
+  });
+
+  importButton?.addEventListener("click", () => {
+    const imported = parseCsvRows(csvInput?.value || "")
+      .map((row, index) => {
+        const product = productFromCsvRow(row, index);
+        return ensureAdminProductShape({
+          ...product,
+          supplier: product.supplier || getSupplierName(),
+          sourceLabel: product.sourceLabel || product.supplier || getSupplierName()
+        }, index);
+      })
+      .filter((product) => product.name && product.sku);
+    if (!imported.length) {
+      setStatus("İdxal üçün uyğun CSV sətri tapılmadı.");
+      return;
+    }
+    upsertAdminProducts(imported);
+    renderRows();
+    setStatus(`${imported.length} məhsul təchizatçı kabinetindən idxal edildi.`);
+  });
+
+  exportButton?.addEventListener("click", () => {
+    const supplierProducts = getSupplierProducts();
+    downloadTextFile(`constera-${createSlug(getSupplierName())}-products.csv`, productsToCsv(supplierProducts), "text/csv;charset=utf-8");
+    setStatus(`${supplierProducts.length} məhsul CSV faylına hazırlandı.`);
+  });
+};
+
+const initPriceImportCenter = () => {
+  const sourceSelect = document.querySelector("[data-price-import-source]");
+  const statusSelect = document.querySelector("[data-price-import-status-select]");
+  const input = document.querySelector("[data-price-import-input]");
+  const importButton = document.querySelector("[data-price-import-run]");
+  const previewButton = document.querySelector("[data-price-import-preview-button]");
+  const templateButton = document.querySelector("[data-price-import-template]");
+  const exportTemplateButton = document.querySelector("[data-price-import-export-template]");
+  const previewBody = document.querySelector("[data-price-import-preview]");
+  const previewCount = document.querySelector("[data-price-preview-count]");
+  const stats = document.querySelector("[data-price-quality-stats]");
+  const qualityList = document.querySelector("[data-price-quality-list]");
+  const status = document.querySelector("[data-price-import-status]");
+
+  if (!input || !previewBody) return;
+
+  const setStatus = (message) => {
+    if (status) status.textContent = message;
+  };
+
+  const parseProducts = () => {
+    const source = sourceSelect?.value || "Ümumi təchizatçı";
+    const forcedStatus = statusSelect?.value || "confirmed";
+    return parseCsvRows(input.value)
+      .map((row, index) => {
+        const product = productFromCsvRow(row, index);
+        const priceIsPresent = product.price && !normalize(product.price).includes("sorğu");
+        const hasSource = Boolean(product.sourceUrl);
+        const priceStatus = forcedStatus === "confirmed" && priceIsPresent && hasSource ? "confirmed" : "request";
+        return ensureAdminProductShape({
+          ...product,
+          supplier: product.supplier || source,
+          sourceLabel: product.sourceLabel || source,
+          price: product.price || "Sorğu əsasında",
+          priceStatus,
+          priceNote: priceStatus === "confirmed"
+            ? "Qiymət siyahısı mənbəsi ilə təsdiqlənib"
+            : "Qiymət mənbə ilə təsdiqlənməyib, sorğu əsasında saxlanıldı"
+        }, index);
+      })
+      .filter((product) => product.name && product.sku);
+  };
+
+  const renderQuality = () => {
+    const quality = getDataQualitySnapshot();
+    if (stats) {
+      stats.innerHTML = `
+        <article class="stat-card"><span class="stat-value">${quality.total}</span><p>məhsul</p></article>
+        <article class="stat-card"><span class="stat-value">${quality.confirmedPrices}</span><p>təsdiqli qiymət</p></article>
+        <article class="stat-card"><span class="stat-value">${quality.withImages}</span><p>foto linki</p></article>
+        <article class="stat-card"><span class="stat-value">${quality.localChanges}</span><p>idxal düzəlişi</p></article>
+      `;
+    }
+    if (qualityList) {
+      const items = [
+        ["Təsdiqli qiymətlər", quality.pricePercent, `${quality.confirmedPrices} məhsulda qiymət “Sorğu əsasında” deyil`],
+        ["Foto linkləri", quality.imagePercent, `${quality.withImages} məhsulda foto URL var`],
+        ["Mənbə linkləri", quality.sourcePercent, `${quality.withSources} məhsulda mənbə URL var`],
+        ["Texniki xüsusiyyətlər", quality.specPercent, `${quality.withSpecs} məhsulda ən azı 2 xüsusiyyət var`]
+      ];
+      qualityList.innerHTML = items.map(([label, percent, detail]) => `
+        <article class="quality-item">
+          <header>
+            <strong>${escapeHtml(label)}</strong>
+            <span class="mini-badge">${escapeHtml(percent)}%</span>
+          </header>
+          <div class="quality-meter"><i style="width: ${Math.max(4, Math.min(percent, 100))}%"></i></div>
+          <span>${escapeHtml(detail)}</span>
+        </article>
+      `).join("");
+    }
+  };
+
+  const renderPreview = () => {
+    const products = parseProducts();
+    if (previewCount) previewCount.textContent = `${products.length} sətir`;
+    previewBody.innerHTML = products.length ? products.slice(0, 120).map((product) => `
+      <tr>
+        <td>
+          <strong>${escapeHtml(product.name)}</strong>
+          <small>${escapeHtml(product.sku)} · ${escapeHtml(product.package)}</small>
+        </td>
+        <td>${escapeHtml(product.brand)}</td>
+        <td>
+          <strong>${escapeHtml(getCategory(product.category)?.title || product.category)}</strong>
+          <small>${escapeHtml(product.subcategory)}</small>
+        </td>
+        <td>
+          <strong>${escapeHtml(product.price)}</strong>
+          <small>${product.priceStatus === "confirmed" ? "təsdiqli" : "sorğu əsasında"}</small>
+        </td>
+        <td>${product.imageUrl ? "var" : "yoxdur"}</td>
+        <td>${product.sourceUrl ? "var" : "yoxdur"}</td>
+      </tr>
+    `).join("") : `
+      <tr>
+        <td colspan="6">
+          <strong>Ön baxış boşdur.</strong>
+          <small>CSV mətni daxil et və “Ön baxış” düyməsinə bas.</small>
+        </td>
+      </tr>
+    `;
+    setStatus(products.length
+      ? `${products.length} məhsul oxundu. Mənbəsi olmayan real qiymətlər sorğu statusuna keçirilir.`
+      : "CSV sətiri tapılmadı.");
+  };
+
+  renderQuality();
+  renderPreview();
+
+  templateButton?.addEventListener("click", () => {
+    input.value = [
+      "sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər",
+      "ZNK-SILAN-15L,Zink Zinksilan İnterior 15 L,Zink,Boya və örtüklər,Daxili boya,15 L,74.40 AZN,Zink,Stok sorğu ilə,,https://www.knarrpaints.com/,daxili boya; silikonlu; 15 L",
+      "KAP-ASTAR-30KG,Kəpəz astar suvağı 30 kg,Kəpəz,Quru qarışıqlar,Astar suvağı,30 kg,5.30 AZN,Kəpəz / Nur / Kars,Stok sorğu ilə,,https://www.epo.com.az/,astar suvağı; 30 kg"
+    ].join("\n");
+    renderPreview();
+  });
+
+  previewButton?.addEventListener("click", renderPreview);
+  input.addEventListener("input", () => {
+    if ((input.value || "").length < 4) renderPreview();
+  });
+
+  importButton?.addEventListener("click", () => {
+    const products = parseProducts();
+    if (!products.length) {
+      setStatus("İdxal üçün uyğun məhsul tapılmadı.");
+      return;
+    }
+    upsertAdminProducts(products);
+    renderQuality();
+    renderPreview();
+    setStatus(`${products.length} məhsul qiymət idxalı mərkəzindən kataloqa yazıldı.`);
+  });
+
+  exportTemplateButton?.addEventListener("click", () => {
+    const template = "sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,qiymət statusu,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər\n";
+    downloadTextFile("constera-price-import-template.csv", template, "text/csv;charset=utf-8");
+  });
+};
+
+const renderCustomerCabinet = () => {
+  const stats = document.querySelector("[data-customer-stats]");
+  const rfqList = document.querySelector("[data-customer-rfqs]");
+  const estimateList = document.querySelector("[data-customer-estimates]");
+  const favoriteGrid = document.querySelector("[data-customer-favorites]");
+  const compareGrid = document.querySelector("[data-customer-compare]");
+  const exportRfqsButton = document.querySelector("[data-customer-export-rfqs]");
+  const exportEstimatesButton = document.querySelector("[data-customer-export-estimates]");
+  const printButton = document.querySelector("[data-customer-print]");
+
+  if (!stats || !rfqList || !estimateList || !favoriteGrid || !compareGrid) return;
+
+  const rfqs = storage.read("constera-rfq-drafts");
+  const estimates = storage.read("constera-ai-estimates");
+  const favorites = storage.read("constera-favorites");
+  const compare = storage.read("constera-compare");
+  const productsById = new Map((marketplace.products || []).map((product) => [product.id, product]));
+  const selectedProducts = (ids) => ids.map((id) => productsById.get(id)).filter(Boolean);
+
+  stats.innerHTML = `
+    <article class="stat-card"><span class="stat-value">${rfqs.length}</span><p>sorğu</p></article>
+    <article class="stat-card"><span class="stat-value">${estimates.length}</span><p>smeta</p></article>
+    <article class="stat-card"><span class="stat-value">${favorites.length}</span><p>seçilmiş</p></article>
+    <article class="stat-card"><span class="stat-value">${compare.length}</span><p>müqayisə</p></article>
+  `;
+
+  const empty = (title, text) => `
+    <article class="cabinet-item">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(text)}</span>
+    </article>
+  `;
+
+  rfqList.innerHTML = rfqs.length ? rfqs.slice(0, 8).map((rfq) => `
+    <article class="cabinet-item">
+      <header>
+        <strong>${escapeHtml(rfq.product || "Qiymət sorğusu")}</strong>
+        <span class="mini-badge">${escapeHtml(rfq.status || "Yeni")}</span>
+      </header>
+      <p>${escapeHtml(rfq.quantity || "Miqdar yoxdur")} · ${escapeHtml(rfq.city || "Şəhər seçilməyib")} · ${escapeHtml(rfq.budget || "Büdcə açıq")}</p>
+      <span>${escapeHtml(rfq.note || "Qeyd yoxdur")}</span>
+    </article>
+  `).join("") : empty("Qiymət sorğusu yoxdur.", "Kataloqdan və ya ağıllı smetadan ilk qiymət sorğunu yarat.");
+
+  estimateList.innerHTML = estimates.length ? estimates.slice(0, 8).map((estimate) => `
+    <article class="cabinet-item">
+      <header>
+        <strong>${escapeHtml(estimate.projectLabel || "Smeta")} · ${escapeHtml(estimate.area || 0)} m²</strong>
+        <span class="mini-badge">${escapeHtml(estimate.rows?.length || 0)} qrup</span>
+      </header>
+      <p>${escapeHtml(estimate.scopeLabel || "İş həcmi")} · ${escapeHtml(estimate.finishLabel || "Səviyyə")} · ehtiyat ${escapeHtml(estimate.wastePercent || estimate.riskReserve || 0)}%</p>
+      <span>${estimate.createdAt ? new Date(estimate.createdAt).toLocaleString("az-AZ") : "Tarix yoxdur"}</span>
+    </article>
+  `).join("") : empty("Smeta yoxdur.", "Ağıllı smeta modulunda ilk hesablamanı hazırla.");
+
+  const renderProductMiniCards = (products, emptyTitle) => products.length ? products.map((product) => `
+    <article class="cabinet-product-card">
+      <header>
+        <strong>${escapeHtml(product.name)}</strong>
+        <span class="mini-badge">${escapeHtml(product.brand || "Brend")}</span>
+      </header>
+      <span>${escapeHtml(getCategory(product.category)?.title || product.category)} · ${escapeHtml(product.subcategory || "Subkateqoriya")}</span>
+      <footer>
+        <strong>${escapeHtml(product.price || "Sorğu əsasında")}</strong>
+        <a class="source-link" href="product-detail.html?product=${encodeURIComponent(product.id)}">Detallı bax</a>
+      </footer>
+    </article>
+  `).join("") : empty(emptyTitle, "Kataloqdan məhsul seç və bu blok avtomatik dolacaq.");
+
+  favoriteGrid.innerHTML = renderProductMiniCards(selectedProducts(favorites), "Seçilmiş məhsul yoxdur.");
+  compareGrid.innerHTML = renderProductMiniCards(selectedProducts(compare), "Müqayisə siyahısı boşdur.");
+
+  exportRfqsButton?.addEventListener("click", () => {
+    const headers = ["id", "status", "sorğu", "miqdar", "şirkət", "əlaqə", "şəhər", "büdcə", "qeyd"];
+    const csv = [headers.join(","), ...rfqs.map((rfq) => [
+      rfq.id,
+      rfq.status,
+      rfq.product,
+      rfq.quantity,
+      rfq.company,
+      rfq.contact,
+      rfq.city,
+      rfq.budget,
+      rfq.note
+    ].map(escapeCsvValue).join(","))].join("\n");
+    downloadTextFile(`constera-kabinet-rfq-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
+  });
+
+  exportEstimatesButton?.addEventListener("click", () => {
+    const headers = ["id", "layihə", "sahə", "mərtəbə", "otaq", "yaş zona", "iş həcmi", "səviyyə", "material qrupu", "tarix"];
+    const csv = [headers.join(","), ...estimates.map((estimate) => [
+      estimate.id,
+      estimate.projectLabel,
+      estimate.area,
+      estimate.floors,
+      estimate.rooms,
+      estimate.wetZones,
+      estimate.scopeLabel,
+      estimate.finishLabel,
+      estimate.rows?.length || 0,
+      estimate.createdAt
+    ].map(escapeCsvValue).join(","))].join("\n");
+    downloadTextFile(`constera-kabinet-smeta-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
+  });
+
+  printButton?.addEventListener("click", () => window.print());
 };
 
 const initActions = () => {
@@ -3403,5 +3982,8 @@ initServiceCalculator();
 initPackageCalculator();
 initRentalCalculator();
 initAiSmeta();
+initSupplierPortal();
+initPriceImportCenter();
+renderCustomerCabinet();
 initActions();
 applyUrlFilters();

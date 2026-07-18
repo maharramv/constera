@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Kabinet | Sorğular, smetalar və seçilmişlər</title>
+    <meta
+      name="description"
+      content="ConstEra Kabinet istifadəçinin qiymət sorğularını, ağıllı smetalarını, seçilmiş və müqayisə olunan məhsullarını bir yerdə göstərir."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.ru/customer-cabinet.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="customer-cabinet">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Kabinet</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
+          <a href="supplier-portal.html">Təchizatçı kabineti</a>
+          <a href="price-import.html">Qiymət idxalı</a>
+          <a href="customer-cabinet.html" aria-current="page">Kabinet</a>
+          <a href="rfq.html">Qiymət sorğusu</a>
+          <a href="rfq-dashboard.html">Sorğu paneli</a>
+          <a href="tender.html">Tender</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="admin.html">İdarəetmə</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Yeni sorğu</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Müştəri kabineti</p>
+            <h1>Sorğuları, smetaları, seçilmişləri və müqayisəni bir iş masasında topla.</h1>
+            <p class="hero-text">
+              Kabinet hazırda lokal brauzer məlumatları ilə işləyir. Bu struktur gələcəkdə giriş sistemi,
+              şirkət profili, faktura, sənəd və satınalma axını üçün əsas olacaq.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-customer-stats></div>
+        </section>
+
+        <section class="section admin-board cabinet-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Sorğular</p>
+                <h2>Qiymət sorğusu qaralamaları</h2>
+              </div>
+              <a class="button button-secondary" href="rfq-dashboard.html">Paneldə aç</a>
+            </div>
+            <div class="cabinet-list" data-customer-rfqs></div>
+            <div class="admin-actions">
+              <button class="button button-outline" type="button" data-customer-export-rfqs>Sorğu CSV ixracı</button>
+              <button class="button button-secondary" type="button" data-customer-print>Sənədi PDF üçün çap et</button>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Ağıllı smeta</p>
+                <h2>Son hesablamalar</h2>
+              </div>
+              <a class="button button-secondary" href="ai-smeta.html">Smeta yarat</a>
+            </div>
+            <div class="cabinet-list" data-customer-estimates></div>
+            <div class="admin-actions">
+              <button class="button button-outline" type="button" data-customer-export-estimates>Smeta CSV ixracı</button>
+            </div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Seçilmişlər</p>
+                <h2>Favorit məhsullar</h2>
+              </div>
+              <a class="card-link" href="catalog.html">Kataloqdan əlavə et</a>
+            </div>
+            <div class="cabinet-product-grid" data-customer-favorites></div>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Müqayisə</p>
+                <h2>Yanaşı baxış üçün seçilənlər</h2>
+              </div>
+              <a class="card-link" href="catalog.html">Məhsul seç</a>
+            </div>
+            <div class="cabinet-product-grid" data-customer-compare></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

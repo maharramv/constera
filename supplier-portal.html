@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Təchizatçı kabineti | Məhsul və qiymət idarəetməsi</title>
+    <meta
+      name="description"
+      content="ConstEra Təchizatçı kabineti məhsul əlavə etmə, qiymət yeniləmə, CSV idxalı və kataloq keyfiyyətinə nəzarət üçün lokal idarəetmə panelidir."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.ru/supplier-portal.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="supplier-portal">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Təchizatçı</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="brands.html">Brendlər</a>
+          <a href="suppliers.html">Təchizatçılar</a>
+          <a href="supplier-portal.html" aria-current="page">Təchizatçı kabineti</a>
+          <a href="price-import.html">Qiymət idxalı</a>
+          <a href="customer-cabinet.html">Kabinet</a>
+          <a href="rfq.html">Qiymət sorğusu</a>
+          <a href="rfq-dashboard.html">Sorğu paneli</a>
+          <a href="tender.html">Tender</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="admin.html">İdarəetmə</a>
+          <a class="button button-outline nav-cta" href="price-import.html">CSV idxal et</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Təchizatçı kabineti</p>
+            <h1>Məhsul, qiymət və stok məlumatlarını kataloqa sürətli əlavə et.</h1>
+            <p class="hero-text">
+              Bu kabinet təchizatçıların məhsul kartlarını lokal olaraq hazırlaması, qiymətləri yeniləməsi
+              və CSV vasitəsilə toplu idxal etməsi üçün qurulub. Növbəti mərhələdə giriş, rol və canlı baza əlavə edilə bilər.
+            </p>
+          </div>
+          <div class="admin-stat-grid" data-supplier-portal-stats></div>
+        </section>
+
+        <section class="section admin-board portal-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Məhsul kartı</p>
+                <h2>Təchizatçı məhsulu əlavə et</h2>
+              </div>
+              <span class="data-badge">lokal yaddaş</span>
+            </div>
+            <form class="admin-form" data-supplier-product-form>
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Təchizatçı</span>
+                  <input name="supplier" type="text" value="Yeni təchizatçı" required />
+                </label>
+                <label class="admin-field">
+                  <span>Məhsul adı</span>
+                  <input name="name" type="text" placeholder="Məsələn: Penguin Penplus 15 L" required />
+                </label>
+                <label class="admin-field">
+                  <span>SKU / kod</span>
+                  <input name="sku" type="text" placeholder="PNG-PENPLUS-15L" required />
+                </label>
+                <label class="admin-field">
+                  <span>Brend</span>
+                  <input name="brand" type="text" placeholder="Penguin, EPO, Zink..." />
+                </label>
+                <label class="admin-field">
+                  <span>Kateqoriya</span>
+                  <select name="category" data-supplier-category></select>
+                </label>
+                <label class="admin-field">
+                  <span>Subkateqoriya</span>
+                  <select name="subcategory" data-supplier-subcategory></select>
+                </label>
+                <label class="admin-field">
+                  <span>Qablaşdırma</span>
+                  <input name="package" type="text" placeholder="15 L, 25 kg, 1 ədəd..." />
+                </label>
+                <label class="admin-field">
+                  <span>Qiymət</span>
+                  <input name="price" type="text" placeholder="72.90 AZN və ya Sorğu əsasında" />
+                </label>
+                <label class="admin-field">
+                  <span>Stok</span>
+                  <input name="availability" type="text" placeholder="Anbarda var / Sorğu əsasında" />
+                </label>
+                <label class="admin-field">
+                  <span>Foto URL</span>
+                  <input name="imageUrl" type="url" placeholder="https://..." />
+                </label>
+                <label class="admin-field">
+                  <span>Mənbə URL</span>
+                  <input name="sourceUrl" type="url" placeholder="https://..." />
+                </label>
+                <label class="admin-field">
+                  <span>Mənşə</span>
+                  <input name="origin" type="text" placeholder="Azərbaycan / Türkiyə / İdxal" />
+                </label>
+              </div>
+              <label class="admin-field admin-field-wide">
+                <span>Texniki xüsusiyyətlər</span>
+                <textarea name="specs" rows="3" placeholder="Xüsusiyyətləri ; ilə ayır: daxili boya; mat; 15 L"></textarea>
+              </label>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Kataloqa əlavə et</button>
+                <button class="button button-secondary" type="button" data-supplier-clear-form>Formu təmizlə</button>
+                <a class="button button-outline" href="catalog.html">Kataloqda yoxla</a>
+              </div>
+              <p class="admin-import-status" data-supplier-status>
+                Məhsullar brauzerdə saxlanır və əsas kataloq üzərinə əlavə qat kimi işləyir.
+              </p>
+            </form>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Toplu idxal</p>
+                <h2>Təchizatçı qiymət siyahısı</h2>
+              </div>
+              <button class="button button-secondary" type="button" data-supplier-template>Şablon doldur</button>
+            </div>
+            <textarea
+              class="admin-import-area"
+              data-supplier-price-csv
+              rows="12"
+              placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər"
+            ></textarea>
+            <div class="admin-actions">
+              <button class="button button-primary" type="button" data-supplier-import-csv>CSV idxal et</button>
+              <button class="button button-secondary" type="button" data-supplier-export-csv>Məhsullarımı CSV-yə ixrac et</button>
+            </div>
+          </div>
+
+          <div class="admin-panel glass portal-wide">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Məhsullarım</p>
+                <h2>Son əlavə olunan təchizatçı məhsulları</h2>
+              </div>
+              <span class="data-badge" data-supplier-product-count>0 məhsul</span>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Məhsul</th>
+                    <th>Brend</th>
+                    <th>Kateqoriya</th>
+                    <th>Qiymət</th>
+                    <th>Stok</th>
+                  </tr>
+                </thead>
+                <tbody data-supplier-product-rows></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>
