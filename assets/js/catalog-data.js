@@ -122,7 +122,7 @@ window.CONSTERA_MARKETPLACE = {
       id: "engineering",
       title: "Mühəndis sistemləri",
       subtitle: "Elektrik, santexnika, HVAC, zəif axın və təhlükəsizlik sistemləri",
-      subcategories: ["Elektrik montajı", "Santexnika montajı", "HVAC montajı", "Zəif axın və CCTV", "Yanğın təhlükəsizliyi", "Smart home"]
+      subcategories: ["Elektrik montajı", "Santexnika montajı", "HVAC montajı", "Zəif axın və CCTV", "Yanğın təhlükəsizliyi", "Ağıllı ev"]
     },
     {
       id: "finishing",
@@ -337,8 +337,8 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       leadTime: "Obyekt brifindən sonra",
       team: "MEP + tamamlama komandası",
-      specs: ["Ofis, mağaza, restoran və showroom təmiri", "Elektrik, zəif axın, HVAC və işıqlandırma", "Gecə və mərhələli iş qrafiki imkanı"],
-      deliverables: ["İş proqramı", "Təklif paketi", "Təhvil checklist-i"]
+      specs: ["Ofis, mağaza, restoran və sərgi salonu təmiri", "Elektrik, zəif axın, HVAC və işıqlandırma", "Gecə və mərhələli iş qrafiki imkanı"],
+      deliverables: ["İş proqramı", "Təklif paketi", "Təhvil yoxlama siyahısı"]
     },
     {
       id: "interyer-dizayn",
@@ -416,7 +416,7 @@ window.CONSTERA_MARKETPLACE = {
       leadTime: "Ölçü və materialdan sonra",
       team: "Dam ustaları briqadası",
       specs: ["Metal və taxta karkas", "Metal kirəmit, profnastil və membran", "Oluk və aksesuar montajı"],
-      deliverables: ["Dam material siyahısı", "Quraşdırma qrafiki", "Zəmanət checklist-i"]
+      deliverables: ["Dam material siyahısı", "Quraşdırma qrafiki", "Zəmanət yoxlama siyahısı"]
     },
     {
       id: "fasad-uzluk-isleri",
@@ -468,7 +468,7 @@ window.CONSTERA_MARKETPLACE = {
       leadTime: "Ölçü və plan üzrə",
       team: "Santexnik + kafel briqadası",
       specs: ["Hidroizolyasiya", "Kafel və keramoqranit", "Santexnika və elektrik nöqtələri"],
-      deliverables: ["Material siyahısı", "Usta qrafiki", "Təhvil checklist-i"]
+      deliverables: ["Material siyahısı", "Usta qrafiki", "Təhvil yoxlama siyahısı"]
     },
     {
       id: "sokuntu-hazirliq",
@@ -511,11 +511,11 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "3d-vizualizasiya",
-      title: "3D vizualizasiya və render paketi",
+      title: "3D vizualizasiya paketi",
       category: "design",
       subcategory: "3D vizualizasiya",
       type: "Dizayn",
-      unit: "otaq / render",
+      unit: "otaq / vizualizasiya",
       price: "Sorğu əsasında",
       leadTime: "Brifdən sonra",
       team: "3D vizualizator",
@@ -628,9 +628,9 @@ window.CONSTERA_MARKETPLACE = {
     },
     {
       id: "smart-home-qurasdirma",
-      title: "Smart home və avtomatika quraşdırması",
+      title: "Ağıllı ev və avtomatika quraşdırması",
       category: "engineering",
-      subcategory: "Smart home",
+      subcategory: "Ağıllı ev",
       type: "Avtomatika",
       unit: "layihə",
       price: "Sorğu əsasında",
@@ -702,7 +702,7 @@ window.CONSTERA_MARKETPLACE = {
       leadTime: "Ölçü təsdiqindən sonra",
       team: "Montaj briqadası",
       specs: ["Daxili qapı", "PVC/alüminium pəncərə", "Köpük, silikon və tənzimləmə"],
-      deliverables: ["Ölçü siyahısı", "Montaj qrafiki", "Təhvil checklist-i"]
+      deliverables: ["Ölçü siyahısı", "Montaj qrafiki", "Təhvil yoxlama siyahısı"]
     },
     {
       id: "dekorativ-suvaq-panel",
@@ -935,7 +935,7 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       leadTime: "İş bitdikdən sonra",
       team: "Texniki nəzarətçi",
-      specs: ["Təhvil checklist-i", "Qüsur siyahısı", "Foto və akt sənədləri"],
+      specs: ["Təhvil yoxlama siyahısı", "Qüsur siyahısı", "Foto və akt sənədləri"],
       deliverables: ["Təhvil aktı", "Qüsur reyestri", "Son hesabat"]
     }
   ],
@@ -952,7 +952,7 @@ window.CONSTERA_MARKETPLACE = {
       team: "Təmir briqadası + sahə koordinatoru",
       idealFor: "Kirayə mənzil, ilkin yaşayış və büdcəyə həssas təmir",
       includes: ["Söküntü və hazırlıq", "Elektrik və santexnika yeniləməsi", "Şpaklyovka, boya və sadə döşəmə işləri"],
-      deliverables: ["İş qrafiki", "Material siyahısı", "Təhvil checklist-i"]
+      deliverables: ["İş qrafiki", "Material siyahısı", "Təhvil yoxlama siyahısı"]
     },
     {
       id: "standart-temir-paketi",
@@ -994,7 +994,7 @@ window.CONSTERA_MARKETPLACE = {
       team: "Santexnik, kafel ustası, elektrik və mebel koordinasiyası",
       idealFor: "Hamam, sanitar qovşaq, mətbəx və yaş zonaların yenilənməsi",
       includes: ["Hidroizolyasiya və boru xətləri", "Kafel, keramoqranit və fuga", "Sanitar avadanlıq, elektrik nöqtələri və son test"],
-      deliverables: ["Yaş zona checklist-i", "Sərfiyyat siyahısı", "Sızma testi qeydi"]
+      deliverables: ["Yaş zona yoxlama siyahısı", "Sərfiyyat siyahısı", "Sızma testi qeydi"]
     },
     {
       id: "ofis-temiri-hazir-paketi",
@@ -1020,9 +1020,9 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       timeline: "30-90 gün",
       team: "Obyekt təmiri briqadası + texniki nəzarət",
-      idealFor: "Mağaza, salon, restoran, klinika və showroom",
+      idealFor: "Mağaza, salon, restoran, klinika və sərgi salonu",
       includes: ["Söküntü, planlama və mühəndis sistemləri", "Fasad, interyer və işıqlandırma elementləri", "Təhlükəsizlik, zəif axın və təhvil hazırlığı"],
-      deliverables: ["Obyekt smetası", "Mərhələ planı", "Açılışa hazır təhvil checklist-i"]
+      deliverables: ["Obyekt smetası", "Mərhələ planı", "Açılışa hazır təhvil yoxlama siyahısı"]
     },
     {
       id: "qara-karkas-paketi",
@@ -1050,7 +1050,7 @@ window.CONSTERA_MARKETPLACE = {
       team: "Karkas, dam, suvaq və MEP hazırlıq komandası",
       idealFor: "Daxili təmirə hazır ev və villa mərhələsi",
       includes: ["Qara karkas işləri", "Dam örtüyü və fasad hazırlığı", "Daxili suvaq, elektrik və santexnika qara işləri"],
-      deliverables: ["Ağ suvaq checklist-i", "Gizli işlər aktı", "Təmirə giriş material siyahısı"]
+      deliverables: ["Ağ suvaq yoxlama siyahısı", "Gizli işlər aktı", "Təmirə giriş material siyahısı"]
     },
     {
       id: "villa-tikintisi-paketi",
@@ -1090,7 +1090,7 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       timeline: "4-12 ay",
       team: "Layihə meneceri, mühəndis və sahə briqadaları",
-      idealFor: "Mağaza, restoran, xidmət obyekti, klinika və showroom binası",
+      idealFor: "Mağaza, restoran, xidmət obyekti, klinika və sərgi salonu binası",
       includes: ["Sahə hazırlığı və karkas", "Fasad, dam və mühəndis xətləri", "İstismar tələblərinə uyğun təhvil hazırlığı"],
       deliverables: ["Obyekt icra qrafiki", "MEP tələbləri", "Təhvil sənədləri siyahısı"]
     },
@@ -1106,7 +1106,7 @@ window.CONSTERA_MARKETPLACE = {
       team: "Metal konstruksiya, beton və mühəndis komandası",
       idealFor: "Anbar, istehsalat sahəsi, logistika və servis bazası",
       includes: ["Beton döşəmə və metal karkas", "Sandviç panel, dam və fasad", "Elektrik, yanğın və sahə infrastrukturu hazırlığı"],
-      deliverables: ["Konstruksiya siyahısı", "Avadanlıq və texnika planı", "İstismar təhvil checklist-i"]
+      deliverables: ["Konstruksiya siyahısı", "Avadanlıq və texnika planı", "İstismar təhvil yoxlama siyahısı"]
     },
     {
       id: "acar-teslim-ev-paketi",
@@ -1148,7 +1148,7 @@ window.CONSTERA_MARKETPLACE = {
       team: "Dizayn, MEP, mebel koordinasiyası və təmir komandası",
       idealFor: "Yeni ofis, filial, satış ofisi və komanda məkanı",
       includes: ["Plan həlli və iş axını zonalaşdırması", "Təmir, elektrik, internet, işıq və HVAC", "Mebel ölçüləri, brend elementləri və təhvil"],
-      deliverables: ["Ofis konsepti", "MEP nöqtə siyahısı", "Açılışa hazır təhvil checklist-i"]
+      deliverables: ["Ofis konsepti", "MEP nöqtə siyahısı", "Açılışa hazır təhvil yoxlama siyahısı"]
     },
     {
       id: "obyekt-full-paketi",
@@ -1160,7 +1160,7 @@ window.CONSTERA_MARKETPLACE = {
       price: "Sorğu əsasında",
       timeline: "45-150 gün",
       team: "Dizayn, təmir, mühəndis sistemləri və açılış koordinasiyası",
-      idealFor: "Mağaza, restoran, salon, klinika və showroom",
+      idealFor: "Mağaza, restoran, salon, klinika və sərgi salonu",
       includes: ["Konsept və texniki plan", "Təmir, fasad, işıq, HVAC və zəif axın", "Açılış öncəsi son yoxlama və təhvil"],
       deliverables: ["Obyekt konsepti", "Açılış qrafiki", "Təhvil və qüsur reyestri"]
     },
@@ -1182,7 +1182,7 @@ window.CONSTERA_MARKETPLACE = {
       id: "investor-paketi",
       title: "Investor tikinti və təmir paketi",
       category: "full-combo",
-      subcategory: "Investor paketi",
+      subcategory: "İnvestor paketi",
       type: "B2B tam paket",
       unit: "portfel / layihə",
       price: "Sorğu əsasında",

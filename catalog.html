@@ -69,7 +69,14 @@
               ağacına bölünüb. Qiymətlər canlı bazaya qoşulana qədər sorğu əsasında idarə olunur.
             </p>
           </div>
-          <div class="market-command glass">
+          <button
+            class="button button-secondary catalog-mobile-toggle"
+            type="button"
+            aria-controls="catalog-filter-panel"
+            aria-expanded="false"
+            data-catalog-filter-toggle
+          >Filtrləri göstər</button>
+          <div class="market-command glass" id="catalog-filter-panel" data-catalog-filter-panel>
             <label>
               <span>Axtarış</span>
               <input data-search type="search" placeholder="məsələn: boya 15 L, Bosch, armatur 12 mm" />
@@ -117,7 +124,14 @@
         </section>
 
         <section class="section catalog-workspace">
-          <aside class="catalog-sidebar glass">
+          <button
+            class="button button-secondary catalog-mobile-toggle catalog-category-toggle"
+            type="button"
+            aria-controls="catalog-category-panel"
+            aria-expanded="false"
+            data-catalog-category-toggle
+          >Kateqoriyaları göstər</button>
+          <aside class="catalog-sidebar glass" id="catalog-category-panel" data-catalog-category-panel>
             <div class="sidebar-heading">
               <span class="eyebrow">Kateqoriyalar</span>
               <strong data-result-count>0 məhsul</strong>
@@ -134,6 +148,10 @@
               <a class="card-link" href="admin.html">İdarəetmə strukturuna bax</a>
             </div>
             <div class="product-grid" data-product-grid></div>
+            <div class="catalog-pagination" data-catalog-pagination hidden>
+              <span data-pagination-status></span>
+              <button class="button button-secondary" type="button" data-load-more>Daha çox göstər</button>
+            </div>
             <div class="empty-state glass" data-empty-state hidden>
               <strong>Nəticə tapılmadı.</strong>
               <span>Axtarışı sadələşdir və ya başqa kateqoriya seç.</span>

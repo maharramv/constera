@@ -5,6 +5,8 @@
   "description": "ConstEra Korporativ v2 statik bazar platforması.",
   "scripts": {
     "build": "npm run vercel-build",
-    "vercel-build": "node scripts/vercel-build.mjs"
+    "vercel-build": "node scripts/vercel-build.mjs",
+    "audit": "node scripts/audit-site.mjs",
+    "check": "npm run audit && node --check assets/js/script.js && node --check assets/js/catalog-data.js && node --check assets/js/taxonomy-expansion.js && node --check assets/js/azerbaijan-real-products.js && node --check assets/js/marketplace.js && npm run vercel-build"
   }
 }

@@ -50,7 +50,7 @@
     { id: "paints", group: "Tamamlama və dekor", subcategories: ["Sprey astar", "Sprey lak", "Taxta lakı", "Boya təmizləyici", "Boya bərpa emalı", "Interyer boya", "Eksteryer boya", "Metal boya"] },
     { id: "flooring", group: "Döşəmə və üzlük", subcategories: ["Keramoqranit", "Kafel", "Mozaika", "Laminat yapışqanı", "Linoleum", "Döşəmə yaşmağı", "Kompozit döşəmə", "Divar paneli"] },
     { id: "wall-decor", group: "Tamamlama və dekor", title: "Oboy və divar dekoru", subtitle: "Oboy, foto oboy, divar paneli, maye oboy və dekor plyonkaları", subcategories: ["Flizelin oboy", "Vinil oboy", "Foto oboy", "Maye oboy", "Dekorativ divar paneli", "Yapışqan plyonka", "Oboy yapışqanı", "Mərmər effektli panel"] },
-    { id: "professional-lighting", group: "Elektrik və zəif axın", title: "Professional işıqlandırma", subtitle: "Obyekt, fasad, bağ və kommersiya işıqlandırması", subcategories: ["Magistral trek", "COB spot", "Neon flex", "Sənaye projektoru", "Sensorlu LED", "Avariyalı işıq", "Bağ işığı", "Solar küçə çırağı"] },
+    { id: "professional-lighting", group: "Elektrik və zəif axın", title: "Peşəkar işıqlandırma", subtitle: "Obyekt, fasad, bağ və kommersiya işıqlandırması", subcategories: ["Magistral trek", "COB spot", "Neon lent", "Sənaye projektoru", "Sensorlu LED", "Avariyalı işıq", "Bağ işığı", "Günəş enerjili küçə çırağı"] },
     { id: "measuring-surveying", group: "Alətlər və sərfiyyat", title: "Ölçmə və geodeziya", subtitle: "Lazer səviyyə, ölçü cihazları və obyekt nəzarət avadanlığı", subcategories: ["Lazer nivelir", "4D lazer", "Məsafəölçən", "Nəm ölçən", "Termal kamera", "Multimetr", "Kabel tester", "İndikator vintaçan"] },
     { id: "welding-cutting", group: "Metal və konstruksiya", title: "Qaynaq və kəsmə", subtitle: "Qaynaq, metal kəsmə, boru emalı və montaj avadanlığı", subcategories: ["MIG/MMA qaynaq", "TIG qaynaq", "Plazma kəsmə", "Maqnit drel", "Profil kəsən", "Boru bükən", "Qaynaq maskası", "Elektrod və tel"] },
     { id: "formwork-scaffolding", group: "Konstruksiya və daşıyıcı sistem", title: "Qəlib və iskele sistemləri", subtitle: "Monolit işlər, iskele, dayaq və təhlükəsiz iş platformaları", subcategories: ["Panel qəlib", "Kolon qəlibi", "Tavan qəlibi", "Teleskopik dayaq", "H tip iskele", "Mobil iskele", "Qəlib faneri", "Qəlib yağı"] },
@@ -61,7 +61,7 @@
     { id: "building-hardware", group: "Bərkidici və furnitura", title: "Furnitura və xırda aksesuar", subtitle: "Qapı, mebel, dolab və obyekt aksesuarları", subcategories: ["Qıfıl", "Silindr", "Tutacaq", "Mebel kilidi", "Maqnit tutucu", "Kronşteyn", "Asma kilid", "Çəkməcə mexanizmi"] },
     { id: "ventilation-accessories", group: "HVAC və iqlim", title: "Ventilyasiya aksesuarları", subtitle: "Hava kanalı, diffuzor və obyekt iqlim aksesuarları", subcategories: ["Spiral kanal", "Fleks kanal", "Diffuzor", "Anemostat", "Səsboğucu", "Filtr", "Klapana", "Kanal fanı"] },
     { id: "site-safety-ppe", group: "Təhlükəsizlik və mühafizə", title: "PPE və sahə təhlükəsizliyi", subtitle: "Usta və sahə komandaları üçün fərdi mühafizə", subcategories: ["Kaska", "Eynək", "Əlcək", "Respirator", "Jilet", "İş ayaqqabısı", "Düşmə kəməri", "Təhlükəsizlik toru"] },
-    { id: "garden-irrigation", group: "Ərazi və landşaft", title: "Bağ və suvarma", subtitle: "Həyət, bağ, landşaft və avtomatik suvarma materialları", subcategories: ["Damcı suvarma", "Sprinkler", "Bağ nasosu", "Bağ işığı", "Solar bağ lampası", "Drenaj borusu", "Süni ot", "Bordür"] },
+    { id: "garden-irrigation", group: "Ərazi və landşaft", title: "Bağ və suvarma", subtitle: "Həyət, bağ, landşaft və avtomatik suvarma materialları", subcategories: ["Damcı suvarma", "Çiləyici", "Bağ nasosu", "Bağ işığı", "Günəş enerjili bağ lampası", "Drenaj borusu", "Süni ot", "Bordür"] },
     { id: "bath-kitchen-accessories", group: "Santexnika və su sistemləri", title: "Hamam və mətbəx aksesuarları", subtitle: "Kran, şlanq, sifon, güzgü və mətbəx aksesuarları", subcategories: ["Aerator", "Duş başlığı", "Duş şlanqı", "Mətbəx quruducu", "Hamam güzgüsü", "Bide kranı", "Sifon", "Tros"] },
     { id: "repair-retail-items", group: "Tamamlama və dekor", title: "Təmir üçün pərakəndə məhsullar", subtitle: "Kiçik təmir, ev ustası və obyekt tamamlaması üçün hazır məhsullar", subcategories: ["Kiçik boya", "Aerozol astar", "Oboy yapışqanı", "Divar paneli", "Yapışqan plyonka", "LED lampa", "Rozetka", "Kran aksesuarı"] },
     { id: "concrete-equipment", group: "Konstruksiya və daşıyıcı sistem", title: "Beton avadanlığı və sərfiyyatı", subtitle: "Beton tökmə, sıxlaşdırma, kəsmə və səth emalı avadanlığı", subcategories: ["Beton vibratoru", "Beton nasosu aksesuarı", "Beton kəsici", "Beton cilalayıcı", "Helikopter mala", "Beton qəlib sərfiyyatı", "Səth möhkəmləndirici", "Kür materialı"] },
@@ -72,18 +72,18 @@
     { id: "water-treatment", group: "Santexnika və su sistemləri", title: "Su təmizləmə və filtrasiya", subtitle: "Məişət və obyektlər üçün filtrasiya, yumşaltma və təmiz su sistemləri", subcategories: ["Mexaniki filtr", "Karbon filtr", "Su yumşaldıcı", "RO sistem", "UV sterilizator", "Filtr kartuşu", "Manometr", "Filtr korpusu"] },
     { id: "drainage-sewer", group: "Santexnika və su sistemləri", title: "Kanalizasiya və drenaj", subtitle: "Kanalizasiya, drenaj xətti, trap və yağış suyu sistemləri", subcategories: ["Kanalizasiya borusu", "Drenaj borusu", "Trap", "Reviziya qapağı", "Yağ tutucu", "Septik aksesuarı", "Drenaj quyusu", "Kollektor quyusu"] },
     { id: "industrial-flooring", group: "Döşəmə və üzlük", title: "Sənaye döşəmə sistemləri", subtitle: "Epoksi, poliuretan, beton və anbar döşəmə həlləri", subcategories: ["Epoksi primer", "Epoksi boya", "PU örtük", "Antistatik döşəmə", "Döşəmə cilası", "Dilatasiya profili", "Sənaye süpürgəliyi", "Forklift izi qoruyucu"] },
-    { id: "acoustic-systems", group: "İzolyasiya və membran", title: "Akustik sistemlər", subtitle: "Səs izolyasiyası, akustik panel və texniki otaq həlləri", subcategories: ["Akustik panel", "Səs baryeri", "Akustik tavan", "Akustik keçə", "Vibrasiya yastığı", "Texniki otaq izolyasiyası", "Studio panel", "Səs udan membran"] },
+    { id: "acoustic-systems", group: "İzolyasiya və membran", title: "Akustik sistemlər", subtitle: "Səs izolyasiyası, akustik panel və texniki otaq həlləri", subcategories: ["Akustik panel", "Səs baryeri", "Akustik tavan", "Akustik keçə", "Vibrasiya yastığı", "Texniki otaq izolyasiyası", "Studiya paneli", "Səs udan membran"] },
     { id: "heavy-equipment-parts", group: "Ağır texnika və avadanlıq", title: "Ağır texnika ehtiyat hissələri", subtitle: "Ekskavator, yükləyici, generator və kompressor üçün sərfiyyat və hissələr", subcategories: ["Hidravlik şlanq", "Kova dişi", "Filtr dəsti", "Yağ və sürtkü", "Təkər və palet", "Generator filtri", "Kompressor yağı", "Operator aksesuarı"] },
     { id: "site-office", group: "Sahə və infrastruktur", title: "Sahə ofisi və mobil modul", subtitle: "Tikinti sahəsi üçün mobil ofis, sanitar və yaşayış modulları", subcategories: ["Ofis konteyneri", "Sanitar konteyner", "Mühafizə köşkü", "Yeməkxana modulu", "Soyunma otağı", "Mobil anbar", "Kondisioner modulu", "Mebel dəsti"] },
     { id: "warehouse-racking", group: "Anbar və logistika avadanlığı", title: "Anbar rəfləri və saxlanma", subtitle: "Palet rəfi, konsol rəfi, arxiv və material saxlanma sistemləri", subcategories: ["Palet rəfi", "Konsol rəfi", "Arxiv rəfi", "Ağır yük rəfi", "Rəf qoruyucu", "Palet arabası", "Transpalet", "Anbar nişanlama"] },
     { id: "packaging-site-logistics", group: "Anbar və logistika avadanlığı", title: "Qablaşdırma və sahə logistikası", subtitle: "Material daşınması, qablaşdırma və obyekt içi logistika məhsulları", subcategories: ["Stretch film", "Bağlama lenti", "Karton künclük", "Palet", "Material arabası", "Yük qayışı", "Etiket", "Konteyner plombu"] },
     { id: "certified-materials", group: "Sertifikat və keyfiyyət", title: "Sertifikatlı materiallar", subtitle: "CE, ISO, yanğın və gigiyena sənədi tələb olunan məhsul qrupları", subcategories: ["CE sertifikatlı", "ISO sənədli", "MSDS tələbli", "Yanğın sertifikatlı", "Gigiyena sertifikatı", "Test protokolu", "Texniki pasport", "Zəmanət sənədi"] },
-    { id: "green-building", group: "Yaşıl tikinti", title: "Yaşıl tikinti materialları", subtitle: "Enerji səmərəliliyi, ekoloji material və dayanıqlı tikinti həlləri", subcategories: ["Low VOC boya", "Enerji səmərəli izolyasiya", "Su qənaətli kran", "LED qənaət", "Təkrar material", "Solar aksesuar", "Yaşıl dam", "Ekoloji sertifikat"] },
-    { id: "smart-building", group: "Elektrik və zəif axın", title: "Ağıllı bina sistemləri", subtitle: "BMS, sensor, monitorinq və avtomatlaşdırma üçün məhsullar", subcategories: ["BMS sensor", "Enerji sayğacı", "Ağıllı termostat", "CO2 sensoru", "Su sızma sensoru", "KNX modulu", "IoT gateway", "Monitorinq paneli"] },
-    { id: "security-access", group: "Təhlükəsizlik və mühafizə", title: "Mühafizə və giriş nəzarəti", subtitle: "CCTV, access control, turniket və obyekt təhlükəsizliyi", subcategories: ["IP kamera", "NVR", "Access controller", "Kart oxuyucu", "Elektromaqnit kilid", "Turniket", "Bollard", "Alarm sensoru"] },
-    { id: "cleanroom-medical-fitout", group: "Xüsusi obyektlər", title: "Klinika və təmiz otaq fit-out", subtitle: "Tibbi, laboratoriya və təmiz otaq materialları", subcategories: ["Antibakterial panel", "Təmiz otaq qapısı", "Vinil tibbi döşəmə", "HEPA filtr", "Laboratoriya mebeli", "Hermetik lampa", "Antistatik örtük", "Tibbi qaz aksesuarı"] },
-    { id: "hospitality-fitout", group: "Xüsusi obyektlər", title: "Hotel və restoran fit-out", subtitle: "HoReCa obyektləri üçün tamamlanma, mebel və mühəndis materialları", subcategories: ["Commercial kitchen", "Bar paneli", "Yanğına davamlı qapı", "Akustik tavan", "Nəmə davamlı boya", "Dekorativ işıq", "Mebel furniturası", "Sanitar aksesuar"] },
-    { id: "education-public-buildings", group: "Xüsusi obyektlər", title: "Təhsil və ictimai bina materialları", subtitle: "Məktəb, bağça, ofis və ictimai obyektlər üçün davamlı materiallar", subcategories: ["Anti-slip döşəmə", "Zərbəyə davamlı panel", "Sinif mebeli", "Sanitar kabin", "Avariyalı işıq", "Evakuasiya nişanı", "Akustik panel", "Uşaq təhlükəsizliyi"] }
+    { id: "green-building", group: "Yaşıl tikinti", title: "Yaşıl tikinti materialları", subtitle: "Enerji səmərəliliyi, ekoloji material və dayanıqlı tikinti həlləri", subcategories: ["Aşağı VOC tərkibli boya", "Enerji səmərəli izolyasiya", "Su qənaətli kran", "LED qənaət", "Təkrar material", "Günəş enerjisi aksesuarı", "Yaşıl dam", "Ekoloji sertifikat"] },
+    { id: "smart-building", group: "Elektrik və zəif axın", title: "Ağıllı bina sistemləri", subtitle: "BMS, sensor, monitorinq və avtomatlaşdırma üçün məhsullar", subcategories: ["BMS sensor", "Enerji sayğacı", "Ağıllı termostat", "CO2 sensoru", "Su sızma sensoru", "KNX modulu", "IoT şlüzü", "Monitorinq paneli"] },
+    { id: "security-access", group: "Təhlükəsizlik və mühafizə", title: "Mühafizə və giriş nəzarəti", subtitle: "CCTV, girişə nəzarət, turniket və obyekt təhlükəsizliyi", subcategories: ["IP kamera", "NVR", "Giriş nəzarəti idarəedicisi", "Kart oxuyucu", "Elektromaqnit kilid", "Turniket", "Mühafizə dirəyi", "Həyəcan sensoru"] },
+    { id: "cleanroom-medical-fitout", group: "Xüsusi obyektlər", title: "Klinika və təmiz otaq tamamlanması", subtitle: "Tibbi, laboratoriya və təmiz otaq materialları", subcategories: ["Antibakterial panel", "Təmiz otaq qapısı", "Vinil tibbi döşəmə", "HEPA filtr", "Laboratoriya mebeli", "Hermetik lampa", "Antistatik örtük", "Tibbi qaz aksesuarı"] },
+    { id: "hospitality-fitout", group: "Xüsusi obyektlər", title: "Hotel və restoran tamamlanması", subtitle: "Hotel və restoran obyektləri üçün tamamlama, mebel və mühəndis materialları", subcategories: ["Peşəkar mətbəx", "Bar paneli", "Yanğına davamlı qapı", "Akustik tavan", "Nəmə davamlı boya", "Dekorativ işıq", "Mebel furniturası", "Sanitar aksesuar"] },
+    { id: "education-public-buildings", group: "Xüsusi obyektlər", title: "Təhsil və ictimai bina materialları", subtitle: "Məktəb, bağça, ofis və ictimai obyektlər üçün davamlı materiallar", subcategories: ["Sürüşməyə qarşı döşəmə", "Zərbəyə davamlı panel", "Sinif mebeli", "Sanitar kabin", "Avariyalı işıq", "Evakuasiya nişanı", "Akustik panel", "Uşaq təhlükəsizliyi"] }
   ];
 
   mergeCategories("categories", marketCategories);
@@ -1226,7 +1226,7 @@
       sourceUrl: "https://penguin.az/catalog/product/penguin-softline-velvet-smooth",
       sourceLabel: "Penguin rəsmi məhsul səhifəsi",
       availability: "Rəsmi satış nöqtələri / sorğu əsasında",
-      specs: ["Velvet smooth interyer boya", "15 L qablaşdırma", "Mat səth", "Fırça və rulo ilə tətbiq"]
+      specs: ["Məxməri hamar interyer boyası", "15 L qablaşdırma", "Mat səth", "Fırça və rulo ilə tətbiq"]
     }
   ];
 
@@ -1256,17 +1256,30 @@
     if (/perforator/.test(value)) return ["tools", "Perforator"];
     if (/drel|şurup|vintaçan/.test(value)) return ["tools", "Drel və şurupbağlayan"];
     if (/lobzik|mişar|kəsici|kafel kəsici/.test(value)) return ["tools", /kafel/.test(value) ? "Kafel kəsici" : "Elektrik mişarı"];
-    if (/cilalama|renovator|fen|neyler|stepler|boyaçəkən|lehim|qayka açan|alət dəsti|açar dəsti/.test(value)) return ["tools", "Elektrik alətlər"];
+    if (/cilalama/.test(value)) return ["tools", "Cilalama maşını"];
+    if (/renovator/.test(value)) return ["tools", "Renovator"];
+    if (/fen/.test(value)) return ["tools", "İnşaat feni"];
+    if (/neyler|stepler/.test(value)) return ["tools", "Neyler və stepler"];
+    if (/boyaçəkən/.test(value)) return ["tools", "Boya püskürdücü"];
+    if (/lehim/.test(value)) return ["tools", "Lehim aparatı"];
+    if (/qayka açan/.test(value)) return ["tools", "Qayka açan"];
+    if (/alət dəsti|açar dəsti/.test(value)) return ["tools", "Açar dəsti"];
     if (/unitaz|çanaq|lavabo/.test(value)) return ["sanitary-ware", value.includes("mətbəx") ? "Mətbəx çanağı" : "Lavabo və çanaq"];
     if (/grohe|kran|suqarışdırıcı|qarışdırıcı|aerator|arko/.test(value)) return ["sanitary-ware", "Suqarışdırıcı"];
     if (/duş|sifon|tros|lyuk|vanna|hamam|bacok|asma çən/.test(value)) return ["sanitary-ware", /mebel|şkaf|güzgü/.test(value) ? "Hamam mebeli" : "Duş qarnituru"];
-    if (/boya|astar|lak|emal|tonlayıcı|təmizləyici/.test(value)) return ["paints", value.includes("astar") ? "Sprey astar" : "Kiçik boya"];
+    if (/boya|astar|lak|emal|tonlayıcı|təmizləyici/.test(value)) {
+      if (value.includes("astar")) return ["paints", "Sprey astar"];
+      if (value.includes("təmizləyici")) return ["paints", "Boya təmizləyici"];
+      if (value.includes("lak")) return ["paints", "Sprey lak"];
+      if (value.includes("metal")) return ["paints", "Metal boya"];
+      return ["paints", "Interyer boya"];
+    }
     if (/oboy|divar kağız|plyonka|maye oboy/.test(value)) return ["wall-decor", value.includes("maye") ? "Maye oboy" : "Flizelin oboy"];
     if (/panel|linoleum|kafel|keramoqranit|mozaika|laminat|döşəmə/.test(value)) return ["flooring", value.includes("kafel") ? "Kafel" : "Divar paneli"];
     if (sourceSection.includes("Elektrik")) return ["electrical", "Elektrik aksesuarları"];
     if (sourceSection.includes("Santexnika")) return ["sanitary-ware", "Hamam aksesuarları"];
-    if (sourceSection.includes("Dekor")) return ["repair-retail-items", "Kiçik təmir"];
-    return ["tools", "Alətlər"];
+    if (sourceSection.includes("Dekor")) return ["repair-retail-items", "Kiçik boya"];
+    return ["tools", "Əl alətləri"];
   };
 
   const inferPackage = (name) => {
@@ -1275,19 +1288,20 @@
   };
 
   const birmarketProducts = birmarketRows.map(([sku, name, brandRaw, price, imageUrl, sourceUrl, sourceSection]) => {
-    const [category, subcategory] = inferCategory(name, sourceSection);
-    const brand = normalizeBrand(brandRaw, name);
+    const localizedName = String(name || "").replace(/\bNo brand\b/gi, "Brendsiz");
+    const [category, subcategory] = inferCategory(localizedName, sourceSection);
+    const brand = normalizeBrand(brandRaw, localizedName);
     const formattedPrice = Number(price).toLocaleString("az-AZ", { minimumFractionDigits: Number.isInteger(price) ? 0 : 2, maximumFractionDigits: 2 }) + " AZN";
     return {
       id: "birmarket-" + sku,
       sku: "BM-" + sku,
-      name,
+      name: localizedName,
       brand,
       category,
       subcategory,
       supplier: "Birmarket",
-      origin: "Azərbaycan bazarı / import",
-      package: inferPackage(name),
+      origin: "Azərbaycan bazarı / idxal",
+      package: inferPackage(localizedName),
       price: formattedPrice,
       priceNote: "Birmarket açıq katalog qiyməti, 2026-07-11 tarixində yoxlanıldı",
       priceStatus: "confirmed",
@@ -1326,7 +1340,7 @@
       if (existingProductKeys.has(key)) return;
       generatedMarketProducts.push({
         id: "az-rfq-" + category.id + "-" + slugify(subcategory),
-        sku: "AZ-RFQ-" + slugify(category.id).slice(0, 8).toUpperCase() + "-" + String(index + 1).padStart(2, "0"),
+        sku: "AZ-RFQ-" + slugify(category.id).toUpperCase() + "-" + String(index + 1).padStart(2, "0"),
         name: subcategory + " məhsul qrupu",
         brand: "ConstEra Sorğu",
         category: category.id,

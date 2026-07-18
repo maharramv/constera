@@ -1,76 +1,69 @@
-# CONSTERA Industrial Group
+# ConstEra tikinti platforması
 
-GitHub Pages və Vercel üçün hazırlanmış statik korporativ sayt konsepti.
+ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, hazır paketləri, avadanlıq icarəsini, qiymət sorğularını və ilkin smetanı birləşdirən statik B2B platformadır. Layihə asılılıqsız işləyir və Vercel üçün `dist` qovluğuna ixrac olunur.
 
-## Struktur
+## Hazırkı məlumat bazası
 
-- `index.html` - əsas səhifə
-- `catalog.html` - ConstEra Korporativ v2 kataloqu
-- `category.html` - kateqoriya landing səhifəsi
-- `subcategory.html` - subkateqoriya landing səhifəsi
-- `product-detail.html` - məhsul detal səhifəsi
-- `services.html` - tikinti, təmir, dizayn və usta xidmətləri
-- `service-detail.html` - xidmət detal səhifəsi
-- `packages.html` - hazır təmir, tikinti və tam paket kataloqu
-- `package-detail.html` - hazır paket detal səhifəsi
-- `rental.html` - tikinti avadanlığı və alət icarəsi
-- `rental-detail.html` - icarə avadanlığı detal səhifəsi
-- `brands.html` - brend mərkəzi
-- `suppliers.html` - təchizatçı mərkəzi
-- `rfq.html` - lokal qiymət sorğusu qaralama axını
-- `rfq-dashboard.html` - lokal qiymət sorğusu paneli və vəziyyət idarəetməsi
-- `admin.html` - kataloq və idarəetmə strukturunun önbaxışı
-- `assets/css/` - stillər
-- `assets/js/` - skriptlər
-- `assets/js/catalog-data.js` - başlanğıc bazar platforması məlumatları
-- `assets/js/taxonomy-expansion.js` - geniş kateqoriya/subkateqoriya xəritəsi və sorğuya hazır başlanğıc məlumatları
-- `assets/js/marketplace.js` - kataloq, qiymət sorğusu və idarəetmə render məntiqi
-- `assets/images/` - kontent şəkilləri və logo
-- `assets/icons/` - favicon dəsti və manifest
+- 70 material kateqoriyası və 695 subkateqoriya
+- 788 məhsul kartı
+- 12 xidmət kateqoriyası, 116 subkateqoriya və 118 xidmət
+- 7 paket kateqoriyası və 66 hazır paket
+- 15 icarə kateqoriyası və 100 avadanlıq mövqeyi
+- mənbəli qiymətlər və şəkillər üçün açıq məhsul keçidləri
+- qiyməti təsdiqlənməyən mövqelər üçün `Sorğu əsasında` vəziyyəti
 
-## Lokal işə salma
+## Əsas səhifələr
 
-`index.html` faylını brauzerdə açın və ya qovluğu istənilən statik serverlə servis edin.
+- `index.html` - platformanın ana səhifəsi
+- `catalog.html` - axtarış, filtr və mərhələli yükləmə ilə məhsul kataloqu
+- `category.html`, `subcategory.html`, `product-detail.html` - material ağacı və məhsul detalları
+- `services.html`, `service-detail.html` - tikinti, təmir, dizayn və mühəndis xidmətləri
+- `packages.html`, `package-detail.html` - təmir, tikinti və tam açar təslim paketləri
+- `rental.html`, `rental-detail.html` - ağır texnika və alət icarəsi
+- `brands.html`, `suppliers.html` - brend və təchizatçı mərkəzləri
+- `rfq.html`, `rfq-dashboard.html` - qiymət sorğusu və təklif axını
+- `tender.html` - lokal tender və lot idarəetməsi
+- `ai-smeta.html` - qayda əsaslı ilkin material smetası
+- `supplier-portal.html`, `price-import.html` - təchizatçı məlumatı və CSV qiymət idxalı
+- `customer-cabinet.html` - sorğu, smeta, seçilmiş və müqayisə məlumatları
+- `admin.html` - kataloq və platforma məlumatlarının lokal idarəetməsi
 
-## Vercel deploy
+## Kod strukturu
 
-Bu statik saytdır. Vercel aşağıdakı əmri işə sala bilər:
+- `assets/css/styles.css` - bütün səhifələrin responsiv görünüşü
+- `assets/js/catalog-data.js` - əsas kataloq məlumatları
+- `assets/js/taxonomy-expansion.js` - geniş material, xidmət, paket və icarə taksonomiyası
+- `assets/js/azerbaijan-real-products.js` - açıq mənbələrdən yoxlanmış Azərbaycan bazarı məhsulları
+- `assets/js/marketplace.js` - göstərmə, filtr, sorğu, smeta və lokal idarəetmə məntiqi
+- `assets/js/script.js` - ümumi naviqasiya, SEO, əlçatanlıq və əlaqə forması
+- `scripts/audit-site.mjs` - səhifə, keçid, SEO, məlumat və SKU bütövlüyü auditi
+- `scripts/vercel-build.mjs` - statik Vercel ixracı
+
+## Lokal yoxlama
+
+Tam audit, JavaScript sintaksis yoxlaması və build üçün:
+
+```bash
+npm run check
+```
+
+Yalnız build üçün:
 
 ```bash
 npm run vercel-build
 ```
 
-Əmr tələb olunan statik səhifə və asset fayllarını yoxlayır, sonra deploy üçün hazır saytı `dist` qovluğuna köçürür.
+Hazır nəticə `dist` qovluğunda yaradılır.
 
-Vercel project ayarları statik sayt kimi saxlanmalıdır:
+## Vercel ayarları
 
 - Framework Preset: `Other`
-- Install Command: boş (`vercel.json` daxilində `""`)
+- Install Command: boş
 - Build Command: `npm run vercel-build`
 - Output Directory: `dist`
 
-## ConstEra Korporativ v2
+Bu ayarlar `vercel.json` daxilində də saxlanılır. `routes-manifest.json` tələb olunmur, çünki layihə Next.js deyil və statik ixrac kimi yerləşdirilir.
 
-Hazırkı mərhələ layihəni statik və asılılıqsız saxlayır, eyni zamanda ilk B2B bazar platforması qatını əlavə edir:
+## Məlumat siyasəti
 
-- 35 material kateqoriyası və 360 material subkateqoriyası olan geniş tikinti taksonomiyası
-- material qrupları üzrə bölünmüş katalog: konstruksiya, quru qarışıqlar, kimya, fasad, elektrik, HVAC, santexnika, interyer, enerji, anbar və ərazi sistemləri
-- sorğuya hazır məhsul qrupları: canlı təchizatçı qiyməti təsdiqlənənə qədər `Sorğu əsasında` saxlanılır
-- qrup, kateqoriya, subkateqoriya, brend, mənşə, qiymət vəziyyəti və mövcudluq üzrə ağıllı filtr paneli
-- material, xidmət, paket və icarə üçün parametrli kateqoriya/subkateqoriya landing səhifələri
-- tikinti, təmir, dizayn, mühəndis sistemləri, tamamlama, fasad və audit üçün kateqoriya/subkateqoriya xidmət bazası
-- 12 xidmət kateqoriyası və 116 xidmət subkateqoriyası
-- hazır təmir, hazır tikinti, tam tikinti+təmir, mühəndis və servis paketləri üçün 66 paketlik baza
-- ağır texnika, ölçmə cihazları, söküntü, metal emalı, sahə təhlükəsizliyi və təmir alətləri üzrə 100 icarə kartı
-- məhsul, paket, xidmət və icarə üçün parametrli detal səhifələri
-- paket, xidmət həcmi və icarə müddəti üçün ilkin hesablayıcı panellər
-- tarix, büdcə, çatdırılma/operator və istifadə məqsədi sahələri ilə genişləndirilmiş qiymət sorğusu qaralaması
-- qiymət sorğusu qaralamalarının lokal paneli və vəziyyət axını: Yeni, Cavab gözləyir, Təklif gəldi, Bağlandı
-- təchizatçı və brend profilləri
-- SKU, qablaşdırma, mənşə, vəziyyət və qiymət qeydləri olan məhsul kartları
-- brauzerdə lokal seçilmişlər və müqayisə işarələri
-- qiymət sorğusu qaralama forması
-- Vercel üçün statik uyğun əlaqə qaralama forması
-- gələcək CRUD və CSV/Excel idxalı üçün idarəetmə strukturunun önbaxışı
-
-`Sorğu əsasında` kimi göstərilən qiymətlər ictimai istifadədən əvvəl təchizatçı tərəfindən təsdiqlənməlidir. İctimai kataloq səhifələri məhsul adı, qablaşdırma, texniki xüsusiyyət, mənbə linki və rəsmi məhsul şəkilləri üçün istifadə olunur. Rəsmi səhifədə qiymət yoxdursa, təchizatçı qiymət siyahısı admin/idxal axınına əlavə olunana qədər məhsul sorğu əsaslı qalır.
+Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstərilir. Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir.

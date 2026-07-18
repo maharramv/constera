@@ -23,10 +23,22 @@ const storage = {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch {
-      // Local admin changes are optional in restricted/private browser modes.
+      // Məhdud və məxfi brauzer rejimlərində lokal idarəetmə dəyişiklikləri könüllüdür.
     }
   }
 };
+
+document.addEventListener("error", (event) => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.matches("[data-product-image]")) return;
+
+  const fallback = document.createElement("span");
+  fallback.className = "product-image-fallback";
+  fallback.textContent = image.dataset.productFallback || "CE";
+  fallback.setAttribute("role", "img");
+  fallback.setAttribute("aria-label", image.alt || "Məhsul şəkli mövcud deyil");
+  image.replaceWith(fallback);
+}, true);
 
 const adminProductStorageKey = "constera-admin-products";
 const adminSupplierStorageKey = "constera-admin-suppliers";
@@ -138,6 +150,45 @@ const matchesExpandedSearch = (searchable, value) => {
   const text = normalize(searchable);
   return tokens.some((token) => text.includes(token));
 };
+const getProductSearchRelevance = (product, value) => {
+  const query = normalize(value);
+  if (!query) return 0;
+
+  const directTokens = query.split(/\s+/).filter((token) => token.length > 1);
+  const expandedTokens = expandSearchTokens(value).filter((token) => !directTokens.includes(token));
+  const name = normalize(product.name);
+  const brand = normalize(product.brand);
+  const sku = normalize(product.sku);
+  const subcategory = normalize(product.subcategory);
+  const category = normalize(product.category);
+  const specs = normalize((product.specs || []).join(" "));
+  let score = 0;
+
+  if (name === query) score += 400;
+  else if (name.startsWith(query)) score += 280;
+  else if (name.includes(query)) score += 220;
+
+  if (sku === query) score += 240;
+  else if (sku.includes(query)) score += 160;
+  if (brand === query) score += 180;
+  else if (brand.includes(query)) score += 120;
+  if (subcategory.includes(query)) score += 90;
+  if (category.includes(query)) score += 60;
+
+  directTokens.forEach((token) => {
+    if (name.includes(token)) score += 70;
+    if (brand.includes(token)) score += 45;
+    if (sku.includes(token)) score += 40;
+    if (subcategory.includes(token)) score += 30;
+    if (specs.includes(token)) score += 15;
+  });
+  expandedTokens.forEach((token) => {
+    if (name.includes(token)) score += 8;
+    else if (subcategory.includes(token) || specs.includes(token)) score += 3;
+  });
+
+  return score;
+};
 const escapeHtml = (value) =>
   String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
@@ -147,6 +198,52 @@ const escapeHtml = (value) =>
     "'": "&#039;"
   })[char]);
 const escapeAttr = escapeHtml;
+const getSafeHttpsUrl = (value) => {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+};
+const getSafeImageUrl = (value) => {
+  const path = String(value || "").trim();
+  if (/^(?:\/|assets\/)[^\\]*$/i.test(path) && !path.startsWith("//")) return path;
+  return getSafeHttpsUrl(path);
+};
+const createProductMedia = (product, fallbackText) => {
+  const imageUrl = getSafeImageUrl(product.imageUrl);
+  return imageUrl
+    ? `<img data-product-image data-product-fallback="${escapeAttr(fallbackText)}" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="product-image-fallback" role="img" aria-label="${escapeAttr(product.name)} üçün şəkil mövcud deyil">${escapeHtml(fallbackText)}</span>`;
+};
+const createProgressiveGrid = (grid, pagination, renderItem, pageSize) => {
+  const button = pagination?.querySelector("[data-load-more]");
+  const status = pagination?.querySelector("[data-pagination-status]");
+  let items = [];
+  let visibleCount = pageSize;
+
+  const paint = () => {
+    const visibleItems = items.slice(0, visibleCount);
+    grid.innerHTML = visibleItems.map(renderItem).join("");
+    if (status) status.textContent = `${visibleItems.length} / ${items.length} göstərilir`;
+    if (button) button.hidden = visibleItems.length >= items.length;
+    if (pagination) pagination.hidden = items.length === 0;
+  };
+
+  button?.addEventListener("click", () => {
+    visibleCount += pageSize;
+    paint();
+  });
+
+  return {
+    setItems(nextItems) {
+      items = nextItems;
+      visibleCount = pageSize;
+      paint();
+    }
+  };
+};
 const downloadTextFile = (filename, text, mime = "text/plain;charset=utf-8") => {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -449,11 +546,10 @@ const createProductCard = (product) => {
   const isCompared = compareIds.includes(product.id);
   const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
   const categoryTitle = category?.title || product.category;
-  const media = product.imageUrl
-    ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
-    : `<span>${escapeHtml(brandMark)}</span>`;
-  const source = product.sourceUrl
-    ? `<a class="source-link" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
+  const media = createProductMedia(product, brandMark);
+  const sourceUrl = getSafeHttpsUrl(product.sourceUrl);
+  const source = sourceUrl
+    ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
     : "";
   const detailLink = `<a class="source-link" href="product-detail.html?product=${encodeURIComponent(product.id)}">Detallı bax</a>`;
 
@@ -487,8 +583,8 @@ const createProductCard = (product) => {
           ${detailLink}
         </div>
         <div class="product-actions">
-          <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${escapeAttr(product.id)}" aria-label="Seçilmişlərə əlavə et">♡</button>
-          <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${escapeAttr(product.id)}" aria-label="Müqayisəyə əlavə et">⇄</button>
+          <button class="icon-action ${isFavorite ? "is-active" : ""}" type="button" data-action="favorite" data-id="${escapeAttr(product.id)}" aria-pressed="${isFavorite}" aria-label="${isFavorite ? "Seçilmişlərdən çıxar" : "Seçilmişlərə əlavə et"}">♡</button>
+          <button class="icon-action ${isCompared ? "is-active" : ""}" type="button" data-action="compare" data-id="${escapeAttr(product.id)}" aria-pressed="${isCompared}" aria-label="${isCompared ? "Müqayisədən çıxar" : "Müqayisəyə əlavə et"}">⇄</button>
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
@@ -509,8 +605,32 @@ const renderCatalog = () => {
   const resultCount = document.querySelector("[data-result-count]");
   const emptyState = document.querySelector("[data-empty-state]");
   const activeFilterList = document.querySelector("[data-active-filter-list]");
+  const pagination = document.querySelector("[data-catalog-pagination]");
+  const filterToggle = document.querySelector("[data-catalog-filter-toggle]");
+  const filterPanel = document.querySelector("[data-catalog-filter-panel]");
+  const categoryToggle = document.querySelector("[data-catalog-category-toggle]");
+  const categoryPanel = document.querySelector("[data-catalog-category-panel]");
 
   if (!productGrid || !categoryList || !brandSelect || !searchInput) return;
+
+  const setupResponsivePanel = (button, panel, showLabel, hideLabel) => {
+    if (!button || !panel) return;
+    const mobileQuery = window.matchMedia("(max-width: 820px)");
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      button.setAttribute("aria-expanded", String(open));
+      button.textContent = open ? hideLabel : showLabel;
+    };
+
+    setOpen(!mobileQuery.matches);
+    button.addEventListener("click", () => setOpen(panel.hidden));
+    mobileQuery.addEventListener("change", (event) => setOpen(!event.matches));
+  };
+
+  setupResponsivePanel(filterToggle, filterPanel, "Filtrləri göstər", "Filtrləri gizlət");
+  setupResponsivePanel(categoryToggle, categoryPanel, "Kateqoriyaları göstər", "Kateqoriyaları gizlət");
+
+  const progressiveGrid = createProgressiveGrid(productGrid, pagination, createProductCard, 48);
 
   const params = new URLSearchParams(window.location.search);
   let activeCategory = marketplace.categories.some((category) => category.id === params.get("category"))
@@ -622,9 +742,10 @@ const renderCatalog = () => {
         (priceStatus === "request" && priceIsRequest) ||
         (priceStatus === "confirmed" && !priceIsRequest);
       const originValue = normalize(product.origin);
+      const isImported = originValue.includes("idxal") || originValue.includes("import");
       const matchesOrigin = origin === "all" ||
-        (origin === "local" && originValue.includes("azərbaycan") && !originValue.includes("import")) ||
-        (origin === "import" && originValue.includes("import")) ||
+        (origin === "local" && originValue.includes("azərbaycan") && !isImported) ||
+        (origin === "import" && isImported) ||
         (origin === "mixed" && originValue.includes("/") && originValue.includes("azərbaycan"));
       const searchable = normalize([
         product.name,
@@ -649,7 +770,12 @@ const renderCatalog = () => {
         matchesQuery;
     });
 
-    productGrid.innerHTML = filtered.map(createProductCard).join("");
+    if (normalize(query)) {
+      filtered.sort((left, right) =>
+        getProductSearchRelevance(right, query) - getProductSearchRelevance(left, query));
+    }
+
+    progressiveGrid.setItems(filtered);
     if (resultCount) resultCount.textContent = `${filtered.length} məhsul`;
     if (emptyState) emptyState.hidden = filtered.length > 0;
     if (activeFilterList) {
@@ -865,10 +991,12 @@ const renderServices = () => {
   const categoryFilter = document.querySelector("[data-service-category-filter]") || document.querySelector("[data-service-filter]");
   const subcategoryFilter = document.querySelector("[data-service-subcategory-filter]");
   const count = document.querySelector("[data-service-count]");
+  const pagination = document.querySelector("[data-service-pagination]");
   if (!grid || !categoryFilter) return;
 
   const services = marketplace.services || [];
   const categories = marketplace.serviceCategories || [];
+  const progressiveGrid = createProgressiveGrid(grid, pagination, createServiceCard, 24);
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, services, "Bütün kateqoriyalar");
 
@@ -891,7 +1019,7 @@ const renderServices = () => {
       const matchesSubcategory = subcategoryValue === "all" || service.subcategory === subcategoryValue;
       return matchesCategory && matchesSubcategory;
     });
-    grid.innerHTML = filtered.map(createServiceCard).join("");
+    progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} xidmət`;
   };
 
@@ -909,10 +1037,12 @@ const renderPackages = () => {
   const categoryFilter = document.querySelector("[data-package-category-filter]");
   const subcategoryFilter = document.querySelector("[data-package-subcategory-filter]");
   const count = document.querySelector("[data-package-count]");
+  const pagination = document.querySelector("[data-package-pagination]");
   if (!grid || !categoryFilter) return;
 
   const packages = marketplace.packages || [];
   const categories = marketplace.packageCategories || [];
+  const progressiveGrid = createProgressiveGrid(grid, pagination, createPackageCard, 24);
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, packages, "Bütün paketlər");
 
@@ -935,7 +1065,7 @@ const renderPackages = () => {
       const matchesSubcategory = subcategoryValue === "all" || pack.subcategory === subcategoryValue;
       return matchesCategory && matchesSubcategory;
     });
-    grid.innerHTML = filtered.map(createPackageCard).join("");
+    progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} paket`;
   };
 
@@ -953,10 +1083,12 @@ const renderRentals = () => {
   const categoryFilter = document.querySelector("[data-rental-category-filter]") || document.querySelector("[data-rental-filter]");
   const subcategoryFilter = document.querySelector("[data-rental-subcategory-filter]");
   const count = document.querySelector("[data-rental-count]");
+  const pagination = document.querySelector("[data-rental-pagination]");
   if (!grid || !categoryFilter) return;
 
   const rentals = marketplace.rentals || [];
   const categories = marketplace.rentalCategories || [];
+  const progressiveGrid = createProgressiveGrid(grid, pagination, createRentalCard, 24);
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, rentals, "Bütün kateqoriyalar");
 
@@ -979,7 +1111,7 @@ const renderRentals = () => {
       const matchesSubcategory = subcategoryValue === "all" || rental.subcategory === subcategoryValue;
       return matchesCategory && matchesSubcategory;
     });
-    grid.innerHTML = filtered.map(createRentalCard).join("");
+    progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} avadanlıq`;
   };
 
@@ -1008,11 +1140,10 @@ const renderProductDetail = () => {
   const category = getCategory(product.category);
   const brand = getBrand(product.brand);
   const brandMark = product.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
-  const media = product.imageUrl
-    ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
-    : `<span>${escapeHtml(brandMark)}</span>`;
-  const source = product.sourceUrl
-    ? `<a class="button button-secondary" href="${escapeAttr(product.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbəni aç")}</a>`
+  const media = createProductMedia(product, brandMark);
+  const sourceUrl = getSafeHttpsUrl(product.sourceUrl);
+  const source = sourceUrl
+    ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(product.sourceLabel || "Mənbəni aç")}</a>`
     : "";
 
   document.title = `${product.name} | ConstEra Kataloq`;
@@ -2468,7 +2599,7 @@ const initRfq = () => {
 
     output.hidden = false;
     output.innerHTML = `
-      <strong>sorğu qaralaması hazırdır.</strong>
+      <strong>Sorğu qaralaması hazırdır.</strong>
       <span>${escapeHtml(rfq.product || "Məhsul")} · ${escapeHtml(rfq.quantity || "miqdar yazılmayıb")} · ${escapeHtml(rfq.company || "şirkət")}</span>
       <span>${escapeHtml(rfq.supplier)} · ${escapeHtml(rfq.priority)} · ${escapeHtml(rfq.needDate || "tarix açıqdır")} · ${escapeHtml(rfq.deliveryMode || "çatdırılma/operator seçilməyib")}</span>
       <a class="button button-secondary" href="rfq-dashboard.html">Sorğu panelində aç</a>
@@ -2797,7 +2928,7 @@ const renderRfqDashboard = () => {
         <td data-label="Miqdar">${escapeHtml(draft.quantity || "Yazılmayıb")}</td>
         <td data-label="Şirkət">${escapeHtml(draft.company || "Şirkət yoxdur")}</td>
         <td data-label="Təchizatçı">
-          <select class="table-select" data-rfq-supplier="${escapeAttr(draft.id)}">
+          <select class="table-select" data-rfq-supplier="${escapeAttr(draft.id)}" aria-label="${escapeAttr(draft.product || "Sorğu")} üçün təchizatçı">
             ${supplierOptions()}
           </select>
         </td>
@@ -3135,7 +3266,7 @@ const initPackageCalculator = () => {
 
     output.innerHTML = `
       <strong>${totalIndex} paket indeksi</strong>
-      <span>${escapeHtml(level)} səviyyə · ${area} m² baza · ${riskReserve} ehtiyat indeksi · qiymət Qiymət sorğusu ilə təsdiqlənir</span>
+      <span>${escapeHtml(level)} səviyyə · ${area} m² baza · ${riskReserve} ehtiyat indeksi · qiymət sorğusu ilə təsdiqlənir</span>
       <a class="button button-secondary" href="rfq.html?package=${encodeURIComponent(packageId)}">Paket sorğusuna göndər</a>
     `;
   };
@@ -3478,7 +3609,7 @@ const initAiSmeta = () => {
     writeEstimates([currentEstimate, ...readEstimates()]);
     renderEstimate(currentEstimate);
     renderHistory();
-    if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. sorğu qaralaması yarada bilərsən.`;
+    if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. Sorğu qaralaması yarada bilərsən.`;
   });
   resetButton?.addEventListener("click", () => {
     form.reset();
@@ -3948,9 +4079,14 @@ const initActions = () => {
     const id = button.dataset.id;
     const exists = values.includes(id);
     const next = exists ? values.filter((value) => value !== id) : [...values, id];
+    const isActive = !exists;
 
     storage.write(key, next);
-    button.classList.toggle("is-active", !exists);
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+    button.setAttribute("aria-label", button.dataset.action === "favorite"
+      ? (isActive ? "Seçilmişlərdən çıxar" : "Seçilmişlərə əlavə et")
+      : (isActive ? "Müqayisədən çıxar" : "Müqayisəyə əlavə et"));
   });
 };
 

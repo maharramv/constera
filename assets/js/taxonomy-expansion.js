@@ -116,7 +116,7 @@
     {
       id: "safety",
       group: "Təhlükəsizlik və mühafizə",
-      subcategories: ["İş ayaqqabısı", "Reflektor jilet", "Respirator", "Təhlükəsizlik kəməri", "İlk yardım dəsti", "Yanğın şkafı", "Access control"]
+      subcategories: ["İş ayaqqabısı", "Reflektor jilet", "Respirator", "Təhlükəsizlik kəməri", "İlk yardım dəsti", "Yanğın şkafı", "Girişə nəzarət"]
     },
     {
       id: "landscape",
@@ -196,7 +196,7 @@
     {
       id: "smart-home",
       group: "Elektrik və zəif axın",
-      title: "Smart home və avtomatika",
+      title: "Ağıllı ev və avtomatika",
       subtitle: "Ağıllı ev, sensor, röle, pərdə və iqlim idarəetməsi",
       subcategories: ["Smart rele", "Sensor", "Ağıllı açar", "Pərdə motoru", "İqlim idarəsi", "Gateway", "Ssenari paneli", "Enerji monitorinqi"]
     },
@@ -205,7 +205,7 @@
       group: "Enerji və generator",
       title: "Günəş enerjisi",
       subtitle: "Panel, inverter, batareya və montaj sistemləri",
-      subcategories: ["Günəş paneli", "Solar inverter", "Batareya", "Montaj konstruksiyası", "DC kabel", "Kombiner box", "Solar qoruyucu", "Enerji monitorinqi"]
+      subcategories: ["Günəş paneli", "Günəş inverteri", "Batareya", "Montaj konstruksiyası", "DC kabel", "Birləşdirici qutu", "Günəş sistemi qoruyucusu", "Enerji monitorinqi"]
     },
     {
       id: "generators-power",
@@ -266,18 +266,18 @@
     },
     {
       id: "renovation",
-      group: "Təmir və fit-out",
-      subcategories: ["Açar təslim mənzil", "Premium mənzil təmiri", "Villa interyeri", "Restoran təmiri", "Klinika təmiri", "Showroom fit-out"]
+      group: "Təmir və tamamlama",
+      subcategories: ["Açar təslim mənzil", "Yüksək səviyyəli mənzil təmiri", "Villa interyeri", "Restoran təmiri", "Klinika təmiri", "Sərgi salonunun tamamlanması"]
     },
     {
       id: "design",
       group: "Dizayn və sənədlər",
-      subcategories: ["İşçi layihə", "MEP layihəsi", "BIM model", "Render animasiya", "Material board", "Müəllif nəzarəti"]
+      subcategories: ["İşçi layihə", "MEP layihəsi", "BIM model", "Vizualizasiya animasiyası", "Material lövhəsi", "Müəllif nəzarəti"]
     },
     {
       id: "engineering",
       group: "Mühəndis sistemləri",
-      subcategories: ["Kombi və istilik", "İsti döşəmə", "Ventilyasiya balanslama", "Generator montajı", "Solar sistem montajı", "Access control"]
+      subcategories: ["Kombi və istilik", "İsti döşəmə", "Ventilyasiya balanslama", "Generator montajı", "Günəş enerjisi sistemi montajı", "Girişə nəzarət"]
     },
     {
       id: "finishing",
@@ -308,7 +308,7 @@
       group: "Sənaye və B2B",
       title: "Sənaye və anbar xidmətləri",
       subtitle: "Anbar, istehsalat, logistika və sənaye obyektləri üçün işlər",
-      subcategories: ["Sənaye döşəməsi", "Anbar rəf montajı", "Yükləmə zonası", "Yanğın xətti", "Sənaye elektrik", "Kompressor xətti", "Ofis-anbar fit-out", "Texniki otaq"]
+      subcategories: ["Sənaye döşəməsi", "Anbar rəf montajı", "Yükləmə zonası", "Yanğın xətti", "Sənaye elektrik", "Kompressor xətti", "Ofis-anbar tamamlanması", "Texniki otaq"]
     },
     {
       id: "handover-cleaning",
@@ -346,7 +346,7 @@
       id: "engineering-packages",
       group: "Mühəndis paketləri",
       title: "Mühəndis sistem paketləri",
-      subtitle: "Elektrik, santexnika, HVAC, zəif axın və smart home paketləri",
+      subtitle: "Elektrik, santexnika, HVAC, zəif axın və ağıllı ev paketləri",
       subcategories: ["Elektrik tam paket", "Santexnika tam paket", "HVAC tam paket", "Zəif axın tam paket", "Yanğın təhlükəsizliyi", "Ağıllı ev", "Günəş enerjisi", "Generator ehtiyatı"]
     },
     {
@@ -429,7 +429,7 @@
       if (existingProductKeys.has(key)) return;
       generatedProducts.push({
         id: `rfq-${category.id}-${slugify(subcategory)}`,
-        sku: `RFQ-${slugify(category.id).slice(0, 8).toUpperCase()}-${String(index + 1).padStart(2, "0")}`,
+        sku: `RFQ-${slugify(category.id).toUpperCase()}-${String(index + 1).padStart(2, "0")}`,
         name: `${subcategory} məhsul qrupu`,
         brand: "ConstEra Sorğu",
         category: category.id,
@@ -499,7 +499,7 @@
           "Material və usta ehtiyacının çıxarılması",
           "Qiymət sorğusu üçün təchizat və icra paketinin hazırlanması"
         ],
-        deliverables: ["Paket smetası", "İcra qrafiki", "Təhvil checklist-i"]
+        deliverables: ["Paket smetası", "İcra qrafiki", "Təhvil yoxlama siyahısı"]
       });
     });
   });
