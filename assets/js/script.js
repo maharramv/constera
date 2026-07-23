@@ -308,6 +308,10 @@ const initServiceWorker = () => {
   }, { once: true });
 };
 
+const initOfflineRetry = () => {
+  document.querySelector("[data-offline-retry]")?.addEventListener("click", () => window.location.reload());
+};
+
 initAccessibility();
 initMenu();
 updateMarketplaceCounts();
@@ -315,5 +319,6 @@ initCounters();
 initContactForm();
 initSeoEnhancements();
 initServiceWorker();
+initOfflineRetry();
 
 window.consteraRefreshSeo = initSeoEnhancements;

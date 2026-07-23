@@ -1,5 +1,7 @@
-import { accessSync, constants, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { accessSync, constants, cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { extname, join } from "node:path";
 import vm from "node:vm";
+import { transformSync } from "esbuild";
 import { renderSitePage, siteShellTemplateFiles } from "./site-shell.mjs";
 
 const requiredFiles = [
@@ -26,6 +28,7 @@ const requiredFiles = [
   "ai-smeta.html",
   "admin.html",
   "login.html",
+  "offline.html",
   "assets/css/styles.css",
   "assets/js/script.js",
   "assets/js/catalog-data.js",
@@ -63,6 +66,7 @@ const staticEntries = [
   "ai-smeta.html",
   "admin.html",
   "login.html",
+  "offline.html",
   "assets",
   "docs",
   "robots.txt",
@@ -103,16 +107,6 @@ staticEntries
     const rendered = renderSitePage(readFileSync(entry, "utf8"), { file: entry });
     writeFileSync(`dist/${entry}`, rendered);
   });
-
-[
-  "AdvancedManufacturing.png",
-  "Energysystems.png",
-  "industrialInfrastructure.png",
-  "map.png",
-  "project1.png",
-  "project2.png",
-  "project3.png"
-].forEach((file) => rmSync(`dist/assets/images/${file}`, { force: true }));
 
 const siteOrigin = "https://constera.az";
 const dataContext = { window: {}, console };
@@ -183,4 +177,34 @@ const robots = readFileSync("robots.txt", "utf8")
   .replace(/^Sitemap:.*$/m, `Sitemap: ${siteOrigin}/sitemap.xml`);
 writeFileSync("dist/robots.txt", robots);
 
-console.log(`ConstEra statik ixracı dist qovluğunda yaradıldı: ${sitemapUrls.size} sitemap URL-i.`);
+const optimizeFile = (file) => {
+  const extension = extname(file).toLowerCase();
+  if (extension === ".js" || extension === ".css") {
+    const result = transformSync(readFileSync(file, "utf8"), {
+      loader: extension === ".js" ? "js" : "css",
+      minify: true,
+      legalComments: "none",
+      target: extension === ".js" ? "es2020" : undefined,
+      charset: "utf8"
+    });
+    writeFileSync(file, result.code);
+    return;
+  }
+  if (extension === ".json" || extension === ".webmanifest") {
+    writeFileSync(file, JSON.stringify(JSON.parse(readFileSync(file, "utf8"))));
+  }
+};
+
+const optimizeTree = (entry) => {
+  const stats = statSync(entry);
+  if (stats.isDirectory()) {
+    readdirSync(entry).forEach((name) => optimizeTree(join(entry, name)));
+    return;
+  }
+  optimizeFile(entry);
+};
+
+optimizeTree("dist/assets");
+optimizeFile("dist/service-worker.js");
+
+console.log(`ConstEra optimallaşdırılmış statik ixracı yaradıldı: ${sitemapUrls.size} sitemap URL-i.`);

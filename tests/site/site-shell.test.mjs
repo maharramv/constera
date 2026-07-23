@@ -17,6 +17,13 @@ test("bütün HTML səhifələri ümumi header və main hədəfi alır", () => {
   });
 });
 
+test("render edilmiş səhifələr xarici font bağlantısı yaratmır", () => {
+  htmlFiles.forEach((file) => {
+    const html = render(file);
+    assert.doesNotMatch(html, /fonts\.(?:googleapis|gstatic)\.com/i, `${file}: xarici font bağlantısı`);
+  });
+});
+
 test("ictimai səhifələr eyni footer şablonundan istifadə edir", () => {
   const excluded = new Set(["admin.html", "login.html"]);
   let referenceFooter = "";
@@ -68,7 +75,12 @@ test("checkout indekslənmir və PWA şəxsi/API sorğularını keşləmir", () 
   assert.match(checkout, /data-checkout-form/);
   assert.match(checkout, /rel="manifest" href="assets\/icons\/site\.webmanifest"/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/api\/"\)/);
-  assert.match(serviceWorker, /checkout\.html/);
+  assert.match(serviceWorker, /PRIVATE_PAGES[\s\S]*"\/checkout\.html"/);
+  const appShell = serviceWorker.match(/const APP_SHELL = \[([\s\S]*?)\];/)?.[1] || "";
+  for (const page of ["admin.html", "checkout.html", "customer-cabinet.html", "login.html", "price-import.html", "rfq-dashboard.html", "supplier-portal.html"]) {
+    assert.doesNotMatch(appShell, new RegExp(page.replace(".", "\\.")), `${page}: əvvəlcədən keşlənməməlidir`);
+  }
+  assert.match(serviceWorker, /caches\.match\("\/offline\.html"\)/);
   assert.equal(manifest.lang, "az");
   assert.equal(manifest.start_url.startsWith("/"), true);
 });

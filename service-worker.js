@@ -1,23 +1,22 @@
-const CACHE_NAME = "constera-shell-v3";
+const CACHE_NAME = "constera-shell-v4";
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/catalog.html",
-  "/services.html",
-  "/packages.html",
-  "/rental.html",
-  "/checkout.html",
+  "/offline.html",
   "/assets/css/styles.css",
-  "/assets/js/catalog-data.js",
-  "/assets/js/taxonomy-expansion.js",
-  "/assets/js/azerbaijan-real-products.js",
   "/assets/js/script.js",
-  "/assets/js/marketplace.js",
   "/assets/images/white.svg",
   "/assets/icons/site.webmanifest",
   "/assets/icons/web-app-manifest-192x192.png",
   "/assets/icons/web-app-manifest-512x512.png"
 ];
+const PRIVATE_PAGES = new Set([
+  "/admin.html",
+  "/checkout.html",
+  "/customer-cabinet.html",
+  "/login.html",
+  "/price-import.html",
+  "/rfq-dashboard.html",
+  "/supplier-portal.html"
+]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -28,16 +27,14 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.registration.navigationPreload?.enable())
       .then(() => self.clients.claim())
   );
 });
 
 const shouldBypass = (url) =>
   url.pathname.startsWith("/api/") ||
-  url.pathname.endsWith("admin.html") ||
-  url.pathname.endsWith("login.html") ||
-  url.pathname.endsWith("supplier-portal.html") ||
-  url.pathname.endsWith("customer-cabinet.html");
+  PRIVATE_PAGES.has(url.pathname);
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -47,12 +44,13 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      Promise.resolve(event.preloadResponse)
+        .then((preloaded) => preloaded || fetch(request))
         .then((response) => {
           if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
           return response;
         })
-        .catch(async () => (await caches.match(request)) || caches.match("/index.html"))
+        .catch(async () => (await caches.match(request)) || caches.match("/offline.html"))
     );
     return;
   }

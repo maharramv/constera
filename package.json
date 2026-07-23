@@ -9,9 +9,10 @@
   },
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
-    "build": "npm run vercel-build",
-    "vercel-build": "node scripts/vercel-build.mjs",
+    "build": "npm run build:static",
+    "build:static": "node scripts/vercel-build.mjs",
     "audit": "node scripts/audit-site.mjs",
+    "audit:dist": "node scripts/audit-build.mjs",
     "check:syntax": "node scripts/check-javascript.mjs",
     "test:api": "node --test tests/api/*.test.mjs",
     "test:site": "node --test tests/site/*.test.mjs",
@@ -22,7 +23,7 @@
     "db:audit": "node scripts/audit-database.mjs",
     "db:smoke": "node scripts/smoke-commerce.mjs",
     "db:create-admin": "node scripts/create-admin.mjs",
-    "check": "npm run audit && npm run check:syntax && npm run test:api && npm run test:site && npm run vercel-build",
+    "check": "npm run audit && npm run check:syntax && npm run test:api && npm run test:site && npm run build:static && npm run audit:dist",
     "check:full": "npm run check && npm run test:layout"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "read-excel-file": "^9.3.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1"
+    "@playwright/test": "^1.61.1",
+    "esbuild": "0.28.1"
   }
 }

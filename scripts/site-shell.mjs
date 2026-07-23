@@ -29,6 +29,7 @@ export const navigationItems = Object.freeze([
 
 const activeNavigationByPage = Object.freeze({
   home: "home",
+  offline: "home",
   catalog: "catalog",
   category: "catalog",
   subcategory: "catalog",
@@ -69,6 +70,10 @@ const renderHeader = (pageName) => {
 };
 
 const ensureMainId = (html) => html.replace(/<main(?![^>]*\bid=)([^>]*)>/i, '<main id="main-content"$1>');
+const removeExternalFontLinks = (html) => html.replace(
+  /\s*<link\b[^>]*\bhref=["']https:\/\/fonts\.(?:googleapis|gstatic)\.com[^>]*>\s*/gi,
+  "\n"
+);
 const ensurePwaMetadata = (html) => {
   const tags = [];
   if (!/<link\b[^>]*\brel=["']manifest["']/i.test(html)) {
@@ -83,11 +88,12 @@ const shouldRenderFooter = (pageName) => !["admin", "login"].includes(pageName);
 
 export const renderSitePage = (source, options = {}) => {
   const file = basename(options.file || "index.html");
-  const pageName = pageNameFromHtml(source);
+  const fontFreeSource = removeExternalFontLinks(source);
+  const pageName = pageNameFromHtml(fontFreeSource);
   const headerPattern = /<header\b[^>]*\bclass=["'][^"']*\bheader\b[^"']*["'][^>]*>[\s\S]*?<\/header>/i;
-  if (!headerPattern.test(source)) throw new Error(`${file}: ümumi header üçün əvəz ediləcək blok tapılmadı.`);
+  if (!headerPattern.test(fontFreeSource)) throw new Error(`${file}: ümumi header üçün əvəz ediləcək blok tapılmadı.`);
 
-  let html = ensureMainId(source.replace(headerPattern, renderHeader(pageName)));
+  let html = ensureMainId(fontFreeSource.replace(headerPattern, renderHeader(pageName)));
   const footerPattern = /<footer\b[^>]*\bclass=["'][^"']*\bfooter\b[^"']*["'][^>]*>[\s\S]*?<\/footer>/i;
 
   if (shouldRenderFooter(pageName)) {

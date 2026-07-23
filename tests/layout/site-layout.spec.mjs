@@ -24,7 +24,8 @@ const pages = [
   "tender.html",
   "ai-smeta.html",
   "admin.html",
-  "login.html"
+  "login.html",
+  "offline.html"
 ];
 
 const primaryViewports = [
@@ -167,4 +168,40 @@ test("mənbəli məhsullar əsas səhifə və kataloqda əvvəl göstərilir", a
   await page.locator("[data-source-filter]").selectOption("sourced-image");
   await expect(page.locator("[data-product-grid] .market-card").first()).toHaveClass(/has-real-media/);
   await expect(page.locator("[data-active-filter-list]")).toContainText("Mənbə + real foto");
+});
+
+test("uzun kataloq siyahıları mərhələli render olunur", async ({ page }) => {
+  for (const viewport of [
+    { width: 390, height: 844, catalogLimit: 18, listLimit: 10 },
+    { width: 1280, height: 900, catalogLimit: 36, listLimit: 18 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
+    await expect.poll(() => page.locator("[data-product-grid] .market-card").count()).toBeGreaterThan(0);
+    expect(await page.locator("[data-product-grid] .market-card").count()).toBeLessThanOrEqual(viewport.catalogLimit);
+
+    for (const [file, selector] of [
+      ["services.html", "[data-service-grid] .market-card"],
+      ["packages.html", "[data-package-grid] .market-card"],
+      ["rental.html", "[data-rental-grid] .market-card"]
+    ]) {
+      await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
+      await expect.poll(() => page.locator(selector).count()).toBeGreaterThan(0);
+      expect(await page.locator(selector).count(), file).toBeLessThanOrEqual(viewport.listLimit);
+    }
+  }
+});
+
+test("kataloq başlığı desktop filtr paneli ilə üst-üstə düşmür", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
+  const geometry = await page.evaluate(() => {
+    const heading = document.querySelector(".market-hero-copy h1")?.getBoundingClientRect();
+    const panel = document.querySelector(".market-command")?.getBoundingClientRect();
+    return {
+      headingRight: heading?.right || 0,
+      panelLeft: panel?.left || 0
+    };
+  });
+  expect(geometry.headingRight).toBeLessThanOrEqual(geometry.panelLeft - 12);
 });

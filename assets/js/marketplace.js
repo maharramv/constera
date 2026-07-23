@@ -245,9 +245,11 @@ const sortBySourceQuality = (items, kind = "product") => marketplaceRanking.sort
 const createProductMedia = (product, fallbackText) => {
   const imageUrl = getSafeImageUrl(product.imageUrl);
   return imageUrl
-    ? `<img data-product-image data-product-fallback="${escapeAttr(fallbackText)}" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(product.name)}" loading="lazy" referrerpolicy="no-referrer">`
+    ? `<img data-product-image data-product-fallback="${escapeAttr(fallbackText)}" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(product.name)}" width="640" height="480" loading="lazy" decoding="async" fetchpriority="low" referrerpolicy="no-referrer">`
     : `<span class="product-image-fallback" role="img" aria-label="${escapeAttr(product.name)} üçün şəkil mövcud deyil">${escapeHtml(fallbackText)}</span>`;
 };
+const getResponsivePageSize = (desktop, mobile) =>
+  window.matchMedia("(max-width: 820px)").matches ? mobile : desktop;
 const createProgressiveGrid = (grid, pagination, renderItem, pageSize) => {
   const button = pagination?.querySelector("[data-load-more]");
   const status = pagination?.querySelector("[data-pagination-status]");
@@ -753,7 +755,12 @@ const renderCatalog = () => {
   setupResponsivePanel(filterToggle, filterPanel, "Filtrləri göstər", "Filtrləri gizlət");
   setupResponsivePanel(categoryToggle, categoryPanel, "Kateqoriyaları göstər", "Kateqoriyaları gizlət");
 
-  const progressiveGrid = createProgressiveGrid(productGrid, pagination, createProductCard, 48);
+  const progressiveGrid = createProgressiveGrid(
+    productGrid,
+    pagination,
+    createProductCard,
+    getResponsivePageSize(36, 18)
+  );
   let serverPage = 0;
   let serverProducts = [];
   let serverRequest = 0;
@@ -1349,7 +1356,7 @@ const renderServices = () => {
 
   const services = marketplace.services || [];
   const categories = marketplace.serviceCategories || [];
-  const progressiveGrid = createProgressiveGrid(grid, pagination, createServiceCard, 24);
+  const progressiveGrid = createProgressiveGrid(grid, pagination, createServiceCard, getResponsivePageSize(18, 10));
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, services, "Bütün kateqoriyalar");
 
@@ -1406,7 +1413,7 @@ const renderPackages = () => {
 
   const packages = marketplace.packages || [];
   const categories = marketplace.packageCategories || [];
-  const progressiveGrid = createProgressiveGrid(grid, pagination, createPackageCard, 24);
+  const progressiveGrid = createProgressiveGrid(grid, pagination, createPackageCard, getResponsivePageSize(18, 10));
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, packages, "Bütün paketlər");
   if (providerFilter) {
@@ -1481,7 +1488,7 @@ const renderRentals = () => {
 
   const rentals = marketplace.rentals || [];
   const categories = marketplace.rentalCategories || [];
-  const progressiveGrid = createProgressiveGrid(grid, pagination, createRentalCard, 24);
+  const progressiveGrid = createProgressiveGrid(grid, pagination, createRentalCard, getResponsivePageSize(18, 10));
 
   categoryFilter.innerHTML = renderGroupedCategoryOptions(categories, rentals, "Bütün kateqoriyalar");
   if (cityFilter) {
@@ -1888,7 +1895,7 @@ const renderRentalDetail = () => {
   const sourceUrl = getSafeHttpsUrl(rental.sourceUrl);
   const imageUrl = getSafeImageUrl(rental.imageUrl);
   const rentalMedia = imageUrl
-    ? `<div class="detail-media"><img data-product-image data-product-fallback="İC" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(rental.name)}" referrerpolicy="no-referrer"></div>`
+    ? `<div class="detail-media"><img data-product-image data-product-fallback="İC" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(rental.name)}" width="1280" height="960" decoding="async" referrerpolicy="no-referrer"></div>`
     : `<div class="detail-symbol"><span>İC</span></div>`;
   document.title = `${rental.name} | ConstEra İcarə`;
   updatePageDescription(`${rental.name}: ${category?.title || "avadanlıq icarəsi"}, ${rental.capacity || rental.subcategory}, ${rental.price}. Tikinti avadanlığı icarəsi üçün sorğu yarat.`);
@@ -3354,8 +3361,7 @@ const renderRfqDashboard = () => {
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.setAttribute("readonly", "");
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
+    textarea.className = "clipboard-fallback";
     document.body.appendChild(textarea);
     textarea.select();
     const copied = document.execCommand("copy");

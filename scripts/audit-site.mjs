@@ -38,6 +38,7 @@ const requiredProductionFiles = [
   "api/offers.js",
   "api/sync.js",
   "scripts/site-shell.mjs",
+  "scripts/audit-build.mjs",
   "scripts/audit-database.mjs",
   "scripts/import-scraper-catalog.mjs",
   "scripts/smoke-commerce.mjs",
@@ -59,8 +60,8 @@ const requiredProductionFiles = [
   "assets/data/azerbaycan-tikinti-temir-paketleri.json",
   "assets/data/azerbaycan-tikinti-texnikasi-icaresi.json",
   "assets/data/azerbaycan-tikinti-texnikasi-icaresi.csv",
-  "assets/images/equipment/avtokran-25t-xcmg.jpg",
-  "assets/images/equipment/mini-ekskavator-new-holland.jpg",
+  "assets/images/equipment/avtokran-25t-xcmg.webp",
+  "assets/images/equipment/mini-ekskavator-new-holland.webp",
   "assets/images/equipment/teleskopik-yukleyici.webp",
   "assets/images/equipment/bekolader-jcb.webp",
   "assets/images/equipment/tekerli-ekskavator-cat.webp",
@@ -145,6 +146,18 @@ for (const file of htmlFiles) {
     }
   }
 
+  if (/\son[a-z]+\s*=/i.test(html)) {
+    report(errors, file, "Inline hadisə atributu Content Security Policy ilə uyğun deyil.");
+  }
+
+  if (/<script\b(?![^>]*\bsrc\s*=)[^>]*>/i.test(html) || /<style\b|\sstyle\s*=/i.test(html)) {
+    report(errors, file, "Inline script və ya stil Content Security Policy ilə uyğun deyil.");
+  }
+
+  if (/https:\/\/fonts\.(?:googleapis|gstatic)\.com/i.test(html)) {
+    report(errors, file, "Xarici Google Font bağlantısı performans büdcəsinə uyğun deyil.");
+  }
+
   for (const match of html.matchAll(/<a\b[^>]*>/gi)) {
     const href = getAttribute(match[0], "href");
     if (href === null || href.trim() === "") report(errors, file, "Linkdə href yoxdur və ya boşdur.");
@@ -204,13 +217,13 @@ htmlFiles.forEach((file) => {
 try {
   const vercelConfig = JSON.parse(readFileSync(join(root, "vercel.json"), "utf8"));
   if (vercelConfig.framework !== null) report(errors, "vercel.json", "Statik layihə üçün framework null olmalıdır.");
-  if (vercelConfig.buildCommand !== "npm run vercel-build") report(errors, "vercel.json", "Build əmri npm run vercel-build olmalıdır.");
+  if (vercelConfig.buildCommand !== "npm run build:static") report(errors, "vercel.json", "Build əmri npm run build:static olmalıdır.");
   if (vercelConfig.outputDirectory !== "dist") report(errors, "vercel.json", "Çıxış qovluğu dist olmalıdır.");
   if (vercelConfig.installCommand !== "npm ci") report(errors, "vercel.json", "Asılılıqlar üçün npm ci işlədilməlidir.");
   if (!vercelConfig.functions?.["api/*.js"]) report(errors, "vercel.json", "Vercel Functions konfiqurasiyası tapılmadı.");
   const securityHeaders = new Set((vercelConfig.headers || []).flatMap((rule) =>
     (rule.headers || []).map((header) => String(header.key || "").toLowerCase())));
-  ["x-content-type-options", "x-frame-options", "referrer-policy", "permissions-policy", "strict-transport-security"]
+  ["x-content-type-options", "x-frame-options", "referrer-policy", "permissions-policy", "strict-transport-security", "content-security-policy"]
     .filter((header) => !securityHeaders.has(header))
     .forEach((header) => report(errors, "vercel.json", `Təhlükəsizlik başlığı yoxdur: ${header}.`));
 } catch (error) {
@@ -224,7 +237,7 @@ try {
   }
   if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
   if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
-  ["db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:full"].forEach((script) => {
+  ["build:static", "audit:dist", "db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:full"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
 } catch (error) {
