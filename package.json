@@ -18,6 +18,7 @@
     "test:layout": "playwright test",
     "db:migrate": "node scripts/migrate-database.mjs",
     "db:seed": "node scripts/seed-database.mjs",
+    "db:import-scraper": "node scripts/import-scraper-catalog.mjs",
     "db:audit": "node scripts/audit-database.mjs",
     "db:smoke": "node scripts/smoke-commerce.mjs",
     "db:create-admin": "node scripts/create-admin.mjs",

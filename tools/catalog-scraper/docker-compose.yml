@@ -1,0 +1,8 @@
+services:
+  scraper:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./images:/app/images
+      - ./logs:/app/logs
+    restart: "no"

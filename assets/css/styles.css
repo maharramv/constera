@@ -4536,6 +4536,52 @@ body[data-page="admin"] .admin-panel > .market-section-heading h2 {
   padding-bottom: 0;
 }
 
+.admin-staging-product {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.admin-staging-product img,
+.admin-staging-placeholder {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.admin-staging-product img {
+  object-fit: contain;
+}
+
+.admin-staging-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.admin-staging-category {
+  display: grid;
+  gap: 6px;
+  min-width: 210px;
+}
+
+.admin-staging-category .table-select {
+  width: 100%;
+}
+
+.admin-staging-warning {
+  color: #9a5b00;
+  font-weight: 700;
+}
+
 @media (max-width: 1100px) {
   .admin-v2-kpi-grid,
   .admin-v2-media-grid {

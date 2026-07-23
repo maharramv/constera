@@ -144,7 +144,26 @@ export default withApiErrors(async (req, res) => {
         ORDER BY created_at DESC LIMIT $${privileged ? 1 : 2}`,
       privileged ? [limit] : [user.id, limit]
     );
-    return sendJson(res, 200, { ok: true, data: rows });
+    const scraperRows = privileged
+      ? await query(
+        `SELECT id, 'scraper'::text AS import_type, source_file AS filename, status,
+                total_items AS total_rows, valid_items AS valid_rows, 0::int AS imported_rows,
+                rejected_items AS error_rows,
+                jsonb_build_object(
+                  'counts', counts,
+                  'duplicates', duplicate_items,
+                  'reviewRequired', true
+                ) AS summary,
+                error_report, created_at, completed_at
+           FROM catalog_import_runs
+          ORDER BY created_at DESC LIMIT $1`,
+        [limit]
+      )
+      : [];
+    const combined = [...rows, ...scraperRows]
+      .sort((left, right) => new Date(right.created_at) - new Date(left.created_at))
+      .slice(0, limit);
+    return sendJson(res, 200, { ok: true, data: combined });
   }
 
   assertMethod(req, ["POST"]);

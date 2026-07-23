@@ -107,6 +107,8 @@
     categories: (kind = "") => request(`/api/categories?includeArchived=true${kind ? `&kind=${encodeURIComponent(kind)}` : ""}`),
     saveCategory: (data, update = false) => request("/api/categories", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteCategory: (data) => request("/api/categories", { method: "DELETE", body: JSON.stringify(data) }),
+    catalogStaging: (status = "pending") => request(`/api/catalog-staging?limit=200&status=${encodeURIComponent(status)}`),
+    reviewCatalogItem: (data) => request("/api/catalog-staging", { method: "PATCH", body: JSON.stringify(data) }),
     entities: (kind = "") => request(`/api/entities?limit=1000${kind ? `&kind=${encodeURIComponent(kind)}` : ""}`),
     saveEntity: (data, update = false) => request("/api/entities", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteEntity: (id) => request("/api/entities", { method: "DELETE", body: JSON.stringify({ id }) }),

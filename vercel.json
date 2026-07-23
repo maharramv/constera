@@ -10,6 +10,7 @@
     { "source": "/api/audit", "destination": "/api/admin?__route=audit" },
     { "source": "/api/backup", "destination": "/api/admin?__route=backup" },
     { "source": "/api/cabinet", "destination": "/api/admin?__route=cabinet" },
+    { "source": "/api/catalog-staging", "destination": "/api/admin?__route=catalog-staging" },
     { "source": "/api/categories", "destination": "/api/admin?__route=categories" },
     { "source": "/api/entities", "destination": "/api/admin?__route=entities" },
     { "source": "/api/imports", "destination": "/api/admin?__route=imports" },

@@ -16,7 +16,9 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'package' AND status = 'active') AS packages,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
     (SELECT count(*)::int FROM orders) AS orders,
-    (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users
+    (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users,
+    (SELECT count(*)::int FROM catalog_import_runs) AS scraper_runs,
+    (SELECT count(*)::int FROM catalog_import_items WHERE review_status = 'pending') AS scraper_pending
 `);
 
 const [integrity] = await query(`
@@ -40,7 +42,31 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM tenders t
       WHERE t.visibility = 'invited' AND NOT EXISTS (
         SELECT 1 FROM tender_invitations ti WHERE ti.tender_id = t.id
-      )) AS invited_tenders_without_supplier
+      )) AS invited_tenders_without_supplier,
+    (SELECT count(*)::int FROM catalog_import_items
+      WHERE (payload->>'price_status') = 'confirmed'
+        AND (
+          NULLIF(payload->>'source_url', '') IS NULL
+          OR NULLIF(payload->>'verified_at', '') IS NULL
+          OR NULLIF(payload->>'price', '') IS NULL
+        )) AS invalid_scraper_confirmed_prices,
+    (SELECT count(*)::int FROM catalog_import_runs
+      WHERE source_file ~ '(^/|^[A-Za-z]:[\\/])') AS scraper_absolute_source_paths,
+    (SELECT count(DISTINCT i.id)::int
+       FROM catalog_import_items i
+       CROSS JOIN LATERAL jsonb_array_elements_text(
+         CASE
+           WHEN jsonb_typeof(i.payload->'image_urls') = 'array' THEN i.payload->'image_urls'
+           ELSE '[]'::jsonb
+         END
+       ) AS media(url)
+      WHERE CASE i.source_id
+        WHEN 'elem' THEN media.url !~* '^https://(www\\.)?elem\\.az/'
+        WHEN 'tvim' THEN media.url !~* '^https://(www\\.)?tvim\\.az/'
+        WHEN 'omid' THEN media.url !~* '^https://(www\\.)?omid\\.az/'
+        WHEN 'insaat' THEN media.url !~* '^https://(www\\.)?insaat\\.az/'
+        ELSE true
+      END) AS invalid_scraper_media_hosts
 `);
 
 const [schema] = await query(`
@@ -51,6 +77,8 @@ const [schema] = await query(`
     to_regclass('public.customer_projects') IS NOT NULL AS customer_projects_ready,
     to_regclass('public.saved_products') IS NOT NULL AS saved_products_ready,
     to_regclass('public.customer_estimates') IS NOT NULL AS customer_estimates_ready,
+    to_regclass('public.catalog_import_runs') IS NOT NULL AS scraper_runs_ready,
+    to_regclass('public.catalog_import_items') IS NOT NULL AS scraper_items_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready
 `);

@@ -13,6 +13,7 @@
     media: [],
     notifications: [],
     imports: [],
+    staging: [],
     audit: [],
     account: null
   };
@@ -88,7 +89,8 @@
     change_password: "Şifrəni dəyişdi",
     reset_password: "Şifrəni sıfırladı",
     status_update: "Statusu dəyişdi",
-    bulk_sync: "Sinxronlaşdırdı"
+    bulk_sync: "Sinxronlaşdırdı",
+    catalog_review: "Kataloq qeydini yoxladı"
   };
 
   const setButtonBusy = (button, busy, label = "Gözlə...") => {
@@ -278,6 +280,43 @@
     </article>`).join("") || "<p>Yüklənmiş media yoxdur.</p>";
   };
 
+  const stagingKind = (kind) => kind === "product" ? "material" : kind;
+  const normalizedLabel = (value) => String(value || "").trim().toLocaleLowerCase("az-AZ");
+  const stagingCategoryOptions = (item) => {
+    const kind = stagingKind(item.kind);
+    const categories = state.categories.filter((category) =>
+      category.kind === kind && !category.parentId && category.active
+    );
+    const sourceCategory = normalizedLabel(item.payload?.category);
+    return `<option value="">Kateqoriya seç</option>${categories.map((category) => {
+      const selected = sourceCategory && normalizedLabel(category.title) === sourceCategory;
+      return `<option value="${escapeHtml(category.id)}" ${selected ? "selected" : ""}>${escapeHtml(category.title)}</option>`;
+    }).join("")}`;
+  };
+
+  const renderStaging = () => {
+    const tbody = qs("[data-admin-v2-staging]");
+    if (!tbody) return;
+    setText("[data-admin-v2-staging-count]", `${state.staging.length} gözləyən`);
+    tbody.innerHTML = state.staging.map((item) => {
+      const payload = item.payload || {};
+      const image = Array.isArray(payload.image_urls) ? payload.image_urls[0] : "";
+      const sourceLabel = payload.source_label || item.sourceId;
+      const price = payload.price_text || "Qiymət sorğu əsasında";
+      const errors = Array.isArray(item.validationErrors) ? item.validationErrors : [];
+      const existingNote = item.existingEntityId
+        ? `<small class="admin-staging-warning">Mövcud SKU yenilənəcək: ${escapeHtml(item.existingEntityId)}</small>`
+        : "";
+      return `<tr data-staging-row="${escapeHtml(item.id)}">
+        <td data-label="Qeyd"><div class="admin-staging-product">${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />` : '<span class="admin-staging-placeholder">Foto yoxdur</span>'}<div><strong>${escapeHtml(payload.name || "Adsız qeyd")}</strong><small>${escapeHtml(item.kind === "product" ? "Məhsul" : kindLabels[item.kind] || item.kind)}${payload.sku ? ` · ${escapeHtml(payload.sku)}` : ""}</small>${existingNote}${errors.length ? `<small>${escapeHtml(errors.join("; "))}</small>` : ""}</div></div></td>
+        <td data-label="Mənbə"><a class="table-action" href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(sourceLabel)}</a><small>${formatDate(item.verifiedAt, true)}</small></td>
+        <td data-label="Qiymət"><strong>${escapeHtml(price)}</strong>${payload.unit ? `<small>${escapeHtml(payload.unit)}</small>` : ""}</td>
+        <td data-label="Yerləşdirmə"><div class="admin-staging-category"><select class="table-select" data-staging-category>${stagingCategoryOptions(item)}</select><input class="table-select" data-staging-subcategory value="${escapeHtml(payload.subcategory || "")}" aria-label="Subkateqoriya" placeholder="Subkateqoriya" /></div></td>
+        <td data-label="Əməliyyat"><div class="admin-v2-row-actions"><button class="table-action" type="button" data-staging-approve>Təsdiqlə</button><button class="table-action is-danger" type="button" data-staging-reject>Rədd et</button></div></td>
+      </tr>`;
+    }).join("") || '<tr><td colspan="5">Yoxlama gözləyən kataloq qeydi yoxdur.</td></tr>';
+  };
+
   const renderSystem = () => {
     const account = state.account;
     if (account) setStatus(
@@ -293,7 +332,15 @@
     </article>`).join("") || "<p>Bildiriş yoxdur.</p>";
 
     const imports = qs("[data-admin-v2-imports]");
-    if (imports) imports.innerHTML = state.imports.slice(0, 12).map((item) => `<article><div><strong>${escapeHtml(item.filename || item.import_type)}</strong><small>${escapeHtml(item.import_type)} · ${escapeHtml(item.status)} · ${item.imported_rows}/${item.total_rows} idxal</small></div><small>${formatDate(item.created_at, true)}</small></article>`).join("") || "<p>İdxal tarixçəsi yoxdur.</p>";
+    if (imports) imports.innerHTML = state.imports.slice(0, 12).map((item) => {
+      const scraper = item.import_type === "scraper";
+      const progress = scraper
+        ? `${item.valid_rows}/${item.total_rows} yoxlama sahəsində`
+        : `${item.imported_rows}/${item.total_rows} idxal`;
+      return `<article><div><strong>${escapeHtml(item.filename || item.import_type)}</strong><small>${escapeHtml(scraper ? "Kataloq toplayıcısı" : item.import_type)} · ${escapeHtml(item.status)} · ${escapeHtml(progress)}</small></div><small>${formatDate(item.created_at, true)}</small></article>`;
+    }).join("") || "<p>İdxal tarixçəsi yoxdur.</p>";
+
+    renderStaging();
 
     const audit = qs("[data-admin-v2-audit]");
     if (audit) audit.innerHTML = state.audit.slice(0, 100).map((item) => `<tr>
@@ -315,6 +362,7 @@
   const loadCategories = async () => {
     state.categories = (await api.categories()).data || [];
     renderCategories();
+    renderStaging();
   };
   const loadUsers = async () => {
     state.users = (await api.users()).data || [];
@@ -332,11 +380,18 @@
     renderMedia();
   };
   const loadSystem = async () => {
-    const results = await Promise.allSettled([api.account(), api.notifications(), api.imports(), api.audit()]);
+    const results = await Promise.allSettled([
+      api.account(),
+      api.notifications(),
+      api.imports(),
+      api.catalogStaging(),
+      api.audit()
+    ]);
     if (results[0].status === "fulfilled") state.account = results[0].value.data;
     if (results[1].status === "fulfilled") state.notifications = results[1].value.data || [];
     if (results[2].status === "fulfilled") state.imports = results[2].value.data || [];
-    if (results[3].status === "fulfilled") state.audit = results[3].value.data || [];
+    if (results[3].status === "fulfilled") state.staging = results[3].value.data || [];
+    if (results[4].status === "fulfilled") state.audit = results[4].value.data || [];
     renderSystem();
   };
 
@@ -664,6 +719,42 @@
     if (!button) return;
     await api.updateNotification(button.dataset.notificationRetry, "retry").catch((error) => setStatus("[data-admin-v2-import-status]", error.message, "error"));
     await loadSystem();
+  });
+  qs("[data-admin-v2-staging]")?.addEventListener("click", async (event) => {
+    const approve = event.target.closest("[data-staging-approve]");
+    const reject = event.target.closest("[data-staging-reject]");
+    const button = approve || reject;
+    if (!button) return;
+    const row = button.closest("[data-staging-row]");
+    const id = row?.dataset.stagingRow;
+    if (!id) return;
+    const action = approve ? "approve" : "reject";
+    if (reject && !window.confirm("Bu yoxlama qeydi rədd edilsin?")) return;
+    const item = state.staging.find((entry) => entry.id === id);
+    const allowExistingUpdate = Boolean(item?.existingEntityId);
+    if (approve && allowExistingUpdate && !window.confirm("Bu SKU artıq kataloqdadır. Mövcud məhsul real mənbədən gələn məlumatlarla yenilənsin?")) return;
+    const categoryId = row.querySelector("[data-staging-category]")?.value || "";
+    const subcategory = row.querySelector("[data-staging-subcategory]")?.value || "";
+    if (approve && (!categoryId || !subcategory.trim())) {
+      setStatus("[data-admin-v2-staging-status]", "Təsdiqdən əvvəl əsas kateqoriya və subkateqoriya seç.", "warning");
+      return;
+    }
+    setButtonBusy(button, true, approve ? "Təsdiqlənir..." : "Rədd edilir...");
+    try {
+      const result = await api.reviewCatalogItem({ id, action, categoryId, subcategory, allowExistingUpdate });
+      setStatus(
+        "[data-admin-v2-staging-status]",
+        approve
+          ? `Qeyd kataloqda yayımlandı: ${result.data.publishedId}`
+          : "Qeyd yoxlama siyahısından rədd edildi.",
+        "success"
+      );
+      await Promise.all([loadSystem(), loadDashboard()]);
+    } catch (error) {
+      setStatus("[data-admin-v2-staging-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
   });
   qs("[data-admin-v2-cloud-backup]")?.addEventListener("click", async (event) => {
     setButtonBusy(event.currentTarget, true, "Hazırlanır...");

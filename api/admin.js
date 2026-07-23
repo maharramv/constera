@@ -6,6 +6,7 @@ const routeLoaders = Object.freeze({
   audit: () => import("./_admin/audit.js"),
   backup: () => import("./_admin/backup.js"),
   cabinet: () => import("./_admin/cabinet.js"),
+  "catalog-staging": () => import("./_admin/catalog-staging.js"),
   categories: () => import("./_admin/categories.js"),
   entities: () => import("./_admin/entities.js"),
   imports: () => import("./_admin/imports.js"),

@@ -1,0 +1,64 @@
+{
+  "sources": [
+    {
+      "id": "elem",
+      "name": "ELEM",
+      "base_url": "https://elem.az",
+      "enabled": true,
+      "adapter": "elem",
+      "discovery_index": "/az/catalog/brands",
+      "allowed_path_patterns": ["^/(?:az/)?catalog/product/"],
+      "discovery_page_limit": 120,
+      "max_items": 500
+    },
+    {
+      "id": "tvim",
+      "name": "TVIM",
+      "base_url": "https://tvim.az",
+      "enabled": true,
+      "adapter": "tvim",
+      "sitemaps": ["https://tvim.az/sitemap.xml"],
+      "allowed_path_patterns": ["^/az/"],
+      "sitemap_require_image": true,
+      "sitemap_min_priority": 1.0,
+      "max_items": 500
+    },
+    {
+      "id": "omid",
+      "name": "OMID",
+      "base_url": "https://omid.az",
+      "enabled": true,
+      "adapter": "omid",
+      "sitemaps": ["https://omid.az/sitemap.xml"],
+      "allowed_path_patterns": ["^/(?:[a-z]{2}/)?products/"],
+      "max_items": 1000
+    },
+    {
+      "id": "insaat",
+      "name": "INSAAT.AZ",
+      "base_url": "https://insaat.az",
+      "enabled": true,
+      "adapter": "insaat",
+      "listing_pages": [
+        {
+          "path": "/tikinti-texnikasi-icaresi",
+          "kind": "rental",
+          "category": "Tikinti texnikası icarəsi"
+        },
+        {
+          "path": "/temir-tikinti",
+          "kind": "service",
+          "category": "Təmir və tikinti xidmətləri"
+        }
+      ],
+      "allowed_path_patterns": ["\\.html$"],
+      "max_items": 300
+    }
+  ],
+  "request_delay_seconds": 1.5,
+  "request_timeout_seconds": 30,
+  "max_response_bytes": 6000000,
+  "respect_robots_txt": true,
+  "fail_closed_on_robots_error": true,
+  "user_agent": "ConstEraCatalogBot/1.1 (+https://constera.az; catalog@constera.az)"
+}
