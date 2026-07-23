@@ -18,6 +18,7 @@ test("mənbəli məlumat prioriteti bütün kataloq tiplərində sabitdir", () =
   assert.equal(typeof ranking?.getSourceQualityScore, "function");
   [
     ["products", "product"],
+    ["services", "service"],
     ["packages", "package"],
     ["rentals", "rental"]
   ].forEach(([collection, kind]) => {
@@ -50,12 +51,14 @@ test("ilk nəticələr real mənbə və media keyfiyyətini daşıyır", () => {
 
 test("kataloq və ana səhifə mənbəli məlumat görünüşünü təqdim edir", () => {
   const catalog = readFileSync("catalog.html", "utf8");
+  const services = readFileSync("services.html", "utf8");
   const packages = readFileSync("packages.html", "utf8");
   const rentals = readFileSync("rental.html", "utf8");
   const home = readFileSync("index.html", "utf8");
   const catalogApi = readFileSync("api/catalog.js", "utf8");
 
   ["data-source-filter", "data-catalog-sort"].forEach((attribute) => assert.match(catalog, new RegExp(attribute)));
+  assert.match(services, /data-service-source-filter/);
   assert.match(packages, /data-package-source-filter/);
   assert.match(rentals, /data-rental-source-filter/);
   ["data-home-sourced-products", "data-home-sourced-packages", "data-home-sourced-rentals"]

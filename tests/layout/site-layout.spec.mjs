@@ -126,7 +126,11 @@ test("mənbəli paket və texnika icarəsi axını responsiv işləyir", async (
   await page.goto("/rental.html", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-rental-grid] .market-card").first()).toHaveClass(/is-sourced-card/);
   await page.locator("[data-rental-city-filter]").selectOption({ label: "Bakı və Azərbaycan" });
-  await expect(page.locator("[data-rental-count]")).toHaveText("3 avadanlıq");
+  const cityRentalCount = await page.evaluate(() =>
+    window.CONSTERA_MARKETPLACE.rentals.filter((item) => item.city === "Bakı və Azərbaycan").length);
+  expect(cityRentalCount).toBeGreaterThanOrEqual(3);
+  await expect(page.locator("[data-rental-count]")).toHaveText(`${cityRentalCount} avadanlıq`);
+  await expect(page.locator("[data-rental-grid] .market-card")).toHaveCount(cityRentalCount);
   await expect(page.locator('[data-rental-id^="az-rental-naf-"]')).toHaveCount(3);
   await expect.poll(() => page.locator('[data-rental-id^="az-rental-naf-"] img').evaluateAll((images) =>
     images.length === 3 && images.every((image) => image.complete && image.naturalWidth > 0)

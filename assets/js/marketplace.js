@@ -1142,9 +1142,14 @@ const renderSuppliers = () => {
 
 const createServiceCard = (service) => {
   const category = getServiceCategory(service.category);
+  const sourceUrl = getSafeHttpsUrl(service.sourceUrl);
+  const sourced = Boolean(sourceUrl);
+  const sourceStatus = service.sourceVerified
+    ? "Mənbəli xidmət"
+    : sourced ? "Açıq elan" : "Sorğu kataloqu";
 
   return `
-    <article class="market-card service-card">
+    <article class="market-card service-card${sourced ? " is-sourced-card" : ""}${service.sourceVerified ? " is-official-card" : ""}" data-service-id="${escapeAttr(service.id)}" data-source-priority="${getSourceQualityScore(service, "service")}">
       <div class="product-card-body">
         <div class="product-meta">
           <span>${escapeHtml(category?.title || service.category)}</span>
@@ -1152,6 +1157,13 @@ const createServiceCard = (service) => {
           <span>${escapeHtml(service.type)}</span>
         </div>
         <h3>${escapeHtml(service.title)}</h3>
+        ${service.providerName || service.city || sourced ? `
+          <div class="package-source-row">
+            <span class="mini-badge${service.sourceVerified ? " is-verified" : ""}">${escapeHtml(sourceStatus)}</span>
+            ${service.providerName ? `<span>${escapeHtml(service.providerName)}</span>` : ""}
+            ${service.city ? `<span>${escapeHtml(service.city)}</span>` : ""}
+          </div>
+        ` : ""}
         <div class="product-attributes">
           <span>${escapeHtml(service.unit)}</span>
           <span>${escapeHtml(service.leadTime)}</span>
@@ -1167,8 +1179,9 @@ const createServiceCard = (service) => {
         <div>
           <span class="price-label">Qiymət</span>
           <strong>${escapeHtml(service.price)}</strong>
-          <small>${escapeHtml(service.team)}</small>
+          <small>${escapeHtml(service.priceConfirmationRequired ? "Qiymət iş həcminə görə yenidən təsdiqlənir" : service.team)}</small>
           <a class="source-link" href="service-detail.html?service=${encodeURIComponent(service.id)}">Detallı bax</a>
+          ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
         </div>
       </div>
       <a class="button button-secondary product-rfq" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu</a>
@@ -1329,6 +1342,7 @@ const renderServices = () => {
   const grid = document.querySelector("[data-service-grid]");
   const categoryFilter = document.querySelector("[data-service-category-filter]") || document.querySelector("[data-service-filter]");
   const subcategoryFilter = document.querySelector("[data-service-subcategory-filter]");
+  const sourceFilter = document.querySelector("[data-service-source-filter]");
   const count = document.querySelector("[data-service-count]");
   const pagination = document.querySelector("[data-service-pagination]");
   if (!grid || !categoryFilter) return;
@@ -1353,11 +1367,17 @@ const renderServices = () => {
   const render = () => {
     const categoryValue = categoryFilter.value;
     const subcategoryValue = subcategoryFilter?.value || "all";
+    const sourceValue = sourceFilter?.value || "all";
     const filtered = services.filter((service) => {
       const matchesCategory = categoryValue === "all" || service.category === categoryValue;
       const matchesSubcategory = subcategoryValue === "all" || service.subcategory === subcategoryValue;
-      return matchesCategory && matchesSubcategory;
-    });
+      const sourced = hasSourcedData(service);
+      const matchesSource = sourceValue === "all"
+        || (sourceValue === "verified" && sourced && service.sourceVerified)
+        || (sourceValue === "market" && sourced && !service.sourceVerified)
+        || (sourceValue === "request" && !sourced);
+      return matchesCategory && matchesSubcategory && matchesSource;
+    }).sort((left, right) => compareSourceQuality(left, right, "service"));
     progressiveGrid.setItems(filtered);
     if (count) count.textContent = `${filtered.length} xidmət`;
   };
@@ -1367,6 +1387,7 @@ const renderServices = () => {
     render();
   });
   subcategoryFilter?.addEventListener("change", render);
+  sourceFilter?.addEventListener("change", render);
   renderSubcategoryOptions();
   render();
 };
@@ -1663,6 +1684,7 @@ const renderServiceDetail = () => {
   }
 
   const category = getServiceCategory(service.category);
+  const sourceUrl = getSafeHttpsUrl(service.sourceUrl);
   document.title = `${service.title} | ConstEra Xidmətlər`;
   updatePageDescription(`${service.title}: ${category?.title || "tikinti xidməti"}, ${service.subcategory || "ümumi xidmət"}, ${service.price}. ConstEra üzərindən xidmət sorğusu yarat.`);
   container.innerHTML = `
@@ -1682,6 +1704,7 @@ const renderServiceDetail = () => {
         <div class="detail-actions">
           <a class="button button-primary" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu yarat</a>
           <a class="button button-outline" href="services.html">Xidmətlərə qayıt</a>
+          ${sourceUrl ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(service.sourceLabel || "Mənbəni aç")}</a>` : ""}
         </div>
       </div>
     </div>
@@ -1690,7 +1713,7 @@ const renderServiceDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">Qiymət</span>
         <strong>${escapeHtml(service.price)}</strong>
-        <p>Obyektə baxış və iş həcmi təsdiqindən sonra dəqiqləşir.</p>
+        <p>${escapeHtml(service.priceConfirmationRequired ? "Elan qiyməti və iş həcmi sifarişdən əvvəl yenidən təsdiqlənir." : "Obyektə baxış və iş həcmi təsdiqindən sonra dəqiqləşir.")}</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Müddət</span>
@@ -1699,8 +1722,8 @@ const renderServiceDetail = () => {
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Komanda</span>
-        <strong>${escapeHtml(service.team)}</strong>
-        <p>İş həcminə görə briqada tərkibi dəyişir.</p>
+        <strong>${escapeHtml(service.providerName || service.team)}</strong>
+        <p>${escapeHtml(service.city || "İş həcminə görə briqada tərkibi dəyişir.")}</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Təhvil</span>
@@ -1731,7 +1754,11 @@ const renderServiceDetail = () => {
     serviceType: `${category?.title || service.category} · ${service.subcategory || "Ümumi"}`,
     description: document.querySelector('meta[name="description"]')?.content || service.title,
     areaServed: { "@type": "Country", name: "Azərbaycan" },
-    provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
+    provider: {
+      "@type": "Organization",
+      name: service.providerName || "ConstEra",
+      url: sourceUrl || "https://constera.az/"
+    },
     url: window.location.href
   });
 };

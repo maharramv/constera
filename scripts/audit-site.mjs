@@ -304,6 +304,7 @@ const validateMedia = (item, collection) => {
 });
 
 [
+  ["services", marketplace.services || []],
   ["packages", marketplace.packages || []],
   ["rentals", marketplace.rentals || []]
 ].forEach(([collection, items]) => {
@@ -322,6 +323,7 @@ if (!ranking?.getSourceQualityScore) {
 } else {
   [
     ["products", "product"],
+    ["services", "service"],
     ["packages", "package"],
     ["rentals", "rental"]
   ].forEach(([collection, kind]) => {

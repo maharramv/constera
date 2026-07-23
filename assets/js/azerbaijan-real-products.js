@@ -1907,6 +1907,626 @@
   ];
   appendUnique("rentals", sourcedRentalRows);
 
+  mergeCategories("categories", [
+    { id: "paints", subcategories: ["Taxta məcunu"] },
+    { id: "construction-chemicals", subcategories: ["Parket germetiki"] },
+    { id: "drywall-ceilings", subcategories: ["UA profil"] },
+    { id: "insulation", subcategories: ["Mineral yun"] }
+  ]);
+  mergeCategories("serviceCategories", [
+    { id: "exterior", subcategories: ["Sauna və SPA"] }
+  ]);
+
+  const masterCatalogBrands = [
+    { id: "alfa", name: "Alfa", country: "Azərbaycan", segments: ["paints", "dry-mixes"], website: "omid.az", certification: "Məhsul səhifəsi yoxlanılıb" },
+    { id: "fab", name: "FAB", country: "Türkiyə", segments: ["paints", "construction-chemicals", "adhesives-sealants"], website: "omid.az", certification: "Məhsul səhifəsi yoxlanılıb" },
+    { id: "cover", name: "Cover", country: "Azərbaycan", segments: ["paints"], website: "omid.az", certification: "Məhsul səhifəsi yoxlanılıb" },
+    { id: "akfix", name: "AKFIX", country: "Türkiyə", segments: ["construction-chemicals", "adhesives-sealants"], website: "akfix.com", certification: "Məhsul səhifəsi yoxlanılıb" },
+    { id: "holcim", name: "Holcim", country: "Azərbaycan", segments: ["cement-concrete"], website: "holcim.az", certification: "Məhsul səhifəsi yoxlanılıb" },
+    { id: "soudal", name: "Soudal", country: "Belçika", segments: ["adhesives-sealants"], website: "soudal.com", certification: "Məhsul səhifəsi yoxlanılıb" }
+  ];
+  const masterCatalogSuppliers = [
+    {
+      id: "omid-az",
+      name: "OMID",
+      type: "Onlayn mağaza",
+      focus: "Boya, tikinti kimyası və montaj materialları",
+      website: "https://omid.az/",
+      status: "Rəsmi məhsul səhifələri yoxlanılıb",
+      region: "Azərbaycan"
+    },
+    {
+      id: "elem-az",
+      name: "ELEM",
+      type: "Tikinti materialları mağazası",
+      focus: "Tikinti, təmir, metal və gündəlik sərfiyyat məhsulları",
+      website: "https://elem.az/",
+      status: "Məhsul səhifələri yoxlanılıb",
+      region: "Azərbaycan"
+    },
+    {
+      id: "tvim-az",
+      name: "TVIM",
+      type: "Tikinti materialları mağazası",
+      focus: "Alçıpan, izolyasiya, sement, germetik və tamamlama materialları",
+      website: "https://tvim.az/",
+      status: "Məhsul səhifələri yoxlanılıb",
+      region: "Azərbaycan"
+    }
+  ];
+  appendUnique("brands", masterCatalogBrands);
+  appendUnique("suppliers", masterCatalogSuppliers);
+
+  const masterProductRows = [
+    ["omid-106500072", "ALFA parlaq boya mavi 15 L", "Alfa", "106.5000.72", "paints", "Lak və emal", "15 L qab", "Azərbaycan", 92.9, "Stokda 2 ədəd", 2, "https://omid.az/cdn/shop/files/106.5000.72.jpg?v=1748597744", "https://omid.az/en/products/alfa-parlaq-boya-mavi%CC%87-15-l", ["Parlaq son qat boya", "Mavi rəng", "15 L qablaşdırma"]],
+    ["omid-100200042", "FAB parlaq boya sarı 2,5 L", "FAB", "100.2000.42", "paints", "Lak və emal", "2,5 L qab", "Azərbaycan", 23.9, "Stokda 2 ədəd", 2, "https://omid.az/cdn/shop/files/100.2000.42.jpg?v=1748252463", "https://omid.az/en/products/fab-parlaq-boya-sari-2-5-l", ["Parlaq son qat boya", "Sarı rəng", "2,5 L qablaşdırma"]],
+    ["omid-340000129", "FAB Binder 1 L", "FAB", "340.0001.29", "paints", "Astar boya", "1 L qab", "Azərbaycan", 7.2, "Stokda 8 ədəd", 8, "https://omid.az/cdn/shop/files/340.0001.29.jpg?v=1746177704", "https://omid.az/en/products/fab-bi%CC%87nder-1-l", ["Səth hazırlığı üçün binder", "1 L qablaşdırma"]],
+    ["omid-121100072", "FAB Super Mat boya 23,5 kq", "FAB", "121.1000.72", "paints", "Daxili boya", "23,5 kq qab", "Azərbaycan", 135, "Stokda yoxdur · sorğu ilə", 0, "https://omid.az/cdn/shop/files/121.1000.72_502fee8e-3270-4bac-bb03-413e2bd8e710.jpg?v=1765517587", "https://omid.az/en/products/fab-super-mat-boya-23-5kq", ["Super mat səth", "23,5 kq qablaşdırma", "Stok sifarişdən əvvəl təsdiqlənir"]],
+    ["omid-436000148", "COVER Binder 4 L", "Cover", "436.0001.48", "paints", "Astar boya", "4 L qab", "Azərbaycan", 9.9, "Stokda 4 ədəd", 4, "https://omid.az/cdn/shop/files/436.0001.48.jpg?v=1742596019", "https://omid.az/en/products/cover-bi%CC%87nder-4-l", ["Səth hazırlığı üçün binder", "4 L qablaşdırma"]],
+    ["omid-340000148", "FAB Binder 4 L", "FAB", "340.0001.48", "paints", "Astar boya", "4 L qab", "Azərbaycan", 23.2, "Stokda 26 ədəd", 26, "https://omid.az/cdn/shop/files/340.0001.48_d29da469-cccb-4a0c-adc1-10f8e705a88e.jpg?v=1765168748", "https://omid.az/en/products/fab-bi%CC%87nder-4-l", ["Səth hazırlığı üçün binder", "4 L qablaşdırma"]],
+    ["elem-taxta-mecunu-fab-200gr-ag", "Taxta məcunu 200 qr ağ FAB", "FAB", "2002935000160", "paints", "Taxta məcunu", "200 qr qab", "Türkiyə", 1.55, "Satışda", null, "", "https://elem.az/catalog/product/tikinti_materiallari/taxta_materiallari/taxta_spatlovkalari/taxta_mecunu_200gr_ag_fab", ["Taxta səthlər üçün ağ məcun", "200 qr qablaşdırma"]],
+    ["elem-meftil-yanmis", "Yanmış məftil", "Brendsiz", "2000000010953", "metal", "Bağlama məftili", "Mənbə satış vahidi", "Azərbaycan", 2.15, "Satışda", null, "https://elem.az/web/1cweb-pictures/Goods/2000000010953/1.jfif", "https://elem.az/catalog/product/tikinti_materiallari/metal_memulatlari/meftiller/meftil_yanmis_diger-2", ["Bağlama və montaj işləri üçün yanmış məftil", "Satış vahidi sifariş zamanı dəqiqləşdirilir"]],
+    ["elem-gips-pudra-alfa-40kg", "ALFA gips pudrası 40 kq", "Alfa", "ELEM-ALFA-GIPS-40KG", "dry-mixes", "Gips əsaslı suvaq", "40 kq kisə", "Azərbaycan", 4.35, "Satışda", null, "https://elem.az/web/1cweb-pictures/Goods/2000000013756/1.jpg", "https://www.elem.az/catalog/product/tikinti_materiallari/quru_qarisiqlari/qips_ve_fuqa/gips_pudra_40kq_alfa", ["Gips əsaslı quru qarışıq", "40 kq kisə"]],
+    ["elem-boya-sokucu-fab-1kg", "FAB boya sökücü 1 kq", "FAB", "ELEM-FAB-BOYA-SOKUCU-1KG", "paints", "Boya təmizləyici", "1 kq qab", "Türkiyə", 10.75, "Satışda", null, "https://elem.az/web/1cweb-pictures/Goods/4760116502206/1.jpg", "https://elem.az/catalog/product/tikinti_materiallari/metal_memulatlari/boya_sokucu_mayeler/boya_sokucu_1kq_fab", ["Köhnə boya qatının sökülməsi üçün", "1 kq qablaşdırma"]],
+    ["tvim-qaradag-optimal-300-40kg", "Qaradağ Optimal 300 sement 40 kq Holcim", "Holcim", "TVIM-HOLCIM-OPTIMAL-300-40KG", "cement-concrete", "Portland sement", "40 kq kisə", "Azərbaycan", 8.09, "Stok sorğu ilə", null, "https://tvim.az/image/cache/catalog/ChatGPT%20Image%2030%20Eyl%202025%2012_22_03-500x500.png", "https://tvim.az/az/qaradag-optimal-300-40-kq-holcim", ["Optimal 300 sement", "40 kq kisə", "Stok və çatdırılma sifarişdə təsdiqlənir"]],
+    ["omid-akfix-termoizolyasiya-850ml", "AKFIX termoizolyasiya köpüyü 850 ml", "AKFIX", "OMID-AKFIX-TERMO-850ML", "construction-chemicals", "Montaj köpüyü", "850 ml balon", "Türkiyə", 18.9, "Stokda 28 ədəd", 28, "https://omid.az/cdn/shop/files/TM.240707032385.jpg?v=1750616908", "https://omid.az/ru/collections/insaat-materiallari-f764/products/kopuk-termoi%CC%87zolyasi%CC%87ya-akfi%CC%87x-850-ml", ["Poliuretan termoizolyasiya köpüyü", "850 ml balon"]],
+    ["tvim-knauf-ua50-4000-2mm", "Knauf UA 50/4000 mm metal profil, 2 mm", "Knauf", "YM08395", "drywall-ceilings", "UA profil", "1 profil", "Almaniya", 10.15, "Sifarişlə", null, "https://tvim.az/image/cache/catalog/4130_806206326-500x500.jpg", "https://tvim.az/az/metal-profil-ua-50-4000mm-2mm-knauf", ["En: 50 mm", "Kənar: 40/40 mm", "Uzunluq: 4000 mm", "Qalınlıq: 2 mm"]],
+    ["tvim-soudal-parket-germetik-280", "Soudal parket germetiki 280 ml", "Soudal", "YM03569", "construction-chemicals", "Parket germetiki", "280 ml patron", "Belçika", 6, "Sifarişlə", null, "https://tvim.az/image/cache/catalog/742727-7b5631a55a8ccfbf9802649f5d6f596f-500x500.webp", "https://tvim.az/az/280-ml-parket-qermetik-klen-soudal", ["Parket birləşmələri üçün germetik", "Həcm: 280 ml"]],
+    ["tvim-boardex-1200x2400-12-5", "Dalsan Boardex 1200 × 2400 × 12,5 mm", "Dalsan", "YM08305", "drywall-ceilings", "Sement əsaslı lövhə", "1 lövhə", "Türkiyə", 19.79, "Anbarda var", null, "https://tvim.az/image/cache/catalog/boardex-500x500.png", "https://tvim.az/az/boardex-1200x2400-12-5mm-dalsan", ["Ölçü: 1200 × 2400 mm", "Qalınlıq: 12,5 mm", "Sement əsaslı lövhə"]],
+    ["tvim-knauf-mineral-yun-tr44", "Knauf Teplorulon TR44 mineral yun", "Knauf", "YM08540", "insulation", "Mineral yun", "1 paket", "Almaniya", 32, "Sifarişlə", null, "https://tvim.az/image/cache/catalog/Welna-Szklana-Knauf-Unifit-037-600x600-500x500.jpg", "https://tvim.az/az/mineral-yun-mahlic-teplorulon-tr44-2-knauf", ["Mineral yun izolyasiyası", "En: 1220 mm", "Paket tərkibi sifarişdə təsdiqlənir"]],
+    ["tvim-knauf-tiefengrund-10kg", "Knauf Tiefengrund astar 10 kq", "Knauf", "TVIM-KNAUF-TIEFENGRUND-10KG", "construction-chemicals", "Astar və primer", "10 kq qab", "Almaniya", 22, "Mənbədə görünür", null, "https://tvim.az/image/cache/catalog/ChatGPT%20Image%20Jul%203,%202025,%2009_19_54%20AM-500x500.png", "https://tvim.az/az/astar-tiefengrund-10-kq-knauf", ["Dərin nüfuz edən astar", "Çəki: 10 kq"]],
+    ["tvim-knauf-aquapanel-indoor", "Knauf Aquapanel Indoor 1200 × 2400 × 12,5 mm", "Knauf", "YM08522", "drywall-ceilings", "Sement əsaslı lövhə", "1 lövhə · 2,88 m²", "Almaniya", 27, "Sifarişlə", null, "https://tvim.az/image/cache/catalog/Aquapanel0000000-500x500.png", "https://tvim.az/az/aquapanel-i-ndoor-knauf-1200x2400-12-5mm", ["Ölçü: 1200 × 2400 mm", "Qalınlıq: 12,5 mm", "Sahə: 2,88 m²"]],
+    ["omid-akfix-960p-800ml", "AKFIX 960P poliuretan montaj köpüyü 800 ml", "AKFIX", "OMID-AKFIX-960P-800ML", "construction-chemicals", "Montaj köpüyü", "800 ml balon", "Türkiyə", 14.1, "Stokda 36 ədəd", 36, "https://omid.az/cdn/shop/files/TM.200707031880.jpg?v=1746185540", "https://omid.az/products/akfix-960p-poli%CC%87uretan-montalama-kopuyu-800-ml-b900-4s", ["İstilik izolyasiya panelləri", "Pəncərə və qapı çərçivələri", "Beton, metal və taxta səthlər", "Həcm: 800 ml"]],
+    ["omid-fab-200aq-280ml", "FAB 200AQ akvarium silikonu 280 ml", "FAB", "TM.200706022993", "construction-chemicals", "Silikon", "280 ml patron", "Türkiyə", 7.9, "Stokda 133 ədəd", 133, "https://omid.az/cdn/shop/files/TM.200706022993.jpg?v=1742600262", "https://omid.az/products/fab-200aq-akvari%CC%87um-si%CC%87li%CC%87kon-280-ml", ["Akvarium və şüşə birləşmələri üçün silikon", "Həcm: 280 ml"]]
+  ];
+  const masterProducts = masterProductRows.map(([
+    id, name, brand, sku, category, subcategory, packageText, origin, priceAmount,
+    availability, stockQuantity, imageUrl, sourceUrl, specs
+  ]) => {
+    const supplier = id.startsWith("omid-") ? "OMID" : id.startsWith("elem-") ? "ELEM" : "TVIM";
+    const sourceLabel = `${supplier} məhsul səhifəsi`;
+    return {
+      id,
+      name,
+      brand,
+      sku,
+      category,
+      subcategory,
+      package: packageText,
+      origin,
+      supplier,
+      price: `${Number(priceAmount).toLocaleString("az-AZ", { minimumFractionDigits: Number.isInteger(priceAmount) ? 0 : 2, maximumFractionDigits: 2 })} AZN`,
+      priceAmount,
+      priceCurrency: "AZN",
+      priceNote: `${sourceLabel} 23.07.2026 tarixində yoxlanılıb; stok, qiymət vahidi və çatdırılma sifarişdən əvvəl təsdiqlənməlidir`,
+      priceStatus: "confirmed",
+      availability,
+      stockQuantity,
+      minimumOrder: 1,
+      specs,
+      imageUrl: imageUrl || undefined,
+      imageCredit: imageUrl ? sourceLabel : undefined,
+      sourceUrl,
+      sourceLabel,
+      sourceVerified: true,
+      priceVerifiedAt: "2026-07-23T00:00:00.000Z"
+    };
+  });
+  masterProducts.push({
+    id: "elem-pur-demir-kleyi-fab-310ml",
+    name: "FAB PUR dəmir yapışqanı 310 ml, boz",
+    brand: "FAB",
+    sku: "ELEM-FAB-PUR-310ML",
+    category: "adhesives-sealants",
+    subcategory: "Poliuretan yapışdırıcı",
+    package: "310 ml patron",
+    origin: "Türkiyə",
+    supplier: "ELEM",
+    price: "Sorğu əsasında",
+    priceAmount: null,
+    priceCurrency: "AZN",
+    priceNote: "Arxivdə 6,95 AZN göstərilib, lakin dəqiq məhsul səhifəsi yenidən təsdiqlənmədiyi üçün qiymət sorğuya keçirilib",
+    priceStatus: "request",
+    availability: "Stok sorğu ilə",
+    minimumOrder: 1,
+    specs: ["Metal səthlər üçün poliuretan yapışqan", "Boz rəng", "Həcm: 310 ml"],
+    sourceUrl: "https://elem.az/",
+    sourceLabel: "ELEM kataloqu",
+    sourceVerified: false
+  });
+  appendUnique("products", masterProducts);
+
+  const masterServices = [
+    {
+      id: "service-34520",
+      title: "Ev təmiri ustası",
+      category: "renovation",
+      subcategory: "Mənzil təmiri",
+      type: "Təmir xidməti",
+      unit: "layihə / razılaşma",
+      price: "Sorğu əsasında",
+      priceAmount: null,
+      leadTime: "Obyektə baxışdan sonra",
+      team: "Caspian Grandline Təmir Tikinti",
+      providerName: "Caspian Grandline Təmir Tikinti",
+      city: "Bakı",
+      specs: ["Kafel və metlax", "Laminat və parket", "Alçıpan və boya", "Elektrik və santexnika"],
+      deliverables: ["İş həcmi", "Smeta təklifi", "İcra qrafiki"],
+      sourceUrl: "https://insaat.az/ev-temiri-ustasi-serfeli-qiymete-34520.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "service-34502",
+      title: "Ev təmiri və tikinti işləri",
+      category: "renovation",
+      subcategory: "Açar təslim mənzil",
+      type: "Tikinti və təmir",
+      unit: "layihə / razılaşma",
+      price: "Sorğu əsasında",
+      priceAmount: null,
+      leadTime: "Sahə baxışından sonra",
+      team: "Caspian Grandline Təmir Tikinti",
+      providerName: "Caspian Grandline Təmir Tikinti",
+      city: "Bakı",
+      specs: ["Kafel, metlax və laminat", "Alçıpan və boya", "Elektrik və santexnika", "Tam və qismən təmir"],
+      deliverables: ["İlkin baxış", "Mərhələli smeta", "Təhvil planı"],
+      sourceUrl: "https://insaat.az/ev-temiri-ve-tikinti-isleri-gorulur-34502.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "service-34389",
+      title: "Mənzil təmiri",
+      category: "renovation",
+      subcategory: "Mənzil təmiri",
+      type: "Təmir xidməti",
+      unit: "layihə / razılaşma",
+      price: "Sorğu əsasında",
+      priceAmount: null,
+      leadTime: "Obyektə baxışdan sonra",
+      team: "Caspian Grandline Təmir Tikinti",
+      providerName: "Caspian Grandline Təmir Tikinti",
+      city: "Bakı",
+      specs: ["Tam təmir", "Kosmetik təmir", "İş həcminə uyğun briqada"],
+      deliverables: ["İş planı", "Smeta", "Təhvil siyahısı"],
+      sourceUrl: "https://insaat.az/menzil-temiri-goruruk-34389.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-temir-tikinti-34547",
+      title: "Təmir-tikinti ustası",
+      category: "workforce",
+      subcategory: "Universal briqada",
+      type: "Usta və briqada",
+      unit: "layihə / razılaşma",
+      price: "Sorğu əsasında",
+      priceAmount: null,
+      leadTime: "Sorğudan sonra",
+      team: "Caspian Grandline Təmir Tikinti",
+      providerName: "Caspian Grandline Təmir Tikinti",
+      city: "Bakı",
+      specs: ["Təmir və tikinti işləri", "İş həcminə uyğun usta seçimi", "Tam və qismən icra"],
+      deliverables: ["Sahə baxışı", "Qiymət təklifi", "İş qrafiki"],
+      sourceUrl: "https://insaat.az/temir-tikinti-ustasi-34547.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-sauna-499",
+      title: "Sauna tikintisi və təmiri",
+      category: "exterior",
+      subcategory: "Sauna və SPA",
+      type: "Xüsusi tikinti",
+      unit: "elan üzrə",
+      price: "499 AZN · elan qiyməti",
+      priceAmount: 499,
+      priceCurrency: "AZN",
+      leadTime: "Ölçü və material seçiminə görə",
+      team: "Elan təminatçısı",
+      providerName: "insaat.az elan təminatçısı",
+      city: "Bakı",
+      specs: ["Lipa, Kanada kedri və termo lipa", "Rus və fin hamamlarının təmiri", "Buxar generatoru və sauna aksesuarları"],
+      deliverables: ["Ölçü baxışı", "Material seçimi", "Qiymət təsdiqi"],
+      sourceUrl: "https://insaat.az/sauna-tikintisi",
+      sourceLabel: "insaat.az elan siyahısı",
+      sourceVerified: false,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-kamera-qurasdirma-20",
+      title: "Kamera quraşdırılması və təmiri",
+      category: "engineering",
+      subcategory: "Zəif axın və CCTV",
+      type: "Təhlükəsizlik sistemi",
+      unit: "elan üzrə",
+      price: "20 AZN · elan qiyməti",
+      priceAmount: 20,
+      priceCurrency: "AZN",
+      leadTime: "Obyekt və kamera sayına görə",
+      team: "Elan təminatçısı",
+      providerName: "Süleyman · elan təminatçısı",
+      city: "Bakı",
+      specs: ["Kamera quraşdırılması və təmiri", "Telefon və kompüterdən uzaq izləmə", "Proqram təminatının sazlanması", "Avadanlıqlara zəmanət"],
+      deliverables: ["Obyekt baxışı", "Avadanlıq siyahısı", "Quraşdırma təklifi"],
+      sourceUrl: "https://insaat.az/kamera-qurasdirilmasi-ve-temiri-14300.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-generator-xidmeti",
+      title: "Generator satışı, icarəsi və təmiri",
+      category: "engineering",
+      subcategory: "Generator montajı",
+      type: "Enerji və servis",
+      unit: "güc / müddət / layihə",
+      price: "Sorğu əsasında",
+      priceAmount: null,
+      leadTime: "Güc və ünvana görə",
+      team: "ER Power Generator",
+      providerName: "ER Power Generator",
+      city: "Bakı və regionlar",
+      specs: ["Satış və icarə", "Servis və texniki baxış", "Təmir və ehtiyat hissələri", "Çatdırılma və quraşdırma"],
+      deliverables: ["Güc seçimi", "İcarə və ya satış təklifi", "Servis planı"],
+      sourceUrl: "https://insaat.az/generator-satisi-icaresi-29052.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      priceConfirmationRequired: true,
+      lastVerified: "2026-07-23"
+    }
+  ];
+  appendUnique("services", masterServices);
+
+  const masterRentals = [
+    {
+      id: "insaat-avtokar-369",
+      name: "Avtokar icarəsi, satışı və təmiri",
+      category: "heavy-equipment",
+      subcategory: "Forklift",
+      capacity: "Model və tonaja görə",
+      unit: "elan üzrə",
+      price: "369 AZN · elan qiyməti",
+      priceAmount: 369,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["günlük", "aylıq", "razılaşma ilə"],
+      city: "Bakı və Azərbaycan",
+      deposit: "Müqavilə əsasında",
+      delivery: "Ünvan üzrə sorğu ilə",
+      operator: "Sorğuda dəqiqləşir",
+      specs: ["Avtokar icarəsi", "Alqı-satqı və təmir xidməti", "Qiymət və tonaj sifarişdə təsdiqlənir"],
+      sourceUrl: "https://insaat.az/avtokar-icare-algi-satgi-ve-temiri-xidmeti-11436.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-kon-5000",
+      name: "3 kub frontal yükləyici icarəsi",
+      category: "heavy-equipment",
+      subcategory: "Yükləyici",
+      capacity: "3 kub",
+      unit: "elan vahidi · sifarişdə təsdiqlənir",
+      price: "5 000 AZN · elan qiyməti",
+      priceAmount: 5000,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["aylıq", "razılaşma ilə"],
+      city: "Azərbaycan üzrə",
+      deposit: "Müqavilə əsasında",
+      delivery: "Obyekt ünvanına görə",
+      operator: "Sorğuda dəqiqləşir",
+      specs: ["3 kub frontal yükləyici", "Aylıq və ya layihə müddəti sifarişdə təsdiqlənir"],
+      sourceUrl: "https://insaat.az/texnika-icaresi/?start=4",
+      sourceLabel: "insaat.az elan siyahısı",
+      sourceVerified: false,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-dingli-15",
+      name: "Dingli JCPT1218RT dizel qayçılı səbət",
+      category: "access-equipment",
+      subcategory: "Qayçı platforma",
+      capacity: "Model JCPT1218RT",
+      unit: "elan vahidi · sifarişdə təsdiqlənir",
+      price: "15 AZN · elan qiyməti",
+      priceAmount: 15,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["günlük", "aylıq", "razılaşma ilə"],
+      city: "Bakı",
+      deposit: "Müqavilə əsasında",
+      delivery: "Ünvan üzrə sorğu ilə",
+      operator: "Sorğuda dəqiqləşir",
+      specs: ["Dizel mühərrik", "Tam ötürücülü qayçılı platforma", "Qiymət vahidi sifarişdə təsdiqlənir"],
+      sourceUrl: "https://insaat.az/qayci%2Bplatforma",
+      sourceLabel: "insaat.az elan siyahısı",
+      sourceVerified: false,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-xcmg-zl50-6500",
+      name: "XCMG ZL50GN frontal yükləyici",
+      category: "heavy-equipment",
+      subcategory: "Yükləyici",
+      capacity: "3,2 kub sinfi",
+      unit: "aylıq / illik",
+      price: "6 500 AZN · elan qiyməti",
+      priceAmount: 6500,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["aylıq", "illik"],
+      city: "Azərbaycan üzrə",
+      deposit: "Müqavilə əsasında",
+      delivery: "Obyekt ünvanına görə",
+      operator: "Operatorla",
+      specs: ["2025 model ili kimi göstərilib", "Frontal yükləyici", "Operator daxil", "Qiymət sifarişdə təsdiqlənir"],
+      sourceUrl: "https://insaat.az/tikinti-texnikasi-icaresi",
+      sourceLabel: "insaat.az elan siyahısı",
+      sourceVerified: false,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-pompa-40",
+      name: "Stasionar yer pompası icarəsi",
+      category: "concrete-equipment",
+      subcategory: "Beton nasosu",
+      capacity: "Stasionar yer pompası",
+      unit: "günlük / həftəlik / aylıq",
+      price: "40 AZN · şərti elan qiyməti",
+      priceAmount: 40,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["günlük", "həftəlik", "aylıq"],
+      city: "Azərbaycan üzrə",
+      deposit: "Müqavilə əsasında",
+      delivery: "Region üzrə sorğu ilə",
+      operator: "Xidmətlə",
+      specs: ["Stasionar yer pompası", "Quru şap işləri", "Qiymət elanda şərti göstərilib"],
+      sourceUrl: "https://insaat.az/tikinti-texnikasi-icaresi",
+      sourceLabel: "insaat.az elan siyahısı",
+      sourceVerified: false,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-hyundai330-400",
+      name: "Hyundai 330 ekskavator, 2019",
+      category: "heavy-equipment",
+      subcategory: "Ekskavator",
+      capacity: "Hyundai 330 sinfi",
+      unit: "razılaşma ilə",
+      price: "400 AZN · elan qiyməti",
+      priceAmount: 400,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["günlük", "razılaşma ilə"],
+      city: "Azərbaycan üzrə",
+      deposit: "Müqavilə əsasında",
+      delivery: "Obyekt ünvanına görə",
+      operator: "Sorğuda dəqiqləşir",
+      specs: ["2019 buraxılış ili", "Hyundai 330 ekskavator", "Qiymət razılaşma ilə təsdiqlənir"],
+      sourceUrl: "https://insaat.az/tikinti-texnikasi-icaresi",
+      sourceLabel: "insaat.az elan siyahısı",
+      sourceVerified: false,
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-avtokar-elektrokar-10",
+      name: "Avtokar və elektrokar icarəsi, satışı və təmiri",
+      category: "heavy-equipment",
+      subcategory: "Forklift",
+      capacity: "Müxtəlif tonajlar",
+      unit: "elan üzrə",
+      price: "10 AZN · elan qiyməti",
+      priceAmount: 10,
+      priceCurrency: "AZN",
+      priceStatus: "source",
+      priceConfirmationRequired: true,
+      rentalPeriods: ["günlük", "aylıq", "razılaşma ilə"],
+      city: "Bakı",
+      deposit: "Müqavilə əsasında",
+      delivery: "Ünvan üzrə sorğu ilə",
+      operator: "Sorğuda dəqiqləşir",
+      specs: ["Avtokar və elektrokar", "İcarə, alqı-satqı və təmir", "Tonaj və qiymət sifarişdə təsdiqlənir"],
+      sourceUrl: "https://insaat.az/avtokar-ve-elektrokarlar-icaresi-algi-satgisi-temiri-23524.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      lastVerified: "2026-07-23"
+    }
+  ];
+  appendUnique("rentals", masterRentals);
+
+  const masterPackages = [
+    {
+      id: "insaat-menzil-200",
+      title: "Mənzillərin təmiri",
+      category: "ready-renovation",
+      subcategory: "Standart təmir",
+      type: "Hazır təmir",
+      level: "standart",
+      providerName: "insaat.az elan təminatçısı",
+      providerType: "market_listing",
+      providerWebsite: "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      providerVerified: false,
+      unit: "elan üzrə",
+      price: "200 AZN · elan qiyməti",
+      priceAmount: 200,
+      priceCurrency: "AZN",
+      priceUnit: "elan",
+      pricingBasis: "Elan siyahısında göstərilən qiymət; m² qiyməti kimi qəbul edilmir",
+      priceConfirmationRequired: true,
+      timeline: "Sahə baxışından sonra",
+      team: "Elan təminatçısı",
+      idealFor: "Mənzil təmiri üçün ilkin təklif toplamaq istəyənlər",
+      includes: ["İş həcmi elanda dəqiqləşdirilir", "Material və işçilik sorğuda ayrılır"],
+      deliverables: ["Obyekt baxışı", "Dəqiqləşdirilmiş smeta", "İcra qrafiki"],
+      sourceUrl: "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      sourceLabel: "insaat.az elan siyahısı",
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-menzil-250",
+      title: "Mənzil təmiri · material qarışıq",
+      category: "ready-renovation",
+      subcategory: "Standart təmir",
+      type: "Hazır təmir",
+      level: "standart",
+      providerName: "insaat.az şirkət elanı",
+      providerType: "market_listing",
+      providerWebsite: "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      providerVerified: false,
+      unit: "elan üzrə",
+      price: "250 AZN · elan qiyməti",
+      priceAmount: 250,
+      priceCurrency: "AZN",
+      priceUnit: "elan",
+      pricingBasis: "Elan siyahısında göstərilən qiymət; qiymət vahidi sifarişdə təsdiqlənir",
+      priceConfirmationRequired: true,
+      timeline: "Sahə baxışından sonra",
+      team: "Şirkət elanı",
+      idealFor: "Material və işçilik tərkibi ayrıca dəqiqləşdirilən mənzil təmiri",
+      includes: ["Material səviyyəsi sorğuda seçilir", "İş həcmi obyektə görə hesablanır"],
+      deliverables: ["İlkin baxış", "Material bölgüsü", "Smeta"],
+      sourceUrl: "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      sourceLabel: "insaat.az elan siyahısı",
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-menzil-240",
+      title: "Mənzil və həyət evi təmiri",
+      category: "ready-renovation",
+      subcategory: "Standart təmir",
+      type: "Hazır təmir",
+      level: "standart",
+      providerName: "insaat.az şirkət elanı",
+      providerType: "market_listing",
+      providerWebsite: "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      providerVerified: false,
+      unit: "elan üzrə",
+      price: "240 AZN · elan qiyməti",
+      priceAmount: 240,
+      priceCurrency: "AZN",
+      priceUnit: "elan",
+      pricingBasis: "Elan siyahısında göstərilən qiymət; m² və iş həcmi sifarişdə dəqiqləşdirilir",
+      priceConfirmationRequired: true,
+      timeline: "Obyekt növünə görə",
+      team: "Şirkət elanı",
+      idealFor: "Mənzil və fərdi ev təmiri üzrə qiymət toplamaq istəyənlər",
+      includes: ["Mənzil və həyət evi işləri", "Material və işçilik sorğuda dəqiqləşir"],
+      deliverables: ["Sahə baxışı", "Mərhələli smeta", "Təmir planı"],
+      sourceUrl: "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      sourceLabel: "insaat.az elan siyahısı",
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-smart-start",
+      title: "Smart Start açar təslim təmir",
+      category: "ready-renovation",
+      subcategory: "Açar təslim mənzil",
+      type: "Hazır təmir",
+      level: "standart",
+      providerName: "Caspian Grandline Təmir Tikinti",
+      providerType: "market_listing",
+      providerWebsite: "https://insaat.az/t%C9%99mir%2Btikinti",
+      providerVerified: false,
+      unit: "paket",
+      price: "Sorğu əsasında",
+      priceAmount: null,
+      priceCurrency: "AZN",
+      priceUnit: "paket",
+      pricingBasis: "Qiymət obyekt və seçilən materiallara görə hesablanır",
+      priceConfirmationRequired: true,
+      timeline: "45 iş günü kimi elan edilib; müqavilədə təsdiqlənir",
+      team: "Açar təslim təmir komandası",
+      idealFor: "Müddəti və iş həcmi əvvəlcədən planlanan mənzil təmiri",
+      includes: ["Planlaşdırma", "Təmir işləri", "Material seçimi", "Mərhələli təhvil"],
+      deliverables: ["İş qrafiki", "Smeta", "Material siyahısı"],
+      sourceUrl: "https://insaat.az/t%C9%99mir%2Btikinti",
+      sourceLabel: "insaat.az elan siyahısı",
+      lastVerified: "2026-07-23"
+    },
+    {
+      id: "insaat-premium-450-detailed",
+      title: "Premium Təmir Tikinti Paketi",
+      category: "ready-renovation",
+      subcategory: "Premium təmir",
+      type: "Hazır təmir",
+      level: "premium",
+      providerName: "Caspian Grandline Təmir Tikinti",
+      providerType: "market_listing",
+      providerWebsite: "https://insaat.az/premium-temir-tikinti-paketi-34061.html",
+      providerVerified: false,
+      unit: "paket",
+      price: "450 AZN · paket elan qiyməti",
+      priceAmount: 450,
+      priceCurrency: "AZN",
+      priceUnit: "paket",
+      pricingBasis: "Fərdi elanda Premium paket qiyməti kimi göstərilib",
+      priceConfirmationRequired: true,
+      timeline: "Plan və obyekt ölçülərindən sonra",
+      team: "Caspian Grandline Təmir Tikinti",
+      idealFor: "Planlaşdırma, vizualizasiya və material seçimini bir paketdə istəyənlər",
+      includes: ["Funksional planlaşdırma", "Mebel yerləşdirilməsi", "Saxlama həlləri", "3D vizuallar", "Material seçimi", "İşıqlandırma planı"],
+      deliverables: ["Planlaşdırma sxemi", "3D vizuallar", "Material siyahısı", "Əsas texniki rəsmlər"],
+      sourceUrl: "https://insaat.az/premium-temir-tikinti-paketi-34061.html",
+      sourceLabel: "insaat.az elan mənbəyi",
+      sourceVerified: true,
+      lastVerified: "2026-07-23"
+    }
+  ];
+  appendUnique("packages", masterPackages);
+
+  data.masterCatalogImport = Object.freeze({
+    importedAt: "2026-07-23",
+    sourceVersions: ["v1", "v2", "v3"],
+    sourceArchive: "data/imports/constera-master-catalog-v1-v3.json",
+    sourceRecordCounts: Object.freeze({
+      categories: 104,
+      products: 21,
+      services: 9,
+      rentals: 9,
+      packages: 10
+    }),
+    publicRecordIds: Object.freeze({
+      products: masterProducts.map((item) => item.id),
+      services: masterServices.map((item) => item.id),
+      rentals: masterRentals.map((item) => item.id),
+      packages: masterPackages.map((item) => item.id)
+    }),
+    mergedRecords: Object.freeze([
+      { kind: "rental", sourceId: "local-xcmg-crane", targetId: "az-rental-avtokran-xcmg-25t" },
+      { kind: "rental", sourceId: "local-mini-excavator", targetId: "az-rental-mini-ekskavator-new-holland-e50" },
+      { kind: "package", sourceId: "hazirev-praktik", targetId: "az-market-hazirev-praktik" },
+      { kind: "package", sourceId: "hazirev-trend", targetId: "az-market-hazirev-trend" },
+      { kind: "package", sourceId: "hazirev-premium", targetId: "az-market-hazirev-premium" },
+      { kind: "package", sourceId: "insaat-premium-450", targetId: "insaat-premium-450-detailed" }
+    ]),
+    quarantinedRecords: Object.freeze([
+      { kind: "service", id: "insaat-qaba-tikinti-35", status: "historical_listing" },
+      { kind: "service", id: "insaat-suvaq-5", status: "historical_listing" },
+      { kind: "package", id: "insaat-mayak-140-250", status: "historical_listing_verify_before_publish" }
+    ]),
+    taxonomyStrategy: "Mənbə kateqoriyaları ConstEra-nın daha geniş iyerarxik taksonomiyasına uyğunlaşdırılıb"
+  });
+
   const hasHttpsSource = (item) => /^https:\/\//i.test(String(item?.sourceUrl || ""));
   const hasUsableImage = (item) => /^(?:https:\/\/|\/?assets\/)/i.test(String(item?.imageUrl || ""));
   const hasPositiveAmount = (item) => {
@@ -1927,6 +2547,7 @@
     if (kind === "package" && item?.providerVerified) score += 160;
     if (kind === "rental" && item?.sourceOfficial) score += 160;
     else if (kind === "rental" && item?.sourceVerified) score += 80;
+    if (kind === "service" && item?.sourceVerified) score += 80;
     if (item?.priceVerifiedAt || item?.lastVerified) score += 25;
     if (item?.providerName || item?.supplier) score += 10;
     return score;
@@ -1939,6 +2560,7 @@
     [...(items || [])].sort((left, right) => compareSourceQuality(left, right, kind));
 
   data.products = sortBySourceQuality(data.products, "product");
+  data.services = sortBySourceQuality(data.services, "service");
   data.packages = sortBySourceQuality(data.packages, "package");
   data.rentals = sortBySourceQuality(data.rentals, "rental");
   window.CONSTERA_MARKETPLACE_RANKING = Object.freeze({
@@ -1949,14 +2571,18 @@
     sortBySourceQuality
   });
 
-  data.updatedAt = "2026-07-18";
+  data.updatedAt = "2026-07-23";
   data.marketSourceSummary = {
-    updatedAt: "2026-07-18",
+    updatedAt: "2026-07-23",
     birmarketProducts: birmarketProducts.length,
     officialProducts: officialProducts.length,
     tvimProducts: tvimProducts.length,
     sourcedPackages: marketPackageRows.length,
     sourcedRentals: sourcedRentalRows.length,
+    masterCatalogProducts: masterProducts.length,
+    masterCatalogServices: masterServices.length,
+    masterCatalogPackages: masterPackages.length,
+    masterCatalogRentals: masterRentals.length,
     generatedRfqProducts: generatedMarketProducts.length,
     note: "Qiymətlər açıq mənbələrdən götürülüb və dəyişə bilər. Sifarişdən əvvəl təchizatçı təsdiqi lazımdır. Şəkillər xarici mənbə URL-ləri kimi saxlanılıb."
   };

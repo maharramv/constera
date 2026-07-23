@@ -1,0 +1,1548 @@
+{
+  "schema_version": "1.2",
+  "catalog_name": "ConstEra Azərbaycan Tikinti Master Kataloqu v3",
+  "generated_at": "2026-07-18",
+  "language": "az",
+  "currency_default": "AZN",
+  "disclaimer": "Qiymətlər mənbələrdə görünən cari və ya elan qiymətləridir. Dərc və sifarişdən əvvəl yenidən təsdiqlənməlidir.",
+  "sources": [
+    {
+      "id": "elem",
+      "name": "ELEM",
+      "url": "https://elem.az/",
+      "type": "store",
+      "status": "reachable_limited_index"
+    },
+    {
+      "id": "tvim",
+      "name": "TVIM",
+      "url": "https://tvim.az/",
+      "type": "store",
+      "status": "verified"
+    },
+    {
+      "id": "omid",
+      "name": "OMID",
+      "url": "https://omid.az/",
+      "type": "store",
+      "status": "verified"
+    },
+    {
+      "id": "insaat",
+      "name": "INSAAT.AZ",
+      "url": "https://insaat.az/",
+      "type": "marketplace",
+      "status": "verified"
+    },
+    {
+      "id": "hazirev",
+      "name": "Hazırev",
+      "url": "https://hazirev.az/",
+      "type": "service_provider",
+      "status": "verified"
+    }
+  ],
+  "statistics": {
+    "source_count": 5,
+    "category_count": 104,
+    "product_count": 21,
+    "rental_count": 9,
+    "service_count": 9,
+    "package_count": 10
+  },
+  "categories": [
+    {
+      "id": "sales",
+      "name": "Satış",
+      "parent_id": null,
+      "kind": "root"
+    },
+    {
+      "id": "services",
+      "name": "Xidmətlər",
+      "parent_id": null,
+      "kind": "root"
+    },
+    {
+      "id": "rental",
+      "name": "İcarə",
+      "parent_id": null,
+      "kind": "root"
+    },
+    {
+      "id": "packages",
+      "name": "Hazır paketlər",
+      "parent_id": null,
+      "kind": "root"
+    },
+    {
+      "id": "tvim-001",
+      "name": "Alçıpan profilləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-002",
+      "name": "Alçıpan və GVL",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-003",
+      "name": "Müdaxilə qapaqları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-004",
+      "name": "Asma tavan sistemləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-005",
+      "name": "Polietilen plyonkalar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-006",
+      "name": "İzolyasiya üçün yapışdırıcılar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-007",
+      "name": "Kafel yapışdırıcıları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-008",
+      "name": "Məcunlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-009",
+      "name": "Sement lövhələri və LSU",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-010",
+      "name": "Sement, DSP və təmir birləşmələri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-011",
+      "name": "Tikinti astarları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-012",
+      "name": "Mineral yun",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-013",
+      "name": "Penoplast",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-014",
+      "name": "Texniki izolyasiya və yanğından mühafizə",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-015",
+      "name": "Tavan və divar plintusları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-016",
+      "name": "Kilidlər və tutacaqlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-017",
+      "name": "Kilid silindrləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-018",
+      "name": "Ön qapı qıfılları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-019",
+      "name": "Qapı aksesuarları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-020",
+      "name": "Qapı bağlayıcılar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-021",
+      "name": "Qapı petlələri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-022",
+      "name": "Qapı tutacaqları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-023",
+      "name": "Gips və boyama setkaları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-024",
+      "name": "Diz yastıqları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-025",
+      "name": "İş eynəkləri və qalxanlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-026",
+      "name": "İş əlcəkləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-027",
+      "name": "Kaskalar və papaqlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-028",
+      "name": "Kombinezon",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-029",
+      "name": "Maskalar və respiratorlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-030",
+      "name": "Alçıpan alətləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-031",
+      "name": "Şpatellər və malalar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-032",
+      "name": "Dairəvi mişarlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-033",
+      "name": "Drellər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-034",
+      "name": "Elektrik aləti batareyaları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-035",
+      "name": "Fenlər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-036",
+      "name": "Frezerlər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-037",
+      "name": "Laqondalar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-038",
+      "name": "Lobziklər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "tvim-039",
+      "name": "Perforatorlar və çəkiclər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "omid-001",
+      "name": "Bağ və bağça",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 468
+    },
+    {
+      "id": "omid-002",
+      "name": "Boya məhsulları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 622
+    },
+    {
+      "id": "omid-003",
+      "name": "Divar kağızları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 879
+    },
+    {
+      "id": "omid-004",
+      "name": "Elektrik",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 1450
+    },
+    {
+      "id": "omid-005",
+      "name": "Elektrik əl alətləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 262
+    },
+    {
+      "id": "omid-006",
+      "name": "Tikinti materialları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 453
+    },
+    {
+      "id": "omid-007",
+      "name": "İşıqlandırma",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 1699
+    },
+    {
+      "id": "omid-008",
+      "name": "İstilik və havalandırma",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 252
+    },
+    {
+      "id": "omid-009",
+      "name": "Məişət malları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 1410
+    },
+    {
+      "id": "omid-010",
+      "name": "Məişət texnikası",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 388
+    },
+    {
+      "id": "omid-011",
+      "name": "Santexnika",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 1672
+    },
+    {
+      "id": "omid-012",
+      "name": "Xırdavat və əl alətləri",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "omid",
+      "source_item_count": 1481
+    },
+    {
+      "id": "rental-001",
+      "name": "Avtosəbət",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-002",
+      "name": "Kran",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-003",
+      "name": "Avtokar",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-004",
+      "name": "Buldozer",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-005",
+      "name": "Qreyder",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-006",
+      "name": "Ekskavator",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-007",
+      "name": "Vərdənə",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-008",
+      "name": "Yük maşını",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-009",
+      "name": "Evakuator",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-010",
+      "name": "Traktor",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-011",
+      "name": "Kombayn",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-012",
+      "name": "Tikinti texnikası",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-013",
+      "name": "Aqrotexnika",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-014",
+      "name": "Avtobus",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-015",
+      "name": "Generator icarəsi",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-016",
+      "name": "Avadanlıq icarəsi",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "rental-017",
+      "name": "Lesa icarəsi",
+      "parent_id": "rental",
+      "kind": "rental_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-001",
+      "name": "Ev tikintisi",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-002",
+      "name": "Ev təmiri",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-003",
+      "name": "A-Frame ev tikintisi",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-004",
+      "name": "İnteryer dizayn",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-005",
+      "name": "Eksteryer dizayn",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-006",
+      "name": "Villa tikintisi",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-007",
+      "name": "Hovuz tikintisi",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-008",
+      "name": "Elektrik ustası",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-009",
+      "name": "Santexnik ustası",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-010",
+      "name": "Kombi ustası",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-011",
+      "name": "Havalandırma",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-012",
+      "name": "Söküntü işləri",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-013",
+      "name": "Tikinti tullantılarının daşınması",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-014",
+      "name": "Anbar tikintisi",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-015",
+      "name": "Fasad işləri",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "service-016",
+      "name": "Metal konstruksiya",
+      "parent_id": "services",
+      "kind": "service_category",
+      "source_id": "insaat"
+    },
+    {
+      "id": "extra-900",
+      "name": "Taxta şpatlyovkaları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "elem"
+    },
+    {
+      "id": "extra-901",
+      "name": "Məftillər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "elem"
+    },
+    {
+      "id": "extra-902",
+      "name": "Gips və fuqa",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "elem"
+    },
+    {
+      "id": "extra-903",
+      "name": "Boya sökücü mayelər",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "elem"
+    },
+    {
+      "id": "extra-904",
+      "name": "Yapışqanlar",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "elem"
+    },
+    {
+      "id": "extra-905",
+      "name": "Sement",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "extra-906",
+      "name": "Tikinti avadanlığı",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "extra-907",
+      "name": "İstehlak materialları",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "extra-908",
+      "name": "Tikinti mismarı",
+      "parent_id": "sales",
+      "kind": "product_category",
+      "source_id": "tvim"
+    },
+    {
+      "id": "v3-extra-1000",
+      "name": "Germetiklər",
+      "parent_id": "sales",
+      "kind": "product_category"
+    },
+    {
+      "id": "v3-extra-1001",
+      "name": "Montaj köpükləri",
+      "parent_id": "sales",
+      "kind": "product_category"
+    },
+    {
+      "id": "v3-extra-1002",
+      "name": "Silikon və germetiklər",
+      "parent_id": "sales",
+      "kind": "product_category"
+    },
+    {
+      "id": "v3-extra-1003",
+      "name": "Təhlükəsizlik sistemləri",
+      "parent_id": "services",
+      "kind": "service_category"
+    },
+    {
+      "id": "v3-extra-1004",
+      "name": "Generator xidməti",
+      "parent_id": "services",
+      "kind": "service_category"
+    },
+    {
+      "id": "v3-extra-1005",
+      "name": "Hörgü işləri",
+      "parent_id": "services",
+      "kind": "service_category"
+    },
+    {
+      "id": "v3-extra-1006",
+      "name": "Suvaq işləri",
+      "parent_id": "services",
+      "kind": "service_category"
+    }
+  ],
+  "products": [
+    {
+      "id": "omid-106500072",
+      "name": "ALFA parlaq boya mavi 15 L",
+      "brand": "Alfa",
+      "sku": "106.5000.72",
+      "price": 92.9,
+      "currency": "AZN",
+      "category": "Boya məhsulları",
+      "country": "Azərbaycan",
+      "source_id": "omid",
+      "source_url": "https://omid.az/en/products/alfa-parlaq-boya-mavi%CC%87-15-l",
+      "status": "active_seen",
+      "image_url": null
+    },
+    {
+      "id": "omid-100200042",
+      "name": "FAB parlaq boya sarı 2.5 L",
+      "brand": "FAB",
+      "sku": "100.2000.42",
+      "price": 23.9,
+      "currency": "AZN",
+      "category": "Boya məhsulları",
+      "country": "Azərbaycan",
+      "source_id": "omid",
+      "source_url": "https://omid.az/en/products/fab-parlaq-boya-sari-2-5-l",
+      "status": "active_seen",
+      "image_url": null
+    },
+    {
+      "id": "omid-340000129",
+      "name": "FAB Binder 1 L",
+      "brand": "FAB",
+      "sku": "340.0001.29",
+      "price": 7.2,
+      "currency": "AZN",
+      "category": "Boya məhsulları",
+      "country": "Azərbaycan",
+      "source_id": "omid",
+      "source_url": "https://omid.az/en/products/fab-bi%CC%87nder-1-l",
+      "status": "stock_seen_9",
+      "image_url": null
+    },
+    {
+      "id": "omid-121100072",
+      "name": "FAB Super Mat boya 23.5 kq",
+      "brand": "FAB",
+      "sku": "121.1000.72",
+      "price": 135.0,
+      "currency": "AZN",
+      "category": "Boya məhsulları",
+      "country": "Azərbaycan",
+      "source_id": "omid",
+      "source_url": "https://omid.az/en/products/fab-super-mat-boya-23-5kq",
+      "status": "stock_seen_1",
+      "image_url": null
+    },
+    {
+      "id": "omid-436000148",
+      "name": "COVER Binder 4 L",
+      "brand": "Cover",
+      "sku": "436.0001.48",
+      "price": 9.9,
+      "currency": "AZN",
+      "category": "Boya məhsulları",
+      "country": "Azərbaycan",
+      "source_id": "omid",
+      "source_url": "https://omid.az/en/products/cover-bi%CC%87nder-4-l",
+      "status": "stock_seen_7",
+      "image_url": null
+    },
+    {
+      "id": "omid-340000148",
+      "name": "FAB Binder 4 L",
+      "brand": "FAB",
+      "sku": "340.0001.48",
+      "price": 23.2,
+      "currency": "AZN",
+      "category": "Boya məhsulları",
+      "country": "Azərbaycan",
+      "source_id": "omid",
+      "source_url": "https://omid.az/en/products/fab-bi%CC%87nder-4-l",
+      "status": "stock_seen_32",
+      "image_url": null
+    },
+    {
+      "id": "elem-taxta-mecunu-fab-200gr-ag",
+      "name": "Taxta məcunu 200 qr ağ FAB",
+      "brand": "FAB",
+      "sku": "2002935000160",
+      "price": 1.55,
+      "currency": "AZN",
+      "category": "Taxta şpatlyovkaları",
+      "source_id": "elem",
+      "source_url": "https://elem.az/catalog/product/tikinti_materiallari/taxta_materiallari/taxta_spatlovkalari/taxta_mecunu_200gr_ag_fab",
+      "status": "in_stock_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "elem-meftil-yanmis",
+      "name": "Məftil yanmış",
+      "brand": "DİGƏR",
+      "sku": "2000000010953",
+      "price": 2.15,
+      "currency": "AZN",
+      "category": "Məftillər",
+      "source_id": "elem",
+      "source_url": "https://elem.az/catalog/product/tikinti_materiallari/metal_memulatlari/meftiller/meftil_yanmis_diger-2",
+      "status": "in_stock_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "elem-gips-pudra-alfa-40kg",
+      "name": "Gips pudra 40 kq ALFA",
+      "brand": "ALFA",
+      "price": 4.35,
+      "currency": "AZN",
+      "category": "Gips və fuqa",
+      "source_id": "elem",
+      "source_url": "https://www.elem.az/catalog/product/tikinti_materiallari/quru_qarisiqlari/qips_ve_fuqa/gips_pudra_40kq_alfa",
+      "status": "price_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "elem-boya-sokucu-fab-1kg",
+      "name": "Boya sökücü 1 kq FAB",
+      "brand": "FAB",
+      "price": 10.75,
+      "currency": "AZN",
+      "category": "Boya sökücü mayelər",
+      "source_id": "elem",
+      "source_url": "https://elem.az/catalog/product/tikinti_materiallari/metal_memulatlari/boya_sokucu_mayeler/boya_sokucu_1kq_fab",
+      "status": "price_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "elem-pur-demir-kleyi-fab-310ml",
+      "name": "PUR dəmir üçün yapışqan 310 ml boz FAB",
+      "brand": "FAB",
+      "price": 6.95,
+      "currency": "AZN",
+      "category": "Yapışqanlar",
+      "source_id": "elem",
+      "source_url": "https://elem.az/",
+      "status": "homepage_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-qaradag-optimal-300-40kg",
+      "name": "Qaradağ Optimal 300 40 kq Holcim",
+      "brand": "Holcim",
+      "price": null,
+      "currency": "AZN",
+      "category": "Sement",
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/qaradag-optimal-300-40-kq-holcim",
+      "status": "product_page_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "omid-akfix-termoizolyasiya-850ml",
+      "name": "Köpük termoizolyasiya AKFIX 850 ml",
+      "brand": "AKFIX",
+      "price": null,
+      "currency": "AZN",
+      "category": "İnşaat materialları",
+      "source_id": "omid",
+      "source_url": "https://omid.az/ru/collections/insaat-materiallari-f764/products/kopuk-termoi%CC%87zolyasi%CC%87ya-akfi%CC%87x-850-ml",
+      "status": "product_page_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-knauf-ua50-4000-2mm",
+      "name": "Metal profil UA 50/4000 mm 2 mm Knauf",
+      "brand": "Knauf",
+      "sku": "YM08395",
+      "price": 10.15,
+      "currency": "AZN",
+      "category": "Alçıpan profilləri",
+      "stock_status": "sifariş_ile",
+      "specifications": {
+        "width_mm": 50,
+        "height_mm": "40/40",
+        "length_mm": 4000,
+        "thickness_mm": 2
+      },
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/metal-profil-ua-50-4000mm-2mm-knauf",
+      "status": "verified",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-soudal-parket-germetik-280",
+      "name": "Parket germetik 280 ml Soudal",
+      "brand": "Soudal",
+      "sku": "YM03569",
+      "price": 6.0,
+      "currency": "AZN",
+      "category": "Germetiklər",
+      "stock_status": "sifariş_ile",
+      "specifications": {
+        "volume_ml": 280
+      },
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/280-ml-parket-qermetik-klen-soudal",
+      "status": "verified",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-boardex-1200x2400-12-5",
+      "name": "Boardex 1200×2400×12.5 mm Dalsan",
+      "brand": "Dalsan",
+      "sku": "YM08305",
+      "price": 19.79,
+      "currency": "AZN",
+      "category": "Sement lövhələri və LSU",
+      "stock_status": "anbarda_var",
+      "country": "Türkiyə",
+      "specifications": {
+        "width_mm": 1200,
+        "length_mm": 2400,
+        "thickness_mm": 12.5
+      },
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/boardex-1200x2400-12-5mm-dalsan",
+      "status": "verified",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-knauf-mineral-yun-tr44",
+      "name": "Mineral yun Teplorulon TR44 (2) Knauf",
+      "brand": "Knauf",
+      "sku": "YM08540",
+      "price": 32.0,
+      "currency": "AZN",
+      "category": "Mineral yun",
+      "stock_status": "sifariş_ile",
+      "country": "Almaniya",
+      "specifications": {
+        "width_mm": 1220
+      },
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/mineral-yun-mahlic-teplorulon-tr44-2-knauf",
+      "status": "verified",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-knauf-tiefengrund-10kg",
+      "name": "Astar Tiefengrund 10 kq Knauf",
+      "brand": "Knauf",
+      "price": 22.0,
+      "currency": "AZN",
+      "category": "Tikinti astarları",
+      "stock_status": "görünür",
+      "specifications": {
+        "weight_kg": 10
+      },
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/astar-tiefengrund-10-kq-knauf",
+      "status": "verified",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "tvim-knauf-aquapanel-indoor",
+      "name": "Aquapanel Indoor 1200×2400×12.5 mm Knauf",
+      "brand": "Knauf",
+      "sku": "YM08522",
+      "price": 27.0,
+      "currency": "AZN",
+      "category": "Sement lövhələri və LSU",
+      "stock_status": "sifariş_ile",
+      "country": "Almaniya",
+      "specifications": {
+        "width_mm": 1200,
+        "length_mm": 2400,
+        "thickness_mm": 12.5,
+        "area_m2": 2.88
+      },
+      "source_id": "tvim",
+      "source_url": "https://tvim.az/az/aquapanel-i-ndoor-knauf-1200x2400-12-5mm",
+      "status": "verified",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "omid-akfix-960p-800ml",
+      "name": "AKFIX 960P poliuretan montaj köpüyü 800 ml",
+      "brand": "AKFIX",
+      "price": null,
+      "currency": "AZN",
+      "category": "Montaj köpükləri",
+      "specifications": {
+        "volume_ml": 800
+      },
+      "applications": [
+        "istilik izolyasiya panelləri",
+        "pəncərə və qapı çərçivələri",
+        "beton, metal və taxta yapışdırılması"
+      ],
+      "source_id": "omid",
+      "source_url": "https://omid.az/products/akfix-960p-poli%CC%87uretan-montalama-kopuyu-800-ml-b900-4s",
+      "status": "product_page_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "omid-fab-200aq-280ml",
+      "name": "FAB 200AQ akvarium silikon 280 ml",
+      "brand": "FAB",
+      "sku": "TM.200706022993",
+      "price": null,
+      "currency": "AZN",
+      "category": "Silikon və germetiklər",
+      "country": "Türkiyə",
+      "specifications": {
+        "volume_ml": 280
+      },
+      "source_id": "omid",
+      "source_url": "https://omid.az/products/fab-200aq-akvari%CC%87um-si%CC%87li%CC%87kon-280-ml",
+      "status": "product_page_seen",
+      "verified_at": "2026-07-18"
+    }
+  ],
+  "rentals": [
+    {
+      "id": "insaat-avtokar-369",
+      "name": "Avtokar icarəsi, satışı və təmiri",
+      "category": "Avtokar",
+      "price": 369,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/tikinti-texnikasi-icaresi",
+      "status": "active_seen",
+      "image": null
+    },
+    {
+      "id": "insaat-kon-5000",
+      "name": "3 kub kon icarəsi",
+      "category": "Tikinti texnikası",
+      "price": 5000,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/tikinti-texnikasi-icaresi",
+      "status": "active_seen",
+      "image": null
+    },
+    {
+      "id": "insaat-dingli-15",
+      "name": "Dingli JCPT1218RT dizel qayçılı səbət",
+      "category": "Avtosəbət",
+      "price": 15,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/tikinti-texnikasi-icaresi",
+      "status": "active_seen",
+      "image": null
+    },
+    {
+      "id": "insaat-xcmg-zl50-6500",
+      "name": "XCMG ZL50GN frontal yükləyici",
+      "category": "Tikinti texnikası",
+      "price": 6500,
+      "currency": "AZN",
+      "price_basis": "aylıq_ve_ya_illik_elan",
+      "operator_included": true,
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/tikinti-texnikasi-icaresi",
+      "status": "active_seen",
+      "image": null
+    },
+    {
+      "id": "insaat-pompa-40",
+      "name": "Stasionar yer pompası",
+      "category": "Avadanlıq icarəsi",
+      "price": 40,
+      "currency": "AZN",
+      "price_basis": "şərti",
+      "rental_periods": [
+        "günlük",
+        "həftəlik",
+        "aylıq"
+      ],
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/tikinti-texnikasi-icaresi",
+      "status": "active_seen",
+      "image": null
+    },
+    {
+      "id": "insaat-hyundai330-400",
+      "name": "Hyundai 330, 2019",
+      "category": "Ekskavator",
+      "price": 400,
+      "currency": "AZN",
+      "price_basis": "razılaşma_yolu_ilə_elan",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/tikinti-texnikasi-icaresi",
+      "status": "active_seen",
+      "image": null
+    },
+    {
+      "id": "local-xcmg-crane",
+      "name": "XCMG avtokran 25 ton",
+      "category": "Kran",
+      "price": 350,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "specifications": {
+        "capacity_ton": 25,
+        "boom_m": 48
+      },
+      "source_id": "insaat",
+      "source_url": "https://tap.az/elanlar/xidmetler/neqliyyat-icaresi/46171461",
+      "status": "previously_verified",
+      "image": "/images/equipment/avtokran-25t-xcmg.jpg"
+    },
+    {
+      "id": "local-mini-excavator",
+      "name": "New Holland Kobelco E50.2SR mini ekskavator",
+      "category": "Ekskavator",
+      "price": 250,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/mini-ekskavator-icareye-verilir-32397.html",
+      "status": "previously_verified",
+      "image": "/images/equipment/mini-ekskavator-new-holland.jpg"
+    },
+    {
+      "id": "insaat-avtokar-elektrokar-10",
+      "name": "Avtokar və elektrokar icarəsi, satışı və təmiri",
+      "category": "Avtokar",
+      "price": 10,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/t%C9%99mir%2Btikinti",
+      "status": "listing_seen",
+      "verified_at": "2026-07-18"
+    }
+  ],
+  "services": [
+    {
+      "id": "service-34520",
+      "name": "Ev təmiri ustası",
+      "provider": "Caspian Grandline Təmir Tikinti",
+      "city": "Bakı",
+      "price": null,
+      "price_basis": "razılaşma",
+      "included": [
+        "kafel və metlax",
+        "laminat və parket",
+        "alçıpan və boya",
+        "elektrik",
+        "santexnika"
+      ],
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/ev-temiri-ustasi-serfeli-qiymete-34520.html",
+      "status": "active_2026_06_29"
+    },
+    {
+      "id": "service-34502",
+      "name": "Ev təmiri və tikinti işləri",
+      "provider": "Caspian Grandline Təmir Tikinti",
+      "city": "Bakı",
+      "price": null,
+      "price_basis": "razılaşma",
+      "included": [
+        "kafel",
+        "metlax",
+        "laminat",
+        "alçıpan",
+        "boya",
+        "elektrik",
+        "santexnika",
+        "tam və qismən təmir"
+      ],
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/ev-temiri-ve-tikinti-isleri-gorulur-34502.html",
+      "status": "active_seen"
+    },
+    {
+      "id": "service-34389",
+      "name": "Mənzil təmiri",
+      "provider": "Caspian Grandline Təmir Tikinti",
+      "city": "Bakı",
+      "price": null,
+      "price_basis": "razılaşma",
+      "included": [
+        "tam təmir",
+        "kosmetik təmir"
+      ],
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/menzil-temiri-goruruk-34389.html",
+      "status": "active_2026_06_29"
+    },
+    {
+      "id": "insaat-temir-tikinti-34547",
+      "name": "Təmir-tikinti ustası",
+      "provider": "Caspian Grandline Təmir Tikinti",
+      "city": "Bakı",
+      "price": null,
+      "price_basis": "razılaşma",
+      "category": "Ev təmiri",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/temir-tikinti-ustasi-34547.html",
+      "status": "active_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-sauna-499",
+      "name": "Sauna tikintisi və təmiri",
+      "provider": "Şirkət elanı",
+      "city": "Bakı",
+      "price": 499,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "category": "Sauna tikintisi",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/t%C9%99mir%2Btikinti",
+      "status": "listing_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-kamera-qurasdirma-20",
+      "name": "Kamera quraşdırılması və təmiri",
+      "provider": "Elan təminatçısı",
+      "city": "Bakı",
+      "price": 20,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "category": "Təhlükəsizlik sistemləri",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/temir%2Btikinti",
+      "status": "listing_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-generator-xidmeti",
+      "name": "Generator satışı, icarəsi və təmiri",
+      "provider": "Şirkət elanı",
+      "city": "Bakı",
+      "price": null,
+      "price_basis": "sorğu_əsasında",
+      "category": "Generator xidməti",
+      "included": [
+        "satış",
+        "icarə",
+        "servis",
+        "texniki baxış",
+        "təmir",
+        "ehtiyat hissələri"
+      ],
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/temir%2Btikinti",
+      "status": "listing_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-qaba-tikinti-35",
+      "name": "Balkon kərpic hörgü işi",
+      "provider": "Elan təminatçısı",
+      "city": "Bakı",
+      "price": 35,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "category": "Hörgü işləri",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/sifirdan-temir-tikinti-islerinin-aparilmasi-14129.html",
+      "status": "historical_listing",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-suvaq-5",
+      "name": "Sadə suvaq işi",
+      "provider": "Elan təminatçısı",
+      "city": "Bakı",
+      "price": 5,
+      "currency": "AZN",
+      "price_basis": "elan_qiymeti",
+      "category": "Suvaq işləri",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/sifirdan-temir-tikinti-islerinin-aparilmasi-14129.html",
+      "status": "historical_listing",
+      "verified_at": "2026-07-18"
+    }
+  ],
+  "packages": [
+    {
+      "id": "hazirev-praktik",
+      "name": "Praktik",
+      "provider": "Hazırev",
+      "price": 189,
+      "currency": "AZN",
+      "unit": "m2",
+      "level": "ekonom",
+      "source_id": "hazirev",
+      "source_url": "https://hazirev.az/",
+      "status": "verify_before_publish"
+    },
+    {
+      "id": "hazirev-trend",
+      "name": "Trend",
+      "provider": "Hazırev",
+      "price": 249,
+      "currency": "AZN",
+      "unit": "m2",
+      "level": "standart",
+      "source_id": "hazirev",
+      "source_url": "https://hazirev.az/",
+      "status": "verify_before_publish"
+    },
+    {
+      "id": "hazirev-premium",
+      "name": "Premium",
+      "provider": "Hazırev",
+      "price": 299,
+      "currency": "AZN",
+      "unit": "m2",
+      "level": "premium",
+      "source_id": "hazirev",
+      "source_url": "https://hazirev.az/",
+      "status": "verify_before_publish"
+    },
+    {
+      "id": "insaat-menzil-200",
+      "name": "Mənzillərin təmiri",
+      "provider": "Elan təminatçısı",
+      "price": 200,
+      "currency": "AZN",
+      "unit": "elan_qiymeti",
+      "level": "standart",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      "status": "listing_seen"
+    },
+    {
+      "id": "insaat-menzil-250",
+      "name": "Mənzil təmiri material qarışıq",
+      "provider": "Şirkət elanı",
+      "price": 250,
+      "currency": "AZN",
+      "unit": "elan_qiymeti",
+      "level": "standart",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      "status": "listing_seen"
+    },
+    {
+      "id": "insaat-menzil-240",
+      "name": "Mənzil və həyət evi təmiri",
+      "provider": "Şirkət elanı",
+      "price": 240,
+      "currency": "AZN",
+      "unit": "elan_qiymeti",
+      "level": "standart",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/m%C9%99nzil%2Bt%C9%99miri",
+      "status": "listing_seen"
+    },
+    {
+      "id": "insaat-smart-start",
+      "name": "Smart Start açar təslim təmir",
+      "provider": "Caspian Grandline Təmir Tikinti",
+      "price": null,
+      "currency": "AZN",
+      "unit": "paket",
+      "duration_workdays": 45,
+      "level": "standart",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/t%C9%99mir%2Btikinti",
+      "status": "listing_seen",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-premium-450",
+      "name": "Premium Təmir Tikinti Paketi",
+      "provider": "Elan təminatçısı",
+      "price": 450,
+      "currency": "AZN",
+      "unit": "elan_qiymeti",
+      "level": "premium",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/gizli",
+      "status": "verify_before_publish",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-premium-450-detailed",
+      "name": "Premium Təmir Tikinti Paketi",
+      "provider": "Caspian Grandline Təmir Tikinti",
+      "price": 450,
+      "currency": "AZN",
+      "unit": "paket",
+      "level": "premium",
+      "included": [
+        "funksional planlaşdırma",
+        "mebel yerləşdirilməsi",
+        "saxlama həlləri",
+        "sabit smeta",
+        "vaxtında təhvil"
+      ],
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/premium-temir-tikinti-paketi-34061.html",
+      "status": "verified_listing",
+      "verified_at": "2026-07-18"
+    },
+    {
+      "id": "insaat-mayak-140-250",
+      "name": "Mayak ev tam təmir paketi",
+      "provider": "Elan təminatçısı",
+      "price_min": 140,
+      "price_max": 250,
+      "currency": "AZN",
+      "unit": "m2",
+      "level": "ekonom_standart",
+      "source_id": "insaat",
+      "source_url": "https://insaat.az/sifirdan-temir-tikinti-islerinin-aparilmasi-14129.html",
+      "status": "historical_listing_verify_before_publish",
+      "verified_at": "2026-07-18"
+    }
+  ],
+  "platform_features": [
+    {
+      "source_id": "elem",
+      "features": [
+        "məhsul kataloqu",
+        "stok göstəricisi",
+        "məhsul kodu",
+        "mobil tətbiq",
+        "çatdırılma"
+      ]
+    },
+    {
+      "source_id": "tvim",
+      "features": [
+        "topdan və pərakəndə satış",
+        "korporativ satış",
+        "çatdırılma",
+        "brend səhifələri",
+        "qiymət filtri"
+      ]
+    },
+    {
+      "source_id": "omid",
+      "features": [
+        "geniş kateqoriya kataloqu",
+        "sevimlilər",
+        "müqayisə",
+        "səbət",
+        "bloq"
+      ]
+    },
+    {
+      "source_id": "insaat",
+      "features": [
+        "elan bazarı",
+        "xidmətlər",
+        "texnika satışı",
+        "texnika icarəsi",
+        "usta elanları"
+      ]
+    }
+  ]
+}
