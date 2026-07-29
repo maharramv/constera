@@ -33,7 +33,12 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM price_review_requests WHERE status = 'pending') AS pending_price_reviews,
     (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users,
     (SELECT count(*)::int FROM catalog_import_runs) AS scraper_runs,
-    (SELECT count(*)::int FROM catalog_import_items WHERE review_status = 'pending') AS scraper_pending
+    (SELECT count(*)::int FROM catalog_import_items WHERE review_status = 'pending') AS scraper_pending,
+    (SELECT count(*)::int FROM support_cases) AS support_cases,
+    (SELECT count(*)::int FROM support_cases WHERE status NOT IN ('resolved', 'rejected', 'closed')) AS open_support_cases,
+    (SELECT count(*)::int FROM marketplace_reviews WHERE status = 'published') AS published_reviews,
+    (SELECT count(*)::int FROM analytics_events) AS analytics_events,
+    (SELECT count(*)::int FROM catalog_quality_issues WHERE status = 'open') AS open_quality_issues
 `);
 
 const [integrity] = await query(`
@@ -215,7 +220,33 @@ const [integrity] = await query(`
         WHEN 'omid' THEN media.url !~* '^https://(www\\.)?omid\\.az/'
         WHEN 'insaat' THEN media.url !~* '^https://(www\\.)?insaat\\.az/'
         ELSE true
-      END) AS invalid_scraper_media_hosts
+      END) AS invalid_scraper_media_hosts,
+    (SELECT count(*)::int FROM support_cases support
+      JOIN orders orders ON orders.id = support.order_id
+      WHERE support.customer_id <> orders.customer_id) AS support_order_customer_mismatch,
+    (SELECT count(*)::int FROM refund_transactions refund
+      JOIN orders orders ON orders.id = refund.order_id
+      WHERE refund.amount > orders.total_amount + 0.01) AS refund_exceeds_order_total,
+    (SELECT count(*)::int FROM refund_transactions
+      WHERE status = 'completed' AND completed_at IS NULL) AS completed_refunds_without_date,
+    (SELECT count(*)::int FROM marketplace_reviews review
+      WHERE review.verified = true AND (
+        (review.source_type = 'order' AND NOT EXISTS (
+          SELECT 1 FROM orders orders
+          WHERE orders.id = review.source_id
+            AND orders.customer_id = review.customer_id
+            AND orders.status = 'completed'
+        ))
+        OR
+        (review.source_type = 'rental_booking' AND NOT EXISTS (
+          SELECT 1 FROM rental_bookings booking
+          WHERE booking.id = review.source_id
+            AND booking.customer_id = review.customer_id
+            AND booking.status = 'completed'
+        ))
+      )) AS reviews_without_verified_source,
+    (SELECT count(*)::int FROM catalog_quality_runs
+      WHERE status = 'running' AND started_at < now() - interval '15 minutes') AS stale_quality_runs
 `);
 
 const [schema] = await query(`
@@ -248,6 +279,13 @@ const [schema] = await query(`
     to_regclass('public.customer_estimates') IS NOT NULL AS customer_estimates_ready,
     to_regclass('public.catalog_import_runs') IS NOT NULL AS scraper_runs_ready,
     to_regclass('public.catalog_import_items') IS NOT NULL AS scraper_items_ready,
+    to_regclass('public.support_cases') IS NOT NULL AS support_cases_ready,
+    to_regclass('public.support_case_messages') IS NOT NULL AS support_messages_ready,
+    to_regclass('public.refund_transactions') IS NOT NULL AS refunds_ready,
+    to_regclass('public.marketplace_reviews') IS NOT NULL AS reviews_ready,
+    to_regclass('public.analytics_events') IS NOT NULL AS analytics_events_ready,
+    to_regclass('public.catalog_quality_runs') IS NOT NULL AS quality_runs_ready,
+    to_regclass('public.catalog_quality_issues') IS NOT NULL AS quality_issues_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,

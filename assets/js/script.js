@@ -312,6 +312,53 @@ const initOfflineRetry = () => {
   document.querySelector("[data-offline-retry]")?.addEventListener("click", () => window.location.reload());
 };
 
+const initAnalytics = () => {
+  const safeId = (value) => String(value || "")
+    .replace(/[^a-zA-Z0-9._:-]/g, "_")
+    .slice(0, 160);
+  const identity = (storageArea, key) => {
+    try {
+      let value = storageArea.getItem(key);
+      if (!value) {
+        value = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}`;
+        storageArea.setItem(key, value);
+      }
+      return value;
+    } catch {
+      return `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}`;
+    }
+  };
+  const visitorId = identity(localStorage, "constera-visitor-id");
+  const sessionId = identity(sessionStorage, "constera-session-id");
+  window.ConstEraTrack = (eventType, options = {}) => {
+    const eventId = safeId(options.eventId || `${eventType}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 9)}`);
+    fetch("/api/events", {
+      method: "POST",
+      credentials: "same-origin",
+      keepalive: true,
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        eventType,
+        eventId,
+        visitorId,
+        sessionId,
+        path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
+        entityType: options.entityType || "",
+        entityId: options.entityId || "",
+        payload: options.payload || {}
+      })
+    }).catch(() => null);
+  };
+  const page = document.body?.dataset.page || "home";
+  const query = new URLSearchParams(window.location.search);
+  const productId = page === "product-detail" ? query.get("product") || "" : "";
+  window.ConstEraTrack(productId ? "product_view" : "page_view", {
+    entityType: productId ? "product" : "page",
+    entityId: productId || page,
+    eventId: safeId(`view.${sessionId}.${page}.${productId || page}`)
+  });
+};
+
 initAccessibility();
 initMenu();
 updateMarketplaceCounts();
@@ -320,5 +367,6 @@ initContactForm();
 initSeoEnhancements();
 initServiceWorker();
 initOfflineRetry();
+initAnalytics();
 
 window.consteraRefreshSeo = initSeoEnhancements;

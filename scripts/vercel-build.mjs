@@ -39,6 +39,7 @@ const requiredFiles = [
   "assets/css/order-document.css",
   "assets/css/rfq-workflow.css",
   "assets/css/supplier-workflow.css",
+  "assets/css/enterprise.css",
   "assets/js/script.js",
   "assets/js/catalog-data.js",
   "assets/js/taxonomy-expansion.js",
@@ -47,6 +48,8 @@ const requiredFiles = [
   "assets/js/order-detail.js",
   "assets/js/admin-v2.js",
   "assets/js/marketplace.js",
+  "assets/js/enterprise.js",
+  "assets/js/enterprise-admin.js",
   "service-worker.js",
   "scripts/site-shell.mjs",
   ...siteShellTemplateFiles

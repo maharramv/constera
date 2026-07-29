@@ -23,7 +23,7 @@
     "db:seed": "node scripts/seed-database.mjs",
     "db:import-scraper": "node scripts/import-scraper-catalog.mjs",
     "db:audit": "node scripts/audit-database.mjs",
-    "db:smoke": "node scripts/smoke-commerce.mjs && node scripts/smoke-operations.mjs",
+    "db:smoke": "node scripts/smoke-commerce.mjs && node scripts/smoke-operations.mjs && node scripts/smoke-trust.mjs",
     "db:create-admin": "node scripts/create-admin.mjs",
     "check:production": "node scripts/check-production.mjs",
     "check": "npm run verify:deploy && npm run build:static && npm run audit:dist",

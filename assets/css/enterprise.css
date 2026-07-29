@@ -1,0 +1,139 @@
+.enterprise-import,
+.enterprise-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.enterprise-import,
+.enterprise-scorecard {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.enterprise-import small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.enterprise-review-summary,
+.enterprise-readiness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.enterprise-stars,
+.enterprise-scorecard header > strong {
+  color: var(--gold);
+}
+
+.enterprise-review,
+.enterprise-case,
+.enterprise-admin-list article,
+.enterprise-funnel > div {
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+
+.enterprise-review header,
+.enterprise-case header,
+.enterprise-scorecard header,
+.enterprise-admin-list article,
+.enterprise-link-row,
+.enterprise-funnel > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.enterprise-review p,
+.enterprise-case p,
+.enterprise-scorecard p,
+.enterprise-admin-list span,
+.enterprise-funnel span {
+  color: var(--muted);
+}
+
+.enterprise-review blockquote,
+.enterprise-messages {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--gold);
+}
+
+.enterprise-case header > div,
+.enterprise-messages p,
+.enterprise-admin-list article > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.enterprise-case .enterprise-inline-form {
+  margin-top: 10px;
+}
+
+.enterprise-two-column,
+.enterprise-score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.enterprise-link-row {
+  padding: 11px 0;
+  color: inherit;
+  border-bottom: 1px solid var(--line);
+}
+
+.enterprise-score-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.enterprise-scorecard label {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) 1fr 40px;
+  gap: 7px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.enterprise-scorecard meter {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+@media (max-width: 860px) {
+  .enterprise-two-column,
+  .enterprise-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .enterprise-admin-list article,
+  .enterprise-review header,
+  .enterprise-case header {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 620px) {
+  .enterprise-import,
+  .enterprise-inline-form {
+    grid-template-columns: 1fr;
+  }
+
+  .enterprise-inline-form .button,
+  .enterprise-import .button {
+    width: 100%;
+  }
+
+  .enterprise-link-row,
+  .enterprise-funnel > div {
+    flex-direction: column;
+  }
+}

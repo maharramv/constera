@@ -90,6 +90,34 @@ export const createPaymentCheckout = async ({ transaction, order, returnUrl }) =
   };
 };
 
+export const refundPayment = async ({ refund, transaction, order }) => {
+  const payload = await postProvider({
+    endpoint: process.env.PAYMENT_WEBHOOK_URL,
+    secret: process.env.PAYMENT_WEBHOOK_SECRET,
+    name: "Ödəniş geri qaytarılması",
+    body: {
+      action: "refund_payment",
+      source: "ConstEra",
+      refundId: refund.id,
+      transactionId: transaction.id,
+      externalPaymentId: transaction.external_id,
+      orderId: order.id,
+      amount: refund.amount,
+      currency: refund.currency,
+      reason: refund.reason
+    }
+  });
+  const status = String(payload.status || "completed").toLowerCase();
+  if (!["processing", "completed"].includes(status)) {
+    throw new ApiError(502, "invalid_provider_response", "Ödəniş provayderi geri qaytarma əməliyyatını təsdiqləmədi.");
+  }
+  return {
+    externalId: String(payload.externalId || payload.refundId || refund.id),
+    status,
+    payload
+  };
+};
+
 export const issueElectronicInvoice = async ({ invoiceId, order }) => {
   const payload = await postProvider({
     endpoint: process.env.EINVOICE_WEBHOOK_URL,

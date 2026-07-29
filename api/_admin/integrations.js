@@ -3,7 +3,9 @@ import { requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { priceEstimateWithCatalog } from "../_lib/estimate-catalog.js";
+import { parseEstimateDocument } from "../_lib/estimate-import.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { deliverNotificationNow } from "../_lib/notifications.js";
 import { readOrderDetails, recordOrderHistory } from "../_lib/order-lifecycle.js";
 import {
   createPaymentCheckout,
@@ -11,7 +13,7 @@ import {
   issueElectronicInvoice,
   providerReadiness
 } from "../_lib/provider-adapters.js";
-import { oneOf, text } from "../_lib/validation.js";
+import { email, oneOf, text } from "../_lib/validation.js";
 
 const privilegedRoles = ["super_admin", "admin", "sales"];
 
@@ -95,7 +97,7 @@ export default withApiErrors(async (req, res) => {
   }
 
   assertMethod(req, ["POST"]);
-  const body = await readJson(req, 150_000);
+  const body = await readJson(req, 2_200_000);
   const action = text(body.action || req.query.action, { field: "Əməliyyat", required: true, max: 80 });
 
   if (action === "payment-webhook") {
@@ -173,6 +175,72 @@ export default withApiErrors(async (req, res) => {
   }
 
   assertSameOrigin(req);
+  if (action === "estimate-document") {
+    const user = await requireRole(req);
+    const parsed = await parseEstimateDocument({
+      fileName: text(body.fileName, { field: "Fayl adı", required: true, max: 240 }),
+      mimeType: text(body.mimeType, { max: 160 }),
+      contentBase64: text(body.contentBase64, { field: "Fayl məlumatı", required: true, max: 2_100_000 })
+    });
+    if (!parsed.requiresAi) {
+      await recordAudit({
+        actorId: user.id,
+        action: "parse",
+        entityType: "estimate_document",
+        details: { fileName: parsed.fileName, sourceType: parsed.sourceType, rows: parsed.rows.length }
+      });
+      return sendJson(res, 200, { ok: true, data: parsed });
+    }
+    if (!providerReadiness().aiEstimate) {
+      throw new ApiError(503, "ai_estimate_not_configured", "PDF smetanın oxunması üçün AI sənəd provayderi qoşulmalıdır.");
+    }
+    const requestId = `ai-${randomUUID()}`;
+    const estimate = await generateProviderEstimate({
+      requestId,
+      input: {
+        document: {
+          fileName: parsed.fileName,
+          mimeType: "application/pdf",
+          contentBase64: parsed.contentBase64
+        },
+        instruction: "Material adını, miqdarı, vahidi və kateqoriyanı Azərbaycan dilində strukturlaşdır."
+      },
+      deterministicEstimate: {}
+    });
+    await recordAudit({
+      actorId: user.id,
+      action: "parse",
+      entityType: "estimate_document",
+      entityId: requestId,
+      details: { fileName: parsed.fileName, sourceType: "pdf", rows: estimate.rows.length }
+    });
+    return sendJson(res, 200, {
+      ok: true,
+      data: { fileName: parsed.fileName, sourceType: "pdf-ai", requiresAi: true, rows: estimate.rows }
+    });
+  }
+
+  if (action === "test-notification") {
+    const user = await requireRole(req, ["super_admin", "admin"]);
+    const channel = oneOf(body.channel, ["email", "whatsapp"], "email", "Bildiriş kanalı");
+    if (!providerReadiness()[channel]) {
+      throw new ApiError(503, "notification_not_configured", `${channel === "email" ? "E-poçt" : "WhatsApp"} provayderi qoşulmayıb.`);
+    }
+    const recipient = channel === "email"
+      ? email(body.recipient)
+      : text(body.recipient, { field: "Telefon", required: true, min: 7, max: 80 });
+    const result = await deliverNotificationNow({
+      channel,
+      recipient,
+      subject: "ConstEra inteqrasiya yoxlaması",
+      body: "Bildiriş provayderi uğurla qoşulub və test mesajı göndərilib.",
+      templateKey: "integration_test",
+      payload: { testedBy: user.id }
+    });
+    await recordAudit({ actorId: user.id, action: "test", entityType: "notification_integration", entityId: channel });
+    return sendJson(res, 200, { ok: true, data: { channel, sent: Boolean(result.sent) } });
+  }
+
   if (action === "catalog-estimate") {
     const rows = Array.isArray(body.rows) ? body.rows.slice(0, 30) : [];
     if (!rows.length) throw new ApiError(400, "estimate_rows_required", "Smeta üçün material sətirləri tələb olunur.");

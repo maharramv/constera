@@ -13,6 +13,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/enterprise.css" />
   </head>
   <body data-page="ai-smeta">
     <div class="ambient ambient-one"></div>
@@ -75,6 +76,14 @@
               <span class="data-badge">lokal hesablama</span>
             </div>
             <form class="admin-form" data-ai-smeta-form>
+              <div class="enterprise-import">
+                <label class="admin-field admin-field-wide">
+                  <span>Hazır material siyahısı</span>
+                  <input data-ai-smeta-file type="file" accept=".xlsx,.csv,.tsv,.txt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
+                </label>
+                <button class="button button-secondary" type="button" data-ai-smeta-import>Fayldan smeta yarat</button>
+                <small>XLSX, CSV, TSV və TXT birbaşa oxunur. PDF üçün AI inteqrasiyası aktiv olmalıdır. Maksimum 1,5 MB.</small>
+              </div>
               <div class="admin-form-grid">
                 <label class="admin-field">
                   <span>Layihə tipi</span>

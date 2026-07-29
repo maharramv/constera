@@ -81,20 +81,29 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
   for (const route of [
     "cabinet",
     "catalog-staging",
+    "catalog-quality",
     "crm",
+    "events",
     "fulfillments",
     "inventory",
     "procurement",
     "product-offers",
     "purchase-orders",
     "price-monitor",
-    "rental-bookings"
+    "rental-bookings",
+    "supplier-performance",
+    "support"
   ]) {
     const response = createResponse();
     await adminHandler({ method: "GET", headers: {}, query: { __route: route } }, response);
     assert.equal(response.statusCode, 401, route);
     assert.equal(response.payload.error.code, "authentication_required", route);
   }
+
+  const reviewsResponse = createResponse();
+  await adminHandler({ method: "GET", headers: {}, query: { __route: "reviews", scope: "moderation" } }, reviewsResponse);
+  assert.equal(reviewsResponse.statusCode, 401);
+  assert.equal(reviewsResponse.payload.error.code, "authentication_required");
 
   const missingResponse = createResponse();
   await adminHandler({ method: "GET", headers: {}, query: { __route: "unknown" } }, missingResponse);

@@ -51,6 +51,16 @@ const backupQueries = Object.freeze({
                          FROM electronic_invoices ORDER BY created_at`,
   integrationEvents: `SELECT id, provider, event_type, external_id, status, created_at, processed_at
                          FROM integration_events ORDER BY created_at`,
+  supportCases: "SELECT * FROM support_cases ORDER BY created_at",
+  supportCaseItems: "SELECT * FROM support_case_items ORDER BY case_id, created_at",
+  supportCaseMessages: "SELECT * FROM support_case_messages ORDER BY case_id, created_at",
+  refundTransactions: "SELECT * FROM refund_transactions ORDER BY created_at",
+  marketplaceReviews: "SELECT * FROM marketplace_reviews ORDER BY created_at",
+  analyticsEvents: `SELECT * FROM analytics_events
+                      WHERE created_at >= now() - interval '90 days'
+                      ORDER BY created_at`,
+  catalogQualityRuns: "SELECT * FROM catalog_quality_runs ORDER BY started_at",
+  catalogQualityIssues: "SELECT * FROM catalog_quality_issues ORDER BY first_seen_at",
   auditLogs: "SELECT * FROM audit_logs ORDER BY created_at"
 });
 
@@ -71,11 +81,11 @@ export const buildCloudBackup = async () => {
   );
   const data = Object.fromEntries(entries);
   return {
-    version: "constera-cloud-backup-v5",
+    version: "constera-cloud-backup-v6",
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: 20,
+    schemaMigrations: 21,
     data
   };
 };

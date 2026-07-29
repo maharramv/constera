@@ -3,6 +3,7 @@ import { backupReadiness } from "../_lib/cloud-backup.js";
 import { query } from "../_lib/db.js";
 import { assertMethod, sendJson, withApiErrors } from "../_lib/http.js";
 import { providerReadiness } from "../_lib/provider-adapters.js";
+import { loadSupplierPerformance } from "../_lib/supplier-performance.js";
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET"]);
@@ -17,7 +18,11 @@ export default withApiErrors(async (req, res) => {
     auditRows,
     qualityRows,
     qualityItemRows,
-    offerQualityRows
+    offerQualityRows,
+    funnelRows,
+    dailyRows,
+    trustRows,
+    supplierPerformance
   ] = await Promise.all([
     query(`SELECT
       (SELECT count(*) FROM users WHERE status = 'active')::int AS users,
@@ -40,7 +45,10 @@ export default withApiErrors(async (req, res) => {
       (SELECT count(*) FROM import_jobs)::int AS imports,
       (SELECT count(*) FROM supplier_applications WHERE status = 'pending')::int AS pending_supplier_applications,
       (SELECT count(*) FROM price_review_requests WHERE status = 'pending')::int AS pending_price_reviews,
-      (SELECT count(*) FROM notifications WHERE status IN ('pending', 'failed'))::int AS pending_notifications`),
+      (SELECT count(*) FROM notifications WHERE status IN ('pending', 'failed'))::int AS pending_notifications,
+      (SELECT count(*) FROM support_cases WHERE status NOT IN ('resolved', 'rejected', 'closed'))::int AS open_support_cases,
+      (SELECT count(*) FROM marketplace_reviews WHERE status = 'pending')::int AS pending_reviews,
+      (SELECT count(*) FROM refund_transactions WHERE status IN ('pending', 'processing'))::int AS pending_refunds`),
     query(`SELECT price_status AS status, count(*)::int AS count
              FROM products WHERE status = 'active' GROUP BY price_status ORDER BY price_status`),
     query(`SELECT status, count(*)::int AS count FROM rfqs GROUP BY status ORDER BY count(*) DESC`),
@@ -222,7 +230,61 @@ export default withApiErrors(async (req, res) => {
               AND active_offer.status = 'active'
           )
       ) AS products_without_offers
-    FROM product_offers offer`)
+    FROM product_offers offer`),
+    query(
+      `SELECT event_type, count(*)::int AS events,
+              count(DISTINCT visitor_hash)::int AS visitors,
+              count(DISTINCT session_hash)::int AS sessions
+         FROM analytics_events
+        WHERE created_at >= now() - interval '30 days'
+        GROUP BY event_type`
+    ),
+    query(
+      `WITH days AS (
+         SELECT generate_series(current_date - interval '13 days', current_date, interval '1 day')::date AS day
+       ),
+       event_daily AS (
+         SELECT created_at::date AS day, count(*)::int AS events,
+                count(DISTINCT session_hash)::int AS sessions
+           FROM analytics_events
+          WHERE created_at >= current_date - interval '13 days'
+          GROUP BY created_at::date
+       ),
+       order_daily AS (
+         SELECT created_at::date AS day, count(*)::int AS orders
+           FROM orders
+          WHERE created_at >= current_date - interval '13 days'
+          GROUP BY created_at::date
+       ),
+       rfq_daily AS (
+         SELECT created_at::date AS day, count(*)::int AS rfqs
+           FROM rfqs
+          WHERE created_at >= current_date - interval '13 days'
+          GROUP BY created_at::date
+       )
+       SELECT days.day, coalesce(event_daily.events, 0)::int AS events,
+              coalesce(event_daily.sessions, 0)::int AS sessions,
+              coalesce(order_daily.orders, 0)::int AS orders,
+              coalesce(rfq_daily.rfqs, 0)::int AS rfqs
+         FROM days
+         LEFT JOIN event_daily USING (day)
+         LEFT JOIN order_daily USING (day)
+         LEFT JOIN rfq_daily USING (day)
+        ORDER BY days.day`
+    ),
+    query(
+      `SELECT
+        (SELECT count(*) FROM support_cases)::int AS support_total,
+        (SELECT count(*) FROM support_cases WHERE status NOT IN ('resolved', 'rejected', 'closed'))::int AS support_open,
+        (SELECT count(*) FROM support_cases WHERE case_type = 'return')::int AS returns,
+        (SELECT count(*) FROM support_cases WHERE case_type = 'dispute')::int AS disputes,
+        (SELECT count(*) FROM refund_transactions WHERE status = 'completed')::int AS refunds_completed,
+        (SELECT coalesce(sum(amount), 0) FROM refund_transactions WHERE status = 'completed')::numeric AS refunded_amount,
+        (SELECT count(*) FROM marketplace_reviews WHERE status = 'published')::int AS reviews_published,
+        (SELECT count(*) FROM marketplace_reviews WHERE status = 'pending')::int AS reviews_pending,
+        (SELECT coalesce(round(avg(rating)::numeric, 1), 0) FROM marketplace_reviews WHERE status = 'published') AS review_average`
+    ),
+    loadSupplierPerformance()
   ]);
   const counts = countsRows[0] || {};
   const qualityRow = qualityRows[0] || {};
@@ -301,6 +363,34 @@ export default withApiErrors(async (req, res) => {
           };
         })
       },
+      funnel: {
+        windowDays: 30,
+        stages: funnelRows.map((item) => ({
+          eventType: item.event_type,
+          events: Number(item.events || 0),
+          visitors: Number(item.visitors || 0),
+          sessions: Number(item.sessions || 0)
+        })),
+        daily: dailyRows.map((item) => ({
+          day: item.day,
+          events: Number(item.events || 0),
+          sessions: Number(item.sessions || 0),
+          orders: Number(item.orders || 0),
+          rfqs: Number(item.rfqs || 0)
+        }))
+      },
+      trust: {
+        supportTotal: Number(trustRows[0]?.support_total || 0),
+        supportOpen: Number(trustRows[0]?.support_open || 0),
+        returns: Number(trustRows[0]?.returns || 0),
+        disputes: Number(trustRows[0]?.disputes || 0),
+        refundsCompleted: Number(trustRows[0]?.refunds_completed || 0),
+        refundedAmount: Number(trustRows[0]?.refunded_amount || 0),
+        reviewsPublished: Number(trustRows[0]?.reviews_published || 0),
+        reviewsPending: Number(trustRows[0]?.reviews_pending || 0),
+        reviewAverage: Number(trustRows[0]?.review_average || 0)
+      },
+      supplierPerformance: supplierPerformance.slice(0, 20),
       recentActivity: auditRows,
       integrations: {
         database: true,

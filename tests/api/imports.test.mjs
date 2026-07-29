@@ -8,6 +8,7 @@ import {
   normalizeXlsxForImport,
   readAliased
 } from "../../api/_lib/imports.js";
+import { parseEstimateDocument } from "../../api/_lib/estimate-import.js";
 
 test("matrixToObjects başlıqdan əvvəlki titul sətrini ötürür", () => {
   const rows = matrixToObjects([
@@ -33,4 +34,24 @@ test("ConstEra XLSX idxal paketi server parseri ilə 40 məhsul qaytarır", asyn
   assert.equal(readAliased(rows[0], "category"), "İzolyasiya");
   assert.equal(readAliased(rows.at(-1), "sku"), "TVIM-20260718-040");
   assert.equal(rows.filter((row) => !readAliased(row, "imageUrl")).length, 3);
+});
+
+test("AI smeta CSV faylından Azərbaycan başlıqları ilə material sətirləri oxuyur", async () => {
+  const source = [
+    "Kateqoriya;Material;Miqdar;Vahid;SKU",
+    "Hörgü;Qazbeton blok 20 sm;480;ədəd;QB-20",
+    "Boya;Daxili boya;35,5;litr;BY-01"
+  ].join("\n");
+  const parsed = await parseEstimateDocument({
+    fileName: "material-siyahisi.csv",
+    mimeType: "text/csv",
+    contentBase64: Buffer.from(source).toString("base64")
+  });
+
+  assert.equal(parsed.requiresAi, false);
+  assert.equal(parsed.rows.length, 2);
+  assert.equal(parsed.rows[0].title, "Qazbeton blok 20 sm");
+  assert.equal(parsed.rows[0].quantity, 480);
+  assert.equal(parsed.rows[1].quantity, 35.5);
+  assert.equal(parsed.rows[1].unit, "litr");
 });

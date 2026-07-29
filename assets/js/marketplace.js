@@ -822,6 +822,7 @@ const renderCatalog = () => {
   let serverProducts = [];
   let serverRequest = 0;
   let serverTimer = 0;
+  let searchTrackTimer = 0;
   let activeSuggestionIndex = -1;
 
   const hideSearchSuggestions = () => {
@@ -1193,6 +1194,11 @@ const renderCatalog = () => {
   searchInput.addEventListener("input", () => {
     renderSearchSuggestions();
     applyCatalogFilters(250);
+    window.clearTimeout(searchTrackTimer);
+    searchTrackTimer = window.setTimeout(() => {
+      const query = searchInput.value.trim();
+      if (query.length >= 2) window.ConstEraTrack?.("search", { entityType: "catalog", entityId: activeCategory, payload: { query: query.slice(0, 120) } });
+    }, 900);
   });
   searchInput.addEventListener("focus", renderSearchSuggestions);
   searchInput.addEventListener("keydown", (event) => {
@@ -4748,6 +4754,8 @@ const initAiSmeta = () => {
   const exportButton = document.querySelector("[data-ai-smeta-export]");
   const resetButton = document.querySelector("[data-ai-smeta-reset]");
   const clearHistoryButton = document.querySelector("[data-ai-smeta-clear-history]");
+  const importFile = document.querySelector("[data-ai-smeta-file]");
+  const importButton = document.querySelector("[data-ai-smeta-import]");
   if (!form || !output) return;
 
   const estimateKey = "constera-ai-estimates";
@@ -5060,6 +5068,7 @@ const initAiSmeta = () => {
       </div>
       <div class="admin-actions">
         <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}">Sorğu qaralaması yarat</button>
+        <button class="button button-secondary" type="button" data-ai-smeta-cart="${escapeAttr(estimate.id)}">Qiymətlənənləri səbətə əlavə et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV-yə ixrac et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-print>PDF üçün çap et</button>
         <a class="button button-outline" href="catalog.html">Kataloqda bax</a>
@@ -5077,6 +5086,7 @@ const initAiSmeta = () => {
     const formData = new FormData(form);
     const estimateInput = Object.fromEntries(formData.entries());
     currentEstimate = createEstimate(formData);
+    window.ConstEraTrack?.("estimate_created", { entityType: "estimate", entityId: currentEstimate.id, payload: { source: "calculator", rows: currentEstimate.rows.length } });
     writeEstimates([currentEstimate, ...readEstimates()]);
     renderEstimate(currentEstimate);
     renderHistory();
@@ -5167,6 +5177,55 @@ const initAiSmeta = () => {
     renderHistory();
     if (status) status.textContent = "Smeta tarixçəsi təmizləndi.";
   });
+  importButton?.addEventListener("click", async () => {
+    const file = importFile?.files?.[0];
+    if (!file) {
+      if (status) status.textContent = "İdxal üçün XLSX, CSV, TXT, TSV və ya PDF faylı seç.";
+      return;
+    }
+    importButton.disabled = true;
+    try {
+      if (status) status.textContent = "Material siyahısı təhlükəsiz şəkildə oxunur...";
+      const contentBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Faylı oxumaq mümkün olmadı."));
+        reader.onload = () => resolve(String(reader.result || "").split(",").pop() || "");
+        reader.readAsDataURL(file);
+      });
+      const parsed = await window.ConstEraAPI.importEstimateDocument({
+        fileName: file.name,
+        mimeType: file.type,
+        contentBase64
+      });
+      const base = createEstimate(new FormData(form));
+      currentEstimate = {
+        ...base,
+        id: `smeta-import-${Date.now()}`,
+        projectLabel: `${file.name} sənədindən smeta`,
+        rows: (parsed.data.rows || []).map((row) => ({ ...row, products: recommendProducts(row) })),
+        note: [base.note, `Mənbə faylı: ${file.name}`].filter(Boolean).join(" · ")
+      };
+      if (window.ConstEraAPI?.catalogEstimate) {
+        const priced = await window.ConstEraAPI.catalogEstimate(currentEstimate.rows.map((row) => ({
+          key: row.key, title: row.title, quantity: row.quantity, unit: row.unit,
+          keywords: row.keywords, productIds: (row.products || []).map((product) => product.id)
+        })));
+        currentEstimate = applyCatalogPricing(currentEstimate, priced.data || {});
+      }
+      writeEstimates([currentEstimate, ...readEstimates()]);
+      renderEstimate(currentEstimate);
+      renderHistory();
+      window.ConstEraTrack?.("estimate_created", { entityType: "estimate", entityId: currentEstimate.id, payload: { source: parsed.data.sourceType, rows: currentEstimate.rows.length } });
+      if (cloudUser && window.ConstEraAPI?.saveEstimate) {
+        await window.ConstEraAPI.saveEstimate({ id: currentEstimate.id, title: currentEstimate.projectLabel, payload: currentEstimate });
+      }
+      if (status) status.textContent = `${currentEstimate.rows.length} material sətri idxal edildi və kataloqla qiymətləndirildi.`;
+    } catch (error) {
+      if (status) status.textContent = error.message || "Smeta faylı idxal olunmadı.";
+    } finally {
+      importButton.disabled = false;
+    }
+  });
   historyList?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-ai-smeta-open]");
     if (!button) return;
@@ -5182,6 +5241,25 @@ const initAiSmeta = () => {
     }
     if (event.target.closest("[data-ai-smeta-print]")) {
       window.print();
+      return;
+    }
+    const cartButton = event.target.closest("[data-ai-smeta-cart]");
+    if (cartButton) {
+      const estimate = readEstimates().find((item) => item.id === cartButton.dataset.aiSmetaCart) || currentEstimate;
+      const selected = (estimate?.rows || []).map((row) => ({
+        product: row.catalog?.selected,
+        quantity: Number(row.catalog?.packageCount || row.quantity || 1)
+      })).filter((item) => item.product?.id && Number.isFinite(item.quantity) && item.quantity > 0);
+      const next = new Map(getCart().map((item) => [item.id, item]));
+      selected.forEach((item) => next.set(item.product.id, {
+        id: item.product.id,
+        quantity: item.quantity,
+        offerId: item.product.offerId || ""
+      }));
+      saveCart([...next.values()]);
+      updateCartIndicators();
+      window.ConstEraTrack?.("add_to_cart", { entityType: "estimate", entityId: estimate?.id || "", payload: { products: selected.length } });
+      if (status) status.innerHTML = `${selected.length} qiymətlənmiş məhsul səbətə əlavə edildi. <a class="source-link" href="checkout.html">Səbəti aç</a>`;
       return;
     }
     const rfqButton = event.target.closest("[data-ai-smeta-rfq]");
@@ -5210,6 +5288,7 @@ const initAiSmeta = () => {
           draft.id === rfq.id ? { ...draft, cloudId: result.data.id, cloudSyncedAt: new Date().toISOString() } : draft
         );
         storage.write("constera-rfq-drafts", drafts);
+        window.ConstEraTrack?.("rfq_created", { entityType: "rfq", entityId: result.data.id, payload: { source: "estimate" } });
         if (status) status.innerHTML = `Sorğu Neon bazasında yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
       } catch (error) {
         if (status) status.innerHTML = `Sorğu lokal qaralama kimi saxlandı. ${escapeHtml(error.message)} <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
@@ -6472,6 +6551,14 @@ const renderCheckout = () => {
   const cardOption = form?.querySelector("[data-payment-card]");
   const approvalFields = form?.querySelector("[data-procurement-fields]");
   if (!itemsContainer || !summary || !form) return;
+  if (getCart().length) {
+    window.ConstEraTrack?.("checkout_start", {
+      entityType: "cart",
+      entityId: "current",
+      eventId: `checkout.${sessionStorage.getItem("constera-session-id") || Date.now()}`,
+      payload: { items: getCart().length }
+    });
+  }
 
   const productById = new Map((marketplace.products || []).map((product) => [product.id, product]));
   let latestDeliveryQuote = null;
@@ -6705,6 +6792,7 @@ const renderCheckout = () => {
         }))
       });
       createdOrder = result.data;
+      window.ConstEraTrack?.("order_created", { entityType: "order", entityId: result.data.id, payload: { items: entries.length } });
       saveCart([]);
       paint();
       setStatus(`Sifariş #${result.data.orderNumber} qəbul edildi.`, "success");
@@ -6757,6 +6845,7 @@ const initActions = () => {
       button.classList.add("is-active");
       button.textContent = "Səbətdədir";
       updateCartIndicators();
+      window.ConstEraTrack?.("add_to_cart", { entityType: "product", entityId: id });
       return;
     }
 

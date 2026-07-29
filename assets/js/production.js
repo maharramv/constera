@@ -229,10 +229,31 @@
       method: "POST",
       body: JSON.stringify({ action: "ai-estimate", input, deterministicEstimate })
     }),
+    importEstimateDocument: (file) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "estimate-document", ...file })
+    }),
     catalogEstimate: (rows) => request("/api/integrations", {
       method: "POST",
       body: JSON.stringify({ action: "catalog-estimate", rows })
     }),
+    testNotification: (channel, recipient) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "test-notification", channel, recipient })
+    }),
+    reviews: (targetType, targetId) => request(`/api/reviews?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`),
+    myReviews: () => request("/api/reviews?scope=mine&limit=100"),
+    reviewModeration: () => request("/api/reviews?scope=moderation&limit=200"),
+    createReview: (data) => request("/api/reviews", { method: "POST", body: JSON.stringify(data) }),
+    updateReview: (data) => request("/api/reviews", { method: "PATCH", body: JSON.stringify(data) }),
+    supportCases: (filters = {}) => request(`/api/support?${new URLSearchParams({ limit: "200", ...filters })}`),
+    createSupportCase: (data) => request("/api/support", { method: "POST", body: JSON.stringify(data) }),
+    updateSupportCase: (data) => request("/api/support", { method: "PATCH", body: JSON.stringify(data) }),
+    catalogQuality: () => request("/api/catalog-quality?limit=200"),
+    scanCatalogQuality: () => request("/api/catalog-quality", { method: "POST", body: "{}" }),
+    updateCatalogQuality: (data) => request("/api/catalog-quality", { method: "PATCH", body: JSON.stringify(data) }),
+    supplierPerformance: () => request("/api/supplier-performance"),
+    trackEvent: (data) => request("/api/events", { method: "POST", body: JSON.stringify(data) }),
     priceMonitor: () => request("/api/price-monitor"),
     scanPriceMonitor: () => request("/api/price-monitor", { method: "POST", body: "{}" }),
     updatePriceReview: (id, action, note = "") => request("/api/price-monitor", {
