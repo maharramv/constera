@@ -205,3 +205,27 @@ test("kataloq başlığı desktop filtr paneli ilə üst-üstə düşmür", asyn
   });
   expect(geometry.headingRight).toBeLessThanOrEqual(geometry.panelLeft - 12);
 });
+
+test("mobil kataloq axtarış təklifləri klaviatura ilə seçilir", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
+  await page.locator("[data-catalog-filter-toggle]").click();
+
+  const search = page.locator("[data-search]");
+  const suggestions = page.locator("[data-search-suggestions]");
+  await search.fill("boya");
+  await expect(suggestions).toBeVisible();
+  await expect.poll(() => suggestions.locator("[data-search-suggestion]").count()).toBeGreaterThan(0);
+  expect(await suggestions.locator("[data-search-suggestion]").count()).toBeLessThanOrEqual(7);
+
+  await search.press("ArrowDown");
+  await expect(suggestions.locator("[data-search-suggestion].is-active")).toHaveCount(1);
+  await search.press("Enter");
+  await expect(search).not.toHaveValue("boya");
+  await expect(suggestions).toBeHidden();
+  await expect(search).toHaveAttribute("aria-expanded", "false");
+
+  const overflow = await page.evaluate(() =>
+    Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

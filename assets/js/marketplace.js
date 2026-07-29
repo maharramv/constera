@@ -105,30 +105,45 @@ const getRentalCategory = (id) =>
   (marketplace.rentalCategories || []).find((category) => category.id === id);
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
+const normalizeSearchText = (value) => normalize(value)
+  .normalize("NFKD")
+  .replace(/\p{M}/gu, "")
+  .replace(/ə/g, "e")
+  .replace(/ı/g, "i")
+  .replace(/[^\p{L}\p{N}]+/gu, " ")
+  .replace(/\s+/g, " ")
+  .trim();
 const searchSynonymMap = {
-  boya: ["kraska", "paint", "emulsiya", "emulsion", "interyer boya", "eksteryer boya"],
-  kraska: ["boya", "paint", "emulsiya"],
+  boya: ["kraska", "краска", "paint", "emulsiya", "emulsion", "interyer boya", "eksteryer boya"],
+  kraska: ["boya", "краска", "paint", "emulsiya"],
+  краска: ["boya", "kraska", "paint", "emulsiya"],
   paint: ["boya", "kraska"],
-  sement: ["cement", "simento", "beton", "m400", "m500"],
+  sement: ["cement", "simento", "цемент", "beton", "m400", "m500"],
   cement: ["sement", "beton"],
+  цемент: ["sement", "cement", "beton"],
   beton: ["hazır beton", "sement", "concrete"],
-  armatur: ["rebar", "metal", "demir", "dəmir"],
+  armatur: ["rebar", "metal", "demir", "dəmir", "арматура"],
+  арматура: ["armatur", "rebar", "demir", "metal"],
   demir: ["dəmir", "armatur", "metal"],
   dəmir: ["demir", "armatur", "metal"],
-  suvaq: ["shtukaturka", "plaster", "gips", "rotband"],
+  suvaq: ["shtukaturka", "штукатурка", "plaster", "gips", "rotband"],
   shtukaturka: ["suvaq", "plaster"],
+  штукатурка: ["suvaq", "shtukaturka", "plaster"],
   gips: ["suvaq", "rotband", "alcipan", "gipsokarton"],
-  macun: ["şpaklyovka", "spaklyovka", "putty", "şpatlevka"],
+  macun: ["şpaklyovka", "spaklyovka", "шпаклевка", "putty", "şpatlevka"],
   şpaklyovka: ["macun", "spaklyovka", "putty"],
   spaklyovka: ["macun", "şpaklyovka", "putty"],
-  kabel: ["cable", "elektrik kabeli", "provod"],
+  kabel: ["cable", "кабель", "elektrik kabeli", "provod", "провод"],
+  кабель: ["kabel", "cable", "provod"],
   cable: ["kabel", "elektrik"],
   rozetka: ["socket", "elektrik rozetkası"],
   avtomat: ["avtomatik açar", "mcb", "schneider", "legrand"],
-  boru: ["pipe", "ppr", "pvc", "hdpe", "truba"],
+  boru: ["pipe", "ppr", "pvc", "hdpe", "truba", "труба"],
   truba: ["boru", "pipe"],
-  kafel: ["plitka", "plitə", "keramoqranit", "tile"],
+  труба: ["boru", "truba", "pipe"],
+  kafel: ["plitka", "плитка", "plitə", "keramoqranit", "tile"],
   plitka: ["kafel", "plitə", "tile"],
+  плитка: ["kafel", "plitka", "tile"],
   laminat: ["laminate", "flooring", "döşəmə"],
   dosheme: ["döşəmə", "flooring", "laminat", "parket"],
   döşəmə: ["dosheme", "flooring", "laminat", "parket"],
@@ -136,46 +151,81 @@ const searchSynonymMap = {
   dam: ["roof", "profnastil", "kirəmit", "membran"],
   alət: ["alet", "tool", "makita", "bosch", "dewalt"],
   alet: ["alət", "tool"],
-  icare: ["icarə", "rental", "kirayə", "avadanlıq icarəsi"],
+  icare: ["icarə", "rental", "kirayə", "arenda", "аренда", "avadanlıq icarəsi"],
   icarə: ["icare", "rental", "kirayə"],
-  temir: ["təmir", "renovasiya", "repair"],
+  аренда: ["icarə", "icare", "rental", "kirayə"],
+  temir: ["təmir", "renovasiya", "repair", "ремонт"],
   təmir: ["temir", "renovasiya", "repair"],
+  ремонт: ["təmir", "temir", "renovasiya", "repair"],
   dizayn: ["design", "interyer", "memarlıq"],
-  smeta: ["estimate", "xərc", "material hesabı"]
+  smeta: ["estimate", "смета", "xərc", "material hesabı"],
+  kq: ["kg", "kiloqram", "килограмм"],
+  kg: ["kq", "kiloqram", "килограмм"],
+  l: ["lt", "litr", "л", "литр"],
+  lt: ["l", "litr", "л", "литр"]
 };
-const expandSearchTokens = (value) => {
-  const tokens = normalize(value)
+
+const normalizedSearchSynonymMap = {};
+Object.entries(searchSynonymMap).forEach(([key, values]) => {
+  const group = [...new Set([
+    normalizeSearchText(key),
+    ...values.flatMap((value) => normalizeSearchText(value).split(" "))
+  ].filter(Boolean))];
+  group.forEach((term) => {
+    normalizedSearchSynonymMap[term] = [...new Set([...(normalizedSearchSynonymMap[term] || []), ...group])];
+  });
+});
+
+const searchStopWords = new Set([
+  "bir", "bu", "ucun", "ile", "olan", "mene", "lazim", "lazimdir",
+  "axtariram", "goster", "mehsul", "material", "ve"
+]);
+
+const expandSearchMeasurement = (token) => {
+  const match = token.match(/^(\d+(?:[.,]\d+)?)(kq|kg|l|lt|л|mm|sm|m2|m3|m)$/);
+  if (!match) return [];
+  const [, amount, unit] = match;
+  const variants = normalizedSearchSynonymMap[unit] || [unit];
+  return [...new Set([
+    token,
+    ...variants.map((variant) => `${amount} ${variant}`),
+    ...variants.map((variant) => `${amount}${variant}`)
+  ])];
+};
+
+const expandSearchGroups = (value) => {
+  const tokens = normalizeSearchText(value)
     .split(/\s+/)
     .map((token) => token.trim())
-    .filter((token) => token.length > 1);
-  const expanded = new Set(tokens);
-  tokens.forEach((token) => {
-    (searchSynonymMap[token] || []).forEach((synonym) => {
-      normalize(synonym).split(/\s+/).forEach((part) => {
-        if (part.length > 1) expanded.add(part);
-      });
-    });
-  });
-  return [...expanded];
+    .filter((token) => token.length > 1 || /^\d+$/.test(token) || token === "l" || token === "л")
+    .filter((token) => !searchStopWords.has(token))
+    .slice(0, 8);
+  return tokens.map((token) => [...new Set([
+    token,
+    ...(normalizedSearchSynonymMap[token] || []),
+    ...expandSearchMeasurement(token)
+  ])].slice(0, 8));
 };
+
+const expandSearchTokens = (value) => [...new Set(expandSearchGroups(value).flat())];
 const matchesExpandedSearch = (searchable, value) => {
-  const tokens = expandSearchTokens(value);
-  if (!tokens.length) return true;
-  const text = normalize(searchable);
-  return tokens.some((token) => text.includes(token));
+  const groups = expandSearchGroups(value);
+  if (!groups.length) return true;
+  const text = normalizeSearchText(searchable);
+  return groups.every((group) => group.some((token) => text.includes(token)));
 };
 const getProductSearchRelevance = (product, value) => {
-  const query = normalize(value);
+  const query = normalizeSearchText(value);
   if (!query) return 0;
 
   const directTokens = query.split(/\s+/).filter((token) => token.length > 1);
   const expandedTokens = expandSearchTokens(value).filter((token) => !directTokens.includes(token));
-  const name = normalize(product.name);
-  const brand = normalize(product.brand);
-  const sku = normalize(product.sku);
-  const subcategory = normalize(product.subcategory);
-  const category = normalize(product.category);
-  const specs = normalize((product.specs || []).join(" "));
+  const name = normalizeSearchText(product.name);
+  const brand = normalizeSearchText(product.brand);
+  const sku = normalizeSearchText(product.sku);
+  const subcategory = normalizeSearchText(product.subcategory);
+  const category = normalizeSearchText(product.category);
+  const specs = normalizeSearchText((product.specs || []).join(" "));
   let score = 0;
 
   if (name === query) score += 400;
@@ -727,6 +777,7 @@ const renderCatalog = () => {
   const sortSelect = document.querySelector("[data-catalog-sort]");
   const originSelect = document.querySelector("[data-origin-filter]");
   const searchInput = document.querySelector("[data-search]");
+  const searchSuggestions = document.querySelector("[data-search-suggestions]");
   const resultCount = document.querySelector("[data-result-count]");
   const emptyState = document.querySelector("[data-empty-state]");
   const activeFilterList = document.querySelector("[data-active-filter-list]");
@@ -765,6 +816,79 @@ const renderCatalog = () => {
   let serverProducts = [];
   let serverRequest = 0;
   let serverTimer = 0;
+  let activeSuggestionIndex = -1;
+
+  const hideSearchSuggestions = () => {
+    if (!searchSuggestions) return;
+    searchSuggestions.hidden = true;
+    searchSuggestions.innerHTML = "";
+    activeSuggestionIndex = -1;
+    searchInput.setAttribute("aria-expanded", "false");
+  };
+
+  const setActiveSearchSuggestion = (index) => {
+    if (!searchSuggestions || searchSuggestions.hidden) return;
+    const buttons = [...searchSuggestions.querySelectorAll("[data-search-suggestion]")];
+    if (!buttons.length) return;
+    activeSuggestionIndex = (index + buttons.length) % buttons.length;
+    buttons.forEach((button, buttonIndex) => {
+      const active = buttonIndex === activeSuggestionIndex;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    buttons[activeSuggestionIndex]?.scrollIntoView({ block: "nearest" });
+  };
+
+  const renderSearchSuggestions = () => {
+    if (!searchSuggestions) return;
+    const query = searchInput.value.trim();
+    if (normalizeSearchText(query).length < 2) {
+      hideSearchSuggestions();
+      return;
+    }
+
+    const seen = new Set();
+    const suggestions = marketplace.products
+      .filter((product) => matchesExpandedSearch([
+        product.name,
+        product.brand,
+        product.sku,
+        product.subcategory,
+        product.package,
+        ...(product.specs || [])
+      ].join(" "), query))
+      .sort((left, right) =>
+        getProductSearchRelevance(right, query) - getProductSearchRelevance(left, query)
+        || compareSourceQuality(left, right, "product"))
+      .filter((product) => {
+        const key = normalizeSearchText(product.name);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 7);
+
+    if (!suggestions.length) {
+      hideSearchSuggestions();
+      return;
+    }
+
+    searchSuggestions.innerHTML = suggestions.map((product) => `
+      <button
+        type="button"
+        role="option"
+        aria-selected="false"
+        data-search-suggestion
+        data-value="${escapeAttr(product.name)}"
+      >
+        <strong>${escapeHtml(product.name)}</strong>
+        <span>${escapeHtml([product.brand, product.subcategory].filter(Boolean).join(" · "))}</span>
+      </button>
+    `).join("");
+    searchSuggestions.hidden = false;
+    searchInput.setAttribute("aria-expanded", "true");
+    activeSuggestionIndex = -1;
+  };
 
   const params = new URLSearchParams(window.location.search);
   let activeCategory = marketplace.categories.some((category) => category.id === params.get("category"))
@@ -1060,7 +1184,39 @@ const renderCatalog = () => {
     applyCatalogFilters();
   });
 
-  searchInput.addEventListener("input", () => applyCatalogFilters(250));
+  searchInput.addEventListener("input", () => {
+    renderSearchSuggestions();
+    applyCatalogFilters(250);
+  });
+  searchInput.addEventListener("focus", renderSearchSuggestions);
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      hideSearchSuggestions();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) return;
+    const buttons = [...(searchSuggestions?.querySelectorAll("[data-search-suggestion]") || [])];
+    if (!buttons.length || searchSuggestions.hidden) return;
+    if (event.key === "Enter") {
+      if (activeSuggestionIndex < 0) return;
+      event.preventDefault();
+      buttons[activeSuggestionIndex]?.click();
+      return;
+    }
+    event.preventDefault();
+    setActiveSearchSuggestion(activeSuggestionIndex + (event.key === "ArrowDown" ? 1 : -1));
+  });
+  searchSuggestions?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-search-suggestion]");
+    if (!button) return;
+    searchInput.value = button.dataset.value || "";
+    hideSearchSuggestions();
+    applyCatalogFilters();
+    searchInput.focus();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest(".catalog-search-field")) hideSearchSuggestions();
+  });
   brandSelect.addEventListener("change", () => applyCatalogFilters());
   groupSelect?.addEventListener("change", () => {
     if (groupSelect.value !== "all") {

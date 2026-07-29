@@ -80,6 +80,7 @@ const [schema] = await query(`
     to_regclass('public.catalog_import_runs') IS NOT NULL AS scraper_runs_ready,
     to_regclass('public.catalog_import_items') IS NOT NULL AS scraper_items_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
+    to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready
 `);
 

@@ -146,8 +146,49 @@
     const prices = qs("[data-admin-v2-prices]");
     if (prices) prices.innerHTML = (data.prices || []).map((item) => {
       const percent = Math.round((Number(item.count || 0) / totalPrices) * 100);
-      return `<div><span><strong>${escapeHtml(priceLabels[item.status] || item.status)}</strong><small>${item.count} · ${percent}%</small></span><i style="--admin-progress:${percent}%"></i></div>`;
+      const label = priceLabels[item.status] || item.status;
+      return `<div><span><strong>${escapeHtml(label)}</strong><small>${item.count} · ${percent}%</small></span><progress max="100" value="${percent}" aria-label="${escapeHtml(label)}: ${percent}%"></progress></div>`;
     }).join("") || "<p>Məlumat yoxdur.</p>";
+
+    const quality = data.quality || {};
+    const qualitySummary = quality.summary || {};
+    const qualityTotal = Number(qualitySummary.total || 0);
+    const qualityScore = Math.max(0, Math.min(100, Number(quality.score || 0)));
+    const qualityScoreNode = qs("[data-admin-v2-quality-score]");
+    if (qualityScoreNode) {
+      qualityScoreNode.textContent = `${qualityScore}%`;
+      qualityScoreNode.dataset.tone = qualityScore >= 85 ? "good" : qualityScore >= 65 ? "warning" : "critical";
+    }
+    setText(
+      "[data-admin-v2-quality-summary]",
+      `${qualityTotal.toLocaleString("az-AZ")} aktiv məhsul · ${Number(qualitySummary.expiredPrice || 0).toLocaleString("az-AZ")} vaxtı keçmiş qiymət · ${Number(qualitySummary.unknownStock || 0).toLocaleString("az-AZ")} dəqiqləşdirilməmiş stok`
+    );
+    const qualityMetrics = [
+      ["Real foto", "missingImage"],
+      ["Mənbə URL-i", "missingSource"],
+      ["Texniki məlumat", "missingSpecs"],
+      ["Dəqiq brend", "missingBrand"],
+      ["Düzgün kateqoriya", "missingCategory"]
+    ];
+    const qualityBars = qs("[data-admin-v2-quality-bars]");
+    if (qualityBars) qualityBars.innerHTML = qualityMetrics.map(([label, key]) => {
+      const missing = Number(qualitySummary[key] || 0);
+      const complete = Math.max(0, qualityTotal - missing);
+      const percent = qualityTotal ? Math.round((complete / qualityTotal) * 100) : 100;
+      return `<div><span><strong>${escapeHtml(label)}</strong><small>${complete.toLocaleString("az-AZ")} / ${qualityTotal.toLocaleString("az-AZ")} · ${percent}%</small></span><progress max="100" value="${percent}" aria-label="${escapeHtml(label)}: ${percent}%"></progress></div>`;
+    }).join("");
+
+    const qualityItems = quality.items || [];
+    setText("[data-admin-v2-quality-count]", `${qualityItems.length.toLocaleString("az-AZ")} prioritet qeyd`);
+    const qualityBody = qs("[data-admin-v2-quality-items]");
+    if (qualityBody) qualityBody.innerHTML = qualityItems.map((item) => `
+      <tr>
+        <td data-label="Məhsul"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)}</small></td>
+        <td data-label="Brend">${escapeHtml(item.brand || "Brendsiz")}</td>
+        <td data-label="Problemlər"><div class="admin-v2-quality-issues">${(item.issues || []).map((issue) => `<span>${escapeHtml(issue)}</span>`).join("")}</div></td>
+        <td data-label="Son yenilənmə">${formatDate(item.updatedAt, true)}</td>
+      </tr>
+    `).join("") || '<tr><td colspan="4">Diqqət tələb edən məhsul tapılmadı.</td></tr>';
 
     const integrationLabels = {
       database: "Neon PostgreSQL",

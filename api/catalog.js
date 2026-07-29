@@ -1,4 +1,5 @@
 import { query } from "./_lib/db.js";
+import { expandCatalogSearchGroups, foldCatalogSearchText } from "./_lib/catalog-search.js";
 import { assertMethod, sendJson, withApiErrors } from "./_lib/http.js";
 import { categoryPublicId, categoryStorageId, parseLimit, parsePriceAmount, text } from "./_lib/validation.js";
 
@@ -30,7 +31,7 @@ const mapProduct = (row) => ({
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET"]);
-  const pageSize = parseLimit(req.query.pageSize || req.query.limit, 200, 1_000);
+  const pageSize = parseLimit(req.query.pageSize || req.query.limit, 96, 1_000);
   const parsedPage = Number.parseInt(String(req.query.page || "1"), 10);
   const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
   const offset = (page - 1) * pageSize;
@@ -43,7 +44,10 @@ export default withApiErrors(async (req, res) => {
   const priceStatus = text(req.query.priceStatus, { max: 40 });
   const sourceStatus = text(req.query.source, { max: 40 });
   const origin = text(req.query.origin, { max: 40 });
-  const productsOnly = req.query.scope === "products";
+  const requestedScope = String(req.query.scope || "products");
+  const scope = ["products", "facets", "full"].includes(requestedScope) ? requestedScope : "products";
+  const includeFacets = scope === "facets" || scope === "full";
+  const includeStructure = scope === "full";
   const minPrice = parsePriceAmount(req.query.minPrice);
   const maxPrice = parsePriceAmount(req.query.maxPrice);
   const sort = ["quality", "relevance", "newest", "name", "price_asc", "price_desc"].includes(String(req.query.sort || ""))
@@ -51,13 +55,43 @@ export default withApiErrors(async (req, res) => {
     : queryText ? "relevance" : "quality";
   const values = [];
   const where = ["p.status = 'active'"];
-  const searchExpression = `lower(coalesce(p.name, '') || ' ' || coalesce(p.sku, '') || ' ' || coalesce(p.brand, '') || ' ' || coalesce(p.subcategory, ''))`;
+  const searchExpression = `translate(
+    lower(
+      coalesce(p.name, '') || ' ' ||
+      coalesce(p.sku, '') || ' ' ||
+      coalesce(p.brand, '') || ' ' ||
+      coalesce(p.subcategory, '') || ' ' ||
+      coalesce(p.package_text, '') || ' ' ||
+      coalesce(p.supplier_name, '') || ' ' ||
+      coalesce(p.origin, '') || ' ' ||
+      coalesce(p.specs::text, '')
+    ),
+    'əğıöşüç',
+    'egiosuc'
+  )`;
+  const nameSearchExpression = `translate(lower(coalesce(p.name, '')), 'əğıöşüç', 'egiosuc')`;
+  const brandSearchExpression = `translate(lower(coalesce(p.brand, '')), 'əğıöşüç', 'egiosuc')`;
+  const skuSearchExpression = "lower(coalesce(p.sku, ''))";
   let relevanceIndex = 0;
   if (queryText) {
-    values.push(queryText.toLocaleLowerCase("az-AZ"));
-    relevanceIndex = values.length;
-    values.push(`%${queryText.toLocaleLowerCase("az-AZ")}%`);
-    where.push(`(${searchExpression} ILIKE $${values.length} OR similarity(${searchExpression}, $${relevanceIndex}) > 0.2)`);
+    const normalizedQuery = foldCatalogSearchText(queryText);
+    const searchGroups = expandCatalogSearchGroups(queryText);
+    if (normalizedQuery && searchGroups.length) {
+      values.push(normalizedQuery);
+      relevanceIndex = values.length;
+      const groupConditions = searchGroups.map((group) => {
+        const variantConditions = group.map((variant) => {
+          values.push(`%${variant}%`);
+          return `${searchExpression} ILIKE $${values.length}`;
+        });
+        return `(${variantConditions.join(" OR ")})`;
+      });
+      where.push(`(
+        (${groupConditions.join(" AND ")})
+        OR similarity(${nameSearchExpression}, $${relevanceIndex}) > 0.28
+        OR word_similarity($${relevanceIndex}, ${searchExpression}) > 0.38
+      )`);
+    }
   }
   if (category) {
     values.push(categoryStorageId("material", category));
@@ -110,6 +144,28 @@ export default withApiErrors(async (req, res) => {
     CASE WHEN p.price_status = 'confirmed' AND NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL THEN 180 ELSE 0 END +
     CASE WHEN p.price_verified_at IS NOT NULL THEN 25 ELSE 0 END
   )`;
+  const relevanceExpression = relevanceIndex
+    ? `(
+      CASE
+        WHEN ${nameSearchExpression} = $${relevanceIndex} THEN 900
+        WHEN ${nameSearchExpression} LIKE $${relevanceIndex} || '%' THEN 620
+        WHEN ${nameSearchExpression} LIKE '%' || $${relevanceIndex} || '%' THEN 460
+        ELSE 0
+      END +
+      CASE
+        WHEN ${skuSearchExpression} = $${relevanceIndex} THEN 500
+        WHEN ${skuSearchExpression} LIKE '%' || $${relevanceIndex} || '%' THEN 260
+        ELSE 0
+      END +
+      CASE
+        WHEN ${brandSearchExpression} = $${relevanceIndex} THEN 300
+        WHEN ${brandSearchExpression} LIKE '%' || $${relevanceIndex} || '%' THEN 180
+        ELSE 0
+      END +
+      similarity(${nameSearchExpression}, $${relevanceIndex}) * 260 +
+      word_similarity($${relevanceIndex}, ${searchExpression}) * 140
+    )`
+    : "0";
   const orderBy = sort === "price_asc"
     ? "p.price_amount ASC NULLS LAST, p.name ASC"
     : sort === "price_desc"
@@ -117,7 +173,7 @@ export default withApiErrors(async (req, res) => {
       : sort === "name"
         ? "p.name ASC"
         : sort === "relevance" && relevanceIndex
-          ? `similarity(${searchExpression}, $${relevanceIndex}) DESC, ${qualityExpression} DESC, p.name ASC`
+          ? `${relevanceExpression} DESC, ${qualityExpression} DESC, p.name ASC`
           : sort === "newest"
             ? "p.updated_at DESC, p.name ASC"
             : `${qualityExpression} DESC, p.name ASC`;
@@ -132,28 +188,28 @@ export default withApiErrors(async (req, res) => {
       productValues
     ),
     query(`SELECT count(*)::int AS count FROM products p WHERE ${where.join(" AND ")}`, filteredValues),
-    productsOnly
+    !includeFacets
       ? Promise.resolve([])
       : query(`SELECT p.brand AS value, count(*)::int AS count FROM products p WHERE ${where.join(" AND ")} GROUP BY p.brand ORDER BY count(*) DESC, p.brand LIMIT 200`, filteredValues),
-    productsOnly
+    !includeFacets
       ? Promise.resolve([])
       : query(`SELECT p.subcategory AS value, count(*)::int AS count FROM products p WHERE ${where.join(" AND ")} GROUP BY p.subcategory ORDER BY count(*) DESC, p.subcategory LIMIT 500`, filteredValues),
-    productsOnly
+    !includeFacets
       ? Promise.resolve([])
       : query(`SELECT p.availability AS value, count(*)::int AS count FROM products p WHERE ${where.join(" AND ")} GROUP BY p.availability ORDER BY count(*) DESC, p.availability LIMIT 100`, filteredValues),
-    productsOnly
+    !includeFacets
       ? Promise.resolve([])
       : query(`SELECT p.price_status AS value, count(*)::int AS count FROM products p WHERE ${where.join(" AND ")} GROUP BY p.price_status ORDER BY p.price_status`, filteredValues),
-    productsOnly
+    !includeFacets
       ? Promise.resolve([])
       : query(`SELECT p.category_id AS value, count(*)::int AS count FROM products p WHERE ${where.join(" AND ")} GROUP BY p.category_id ORDER BY count(*) DESC`, filteredValues),
-    productsOnly
+    !includeStructure
       ? Promise.resolve([])
       : query("SELECT id, parent_id, kind, title, slug, subtitle, group_name, sort_order FROM categories WHERE active = true ORDER BY sort_order, title"),
-    productsOnly
+    !includeStructure
       ? Promise.resolve([])
       : query("SELECT id, name, supplier_type, focus, website, status, region, contact, rating, response_time FROM suppliers WHERE status <> 'Arxiv' ORDER BY name"),
-    productsOnly
+    !includeStructure
       ? Promise.resolve([])
       : query("SELECT id, entity_kind, category_id, subcategory, title, unit, price_text, extra_data, updated_at FROM marketplace_entities WHERE status = 'active' ORDER BY title")
   ]);
@@ -195,7 +251,7 @@ export default withApiErrors(async (req, res) => {
       pageCount: Math.max(1, Math.ceil(total / pageSize)),
       total,
       productCount: productRows.length,
-      scope: productsOnly ? "products" : "full",
+      scope,
       sort,
       facets: {
         brands: brandRows,

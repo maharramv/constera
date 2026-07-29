@@ -75,8 +75,9 @@
       method: "DELETE",
       body: JSON.stringify({ action: "delete-estimate", id })
     }),
-    catalog: (filters = { limit: "1000" }) => {
-      const params = new URLSearchParams(filters);
+    catalog: (filters = {}) => {
+      const params = new URLSearchParams({ scope: "products", ...filters });
+      if (!params.has("pageSize") && !params.has("limit")) params.set("pageSize", "96");
       return request(`/api/catalog?${params}`);
     },
     product: (id) => request(`/api/products?id=${encodeURIComponent(id)}&limit=1`),
@@ -354,7 +355,7 @@
     pullButton?.addEventListener("click", async () => {
       setButtonBusy(pullButton, true, "Oxunur...");
       try {
-        const result = await api.catalog();
+        const result = await api.catalog({ limit: "1000", scope: "full" });
         const data = result.data || {};
         localStorage.setItem("constera-admin-products", JSON.stringify(data.products || []));
         localStorage.setItem("constera-admin-suppliers", JSON.stringify(data.suppliers || []));

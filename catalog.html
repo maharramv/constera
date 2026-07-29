@@ -72,10 +72,30 @@
             data-catalog-filter-toggle
           >Filtrləri göstər</button>
           <div class="market-command glass" id="catalog-filter-panel" data-catalog-filter-panel>
-            <label>
-              <span>Axtarış</span>
-              <input data-search type="search" placeholder="məsələn: boya 15 L, Bosch, armatur 12 mm" />
-            </label>
+            <div class="catalog-search-field">
+              <label for="catalog-search-input">
+                <span>Axtarış</span>
+                <input
+                  id="catalog-search-input"
+                  data-search
+                  type="search"
+                  placeholder="məsələn: boya 15 L, Bosch, armatur 12 mm"
+                  autocomplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="catalog-search-suggestions"
+                  aria-expanded="false"
+                />
+              </label>
+              <div
+                class="catalog-search-suggestions"
+                id="catalog-search-suggestions"
+                data-search-suggestions
+                role="listbox"
+                aria-label="Məhsul təklifləri"
+                hidden
+              ></div>
+            </div>
             <label>
               <span>Qrup</span>
               <select data-group-filter></select>
