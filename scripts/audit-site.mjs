@@ -248,7 +248,7 @@ htmlFiles.forEach((file) => {
 try {
   const vercelConfig = JSON.parse(readFileSync(join(root, "vercel.json"), "utf8"));
   if (vercelConfig.framework !== null) report(errors, "vercel.json", "Statik layihə üçün framework null olmalıdır.");
-  if (vercelConfig.buildCommand !== "npm run build:static") report(errors, "vercel.json", "Build əmri npm run build:static olmalıdır.");
+  if (vercelConfig.buildCommand !== "npm run vercel-build") report(errors, "vercel.json", "Build əmri npm run vercel-build olmalıdır.");
   if (vercelConfig.outputDirectory !== "dist") report(errors, "vercel.json", "Çıxış qovluğu dist olmalıdır.");
   if (vercelConfig.installCommand !== "npm ci") report(errors, "vercel.json", "Asılılıqlar üçün npm ci işlədilməlidir.");
   if (!vercelConfig.functions?.["api/*.js"]) report(errors, "vercel.json", "Vercel Functions konfiqurasiyası tapılmadı.");
