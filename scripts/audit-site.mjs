@@ -247,9 +247,11 @@ htmlFiles.forEach((file) => {
 try {
   const vercelConfig = JSON.parse(readFileSync(join(root, "vercel.json"), "utf8"));
   if (vercelConfig.framework !== null) report(errors, "vercel.json", "Statik layihə üçün framework null olmalıdır.");
-  if (vercelConfig.buildCommand !== "npm run vercel-build") report(errors, "vercel.json", "Build əmri npm run vercel-build olmalıdır.");
+  if (vercelConfig.buildCommand !== "npm run build:static") report(errors, "vercel.json", "Build əmri npm run build:static olmalıdır.");
   if (vercelConfig.outputDirectory !== "dist") report(errors, "vercel.json", "Çıxış qovluğu dist olmalıdır.");
-  if (vercelConfig.installCommand !== "npm ci") report(errors, "vercel.json", "Asılılıqlar üçün npm ci işlədilməlidir.");
+  if (vercelConfig.installCommand !== "npm ci && npm run verify:deploy") {
+    report(errors, "vercel.json", "Install mərhələsi npm ci və birdəfəlik deployment yoxlamasını işlətməlidir.");
+  }
   if (!vercelConfig.functions?.["api/*.js"]) report(errors, "vercel.json", "Vercel Functions konfiqurasiyası tapılmadı.");
   const securityHeaders = new Set((vercelConfig.headers || []).flatMap((rule) =>
     (rule.headers || []).map((header) => String(header.key || "").toLowerCase())));
@@ -267,7 +269,7 @@ try {
   }
   if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
   if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
-  ["build:static", "vercel-build", "audit:dist", "db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:production", "check:full"].forEach((script) => {
+  ["build:static", "vercel-build", "verify:deploy", "audit:dist", "db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:production", "check:full"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
 } catch (error) {

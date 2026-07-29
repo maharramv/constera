@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm ci",
-  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm ci && npm run verify:deploy",
+  "buildCommand": "npm run build:static",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/account", "destination": "/api/admin?__route=account" },

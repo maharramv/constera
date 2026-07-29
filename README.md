@@ -70,7 +70,7 @@ Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçat
 - `scripts/audit-site.mjs` - səhifə, keçid, SEO, məlumat və SKU bütövlüyü auditi
 - `scripts/vercel-build.mjs` - statik Vercel ixracı
 - `tests/layout/` - bütün səhifələrin mobile və desktop ölçülərində Playwright layout testləri
-- `npm run vercel-build` - hər Vercel deploy-u üçün məcburi audit, API, sayt və build quality gate-i
+- `npm run verify:deploy` - hər Vercel deploy-unda bir dəfə işləyən məcburi audit, API və sayt quality gate-i
 - `docs/quality-workflow.yml` - token-da `workflow` icazəsi aktivləşəndə GitHub Actions üçün responsiv test şablonu
 - `docs/production-monitor-workflow.yml` - `constera.az` üçün altı saatlıq smoke monitorinqi şablonu
 

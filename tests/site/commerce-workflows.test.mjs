@@ -267,7 +267,8 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   assert.match(qualityWorkflow, /npm run test:layout/);
   assert.match(monitorWorkflow, /npm run check:production/);
   assert.match(productionCheck, /database === "ready"/);
-  assert.match(packageJson.scripts["vercel-build"], /npm run test:api/);
-  assert.match(packageJson.scripts["vercel-build"], /npm run test:site/);
-  assert.equal(vercelConfig.buildCommand, "npm run vercel-build");
+  assert.match(packageJson.scripts["verify:deploy"], /npm run test:api/);
+  assert.match(packageJson.scripts["verify:deploy"], /npm run test:site/);
+  assert.equal(vercelConfig.installCommand, "npm ci && npm run verify:deploy");
+  assert.equal(vercelConfig.buildCommand, "npm run build:static");
 });
