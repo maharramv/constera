@@ -11,6 +11,12 @@ export const parseCsv = (source) => {
   let field = "";
   let quoted = false;
   const text = String(source || "").replace(/^\uFEFF/, "");
+  const firstLine = text.split(/\r?\n/, 1)[0] || "";
+  const delimiter = firstLine.includes("\t")
+    ? "\t"
+    : firstLine.includes(";") && !firstLine.includes(",")
+      ? ";"
+      : ",";
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
     if (quoted) {
@@ -24,7 +30,7 @@ export const parseCsv = (source) => {
       }
     } else if (char === '"') {
       quoted = true;
-    } else if (char === ",") {
+    } else if (char === delimiter) {
       row.push(field.trim());
       field = "";
     } else if (char === "\n") {
@@ -98,9 +104,10 @@ const aliases = {
   origin: ["mense", "mənşə", "origin", "olke", "ölkə"],
   supplier: ["techizatci", "təchizatçı", "supplier"],
   price: ["qiymet", "qiymət", "price"],
+  priceStatus: ["qiymetstatusu", "qiymətstatusu", "status", "pricestatus"],
   currency: ["valyuta", "currency"],
   availability: ["movcudluq", "mövcudluq", "stok", "availability"],
-  stockQuantity: ["stokmiqdari", "stokmiqdarı", "stockquantity"],
+  stockQuantity: ["stok", "stokmiqdari", "stokmiqdarı", "stock", "stockquantity", "quantity"],
   minimumOrder: ["minimumsifaris", "minimumsifariş", "minimumorder"],
   imageUrl: ["fotourl", "sekilurl", "şəkilurl", "imageurl"],
   sourceUrl: ["menbeurl", "mənbəurl", "sourceurl"],

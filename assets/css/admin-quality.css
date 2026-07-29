@@ -1,0 +1,90 @@
+.admin-quality-dialog {
+  width: min(920px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: #10161d;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+}
+
+.admin-quality-dialog::backdrop {
+  background: rgba(4, 7, 10, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.admin-quality-form {
+  display: grid;
+  max-height: calc(100dvh - 30px);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.admin-quality-dialog-header,
+.admin-quality-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 20px;
+}
+
+.admin-quality-dialog-header h2 {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+}
+
+.admin-quality-dialog-close {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  font: 400 1.65rem/1 var(--font-body);
+  cursor: pointer;
+}
+
+.admin-quality-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 20px;
+  overflow: auto;
+}
+
+.admin-quality-dialog-actions {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+}
+
+.admin-quality-dialog .admin-import-status {
+  min-height: 24px;
+  margin: 0;
+  padding: 0 20px 16px;
+}
+
+@media (max-width: 760px) {
+  .admin-quality-form-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .admin-quality-dialog-header,
+  .admin-quality-dialog-actions {
+    padding: 14px 16px;
+  }
+
+  .admin-quality-dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-quality-dialog-actions .button:first-child {
+    grid-column: 1 / -1;
+  }
+}

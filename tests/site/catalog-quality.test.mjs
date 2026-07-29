@@ -9,6 +9,8 @@ test("kataloq standart olaraq yüngül məhsul cavabı və açıq tam sinxroniza
   assert.match(catalogApi, /req\.query\.scope \|\| "products"/);
   assert.match(catalogApi, /scope === "facets" \|\| scope === "full"/);
   assert.match(catalogApi, /scope === "full"/);
+  assert.match(catalogApi, /requestGroupExpression/);
+  assert.match(catalogApi, /requestGroupExpression\} ASC/);
   assert.match(production, /scope:\s*"products"/);
   assert.match(production, /api\.catalog\(\{ limit: "1000", scope: "full" \}\)/);
 });
@@ -62,6 +64,7 @@ test("statik build JS və CSS fayllarını məzmun hash-i ilə versiyalayır", (
   const serviceWorker = readFileSync("service-worker.js", "utf8");
 
   assert.match(build, /createHash\("sha256"\)/);
+  assert.match(build, /readdirSync\("dist\/assets\/css"\)/);
   assert.match(build, /\?v=\$\{revision\}/);
   assert.match(build, /constera-shell-\$\{revision\}/);
   assert.match(buildAudit, /asset versiyası yoxdur/);

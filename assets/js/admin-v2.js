@@ -15,7 +15,8 @@
     imports: [],
     staging: [],
     audit: [],
-    account: null
+    account: null,
+    qualityProduct: null
   };
 
   const qs = (selector, root = document) => root.querySelector(selector);
@@ -161,7 +162,7 @@
     }
     setText(
       "[data-admin-v2-quality-summary]",
-      `${qualityTotal.toLocaleString("az-AZ")} aktiv məhsul · ${Number(qualitySummary.expiredPrice || 0).toLocaleString("az-AZ")} vaxtı keçmiş qiymət · ${Number(qualitySummary.unknownStock || 0).toLocaleString("az-AZ")} dəqiqləşdirilməmiş stok`
+      `${qualityTotal.toLocaleString("az-AZ")} real satış qeydi · ${Number(qualitySummary.requestGroups || 0).toLocaleString("az-AZ")} RFQ məhsul qrupu · ${Number(qualitySummary.unknownStock || 0).toLocaleString("az-AZ")} dəqiqləşdirilməmiş stok`
     );
     const qualityMetrics = [
       ["Real foto", "missingImage"],
@@ -187,8 +188,9 @@
         <td data-label="Brend">${escapeHtml(item.brand || "Brendsiz")}</td>
         <td data-label="Problemlər"><div class="admin-v2-quality-issues">${(item.issues || []).map((issue) => `<span>${escapeHtml(issue)}</span>`).join("")}</div></td>
         <td data-label="Son yenilənmə">${formatDate(item.updatedAt, true)}</td>
+        <td data-label="Əməliyyat"><button class="table-action" type="button" data-quality-edit="${escapeHtml(item.id)}">Düzəlt</button></td>
       </tr>
-    `).join("") || '<tr><td colspan="4">Diqqət tələb edən məhsul tapılmadı.</td></tr>';
+    `).join("") || '<tr><td colspan="5">Diqqət tələb edən real məhsul tapılmadı.</td></tr>';
 
     const integrationLabels = {
       database: "Neon PostgreSQL",
@@ -436,9 +438,103 @@
     renderSystem();
   };
 
+  const qualityDialog = qs("[data-admin-quality-dialog]");
+  const qualityForm = qs("[data-admin-quality-form]");
+  const qualityCategory = qs("[data-admin-quality-category]");
+  const qualityStatus = (message, type = "info") => setStatus("[data-admin-quality-status]", message, type);
+  const closeQualityEditor = () => {
+    if (qualityDialog?.open) qualityDialog.close();
+    state.qualityProduct = null;
+    qualityForm?.reset();
+  };
+  const qualityCategoryOptions = (selected = "") => {
+    if (!qualityCategory) return;
+    qualityCategory.innerHTML = state.categories
+      .filter((category) => category.kind === "material" && !category.parentId && category.active)
+      .map((category) => `<option value="${escapeHtml(category.id)}" ${category.id === selected ? "selected" : ""}>${escapeHtml(category.title)}</option>`)
+      .join("");
+  };
+  const openQualityEditor = async (id, button) => {
+    setButtonBusy(button, true, "Açılır...");
+    try {
+      const result = await api.product(id);
+      const product = result.data;
+      state.qualityProduct = product;
+      qualityCategoryOptions(product.category);
+      qualityForm.elements.id.value = product.id || "";
+      qualityForm.elements.sku.value = product.sku || "";
+      qualityForm.elements.name.value = product.name || "";
+      qualityForm.elements.brand.value = product.brand || "Brendsiz";
+      qualityForm.elements.category.value = product.category || "";
+      qualityForm.elements.subcategory.value = product.subcategory || "";
+      qualityForm.elements.package.value = product.package || "";
+      qualityForm.elements.imageUrl.value = product.imageUrl || "";
+      qualityForm.elements.sourceUrl.value = product.sourceUrl || "";
+      qualityForm.elements.priceStatus.value = product.priceStatus || "request";
+      qualityForm.elements.priceAmount.value = product.priceAmount ?? "";
+      qualityForm.elements.stockQuantity.value = product.stockQuantity ?? "";
+      qualityForm.elements.minimumOrder.value = product.minimumOrder ?? "";
+      qualityForm.elements.availability.value = product.availability || "Stok sorğu ilə";
+      qualityForm.elements.specs.value = (product.specs || []).join("; ");
+      setText("[data-admin-quality-title]", `${product.name} · ${product.sku}`);
+      const productLink = qs("[data-admin-quality-product-link]");
+      if (productLink) productLink.href = `product-detail.html?product=${encodeURIComponent(product.id)}`;
+      qualityStatus("Yalnız yoxlanmış real məlumatı saxla.");
+      qualityDialog.showModal();
+    } catch (error) {
+      setStatus("[data-admin-v2-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  };
+
   qs("[data-admin-v2-refresh]")?.addEventListener("click", (event) => {
     setButtonBusy(event.currentTarget, true, "Yenilənir...");
     loadDashboard().catch((error) => setStatus("[data-admin-v2-status]", error.message, "error")).finally(() => setButtonBusy(event.currentTarget, false));
+  });
+  qs("[data-admin-v2-quality-items]")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-quality-edit]");
+    if (button) openQualityEditor(button.dataset.qualityEdit, button);
+  });
+  document.querySelectorAll("[data-admin-quality-close]").forEach((button) => {
+    button.addEventListener("click", closeQualityEditor);
+  });
+  qualityDialog?.addEventListener("click", (event) => {
+    if (event.target === qualityDialog) closeQualityEditor();
+  });
+  qualityForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.qualityProduct) return;
+    const fields = Object.fromEntries(new FormData(qualityForm).entries());
+    const priceStatus = fields.priceStatus || "request";
+    const priceAmount = fields.priceAmount === "" ? null : Number(fields.priceAmount);
+    if (priceStatus === "confirmed" && (!Number.isFinite(priceAmount) || !fields.sourceUrl)) {
+      qualityStatus("Təsdiqli qiymət üçün məbləğ və HTTPS mənbə URL-i tələb olunur.", "warning");
+      return;
+    }
+    const button = qualityForm.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Saxlanır...");
+    try {
+      const currency = state.qualityProduct.priceCurrency || "AZN";
+      await api.saveProduct({
+        ...state.qualityProduct,
+        ...fields,
+        priceAmount: priceStatus === "confirmed" ? priceAmount : null,
+        price: priceStatus === "confirmed"
+          ? `${priceAmount.toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`
+          : "Sorğu əsasında",
+        stockQuantity: fields.stockQuantity === "" ? null : Number(fields.stockQuantity),
+        minimumOrder: fields.minimumOrder === "" ? null : Number(fields.minimumOrder),
+        specs: String(fields.specs || "").split(";").map((item) => item.trim()).filter(Boolean)
+      }, true);
+      closeQualityEditor();
+      await loadDashboard();
+      setStatus("[data-admin-v2-status]", "Məhsul məlumatı yeniləndi və keyfiyyət balı yenidən hesablandı.", "success");
+    } catch (error) {
+      qualityStatus(error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
   });
 
   const categoryForm = qs("[data-admin-v2-category-form]");

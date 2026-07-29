@@ -1,6 +1,7 @@
 import { requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { matrixToObjects, parseCsv, readAliased } from "../_lib/imports.js";
 import { categoryPublicId, oneOf, parseLimit, parsePriceAmount, safeUrl, text } from "../_lib/validation.js";
 
 const formatPrice = (amount, currency) => `${Number(amount).toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
@@ -10,6 +11,26 @@ const optionalAmount = (value, field) => {
   const amount = parsePriceAmount(value);
   if (amount === null) throw new ApiError(400, "validation_error", `${field} mənfi və ya yanlış ola bilməz.`);
   return amount;
+};
+
+const normalizeBulkStatus = (value) => {
+  const status = String(value || "").trim().toLocaleLowerCase("az-AZ");
+  if (!status) return "";
+  if (["confirmed", "təsdiqli", "tesdiqli", "aktiv"].includes(status)) return "confirmed";
+  if (["request", "sorğu", "sorgu", "sorğu ilə", "sorgu ile"].includes(status)) return "request";
+  if (["expired", "vaxtı keçib", "vaxti kecib", "köhnə", "kohne"].includes(status)) return "expired";
+  return null;
+};
+
+const bulkAmount = (value, field, errors) => {
+  const source = String(value ?? "").trim();
+  if (!source) return { provided: false, value: null };
+  const normalized = source.replace(/\s/g, "").replace(",", ".").replace(/(?:azn|manat)$/i, "");
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    errors.push(`${field} düzgün müsbət rəqəm deyil.`);
+    return { provided: true, value: null };
+  }
+  return { provided: true, value: Number(normalized) };
 };
 
 const supplierScope = async (user, requestedSupplierId = "") => {
@@ -108,6 +129,90 @@ const loadInventory = async (user, requestedSupplierId = "", limitValue = 500) =
   };
 };
 
+const parseBulkInventory = async (body, supplier) => {
+  const csv = text(body.csv, { field: "CSV məlumatı", required: true, max: 180_000 });
+  const matrix = parseCsv(csv);
+  const sourceRows = matrixToObjects(matrix);
+  if (!sourceRows.length) throw new ApiError(400, "empty_inventory_import", "CSV-də məlumat sətri tapılmadı.");
+  if (sourceRows.length > 1_000) throw new ApiError(413, "inventory_import_too_large", "Bir dəfəyə maksimum 1 000 SKU yenilənə bilər.");
+
+  const values = [];
+  const where = ["status = 'active'"];
+  if (supplier) {
+    values.push(supplier.id);
+    where.push(`supplier_id = $${values.length}`);
+  }
+  const products = await query(`SELECT * FROM products WHERE ${where.join(" AND ")}`, values);
+  const productsBySku = new Map(products.map((product) => [product.sku.trim().toLocaleLowerCase("az-AZ"), product]));
+  const seen = new Set();
+  const preview = sourceRows.map((row, index) => {
+    const rowNumber = index + 2;
+    const sku = text(readAliased(row, "sku"), { max: 120 });
+    const skuKey = sku.toLocaleLowerCase("az-AZ");
+    const product = productsBySku.get(skuKey);
+    const errors = [];
+    if (!sku) errors.push("SKU boşdur.");
+    if (sku && !product) errors.push("SKU bu təchizatçıya aid deyil.");
+    if (sku && seen.has(skuKey)) errors.push("SKU faylda təkrar olunub.");
+    if (sku) seen.add(skuKey);
+
+    const price = bulkAmount(readAliased(row, "price"), "Qiymət", errors);
+    const stock = bulkAmount(readAliased(row, "stockQuantity"), "Stok", errors);
+    const minimumOrder = bulkAmount(readAliased(row, "minimumOrder"), "Minimum sifariş", errors);
+    const statusInput = normalizeBulkStatus(readAliased(row, "priceStatus"));
+    if (statusInput === null) errors.push("Qiymət statusu tanınmadı.");
+    const priceStatus = statusInput || product?.price_status || "request";
+    const priceAmount = price.provided ? price.value : product?.price_amount == null ? null : Number(product.price_amount);
+    const sourceInput = text(readAliased(row, "sourceUrl"), { max: 2_000 });
+    let sourceUrl = sourceInput || product?.source_url || "";
+    if (sourceInput) {
+      try {
+        sourceUrl = safeUrl(sourceInput, "Mənbə URL-i");
+      } catch {
+        errors.push("Mənbə düzgün HTTPS ünvanı olmalıdır.");
+      }
+    }
+    if (priceStatus === "confirmed" && (priceAmount === null || !sourceUrl.startsWith("https://"))) {
+      errors.push("Təsdiqli qiymət üçün məbləğ və HTTPS mənbə tələb olunur.");
+    }
+
+    const changes = [];
+    if (price.provided) changes.push(`qiymət: ${price.value ?? "-"}`);
+    if (statusInput) changes.push(`status: ${statusInput}`);
+    if (stock.provided) changes.push(`stok: ${stock.value ?? "-"}`);
+    if (minimumOrder.provided) changes.push(`min.: ${minimumOrder.value ?? "-"}`);
+    if (sourceInput) changes.push("mənbə");
+    if (!changes.length) errors.push("Yenilənəcək sahə yoxdur.");
+
+    const update = product ? {
+      id: product.id,
+      priceStatus,
+      priceCurrency: product.price_currency || "AZN",
+      sourceUrl,
+      priceNote: "Təchizatçı toplu inventar yeniləməsi",
+      ...(priceStatus === "confirmed" || price.provided ? { priceAmount } : {}),
+      ...(stock.provided ? { stockQuantity: stock.value } : {}),
+      ...(minimumOrder.provided ? { minimumOrder: minimumOrder.value } : {})
+    } : null;
+    return {
+      rowNumber,
+      sku: sku || "-",
+      name: product?.name || "",
+      changes,
+      errors,
+      valid: errors.length === 0,
+      update
+    };
+  });
+  return {
+    total: preview.length,
+    valid: preview.filter((item) => item.valid).length,
+    errors: preview.filter((item) => !item.valid).length,
+    preview: preview.map(({ update, ...item }) => item),
+    updates: preview.filter((item) => item.valid).map((item) => item.update)
+  };
+};
+
 export default withApiErrors(async (req, res) => {
   const user = await requireRole(req, ["super_admin", "admin", "supplier"]);
 
@@ -115,15 +220,36 @@ export default withApiErrors(async (req, res) => {
     return sendJson(res, 200, { ok: true, data: await loadInventory(user, req.query.supplierId, req.query.limit) });
   }
 
-  assertMethod(req, ["PATCH"]);
+  assertMethod(req, ["PATCH", "POST"]);
   assertSameOrigin(req);
   const body = await readJson(req, 180_000);
-  const items = Array.isArray(body.items) ? body.items.slice(0, 200) : [];
+  let bulk = null;
+  let scopedSupplier = null;
+  if (req.method === "POST") {
+    scopedSupplier = await supplierScope(user, body.supplierId);
+    bulk = await parseBulkInventory(body, scopedSupplier);
+    const action = oneOf(body.action, ["validate", "commit"], "validate", "Əməliyyat");
+    if (action === "validate") return sendJson(res, 200, { ok: true, data: bulk });
+    if (bulk.errors) {
+      throw new ApiError(400, "inventory_validation_failed", "Toplu inventarda səhv sətirlər var.", {
+        total: bulk.total,
+        valid: bulk.valid,
+        errors: bulk.errors,
+        preview: bulk.preview
+      });
+    }
+  }
+  const itemLimit = req.method === "POST" ? 1_000 : 200;
+  const sourceItems = req.method === "POST" ? bulk.updates : Array.isArray(body.items) ? body.items : [];
+  if (sourceItems.length > itemLimit) {
+    throw new ApiError(413, "inventory_update_too_large", `Bir dəfəyə maksimum ${itemLimit} məhsul yenilənə bilər.`);
+  }
+  const items = sourceItems.slice(0, itemLimit);
   if (!items.length) throw new ApiError(400, "empty_inventory_update", "Yenilənəcək məhsul seçilməyib.");
   const ids = [...new Set(items.map((item) => text(item.id, { field: "Məhsul ID-si", required: true, max: 160 })))];
   if (ids.length !== items.length) throw new ApiError(400, "duplicate_inventory_item", "Eyni məhsul bir neçə dəfə göndərilib.");
 
-  const supplier = await supplierScope(user, body.supplierId);
+  const supplier = req.method === "POST" ? scopedSupplier : await supplierScope(user, body.supplierId);
   const values = [ids];
   const where = ["id = ANY($1::text[])"];
   if (supplier) {
@@ -206,10 +332,14 @@ export default withApiErrors(async (req, res) => {
   }
   await recordAudit({
     actorId: user.id,
-    action: "bulk_update",
+    action: req.method === "POST" ? "bulk_import" : "bulk_update",
     entityType: "inventory",
     entityId: supplier?.id || null,
     details: { count: rows.length, changedPrices: changedPrices.length }
   });
-  return sendJson(res, 200, { ok: true, data: await loadInventory(user, body.supplierId, 1_000) });
+  const inventory = await loadInventory(user, body.supplierId, 1_000);
+  return sendJson(res, 200, {
+    ok: true,
+    data: bulk ? { ...inventory, bulk: { total: bulk.total, valid: bulk.valid, errors: 0 } } : inventory
+  });
 });

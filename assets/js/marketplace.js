@@ -1725,18 +1725,45 @@ const renderProductDetail = () => {
     const category = getCategory(item.category);
     const brand = getBrand(item.brand);
     const brandMark = item.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
-    const media = createProductMedia(item, brandMark);
+    const gallery = (item.gallery || [])
+      .map((entry) => ({ ...entry, url: getSafeImageUrl(entry.url) }))
+      .filter((entry) => entry.url);
+    const primaryImage = gallery[0]?.url || getSafeImageUrl(item.imageUrl);
+    const media = primaryImage
+      ? `<img data-product-image data-detail-main-image src="${escapeAttr(primaryImage)}" alt="${escapeAttr(item.name)}" width="760" height="570" decoding="async" referrerpolicy="no-referrer">`
+      : createProductMedia(item, brandMark);
     const freshness = getPriceFreshness(item);
     const sourceUrl = getSafeHttpsUrl(item.sourceUrl);
     const source = sourceUrl
       ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>`
       : "";
+    const priceHistory = Array.isArray(item.priceHistory) ? item.priceHistory : [];
+    const pricedHistory = priceHistory.filter((entry) => Number.isFinite(Number(entry.amount)));
+    const newestPrice = pricedHistory[0];
+    const previousPrice = pricedHistory[1];
+    const priceDelta = newestPrice && previousPrice && Number(previousPrice.amount) > 0
+      ? ((Number(newestPrice.amount) - Number(previousPrice.amount)) / Number(previousPrice.amount)) * 100
+      : null;
+    const relatedProducts = Array.isArray(item.relatedProducts) ? item.relatedProducts : [];
+    const verifiedDate = item.priceVerifiedAt && Number.isFinite(Date.parse(item.priceVerifiedAt))
+      ? new Date(item.priceVerifiedAt).toLocaleDateString("az-AZ")
+      : "Yoxlanmayıb";
+    const stockText = item.stockQuantity === null || item.stockQuantity === "" || item.stockQuantity === undefined
+      ? item.availability
+      : `${Number(item.stockQuantity).toLocaleString("az-AZ")} vahid`;
 
     document.title = `${item.name} | ConstEra Kataloq`;
     updatePageDescription(`${item.name}: ${item.brand}, ${item.subcategory}, ${item.price}. ConstEra kataloqunda qiymət sorğusu göndər və təchizatçı məlumatını yoxla.`);
     container.innerHTML = `
     <div class="detail-hero glass">
-      <div class="detail-media">${media}</div>
+      <div class="detail-media">
+        ${media}
+        ${gallery.length > 1 ? `<div class="detail-gallery-thumbs" aria-label="Məhsul şəkilləri">${gallery.map((entry, index) => `
+          <button type="button" data-gallery-image="${escapeAttr(entry.url)}" aria-label="${index + 1}-ci şəkli göstər">
+            <img src="${escapeAttr(entry.url)}" alt="${escapeAttr(entry.alt || item.name)}" width="72" height="54" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+          </button>
+        `).join("")}</div>` : ""}
+      </div>
       <div class="detail-copy">
         <p class="eyebrow">Məhsul detalı</p>
         <h1>${escapeHtml(item.name)}</h1>
@@ -1745,7 +1772,7 @@ const renderProductDetail = () => {
           <span>${escapeHtml(item.subcategory)}</span>
           <span>${escapeHtml(item.brand)}</span>
         </div>
-        <p class="hero-text">Bu səhifə qiymət sorğusu, təchizatçı qiyməti və gələcək idarəetmə redaktəsi üçün məhsulun vahid məlumat kartıdır.</p>
+        <p class="hero-text">${escapeHtml(item.package || "Qablaşdırma sorğu ilə")} · ${escapeHtml(item.origin || "Mənşə dəqiqləşdirilir")} · ${escapeHtml(item.availability || "Stok sorğu ilə")}</p>
         <div class="detail-actions">
           <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}">${getCart().some((entry) => entry.id === item.id) ? "Səbətdədir" : "Səbətə əlavə et"}</button>
           <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(item.id)}">Sorğu göndər</a>
@@ -1769,13 +1796,13 @@ const renderProductDetail = () => {
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Təchizatçı</span>
-        <strong>${escapeHtml(item.supplier)}</strong>
-        <p>${escapeHtml(item.availability)}</p>
+        <strong>${escapeHtml(item.supplier || "Açıq təchizatçı sorğusu")}</strong>
+        <p>${escapeHtml(stockText)}</p>
       </article>
       <article class="detail-panel glass">
-        <span class="price-label">Brend vəziyyəti</span>
-        <strong>${escapeHtml(brand?.country || item.origin)}</strong>
-        <p>${escapeHtml(brand?.certification || "Təchizatçı təsdiqi lazımdır")}</p>
+        <span class="price-label">Son qiymət yoxlaması</span>
+        <strong>${escapeHtml(verifiedDate)}</strong>
+        <p>${escapeHtml(item.sourceLabel || (sourceUrl ? "Mənbəli məlumat" : "Mənbə gözlənilir"))}</p>
       </article>
     </div>
 
@@ -1787,15 +1814,56 @@ const renderProductDetail = () => {
         </ul>
       </article>
       <article class="detail-panel glass">
-        <p class="eyebrow">Qiymət sorğusu üçün qeydlər</p>
-        <ul class="spec-list detail-list">
-          <li>Qiymət real təchizatçı siyahısı ilə təsdiqlənməlidir.</li>
-          <li>Çatdırılma şəhər/rayon və miqdardan asılıdır.</li>
-          <li>Alternativ marka və paket ölçüsü sorğu qeydində yazıla bilər.</li>
-        </ul>
+        <p class="eyebrow">Satınalma məlumatı</p>
+        <dl class="detail-procurement-list">
+          <div><dt>Minimum sifariş</dt><dd>${item.minimumOrder === null || item.minimumOrder === "" || item.minimumOrder === undefined ? "Sorğu ilə" : escapeHtml(Number(item.minimumOrder).toLocaleString("az-AZ"))}</dd></div>
+          <div><dt>Stok</dt><dd>${escapeHtml(stockText || "Sorğu ilə")}</dd></div>
+          <div><dt>Qiymət statusu</dt><dd>${item.priceStatus === "confirmed" ? "Təsdiqli" : item.priceStatus === "expired" ? "Vaxtı keçib" : "Sorğu əsasında"}</dd></div>
+          <div><dt>Mənbə</dt><dd>${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>` : "Mənbə əlavə edilməyib"}</dd></div>
+        </dl>
       </article>
     </div>
+
+    <section class="detail-data-section" aria-labelledby="price-history-title">
+      <div class="market-section-heading">
+        <div>
+          <p class="eyebrow">Qiymət tarixçəsi</p>
+          <h2 id="price-history-title">Son təsdiqli qiymətlər</h2>
+        </div>
+        <span class="data-badge">${priceDelta === null ? `${priceHistory.length} qeyd` : `${priceDelta > 0 ? "+" : ""}${priceDelta.toFixed(1)}% dəyişmə`}</span>
+      </div>
+      <div class="price-history-list">
+        ${priceHistory.length ? priceHistory.slice(0, 6).map((entry) => `
+          <article class="price-history-item">
+            <strong>${entry.amount === null ? escapeHtml(entry.price || "Sorğu əsasında") : Number(entry.amount).toLocaleString("az-AZ", { style: "currency", currency: entry.currency || "AZN" })}</strong>
+            <span>${Number.isFinite(Date.parse(entry.capturedAt)) ? new Date(entry.capturedAt).toLocaleString("az-AZ") : "Tarix yoxdur"}</span>
+            ${getSafeHttpsUrl(entry.sourceUrl) ? `<a class="source-link" href="${escapeAttr(getSafeHttpsUrl(entry.sourceUrl))}" target="_blank" rel="noopener noreferrer">Mənbə</a>` : ""}
+          </article>
+        `).join("") : '<p class="admin-import-status">Bu məhsul üçün təsdiqli qiymət tarixçəsi hələ yaranmayıb.</p>'}
+      </div>
+    </section>
+
+    ${relatedProducts.length ? `
+      <section class="detail-data-section" aria-labelledby="related-products-title">
+        <div class="market-section-heading">
+          <div>
+            <p class="eyebrow">Eyni kateqoriya</p>
+            <h2 id="related-products-title">Oxşar məhsullar</h2>
+          </div>
+          <a class="source-link" href="category.html?category=${encodeURIComponent(item.category)}">Kateqoriyanı aç</a>
+        </div>
+        <div class="product-grid">${relatedProducts.map(createProductCard).join("")}</div>
+      </section>
+    ` : ""}
   `;
+    container.querySelectorAll("[data-gallery-image]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const mainImage = container.querySelector("[data-detail-main-image]");
+        if (!mainImage) return;
+        mainImage.src = button.dataset.galleryImage;
+        container.querySelectorAll("[data-gallery-image]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
     const amount = parseProductPriceAmount(item);
     const safeImage = getSafeImageUrl(item.imageUrl);
     injectEntitySchema("constera-product-schema", {
@@ -1820,16 +1888,16 @@ const renderProductDetail = () => {
     }, item.imageUrl);
   };
 
-  if (product) {
-    paintProduct(product);
-    return;
-  }
+  if (product) paintProduct(product);
   if (productId && window.ConstEraAPI?.product) {
     window.ConstEraAPI.product(productId)
       .then((result) => paintProduct(result.data))
-      .catch(() => renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html"));
+      .catch(() => {
+        if (!product) renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html");
+      });
     return;
   }
+  if (product) return;
   renderDetailFallback(container, "Məhsul tapılmadı", "catalog.html");
 };
 
@@ -3389,9 +3457,14 @@ const renderRfqDashboard = () => {
   const summaryStatus = document.querySelector("[data-rfq-summary-status]");
   const copySummaryButton = document.querySelector("[data-rfq-copy-summary]");
   const printSummaryButton = document.querySelector("[data-rfq-print-summary]");
+  const offerPanel = document.querySelector("[data-rfq-offer-panel]");
+  const refreshButton = document.querySelector("[data-rfq-refresh]");
+  const connectionStatus = document.querySelector("[data-rfq-connection-status]");
   if (!stats || !rows) return;
   let selectedSummaryId = "";
   let latestSummaryText = "";
+  let cloudDrafts = null;
+  let cloudUser = null;
 
   const typeLabels = {
     product: "Məhsul",
@@ -3400,13 +3473,14 @@ const renderRfqDashboard = () => {
     rental: "İcarə",
     custom: "Sərbəst"
   };
-  const statusList = ["Yeni", "Təchizatçıya göndərildi", "Cavab gözləyir", "Təklif gəldi", "Qiymət müqayisəsi", "Qalib seçildi", "Təsdiqləndi", "Bağlandı"];
+  const statusList = ["Yeni", "Baxılır", "Təklif gözləyir", "Təklif alındı", "Bağlandı", "Ləğv edildi"];
   const supplierOptions = () => `
     <option value="">Açıq sorğu</option>
     ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
   `;
   const parseOfferPrice = (price) => {
-    const normalizedPrice = String(price || "")
+    if (Number.isFinite(Number(price?.priceAmount))) return Number(price.priceAmount);
+    const normalizedPrice = String(price?.price || price?.price_text || price || "")
       .replace(/\s+/g, "")
       .replace(/azn|manat/gi, "")
       .replace(",", ".");
@@ -3415,7 +3489,11 @@ const renderRfqDashboard = () => {
   };
   const getBestOffer = (draft) => {
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
-    return [...offers].sort((a, b) => parseOfferPrice(a.price) - parseOfferPrice(b.price))[0];
+    const accepted = offers.find((offer) => offer.status === "accepted");
+    if (accepted) return accepted;
+    return offers
+      .filter((offer) => !offer.status || ["draft", "submitted"].includes(offer.status))
+      .sort((a, b) => parseOfferPrice(a) - parseOfferPrice(b))[0];
   };
   const getPriorityScore = (priority) => ({
     "Təcili": 4,
@@ -3437,28 +3515,78 @@ const renderRfqDashboard = () => {
     }
     return `
       <strong>${escapeHtml(bestOffer.price || "Qiymət yoxdur")}</strong>
-      <small>${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif</small>
+      <small>${bestOffer.status === "accepted" ? "Qalib · " : ""}${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif</small>
     `;
   };
 
+  const normalizeRfqStatus = (status) => ({
+    "Təchizatçıya göndərildi": "Təklif gözləyir",
+    "Cavab gözləyir": "Təklif gözləyir",
+    "Təklif gəldi": "Təklif alındı",
+    "Qiymət müqayisəsi": "Təklif alındı",
+    "Qalib seçildi": "Bağlandı",
+    "Təsdiqləndi": "Bağlandı"
+  })[status] || (statusList.includes(status) ? status : "Yeni");
+  const normalizeOffer = (offer = {}) => ({
+    ...offer,
+    id: offer.id || `offer-${Date.now()}`,
+    supplierId: offer.supplierId || offer.supplier_id || "",
+    supplier: offer.supplier || offer.supplier_name || "Təchizatçı",
+    priceAmount: offer.priceAmount === null || offer.price_amount === null
+      ? null
+      : Number(offer.priceAmount ?? offer.price_amount),
+    price: offer.price || offer.price_text || "Qiymət yoxdur",
+    currency: offer.currency || "AZN",
+    leadTime: offer.leadTime || offer.lead_time || "",
+    createdAt: offer.createdAt || offer.created_at || new Date().toISOString(),
+    status: offer.status || "submitted"
+  });
+  const normalizeCloudRfq = (rfq) => ({
+    id: rfq.id,
+    cloudId: rfq.id,
+    type: rfq.rfq_type || rfq.type || "custom",
+    status: normalizeRfqStatus(rfq.status),
+    supplierId: rfq.supplier_id || rfq.supplierId || "",
+    supplier: rfq.supplier_name || rfq.supplier || "Açıq sorğu",
+    priority: rfq.priority || "Normal",
+    product: rfq.title || rfq.product || "Sərbəst sorğu",
+    quantity: rfq.items?.[0]?.quantity || rfq.quantity || "Miqdar yazılmayıb",
+    company: rfq.company_name || rfq.company || "",
+    contact: rfq.contact || "",
+    city: rfq.city || "",
+    needDate: rfq.need_date || rfq.needDate || "",
+    budget: rfq.budget || "",
+    deliveryMode: rfq.delivery_mode || rfq.deliveryMode || "",
+    usage: rfq.usage_text || rfq.usage || "",
+    note: rfq.note || "",
+    items: rfq.items || [],
+    offers: (rfq.offers || []).map(normalizeOffer),
+    createdAt: rfq.created_at || rfq.createdAt || new Date().toISOString(),
+    updatedAt: rfq.updated_at || rfq.updatedAt || ""
+  });
   const getDrafts = () => {
     let changed = false;
-    const drafts = storage.read("constera-rfq-drafts").map((draft, index) => {
+    const source = cloudDrafts ?? storage.read("constera-rfq-drafts");
+    const drafts = source.map((draft, index) => {
       const next = {
+        ...draft,
         id: draft.id || `rfq-migrated-${index}-${Date.parse(draft.createdAt || "") || index}`,
         type: draft.type || "custom",
-        status: draft.status || "Yeni",
+        status: normalizeRfqStatus(draft.status),
         supplierId: draft.supplierId || "",
         supplier: draft.supplier || "Açıq sorğu",
         priority: draft.priority || "Normal",
-        offers: Array.isArray(draft.offers) ? draft.offers : [],
-        ...draft
+        offers: Array.isArray(draft.offers) ? draft.offers.map(normalizeOffer) : []
       };
       if (!draft.id || !draft.type || !draft.status || draft.supplierId === undefined || !draft.priority || !Array.isArray(draft.offers)) changed = true;
       return next;
     });
-    if (changed) storage.write("constera-rfq-drafts", drafts);
+    if (changed && cloudDrafts === null) storage.write("constera-rfq-drafts", drafts);
     return drafts;
+  };
+  const saveDrafts = (drafts) => {
+    if (cloudDrafts === null) storage.write("constera-rfq-drafts", drafts);
+    else cloudDrafts = drafts;
   };
 
   const renderOfferControls = (drafts) => {
@@ -3469,16 +3597,18 @@ const renderRfqDashboard = () => {
       `;
     }
     if (offerSupplierSelect) {
-      offerSupplierSelect.innerHTML = `
-        <option value="">Təchizatçı seç</option>
-        ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
-      `;
+      offerSupplierSelect.innerHTML = cloudUser?.role === "supplier"
+        ? '<option value="self">Şirkətim</option>'
+        : `
+          <option value="">Təchizatçı seç</option>
+          ${(marketplace.suppliers || []).map((supplier) => `<option value="${escapeAttr(supplier.id)}">${escapeHtml(supplier.name)}</option>`).join("")}
+        `;
     }
   };
 
   const updateDraft = (id, patch) => {
     const drafts = getDrafts().map((draft) => draft.id === id ? { ...draft, ...patch } : draft);
-    storage.write("constera-rfq-drafts", drafts);
+    saveDrafts(drafts);
     return drafts;
   };
   const buildSummaryText = (draft) => {
@@ -3528,6 +3658,7 @@ const renderRfqDashboard = () => {
     if (!summaryPanel || !summaryContent || !draft) return;
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
     const bestOffer = getBestOffer(draft);
+    const canChooseOffer = !cloudUser || ["super_admin", "admin", "sales", "customer"].includes(cloudUser.role);
     latestSummaryText = buildSummaryText(draft);
     selectedSummaryId = draft.id;
     summaryPanel.hidden = false;
@@ -3548,18 +3679,21 @@ const renderRfqDashboard = () => {
         <div><dt>Tələb tarixi</dt><dd>${escapeHtml(formatDisplayDate(draft.needDate))}</dd></div>
         <div><dt>Büdcə</dt><dd>${escapeHtml(draft.budget || "Seçilməyib")}</dd></div>
         <div><dt>Çatdırılma/operator</dt><dd>${escapeHtml(draft.deliveryMode || "Seçilməyib")}</dd></div>
-        <div><dt>Ən uyğun təklif</dt><dd>${bestOffer ? `${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.price || "Qiymət yoxdur")}` : "Hələ yoxdur"}</dd></div>
+        <div><dt>${bestOffer?.status === "accepted" ? "Qalib təklif" : "Ən aşağı təklif"}</dt><dd>${bestOffer ? `${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.price || "Qiymət yoxdur")}` : "Hələ yoxdur"}</dd></div>
       </dl>
       <div class="rfq-offer-grid">
         ${offers.length ? offers.map((offer) => `
-          <article class="rfq-offer-card ${offer.id === bestOffer?.id ? "is-best" : ""}">
-            <span>${offer.id === bestOffer?.id ? "Ən uyğun təklif" : "Təchizatçı təklifi"}</span>
+          <article class="rfq-offer-card ${offer.id === bestOffer?.id ? "is-best" : ""} ${offer.status === "accepted" ? "is-selected" : ""}">
+            <span>${offer.status === "accepted" ? "Qalib təklif" : offer.status === "rejected" ? "Seçilməyib" : offer.id === bestOffer?.id ? "Ən aşağı təklif" : "Təchizatçı təklifi"}</span>
             <strong>${escapeHtml(offer.price || "Qiymət yoxdur")}</strong>
             <small>${escapeHtml(offer.supplier || "Təchizatçı")}</small>
             <small>Müddət: ${escapeHtml(offer.leadTime || "açıq")}</small>
             <small>Çatdırılma: ${escapeHtml(offer.delivery || "açıq")}</small>
             <small>Zəmanət: ${escapeHtml(offer.warranty || "açıq")}</small>
             <p class="rfq-summary-note">${escapeHtml(offer.note || "Qeyd yoxdur.")}</p>
+            ${canChooseOffer && (!offer.status || ["draft", "submitted"].includes(offer.status))
+              ? `<button class="button button-primary" type="button" data-rfq-offer-select="${escapeAttr(offer.id)}" data-rfq-offer-rfq="${escapeAttr(draft.id)}">Qalib seç</button>`
+              : ""}
           </article>
         `).join("") : `
           <article class="rfq-offer-card">
@@ -3666,15 +3800,16 @@ const renderRfqDashboard = () => {
       return acc;
     }, {});
     const offerCount = drafts.reduce((sum, draft) => sum + (draft.offers || []).length, 0);
+    const acceptedCount = drafts.filter((draft) => (draft.offers || []).some((offer) => offer.status === "accepted")).length;
+    const canManageRfq = cloudDrafts === null || ["super_admin", "admin", "sales"].includes(cloudUser?.role);
 
     stats.innerHTML = `
       <article class="stat-card"><span class="stat-value">${drafts.length}</span><p>ümumi sorğu</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Yeni"] || 0}</span><p>yeni sorğu</p></article>
-      <article class="stat-card"><span class="stat-value">${counts["Cavab gözləyir"] || 0}</span><p>cavab gözləyir</p></article>
-      <article class="stat-card"><span class="stat-value">${counts["Təklif gəldi"] || 0}</span><p>təklif gəldi</p></article>
+      <article class="stat-card"><span class="stat-value">${counts["Təklif gözləyir"] || 0}</span><p>təklif gözləyir</p></article>
+      <article class="stat-card"><span class="stat-value">${counts["Təklif alındı"] || 0}</span><p>təklif alınıb</p></article>
       <article class="stat-card"><span class="stat-value">${offerCount}</span><p>təchizatçı təklifi</p></article>
-      <article class="stat-card"><span class="stat-value">${drafts.filter((draft) => draft.supplierId).length}</span><p>təyin olunub</p></article>
-      <article class="stat-card"><span class="stat-value">${counts["Bağlandı"] || 0}</span><p>bağlandı</p></article>
+      <article class="stat-card"><span class="stat-value">${acceptedCount}</span><p>qalib seçilib</p></article>
     `;
 
     rows.innerHTML = filtered.map((draft) => `
@@ -3687,7 +3822,7 @@ const renderRfqDashboard = () => {
         <td data-label="Miqdar">${escapeHtml(draft.quantity || "Yazılmayıb")}</td>
         <td data-label="Şirkət">${escapeHtml(draft.company || "Şirkət yoxdur")}</td>
         <td data-label="Təchizatçı">
-          <select class="table-select" data-rfq-supplier="${escapeAttr(draft.id)}" aria-label="${escapeAttr(draft.product || "Sorğu")} üçün təchizatçı">
+          <select class="table-select" data-rfq-supplier="${escapeAttr(draft.id)}" aria-label="${escapeAttr(draft.product || "Sorğu")} üçün təchizatçı" ${canManageRfq ? "" : "disabled"}>
             ${supplierOptions()}
           </select>
         </td>
@@ -3700,9 +3835,9 @@ const renderRfqDashboard = () => {
           <div class="status-actions">
             <button type="button" data-rfq-summary="${escapeAttr(draft.id)}">Aktı aç</button>
             <button type="button" data-rfq-copy="${escapeAttr(draft.id)}">Kopyala</button>
-            ${statusList.map((status) => `
+            ${canManageRfq ? statusList.map((status) => `
               <button type="button" data-rfq-status="${escapeAttr(status)}" data-rfq-id="${escapeAttr(draft.id)}">${escapeHtml(status)}</button>
-            `).join("")}
+            `).join("") : ""}
           </div>
         </td>
       </tr>
@@ -3753,15 +3888,67 @@ const renderRfqDashboard = () => {
     }
     window.print();
   });
-  offerForm?.addEventListener("submit", (event) => {
+  const refreshCloudRfqs = async () => {
+    if (!cloudUser || !window.ConstEraAPI?.rfqs) return;
+    const result = await window.ConstEraAPI.rfqs();
+    cloudDrafts = (result.data || []).map(normalizeCloudRfq);
+    if (connectionStatus) connectionStatus.textContent = `Neon · ${cloudDrafts.length} sorğu`;
+    render();
+  };
+  const connectRfqAccount = async () => {
+    if (!window.ConstEraAPI?.session) return;
+    try {
+      const session = await window.ConstEraAPI.session();
+      cloudUser = session.user;
+      if (!cloudUser) {
+        if (connectionStatus) connectionStatus.textContent = "Lokal ehtiyat · giriş tələb olunur";
+        if (offerStatus) offerStatus.textContent = "Canlı sorğu və təkliflər üçün hesaba daxil ol.";
+        return;
+      }
+      if (offerPanel) offerPanel.hidden = cloudUser.role === "customer";
+      await refreshCloudRfqs();
+      if (offerStatus && cloudUser.role !== "customer") {
+        offerStatus.textContent = `${cloudUser.name} hesabı Neon təklif moduluna qoşuldu.`;
+      }
+    } catch (error) {
+      if (connectionStatus) connectionStatus.textContent = "Lokal ehtiyat";
+      if (offerStatus) offerStatus.textContent = `Canlı sorğular yüklənmədi: ${error.message}`;
+    }
+  };
+
+  offerForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(offerForm);
     const rfqId = String(data.get("rfqId") || "");
     const supplierId = String(data.get("supplierId") || "");
     const supplier = (marketplace.suppliers || []).find((item) => item.id === supplierId);
     const draft = getDrafts().find((item) => item.id === rfqId);
-    if (!draft || !supplier) {
+    if (!draft || (cloudDrafts === null && !supplier)) {
       if (offerStatus) offerStatus.textContent = "Qiymət sorğusu və təchizatçı seçilməlidir.";
+      return;
+    }
+    const submitButton = offerForm.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    if (cloudDrafts !== null && window.ConstEraAPI?.saveOffer) {
+      try {
+        await window.ConstEraAPI.saveOffer({
+          rfqId,
+          supplierId: supplierId === "self" ? "" : supplierId,
+          price: data.get("price"),
+          currency: "AZN",
+          leadTime: data.get("leadTime"),
+          delivery: data.get("delivery"),
+          warranty: data.get("warranty"),
+          note: data.get("note")
+        });
+        await refreshCloudRfqs();
+        offerForm.reset();
+        if (offerStatus) offerStatus.textContent = "Təklif Neon bazasında saxlandı.";
+      } catch (error) {
+        if (offerStatus) offerStatus.textContent = error.message;
+      } finally {
+        if (submitButton) submitButton.disabled = false;
+      }
       return;
     }
     const offer = {
@@ -3773,18 +3960,20 @@ const renderRfqDashboard = () => {
       delivery: data.get("delivery"),
       warranty: data.get("warranty"),
       note: data.get("note"),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      status: "submitted"
     };
     updateDraft(rfqId, {
-      status: "Təklif gəldi",
+      status: "Təklif alındı",
       offers: [...(draft.offers || []), offer]
     });
     offerForm.reset();
     if (offerStatus) offerStatus.textContent = `${supplier.name} təklifi əlavə edildi.`;
+    if (submitButton) submitButton.disabled = false;
     render();
   });
 
-  rows.addEventListener("click", (event) => {
+  rows.addEventListener("click", async (event) => {
     const summaryButton = event.target.closest("[data-rfq-summary]");
     if (summaryButton) {
       const draft = getDrafts().find((item) => item.id === summaryButton.dataset.rfqSummary);
@@ -3804,22 +3993,85 @@ const renderRfqDashboard = () => {
     }
     const button = event.target.closest("[data-rfq-status]");
     if (!button) return;
+    if (cloudDrafts !== null && window.ConstEraAPI?.updateRfq) {
+      button.disabled = true;
+      try {
+        await window.ConstEraAPI.updateRfq(button.dataset.rfqId, button.dataset.rfqStatus);
+        await refreshCloudRfqs();
+        if (offerStatus) offerStatus.textContent = "Sorğunun vəziyyəti yeniləndi.";
+      } catch (error) {
+        if (offerStatus) offerStatus.textContent = error.message;
+      }
+      return;
+    }
     updateDraft(button.dataset.rfqId, { status: button.dataset.rfqStatus });
     render();
   });
-  rows.addEventListener("change", (event) => {
+  rows.addEventListener("change", async (event) => {
     const select = event.target.closest("[data-rfq-supplier]");
     if (!select) return;
     const supplier = (marketplace.suppliers || []).find((item) => item.id === select.value);
+    if (cloudDrafts !== null && window.ConstEraAPI?.updateRfq) {
+      select.disabled = true;
+      try {
+        await window.ConstEraAPI.updateRfq(select.dataset.rfqSupplier, {
+          supplierId: select.value,
+          status: select.value ? "Təklif gözləyir" : "Yeni"
+        });
+        await refreshCloudRfqs();
+        if (offerStatus) offerStatus.textContent = select.value ? "Sorğu təchizatçıya yönləndirildi." : "Sorğu açıq vəziyyətə qaytarıldı.";
+      } catch (error) {
+        if (offerStatus) offerStatus.textContent = error.message;
+        await refreshCloudRfqs();
+      }
+      return;
+    }
     updateDraft(select.dataset.rfqSupplier, {
       supplierId: select.value,
       supplier: supplier?.name || "Açıq sorğu",
-      status: select.value ? "Təchizatçıya göndərildi" : "Yeni"
+      status: select.value ? "Təklif gözləyir" : "Yeni"
     });
     render();
   });
+  summaryContent?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-rfq-offer-select]");
+    if (!button) return;
+    const draft = getDrafts().find((item) => item.id === button.dataset.rfqOfferRfq);
+    if (!draft) return;
+    if (cloudDrafts !== null && window.ConstEraAPI?.updateOffer) {
+      button.disabled = true;
+      try {
+        await window.ConstEraAPI.updateOffer(button.dataset.rfqOfferSelect, "accepted");
+        await refreshCloudRfqs();
+        const updated = getDrafts().find((item) => item.id === draft.id);
+        if (updated) renderSummaryPanel(updated);
+        if (summaryStatus) summaryStatus.textContent = "Qalib təklif təsdiqləndi, digər təkliflər bağlandı.";
+      } catch (error) {
+        if (summaryStatus) summaryStatus.textContent = error.message;
+      }
+      return;
+    }
+    updateDraft(draft.id, {
+      status: "Bağlandı",
+      offers: (draft.offers || []).map((offer) => ({
+        ...offer,
+        status: offer.id === button.dataset.rfqOfferSelect ? "accepted" : "rejected"
+      }))
+    });
+    render();
+  });
+  refreshButton?.addEventListener("click", async () => {
+    refreshButton.disabled = true;
+    try {
+      if (cloudUser) await refreshCloudRfqs();
+      else await connectRfqAccount();
+    } finally {
+      refreshButton.disabled = false;
+    }
+  });
 
   render();
+  connectRfqAccount();
 };
 
 const initTender = () => {
@@ -4242,6 +4494,7 @@ const initAiSmeta = () => {
     standard: 1,
     complex: 1.14
   };
+  let cloudUser = null;
   const projectProfiles = {
     villa: { concrete: 0.24, rebar: 0.034, block: 12.2, plaster: 1.75, paint: 0.24, tile: 0.42, cable: 5.6, pipe: 1.05, insulation: 0.9, roof: 0.72 },
     apartment: { concrete: 0.04, rebar: 0.006, block: 3.8, plaster: 1.45, paint: 0.28, tile: 0.38, cable: 4.8, pipe: 0.86, insulation: 0.18, roof: 0 },
@@ -4484,13 +4737,25 @@ const initAiSmeta = () => {
   if (currentEstimate) renderEstimate(currentEstimate, false);
   renderHistory();
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     currentEstimate = createEstimate(new FormData(form));
     writeEstimates([currentEstimate, ...readEstimates()]);
     renderEstimate(currentEstimate);
     renderHistory();
     if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. Sorğu qaralaması yarada bilərsən.`;
+    if (cloudUser && window.ConstEraAPI?.saveEstimate) {
+      try {
+        await window.ConstEraAPI.saveEstimate({
+          id: currentEstimate.id,
+          title: `${currentEstimate.projectLabel} · ${currentEstimate.area} m²`,
+          payload: currentEstimate
+        });
+        if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı və Neon kabinetində saxlandı.`;
+      } catch (error) {
+        if (status) status.textContent = `Smeta lokal saxlandı. Neon: ${error.message}`;
+      }
+    }
   });
   resetButton?.addEventListener("click", () => {
     form.reset();
@@ -4512,7 +4777,7 @@ const initAiSmeta = () => {
     currentEstimate = readEstimates().find((estimate) => estimate.id === button.dataset.aiSmetaOpen) || null;
     if (currentEstimate) renderEstimate(currentEstimate);
   });
-  output.addEventListener("click", (event) => {
+  output.addEventListener("click", async (event) => {
     const exportCurrent = event.target.closest("[data-ai-smeta-export-current]");
     if (exportCurrent) {
       const estimate = readEstimates().find((item) => item.id === exportCurrent.dataset.aiSmetaExportCurrent) || currentEstimate;
@@ -4528,8 +4793,51 @@ const initAiSmeta = () => {
     const estimate = readEstimates().find((item) => item.id === rfqButton.dataset.aiSmetaRfq) || currentEstimate;
     if (!estimate) return;
     const rfq = estimateToRfq(estimate);
+    if (cloudUser?.role === "customer" && window.ConstEraAPI?.createRfq) {
+      rfqButton.disabled = true;
+      try {
+        const result = await window.ConstEraAPI.createRfq({
+          type: rfq.type,
+          sourceId: rfq.sourceId,
+          product: rfq.product,
+          quantity: rfq.quantity,
+          company: cloudUser.companyName || cloudUser.name,
+          contact: cloudUser.email,
+          city: rfq.city,
+          priority: rfq.priority,
+          budget: rfq.budget,
+          deliveryMode: rfq.deliveryMode,
+          usage: rfq.usage,
+          note: rfq.note
+        });
+        const drafts = storage.read("constera-rfq-drafts").map((draft) =>
+          draft.id === rfq.id ? { ...draft, cloudId: result.data.id, cloudSyncedAt: new Date().toISOString() } : draft
+        );
+        storage.write("constera-rfq-drafts", drafts);
+        if (status) status.innerHTML = `Sorğu Neon bazasında yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
+      } catch (error) {
+        if (status) status.innerHTML = `Sorğu lokal qaralama kimi saxlandı. ${escapeHtml(error.message)} <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
+      } finally {
+        rfqButton.disabled = false;
+      }
+      return;
+    }
     if (status) status.innerHTML = `Sorğu qaralaması yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
   });
+
+  const connectEstimateAccount = async () => {
+    if (!window.ConstEraAPI?.session) return;
+    try {
+      const session = await window.ConstEraAPI.session();
+      cloudUser = session.user;
+      if (cloudUser && status) {
+        status.textContent = `${cloudUser.name} hesabı qoşuldu. Yeni smetalar Neon kabinetində saxlanacaq.`;
+      }
+    } catch {
+      cloudUser = null;
+    }
+  };
+  connectEstimateAccount();
 };
 
 const initSupplierPortal = () => {
@@ -4541,6 +4849,16 @@ const initSupplierPortal = () => {
   const importButton = document.querySelector("[data-supplier-import-csv]");
   const exportButton = document.querySelector("[data-supplier-export-csv]");
   const templateButton = document.querySelector("[data-supplier-template]");
+  const importFileInput = document.querySelector("[data-supplier-import-file]");
+  const validateFileButton = document.querySelector("[data-supplier-validate-file]");
+  const importFileButton = document.querySelector("[data-supplier-import-file-run]");
+  const importStatus = document.querySelector("[data-supplier-import-status]");
+  const bulkInput = document.querySelector("[data-inventory-bulk-input]");
+  const bulkTemplateButton = document.querySelector("[data-inventory-bulk-template]");
+  const bulkPreviewButton = document.querySelector("[data-inventory-bulk-preview]");
+  const bulkApplyButton = document.querySelector("[data-inventory-bulk-apply]");
+  const bulkStatus = document.querySelector("[data-inventory-bulk-status]");
+  const bulkPreviewList = document.querySelector("[data-inventory-bulk-preview-list]");
   const rows = document.querySelector("[data-supplier-product-rows]");
   const count = document.querySelector("[data-supplier-product-count]");
   const stats = document.querySelector("[data-supplier-portal-stats]");
@@ -4553,12 +4871,16 @@ const initSupplierPortal = () => {
   const historyTitle = document.querySelector("[data-inventory-history-title]");
   const historyList = document.querySelector("[data-inventory-history]");
   const historyClose = document.querySelector("[data-inventory-history-close]");
+  const orderRows = document.querySelector("[data-supplier-order-rows]");
+  const orderCount = document.querySelector("[data-supplier-order-count]");
 
   if (!form || !categorySelect || !subcategorySelect) return;
 
   let cloudProducts = null;
   let cloudUser = null;
   let inventoryState = null;
+  let supplierOrders = [];
+  let bulkInventoryPreview = [];
   const inventoryDrafts = new Map();
   const inventoryDirty = new Set();
   const supplierNameInput = form.elements.supplier;
@@ -4604,8 +4926,39 @@ const initSupplierPortal = () => {
       <article class="stat-card"><span class="stat-value">${confirmed}</span><p>təsdiqli qiymət</p></article>
       <article class="stat-card"><span class="stat-value">${stale}</span><p>köhnəlmiş qiymət</p></article>
       <article class="stat-card"><span class="stat-value">${lowStock}</span><p>az stok</p></article>
+      <article class="stat-card"><span class="stat-value">${supplierOrders.length}</span><p>sifariş</p></article>
       <article class="stat-card"><span class="stat-value">${Number(inventoryValue).toLocaleString("az-AZ", { maximumFractionDigits: 0 })}</span><p>stok dəyəri, AZN</p></article>
     `;
+  };
+
+  const renderOrders = () => {
+    if (orderCount) orderCount.textContent = `${supplierOrders.length} sifariş`;
+    if (!orderRows) return;
+    const orderLabels = {
+      submitted: "Göndərilib",
+      confirmed: "Təsdiqlənib",
+      processing: "Hazırlanır",
+      shipped: "Çatdırılır",
+      completed: "Tamamlanıb",
+      cancelled: "Ləğv edilib"
+    };
+    orderRows.innerHTML = supplierOrders.length ? supplierOrders.map((order) => {
+      const visibleItems = order.items || [];
+      const lineTotals = visibleItems.map((item) => Number(item.lineTotal)).filter(Number.isFinite);
+      const amount = lineTotals.length === visibleItems.length && lineTotals.length
+        ? lineTotals.reduce((sum, value) => sum + value, 0)
+        : null;
+      return `
+        <tr>
+          <td data-label="Sifariş"><strong>#${escapeHtml(order.orderNumber)}</strong><small>${escapeHtml(order.deliveryMode || "Çatdırılma")}</small></td>
+          <td data-label="Müştəri"><strong>${escapeHtml(order.companyName)}</strong><small>${escapeHtml(order.city)} · ${escapeHtml(order.contactName)}</small></td>
+          <td data-label="Məhsullarım">${visibleItems.length}<small>${visibleItems.slice(0, 2).map((item) => escapeHtml(item.title)).join(" · ")}</small></td>
+          <td data-label="Məbləğ"><strong>${amount === null ? "Sorğu əsasında" : amount.toLocaleString("az-AZ", { style: "currency", currency: order.currency || "AZN" })}</strong></td>
+          <td data-label="Vəziyyət"><span class="status-pill">${escapeHtml(orderLabels[order.status] || order.status)}</span></td>
+          <td data-label="Tarix">${Number.isFinite(Date.parse(order.createdAt)) ? new Date(order.createdAt).toLocaleDateString("az-AZ") : "-"}</td>
+        </tr>
+      `;
+    }).join("") : '<tr><td colspan="6"><strong>Sifariş yoxdur.</strong><small>Məhsullarınız olan sifarişlər burada görünəcək.</small></td></tr>';
   };
 
   const renderRows = () => {
@@ -4693,6 +5046,13 @@ const initSupplierPortal = () => {
     inventoryDirty.clear();
     renderRows();
   };
+  const refreshSupplierOrders = async () => {
+    if (!window.ConstEraAPI?.orders || cloudUser?.role !== "supplier") return;
+    const result = await window.ConstEraAPI.orders();
+    supplierOrders = result.data || [];
+    renderOrders();
+    renderStats();
+  };
 
   const connectSupplierAccount = async () => {
     if (!window.ConstEraAPI) return;
@@ -4709,7 +5069,7 @@ const initSupplierPortal = () => {
         supplierNameInput.value = cloudUser.companyName || getSupplierName();
         supplierNameInput.readOnly = true;
       }
-      await refreshCloudProducts();
+      await Promise.all([refreshCloudProducts(), refreshSupplierOrders()]);
       setStatus(`${cloudUser.companyName || cloudUser.name} hesabı Neon kataloquna qoşuldu.`);
       setInventoryStatus("Qiymət və stok mərkəzi Neon bazasına qoşuldu.", "success");
     } catch (error) {
@@ -4751,6 +5111,7 @@ const initSupplierPortal = () => {
   renderCategoryOptions();
   renderSubcategoryOptions();
   renderRows();
+  renderOrders();
 
   categorySelect.addEventListener("change", renderSubcategoryOptions);
   supplierNameInput?.addEventListener("input", renderRows);
@@ -4835,11 +5196,147 @@ const initSupplierPortal = () => {
     }
   });
 
+  const fileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Fayl oxuna bilmədi."));
+    reader.readAsDataURL(file);
+  });
+  const runSupplierFileImport = async (action, button) => {
+    const file = importFileInput?.files?.[0];
+    if (!file) {
+      if (importStatus) importStatus.textContent = "CSV və ya XLSX faylı seç.";
+      return;
+    }
+    if (cloudUser?.role !== "supplier" || !window.ConstEraAPI?.runImport) {
+      if (importStatus) importStatus.textContent = "Fayl idxalı üçün təchizatçı hesabına daxil ol.";
+      return;
+    }
+    button.disabled = true;
+    if (importStatus) importStatus.textContent = action === "validate" ? "Fayl yoxlanılır..." : "Fayl idxal edilir...";
+    try {
+      const result = await window.ConstEraAPI.runImport({
+        importType: "product",
+        action,
+        filename: file.name,
+        fileType: file.name.toLowerCase().endsWith(".xlsx") ? "xlsx" : "csv",
+        fileBase64: await fileAsDataUrl(file),
+        allowPartial: true
+      });
+      const data = result.data;
+      if (importStatus) {
+        importStatus.textContent = action === "validate"
+          ? `${data.valid}/${data.total} sətir uyğundur, ${data.errors.length} səhv tapıldı.`
+          : `${data.imported} məhsul Neon kataloquna yazıldı, ${data.errors.length} sətir buraxıldı.`;
+      }
+      if (action === "commit") await refreshCloudProducts();
+    } catch (error) {
+      if (importStatus) importStatus.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  validateFileButton?.addEventListener("click", () => runSupplierFileImport("validate", validateFileButton));
+  importFileButton?.addEventListener("click", () => runSupplierFileImport("commit", importFileButton));
+
   exportButton?.addEventListener("click", () => {
     const supplierProducts = getSupplierProducts();
     downloadTextFile(`constera-${createSlug(getSupplierName())}-products.csv`, productsToCsv(supplierProducts), "text/csv;charset=utf-8");
     setStatus(`${supplierProducts.length} məhsul CSV faylına hazırlandı.`);
   });
+
+  const renderBulkInventoryPreview = () => {
+    if (!bulkPreviewList) return;
+    bulkPreviewList.hidden = false;
+    if (!bulkInventoryPreview.length) {
+      bulkPreviewList.innerHTML = '<div class="inventory-bulk-preview-row has-error"><strong>Uyğun sətir tapılmadı.</strong><span>Başlıq və ən azı bir məlumat sətri əlavə et.</span></div>';
+      return;
+    }
+    bulkPreviewList.innerHTML = bulkInventoryPreview.map((item) => `
+      <div class="inventory-bulk-preview-row ${item.valid ? "is-valid" : "has-error"}">
+        <strong>${item.rowNumber}. sətir · ${escapeHtml(item.sku)}</strong>
+        <span>${item.name ? escapeHtml(item.name) : "Məhsul tapılmadı"}</span>
+        <small>${escapeHtml(item.valid ? item.changes.join(" · ") : item.errors.join(" "))}</small>
+      </div>
+    `).join("");
+  };
+
+  bulkTemplateButton?.addEventListener("click", () => {
+    if (!bulkInput) return;
+    const samples = getSupplierProducts().slice(0, 4);
+    bulkInput.value = [
+      "sku,qiymət,status,stok,minimum sifariş,mənbə url",
+      ...samples.map((product) => [
+        escapeCsvValue(product.sku),
+        escapeCsvValue(product.priceStatus === "confirmed" ? product.priceAmount ?? "" : ""),
+        escapeCsvValue(product.priceStatus || "request"),
+        escapeCsvValue(product.stockQuantity ?? ""),
+        escapeCsvValue(product.minimumOrder ?? ""),
+        escapeCsvValue(product.sourceUrl || "")
+      ].join(","))
+    ].join("\n");
+    bulkInventoryPreview = [];
+    if (bulkPreviewList) bulkPreviewList.hidden = true;
+    if (bulkStatus) {
+      bulkStatus.textContent = samples.length
+        ? `${samples.length} real məhsul nümunəsi əlavə edildi. Dəyərləri dəyişib uyğunluğu yoxla.`
+        : "Məhsul tapılmadı. Əvvəl məhsul əlavə et və ya canlı təchizatçı hesabına daxil ol.";
+      bulkStatus.dataset.type = samples.length ? "info" : "warning";
+    }
+  });
+  bulkInput?.addEventListener("input", () => {
+    bulkInventoryPreview = [];
+    if (bulkPreviewList) bulkPreviewList.hidden = true;
+    if (bulkStatus) {
+      bulkStatus.textContent = "Dəyişiklik var. Saxlamadan əvvəl uyğunluğu yenidən yoxla.";
+      bulkStatus.dataset.type = "warning";
+    }
+  });
+  const runBulkInventory = async (action, button) => {
+    if (cloudUser?.role !== "supplier" || !window.ConstEraAPI?.importInventory) {
+      if (bulkStatus) {
+        bulkStatus.textContent = "Toplu yeniləmə üçün təchizatçı hesabına daxil ol.";
+        bulkStatus.dataset.type = "warning";
+      }
+      return;
+    }
+    button.disabled = true;
+    if (bulkStatus) bulkStatus.textContent = action === "validate" ? "CSV serverdə yoxlanılır..." : "Məhsullar Neon bazasında yenilənir...";
+    try {
+      const result = await window.ConstEraAPI.importInventory(bulkInput?.value || "", action);
+      if (action === "validate") {
+        bulkInventoryPreview = result.data.preview || [];
+        renderBulkInventoryPreview();
+        if (bulkStatus) {
+          bulkStatus.textContent = result.data.errors
+            ? `${result.data.valid} sətir hazırdır, ${result.data.errors} sətirdə səhv var.`
+            : `${result.data.valid} sətir saxlanmağa hazırdır.`;
+          bulkStatus.dataset.type = result.data.errors ? "error" : "success";
+        }
+      } else {
+        inventoryState = result.data;
+        cloudProducts = inventoryState.products || [];
+        inventoryDrafts.clear();
+        inventoryDirty.clear();
+        renderRows();
+        if (bulkStatus) {
+          bulkStatus.textContent = `${result.data.bulk?.valid || 0} məhsul Neon bazasında saxlandı.`;
+          bulkStatus.dataset.type = "success";
+        }
+      }
+    } catch (error) {
+      bulkInventoryPreview = error.details?.preview || [];
+      if (bulkInventoryPreview.length) renderBulkInventoryPreview();
+      if (bulkStatus) {
+        bulkStatus.textContent = error.message || "Toplu inventar yenilənmədi.";
+        bulkStatus.dataset.type = "error";
+      }
+    } finally {
+      button.disabled = false;
+    }
+  };
+  bulkPreviewButton?.addEventListener("click", () => runBulkInventory("validate", bulkPreviewButton));
+  bulkApplyButton?.addEventListener("click", () => runBulkInventory("commit", bulkApplyButton));
 
   const collectInventoryUpdate = (id) => {
     const product = getSupplierProducts().find((item) => item.id === id);

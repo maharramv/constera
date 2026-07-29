@@ -31,6 +31,10 @@ const requiredFiles = [
   "login.html",
   "offline.html",
   "assets/css/styles.css",
+  "assets/css/admin-quality.css",
+  "assets/css/product-workflow.css",
+  "assets/css/rfq-workflow.css",
+  "assets/css/supplier-workflow.css",
   "assets/js/script.js",
   "assets/js/catalog-data.js",
   "assets/js/taxonomy-expansion.js",
@@ -208,7 +212,8 @@ const optimizeTree = (entry) => {
 optimizeTree("dist/assets");
 
 const revisionFiles = [
-  "dist/assets/css/styles.css",
+  ...readdirSync("dist/assets/css").filter((name) => name.endsWith(".css")).sort()
+    .map((name) => `dist/assets/css/${name}`),
   ...readdirSync("dist/assets/js").filter((name) => name.endsWith(".js")).sort()
     .map((name) => `dist/assets/js/${name}`)
 ];

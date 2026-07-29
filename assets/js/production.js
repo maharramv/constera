@@ -96,6 +96,10 @@
       method: "PATCH",
       body: JSON.stringify({ items, supplierId })
     }),
+    importInventory: (csv, action = "validate", supplierId = "") => request("/api/inventory", {
+      method: "POST",
+      body: JSON.stringify({ csv, action, supplierId })
+    }),
     saveSupplier: (data, update = false) => request("/api/suppliers", {
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)
@@ -114,7 +118,19 @@
     saveEntity: (data, update = false) => request("/api/entities", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteEntity: (id) => request("/api/entities", { method: "DELETE", body: JSON.stringify({ id }) }),
     rfqs: () => request("/api/rfqs?limit=500"),
-    updateRfq: (id, status) => request("/api/rfqs", { method: "PATCH", body: JSON.stringify({ id, status }) }),
+    updateRfq: (id, statusOrData) => request("/api/rfqs", {
+      method: "PATCH",
+      body: JSON.stringify({
+        id,
+        ...(typeof statusOrData === "string" ? { status: statusOrData } : statusOrData || {})
+      })
+    }),
+    offers: (rfqId) => request(`/api/offers?rfqId=${encodeURIComponent(rfqId)}`),
+    saveOffer: (data) => request("/api/offers", { method: "POST", body: JSON.stringify(data) }),
+    updateOffer: (id, status) => request("/api/offers", {
+      method: "PATCH",
+      body: JSON.stringify({ id, status })
+    }),
     tenders: () => request("/api/tenders?limit=500"),
     saveTender: (data, update = false) => request("/api/tenders", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteTender: (id) => request("/api/tenders", { method: "DELETE", body: JSON.stringify({ id }) }),

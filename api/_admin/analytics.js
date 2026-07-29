@@ -45,56 +45,91 @@ export default withApiErrors(async (req, res) => {
                   u.name AS actor_name
              FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id
             ORDER BY a.created_at DESC LIMIT 12`),
-    query(`SELECT
-      count(*)::int AS total,
+    query(`WITH classified_products AS (
+      SELECT p.*,
+        (
+          lower(trim(coalesce(p.brand, ''))) = 'constera sorğu'
+          OR lower(p.name) LIKE '%məhsul qrupu%'
+          OR upper(p.sku) LIKE '%RFQ%'
+        ) AS is_request_group
+      FROM products p
+      WHERE p.status = 'active'
+    )
+    SELECT
+      count(*)::int AS all_total,
+      count(*) FILTER (WHERE NOT p.is_request_group)::int AS total,
+      count(*) FILTER (WHERE p.is_request_group)::int AS request_groups,
       count(*) FILTER (
-        WHERE NULLIF(trim(coalesce(p.image_url, '')), '') IS NULL
+        WHERE NOT p.is_request_group
+          AND NULLIF(trim(coalesce(p.image_url, '')), '') IS NULL
       )::int AS missing_image,
       count(*) FILTER (
-        WHERE NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL
+        WHERE NOT p.is_request_group
+          AND NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL
       )::int AS missing_source,
       count(*) FILTER (
-        WHERE CASE
-          WHEN jsonb_typeof(coalesce(p.specs, '[]'::jsonb)) = 'array'
-            THEN jsonb_array_length(coalesce(p.specs, '[]'::jsonb)) < 2
-          ELSE true
-        END
+        WHERE NOT p.is_request_group
+          AND CASE
+            WHEN jsonb_typeof(coalesce(p.specs, '[]'::jsonb)) = 'array'
+              THEN jsonb_array_length(coalesce(p.specs, '[]'::jsonb)) < 2
+            ELSE true
+          END
       )::int AS missing_specs,
       count(*) FILTER (
-        WHERE NULLIF(trim(coalesce(p.brand, '')), '') IS NULL OR lower(trim(p.brand)) = 'brendsiz'
+        WHERE NOT p.is_request_group
+          AND NULLIF(trim(coalesce(p.brand, '')), '') IS NULL
       )::int AS missing_brand,
       count(*) FILTER (
-        WHERE p.category_id IS NULL OR NOT EXISTS (
-          SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.active = true
-        )
+        WHERE NOT p.is_request_group AND lower(trim(p.brand)) = 'brendsiz'
+      )::int AS brandless_listings,
+      count(*) FILTER (
+        WHERE NOT p.is_request_group
+          AND (
+            p.category_id IS NULL OR NOT EXISTS (
+              SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.active = true
+            )
+          )
       )::int AS missing_category,
       count(*) FILTER (
-        WHERE p.price_status = 'confirmed'
+        WHERE NOT p.is_request_group
+          AND p.price_status = 'confirmed'
           AND (p.price_verified_at IS NULL OR p.price_verified_at < now() - interval '30 days')
       )::int AS stale_price,
       count(*) FILTER (
-        WHERE p.price_status = 'expired'
+        WHERE NOT p.is_request_group AND p.price_status = 'expired'
       )::int AS expired_price,
       count(*) FILTER (
-        WHERE NULLIF(trim(coalesce(p.availability, '')), '') IS NULL
-          OR lower(trim(p.availability)) IN ('stok sorğu ilə', 'sorğu əsasında', 'məlum deyil')
+        WHERE NOT p.is_request_group
+          AND (
+            p.stock_quantity IS NULL
+            OR NULLIF(trim(coalesce(p.availability, '')), '') IS NULL
+            OR lower(trim(p.availability)) IN ('stok sorğu ilə', 'sorğu əsasında', 'məlum deyil')
+          )
       )::int AS unknown_stock,
       (
         SELECT coalesce(sum(duplicate_group.product_count), 0)::int
         FROM (
           SELECT count(*)::int AS product_count
-          FROM products duplicate_product
-          WHERE duplicate_product.status = 'active'
+          FROM classified_products duplicate_product
+          WHERE NOT duplicate_product.is_request_group
           GROUP BY lower(trim(duplicate_product.name)), lower(trim(duplicate_product.brand))
           HAVING count(*) > 1
         ) duplicate_group
       ) AS duplicate_names
-    FROM products p
-    WHERE p.status = 'active'`),
-    query(`WITH duplicate_products AS (
+    FROM classified_products p`),
+    query(`WITH classified_products AS (
+      SELECT p.*,
+        (
+          lower(trim(coalesce(p.brand, ''))) = 'constera sorğu'
+          OR lower(p.name) LIKE '%məhsul qrupu%'
+          OR upper(p.sku) LIKE '%RFQ%'
+        ) AS is_request_group
+      FROM products p
+      WHERE p.status = 'active'
+    ), duplicate_products AS (
       SELECT lower(trim(name)) AS name_key, lower(trim(brand)) AS brand_key
-      FROM products
-      WHERE status = 'active'
+      FROM classified_products
+      WHERE NOT is_request_group
       GROUP BY lower(trim(name)), lower(trim(brand))
       HAVING count(*) > 1
     ), quality_base AS (
@@ -113,22 +148,22 @@ export default withApiErrors(async (req, res) => {
             THEN jsonb_array_length(coalesce(p.specs, '[]'::jsonb)) < 2
           ELSE true
         END AS missing_specs,
-        NULLIF(trim(coalesce(p.brand, '')), '') IS NULL
-          OR lower(trim(p.brand)) = 'brendsiz' AS missing_brand,
+        NULLIF(trim(coalesce(p.brand, '')), '') IS NULL AS missing_brand,
         p.category_id IS NULL OR NOT EXISTS (
           SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.active = true
         ) AS missing_category,
         p.price_status = 'confirmed'
           AND (p.price_verified_at IS NULL OR p.price_verified_at < now() - interval '30 days') AS stale_price,
         p.price_status = 'expired' AS expired_price,
-        NULLIF(trim(coalesce(p.availability, '')), '') IS NULL
+        p.stock_quantity IS NULL
+          OR NULLIF(trim(coalesce(p.availability, '')), '') IS NULL
           OR lower(trim(p.availability)) IN ('stok sorğu ilə', 'sorğu əsasında', 'məlum deyil') AS unknown_stock,
         duplicate_products.name_key IS NOT NULL AS duplicate_name
-      FROM products p
+      FROM classified_products p
       LEFT JOIN duplicate_products
         ON duplicate_products.name_key = lower(trim(p.name))
        AND duplicate_products.brand_key = lower(trim(p.brand))
-      WHERE p.status = 'active'
+      WHERE NOT p.is_request_group
     )
     SELECT *,
       (
@@ -146,16 +181,19 @@ export default withApiErrors(async (req, res) => {
     WHERE missing_image OR missing_source OR missing_specs OR missing_brand OR missing_category
        OR stale_price OR expired_price OR unknown_stock OR duplicate_name
     ORDER BY issue_score DESC, updated_at ASC
-    LIMIT 24`)
+    LIMIT 32`)
   ]);
   const counts = countsRows[0] || {};
   const qualityRow = qualityRows[0] || {};
   const qualitySummary = {
+    allTotal: Number(qualityRow.all_total || 0),
     total: Number(qualityRow.total || 0),
+    requestGroups: Number(qualityRow.request_groups || 0),
     missingImage: Number(qualityRow.missing_image || 0),
     missingSource: Number(qualityRow.missing_source || 0),
     missingSpecs: Number(qualityRow.missing_specs || 0),
     missingBrand: Number(qualityRow.missing_brand || 0),
+    brandlessListings: Number(qualityRow.brandless_listings || 0),
     missingCategory: Number(qualityRow.missing_category || 0),
     stalePrice: Number(qualityRow.stale_price || 0),
     expiredPrice: Number(qualityRow.expired_price || 0),

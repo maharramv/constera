@@ -37,6 +37,63 @@ const mapProduct = (row) => ({
   updatedAt: row.updated_at
 });
 
+const loadProductDetails = async (row) => {
+  const [historyRows, mediaRows, relatedRows] = await Promise.all([
+    query(
+      `SELECT price_amount, price_currency, price_text, source_url, captured_at
+         FROM price_history
+        WHERE product_id = $1
+        ORDER BY captured_at DESC
+        LIMIT 12`,
+      [row.id]
+    ),
+    query(
+      `SELECT url, alt_text, content_type, created_at
+         FROM media_assets
+        WHERE entity_type = 'product' AND entity_id = $1
+          AND status = 'active' AND content_type LIKE 'image/%'
+        ORDER BY created_at DESC
+        LIMIT 10`,
+      [row.id]
+    ),
+    query(
+      `SELECT ${productFields}
+         FROM products
+        WHERE status = 'active' AND id <> $1
+          AND category_id IS NOT DISTINCT FROM $2
+        ORDER BY
+          (
+            (NULLIF(trim(coalesce(image_url, '')), '') IS NOT NULL)::int * 2
+            + (NULLIF(trim(coalesce(source_url, '')), '') IS NOT NULL)::int * 2
+            + (price_status = 'confirmed')::int
+          ) DESC,
+          updated_at DESC
+        LIMIT 6`,
+      [row.id, row.category_id]
+    )
+  ]);
+  const gallery = [
+    ...(row.image_url ? [{ url: row.image_url, alt: row.name, primary: true }] : []),
+    ...mediaRows.map((media) => ({
+      url: media.url,
+      alt: media.alt_text || row.name,
+      primary: false
+    }))
+  ].filter((item, index, items) => items.findIndex((entry) => entry.url === item.url) === index);
+
+  return {
+    priceHistory: historyRows.map((item) => ({
+      amount: item.price_amount === null ? null : Number(item.price_amount),
+      currency: item.price_currency,
+      price: item.price_text,
+      sourceUrl: item.source_url || "",
+      capturedAt: item.captured_at
+    })),
+    gallery,
+    relatedProducts: relatedRows.map(mapProduct)
+  };
+};
+
 const normalizeProduct = (body) => {
   const sourceUrl = safeUrl(body.sourceUrl, "Mənbə URL-i");
   let priceStatus = oneOf(body.priceStatus, ["confirmed", "request", "expired"], "request", "Qiymət statusu");
@@ -114,7 +171,11 @@ export default withApiErrors(async (req, res) => {
       values
     );
     if (id && !rows[0]) throw new ApiError(404, "product_not_found", "Məhsul tapılmadı.");
-    return sendJson(res, 200, { ok: true, data: id ? mapProduct(rows[0]) : rows.map(mapProduct) });
+    if (id) {
+      const details = await loadProductDetails(rows[0]);
+      return sendJson(res, 200, { ok: true, data: { ...mapProduct(rows[0]), ...details } });
+    }
+    return sendJson(res, 200, { ok: true, data: rows.map(mapProduct) });
   }
 
   assertMethod(req, ["POST", "PATCH", "DELETE"]);
@@ -139,6 +200,7 @@ export default withApiErrors(async (req, res) => {
   }
 
   let source = body;
+  let previousProduct = null;
   if (req.method === "PATCH") {
     const id = text(body.id || req.query.id, { field: "Məhsul ID-si", required: true, max: 160 });
     const existing = await query(
@@ -146,6 +208,7 @@ export default withApiErrors(async (req, res) => {
       ownSupplier ? [id, ownSupplier.id] : [id]
     );
     if (!existing[0]) throw new ApiError(404, "product_not_found", "Məhsul tapılmadı.");
+    previousProduct = existing[0];
     source = { ...mapProduct(existing[0]), ...body, id };
   }
   const item = normalizeProduct(source);
@@ -198,7 +261,13 @@ export default withApiErrors(async (req, res) => {
         item.imageUrl || null, item.sourceUrl || null, item.sourceLabel || null, JSON.stringify(item.specs), item.status
       ]
     );
-    if (item.priceStatus === "confirmed") {
+    const confirmedPriceChanged = item.priceStatus === "confirmed" && (
+      !previousProduct
+      || previousProduct.price_status !== "confirmed"
+      || Number(previousProduct.price_amount) !== item.priceAmount
+      || previousProduct.price_currency !== item.priceCurrency
+    );
+    if (confirmedPriceChanged) {
       await query(
         `INSERT INTO price_history (product_id, price_amount, price_currency, price_text, source_url)
          VALUES ($1, $2, $3, $4, $5)`,

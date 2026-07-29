@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
+import { queueNotification } from "./_lib/notifications.js";
 import { oneOf, parsePriceAmount, text } from "./_lib/validation.js";
+
+const offerStatuses = ["submitted", "accepted", "rejected", "withdrawn"];
+const privilegedRoles = ["super_admin", "admin", "sales"];
 
 export default withApiErrors(async (req, res) => {
   if (req.method === "GET") {
@@ -31,19 +35,112 @@ export default withApiErrors(async (req, res) => {
 
   assertMethod(req, ["POST", "PATCH"]);
   assertSameOrigin(req);
-  const user = await requireRole(req, ["super_admin", "admin", "sales", "supplier"]);
+  const user = await requireRole(req, ["super_admin", "admin", "sales", "supplier", "customer"]);
   const body = await readJson(req, 40_000);
 
   if (req.method === "PATCH") {
-    if (!["super_admin", "admin", "sales"].includes(user.role)) throw new ApiError(403, "permission_denied", "Təklif statusunu dəyişmək üçün icazən yoxdur.");
     const id = text(body.id, { field: "Təklif ID-si", required: true, max: 160 });
-    const status = oneOf(body.status, ["submitted", "accepted", "rejected", "withdrawn"], "submitted", "Təklif statusu");
-    const rows = await query("UPDATE offers SET status = $2, updated_at = now() WHERE id = $1 RETURNING *", [id, status]);
+    const status = oneOf(body.status, offerStatuses, "submitted", "Təklif statusu");
+    const targetRows = await query(
+      `SELECT o.*, r.customer_id, supplier.company_id AS supplier_company_id
+         FROM offers o
+         JOIN rfqs r ON r.id = o.rfq_id
+         LEFT JOIN suppliers supplier ON supplier.id = o.supplier_id
+        WHERE o.id = $1
+        LIMIT 1`,
+      [id]
+    );
+    const target = targetRows[0];
+    if (!target) throw new ApiError(404, "offer_not_found", "Təklif tapılmadı.");
+    const privileged = privilegedRoles.includes(user.role);
+    const ownsRfq = user.role === "customer" && target.customer_id === user.id;
+    const ownsOffer = user.role === "supplier" && target.supplier_company_id === user.companyId;
+
+    if (status === "accepted") {
+      if (!privileged && !ownsRfq) {
+        throw new ApiError(403, "permission_denied", "Qalib təklifi yalnız sorğu sahibi və ya administrator seçə bilər.");
+      }
+      const rows = await query(
+        `WITH selected AS (
+           SELECT id, rfq_id FROM offers WHERE id = $1
+         ), rejected AS (
+           UPDATE offers offer_row SET status = 'rejected', updated_at = now()
+           FROM selected
+           WHERE offer_row.rfq_id = selected.rfq_id
+             AND offer_row.id <> selected.id
+             AND offer_row.status IN ('draft', 'submitted', 'accepted')
+           RETURNING offer_row.id
+         ), accepted AS (
+           UPDATE offers offer_row SET status = 'accepted', updated_at = now()
+           FROM selected
+           WHERE offer_row.id = selected.id
+             AND offer_row.status IN ('draft', 'submitted', 'accepted')
+             AND (SELECT count(*) FROM rejected) >= 0
+           RETURNING offer_row.*
+         ), rfq_updated AS (
+           UPDATE rfqs rfq_row SET status = 'Bağlandı', updated_at = now()
+           FROM accepted
+           WHERE rfq_row.id = accepted.rfq_id
+         )
+         SELECT accepted.*, supplier.name AS supplier_name
+         FROM accepted
+         LEFT JOIN suppliers supplier ON supplier.id = accepted.supplier_id`,
+        [id]
+      );
+      if (!rows[0]) throw new ApiError(409, "offer_not_selectable", "Bu təklif artıq seçilə bilən vəziyyətdə deyil.");
+      await recordAudit({
+        actorId: user.id,
+        action: "accept",
+        entityType: "offer",
+        entityId: id,
+        details: { rfqId: target.rfq_id, supplierId: target.supplier_id }
+      });
+      const supplierUsers = target.supplier_company_id ? await query(
+        "SELECT id FROM users WHERE company_id = $1 AND role = 'supplier' AND status = 'active'",
+        [target.supplier_company_id]
+      ) : [];
+      await Promise.allSettled([
+        ...supplierUsers.map((supplierUser) => queueNotification({
+          userId: supplierUser.id,
+          subject: "Təklifiniz qalib seçildi",
+          body: `Qiymət sorğusu üzrə ${target.price_text || "təklifiniz"} qəbul edildi.`,
+          templateKey: "offer_accepted",
+          payload: { offerId: id, rfqId: target.rfq_id }
+        })),
+        ...(
+          target.customer_id && target.customer_id !== user.id
+            ? [queueNotification({
+                userId: target.customer_id,
+                subject: "Qiymət sorğusu bağlandı",
+                body: `${target.price_text || "Seçilmiş təklif"} qalib kimi təsdiqləndi.`,
+                templateKey: "rfq_awarded",
+                payload: { offerId: id, rfqId: target.rfq_id }
+              })]
+            : []
+        )
+      ]);
+      return sendJson(res, 200, { ok: true, data: rows[0] });
+    }
+
+    const canChange = privileged
+      || (status === "rejected" && ownsRfq)
+      || (status === "withdrawn" && ownsOffer);
+    if (!canChange) throw new ApiError(403, "permission_denied", "Bu təklifin statusunu dəyişmək üçün icazən yoxdur.");
+    if (target.status === "accepted" && !privileged) {
+      throw new ApiError(409, "accepted_offer_locked", "Qalib təklif yalnız administrator tərəfindən dəyişdirilə bilər.");
+    }
+    const rows = await query(
+      "UPDATE offers SET status = $2, updated_at = now() WHERE id = $1 RETURNING *",
+      [id, status]
+    );
     if (!rows[0]) throw new ApiError(404, "offer_not_found", "Təklif tapılmadı.");
     await recordAudit({ actorId: user.id, action: "status_update", entityType: "offer", entityId: id, details: { status } });
     return sendJson(res, 200, { ok: true, data: rows[0] });
   }
 
+  if (user.role === "customer") {
+    throw new ApiError(403, "permission_denied", "Müştəri hesabı təchizatçı təklifi yarada bilməz.");
+  }
   const rfqId = text(body.rfqId, { field: "Sorğu ID-si", required: true, max: 160 });
   let supplierId = text(body.supplierId, { max: 160 });
   if (user.role === "supplier") {
@@ -51,20 +148,54 @@ export default withApiErrors(async (req, res) => {
     supplierId = suppliers[0]?.id || "";
   }
   if (!supplierId) throw new ApiError(400, "supplier_required", "Təklif üçün təchizatçı seçilməlidir.");
-  const priceText = text(body.price, { field: "Təklif qiyməti", required: true, max: 160 });
+  const currency = oneOf(body.currency, ["AZN", "USD", "EUR"], "AZN", "Valyuta");
   const priceAmount = parsePriceAmount(body.priceAmount ?? body.price);
-  const id = `off-${randomUUID()}`;
-  const rfq = await query("SELECT id FROM rfqs WHERE id = $1 LIMIT 1", [rfqId]);
+  if (priceAmount === null || priceAmount <= 0) {
+    throw new ApiError(400, "invalid_offer_price", "Təklif qiyməti 0-dan böyük rəqəm olmalıdır.");
+  }
+  const priceText = text(body.price, { max: 160 })
+    || `${priceAmount.toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+  const rfq = await query(
+    `SELECT r.id, r.title, r.customer_id, r.supplier_id, assigned_supplier.company_id AS assigned_company_id
+       FROM rfqs r
+       LEFT JOIN suppliers assigned_supplier ON assigned_supplier.id = r.supplier_id
+      WHERE r.id = $1
+      LIMIT 1`,
+    [rfqId]
+  );
   if (!rfq[0]) throw new ApiError(404, "rfq_not_found", "Qiymət sorğusu tapılmadı.");
+  if (user.role === "supplier" && rfq[0].supplier_id && rfq[0].assigned_company_id !== user.companyId) {
+    throw new ApiError(403, "rfq_scope_violation", "Bu sorğu başqa təchizatçıya yönləndirilib.");
+  }
+  const supplierRows = await query("SELECT id, name FROM suppliers WHERE id = $1 AND status <> 'Arxiv' LIMIT 1", [supplierId]);
+  if (!supplierRows[0]) throw new ApiError(404, "supplier_not_found", "Təchizatçı tapılmadı.");
+  const existingRows = await query(
+    `SELECT id FROM offers
+      WHERE rfq_id = $1 AND supplier_id = $2 AND status IN ('draft', 'submitted')
+      ORDER BY created_at DESC LIMIT 1`,
+    [rfqId, supplierId]
+  );
+  const id = existingRows[0]?.id || `off-${randomUUID()}`;
   const rows = await query(
     `INSERT INTO offers (
        id, rfq_id, supplier_id, created_by, price_amount, price_text, currency,
        lead_time, delivery, warranty, note, status
      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'submitted')
+     ON CONFLICT (id) DO UPDATE SET
+       created_by = EXCLUDED.created_by,
+       price_amount = EXCLUDED.price_amount,
+       price_text = EXCLUDED.price_text,
+       currency = EXCLUDED.currency,
+       lead_time = EXCLUDED.lead_time,
+       delivery = EXCLUDED.delivery,
+       warranty = EXCLUDED.warranty,
+       note = EXCLUDED.note,
+       status = 'submitted',
+       updated_at = now()
      RETURNING *`,
     [
       id, rfqId, supplierId, user.id, priceAmount, priceText,
-      oneOf(body.currency, ["AZN", "USD", "EUR"], "AZN", "Valyuta"),
+      currency,
       text(body.leadTime, { max: 160 }) || null,
       text(body.delivery, { max: 300 }) || null,
       text(body.warranty, { max: 200 }) || null,
@@ -72,6 +203,24 @@ export default withApiErrors(async (req, res) => {
     ]
   );
   await query("UPDATE rfqs SET status = 'Təklif alındı', updated_at = now() WHERE id = $1", [rfqId]);
-  await recordAudit({ actorId: user.id, action: "create", entityType: "offer", entityId: id, details: { rfqId, supplierId } });
-  return sendJson(res, 201, { ok: true, data: rows[0] });
+  await recordAudit({
+    actorId: user.id,
+    action: existingRows[0] ? "update" : "create",
+    entityType: "offer",
+    entityId: id,
+    details: { rfqId, supplierId }
+  });
+  if (rfq[0].customer_id && rfq[0].customer_id !== user.id) {
+    await Promise.allSettled([queueNotification({
+      userId: rfq[0].customer_id,
+      subject: "Yeni təchizatçı təklifi",
+      body: `${rfq[0].title}: ${supplierRows[0].name} ${priceText} təklif göndərdi.`,
+      templateKey: "offer_submitted",
+      payload: { offerId: id, rfqId, supplierId }
+    })]);
+  }
+  return sendJson(res, existingRows[0] ? 200 : 201, {
+    ok: true,
+    data: { ...rows[0], supplier_name: supplierRows[0].name }
+  });
 });

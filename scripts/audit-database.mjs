@@ -31,6 +31,9 @@ const [integrity] = await query(`
     ) duplicate_skus) AS duplicate_skus,
     (SELECT count(*)::int FROM products
       WHERE price_verified_at > now() + interval '5 minutes') AS future_price_dates,
+    (SELECT count(*)::int FROM products p
+      WHERE p.status = 'active' AND p.price_status = 'confirmed'
+        AND NOT EXISTS (SELECT 1 FROM price_history h WHERE h.product_id = p.id)) AS confirmed_products_without_history,
     (SELECT count(*)::int FROM order_items WHERE quantity <= 0) AS invalid_order_quantities,
     (SELECT count(*)::int FROM users u
       WHERE u.role = 'supplier' AND u.status = 'active' AND (
@@ -39,6 +42,10 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM products p
       JOIN suppliers s ON s.id = p.supplier_id
       WHERE lower(coalesce(p.supplier_name, '')) <> lower(s.name)) AS supplier_product_scope_mismatch,
+    (SELECT count(*)::int FROM (
+      SELECT rfq_id FROM offers WHERE status = 'accepted'
+      GROUP BY rfq_id HAVING count(*) > 1
+    ) duplicate_acceptances) AS rfqs_with_multiple_accepted_offers,
     (SELECT count(*)::int FROM tenders t
       WHERE t.visibility = 'invited' AND NOT EXISTS (
         SELECT 1 FROM tender_invitations ti WHERE ti.tender_id = t.id
@@ -81,7 +88,8 @@ const [schema] = await query(`
     to_regclass('public.catalog_import_items') IS NOT NULL AS scraper_items_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
-    to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready
+    to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,
+    to_regclass('public.offers_one_accepted_per_rfq_idx') IS NOT NULL AS offer_selection_ready
 `);
 
 const minimums = {

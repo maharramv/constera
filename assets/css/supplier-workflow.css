@@ -1,0 +1,54 @@
+.inventory-bulk-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inventory-bulk-preview-row {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 11px 12px;
+}
+
+.inventory-bulk-preview-row strong,
+.inventory-bulk-preview-row span,
+.inventory-bulk-preview-row small {
+  overflow-wrap: anywhere;
+}
+
+.inventory-bulk-preview-row span,
+.inventory-bulk-preview-row small {
+  color: var(--muted);
+}
+
+.inventory-bulk-preview-row.is-valid {
+  border-color: rgba(15, 143, 111, 0.42);
+}
+
+.inventory-bulk-preview-row.is-valid strong {
+  color: #bff5e7;
+}
+
+.inventory-bulk-preview-row.has-error {
+  border-color: rgba(224, 98, 87, 0.46);
+  background: rgba(224, 98, 87, 0.06);
+}
+
+.inventory-bulk-preview-row.has-error strong,
+.inventory-bulk-preview-row.has-error small {
+  color: #ffc1ba;
+}
+
+.supplier-order-table {
+  min-width: 920px;
+}
+
+@media (max-width: 760px) {
+  .inventory-bulk-preview {
+    grid-template-columns: 1fr;
+  }
+}

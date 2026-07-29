@@ -62,6 +62,15 @@ test("CSV parser dırnaqlı sahələri və Azərbaycan başlıqlarını düzgün
   assert.equal(readAliased(rows[0], "price"), "74.40");
 });
 
+test("CSV parser nöqtəli vergül və tab ayırıcılarını avtomatik tanıyır", () => {
+  const semicolonRows = matrixToObjects(parseCsv("sku;ad;qiymət\nP-2;Astar boya;12,50"));
+  const tabRows = matrixToObjects(parseCsv("sku\tad\tstok\nP-3\tSement\t42"));
+  assert.equal(readAliased(semicolonRows[0], "sku"), "P-2");
+  assert.equal(readAliased(semicolonRows[0], "price"), "12,50");
+  assert.equal(readAliased(tabRows[0], "name"), "Sement");
+  assert.equal(readAliased(tabRows[0], "stockQuantity"), "42");
+});
+
 test("xidmət idxalı kod sütununu sabit identifikator kimi tanıyır", () => {
   const rows = matrixToObjects(parseCsv("kod,ad,kateqoriya,subkateqoriya\nXID-0001,Təmir,Təmir işləri,Mənzil təmiri"));
   assert.equal(readAliased(rows[0], "id"), "XID-0001");

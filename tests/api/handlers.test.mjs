@@ -5,6 +5,8 @@ import authHandler from "../../api/auth.js";
 import catalogHandler from "../../api/catalog.js";
 import adminHandler from "../../api/admin.js";
 import productsHandler from "../../api/products.js";
+import rfqsHandler from "../../api/rfqs.js";
+import offersHandler from "../../api/offers.js";
 
 const createResponse = () => ({
   headers: {},
@@ -90,4 +92,16 @@ test("təchizatçının şəxsi məhsul siyahısı anonim sorğuya açılmır", 
   await productsHandler({ method: "GET", headers: {}, query: { scope: "mine" } }, response);
   assert.equal(response.statusCode, 401);
   assert.equal(response.payload.error.code, "authentication_required");
+}));
+
+test("RFQ və təklif müqayisəsi anonim istifadəçiyə açılmır", async () => withoutDatabase(async () => {
+  const rfqResponse = createResponse();
+  await rfqsHandler({ method: "GET", headers: {}, query: {} }, rfqResponse);
+  assert.equal(rfqResponse.statusCode, 401);
+  assert.equal(rfqResponse.payload.error.code, "authentication_required");
+
+  const offerResponse = createResponse();
+  await offersHandler({ method: "GET", headers: {}, query: { rfqId: "rfq-test" } }, offerResponse);
+  assert.equal(offerResponse.statusCode, 401);
+  assert.equal(offerResponse.payload.error.code, "authentication_required");
 }));

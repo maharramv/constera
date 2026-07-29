@@ -144,6 +144,11 @@ export default withApiErrors(async (req, res) => {
     CASE WHEN p.price_status = 'confirmed' AND NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL THEN 180 ELSE 0 END +
     CASE WHEN p.price_verified_at IS NOT NULL THEN 25 ELSE 0 END
   )`;
+  const requestGroupExpression = `(CASE WHEN
+    lower(trim(coalesce(p.brand, ''))) = 'constera sorğu'
+    OR lower(p.name) LIKE '%məhsul qrupu%'
+    OR upper(p.sku) LIKE '%RFQ%'
+    THEN 1 ELSE 0 END)`;
   const relevanceExpression = relevanceIndex
     ? `(
       CASE
@@ -167,16 +172,16 @@ export default withApiErrors(async (req, res) => {
     )`
     : "0";
   const orderBy = sort === "price_asc"
-    ? "p.price_amount ASC NULLS LAST, p.name ASC"
+    ? `${requestGroupExpression} ASC, p.price_amount ASC NULLS LAST, p.name ASC`
     : sort === "price_desc"
-      ? "p.price_amount DESC NULLS LAST, p.name ASC"
+      ? `${requestGroupExpression} ASC, p.price_amount DESC NULLS LAST, p.name ASC`
       : sort === "name"
-        ? "p.name ASC"
+        ? `${requestGroupExpression} ASC, p.name ASC`
         : sort === "relevance" && relevanceIndex
-          ? `${relevanceExpression} DESC, ${qualityExpression} DESC, p.name ASC`
+          ? `${requestGroupExpression} ASC, ${qualityExpression} DESC, ${relevanceExpression} DESC, p.name ASC`
           : sort === "newest"
-            ? "p.updated_at DESC, p.name ASC"
-            : `${qualityExpression} DESC, p.name ASC`;
+            ? `${requestGroupExpression} ASC, p.updated_at DESC, p.name ASC`
+            : `${requestGroupExpression} ASC, ${qualityExpression} DESC, p.name ASC`;
   const filteredValues = [...values];
   const productValues = [...values, pageSize, offset];
   const limitIndex = productValues.length - 1;

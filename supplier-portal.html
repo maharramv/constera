@@ -13,6 +13,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/supplier-workflow.css" />
   </head>
   <body data-page="supplier-portal">
     <div class="ambient ambient-one"></div>
@@ -164,6 +165,10 @@
               </div>
               <button class="button button-secondary" type="button" data-supplier-template>Şablon doldur</button>
             </div>
+            <label class="admin-field admin-field-wide">
+              <span>CSV və ya XLSX faylı</span>
+              <input data-supplier-import-file type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+            </label>
             <textarea
               class="admin-import-area"
               data-supplier-price-csv
@@ -172,9 +177,39 @@
               placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər"
             ></textarea>
             <div class="admin-actions">
+              <button class="button button-outline" type="button" data-supplier-validate-file>Faylı yoxla</button>
+              <button class="button button-primary" type="button" data-supplier-import-file-run>Faylı idxal et</button>
               <button class="button button-primary" type="button" data-supplier-import-csv>CSV idxal et</button>
               <button class="button button-secondary" type="button" data-supplier-export-csv>Məhsullarımı CSV-yə ixrac et</button>
             </div>
+            <p class="admin-import-status" data-supplier-import-status role="status" aria-live="polite">
+              Fayl əvvəl yoxlanılır; yalnız düzgün sətirlər təchizatçı hesabına yazılır.
+            </p>
+          </div>
+
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Toplu inventar</p>
+                <h2>SKU üzrə qiymət və stok yenilə</h2>
+              </div>
+              <button class="button button-secondary" type="button" data-inventory-bulk-template>Şablon doldur</button>
+            </div>
+            <textarea
+              class="admin-import-area"
+              data-inventory-bulk-input
+              aria-label="Toplu qiymət və stok yeniləmə CSV-si"
+              rows="8"
+              placeholder="sku,qiymət,status,stok,minimum sifariş,mənbə url"
+            ></textarea>
+            <div class="admin-actions">
+              <button class="button button-outline" type="button" data-inventory-bulk-preview>Uyğunluğu yoxla</button>
+              <button class="button button-primary" type="button" data-inventory-bulk-apply>Yeniləmələri saxla</button>
+            </div>
+            <p class="admin-import-status" data-inventory-bulk-status role="status" aria-live="polite">
+              Təsdiqli qiymət üçün məbləğ və HTTPS mənbə URL-i tələb olunur.
+            </p>
+            <div class="inventory-bulk-preview" data-inventory-bulk-preview-list hidden></div>
           </div>
 
           <div class="admin-panel glass portal-wide">
@@ -230,6 +265,31 @@
               <button class="button button-outline" type="button" data-inventory-history-close>Bağla</button>
             </div>
             <div class="price-history-list" data-inventory-history></div>
+          </div>
+
+          <div class="admin-panel glass portal-wide">
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Sifarişlər</p>
+                <h2>Məhsullarım olan sifarişlər</h2>
+              </div>
+              <span class="data-badge" data-supplier-order-count>0 sifariş</span>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table supplier-order-table">
+                <thead>
+                  <tr>
+                    <th>Sifariş</th>
+                    <th>Müştəri</th>
+                    <th>Məhsullarım</th>
+                    <th>Məbləğ</th>
+                    <th>Vəziyyət</th>
+                    <th>Tarix</th>
+                  </tr>
+                </thead>
+                <tbody data-supplier-order-rows></tbody>
+              </table>
+            </div>
           </div>
         </section>
       </main>

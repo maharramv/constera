@@ -14,12 +14,14 @@ export default withApiErrors(async (req, res) => {
     const limit = parseLimit(req.query.limit, 100, 500);
     const values = [];
     const where = [];
+    let offerScope = "";
     if (user.role === "customer") {
       values.push(user.id);
       where.push(`r.customer_id = $${values.length}`);
     } else if (user.role === "supplier") {
       values.push(user.companyId || "none");
-      where.push(`s.company_id = $${values.length}`);
+      where.push(`(r.supplier_id IS NULL OR s.company_id = $${values.length})`);
+      offerScope = `AND offer_supplier.company_id = $${values.length}`;
     }
     values.push(limit);
     const rows = await query(
@@ -27,7 +29,28 @@ export default withApiErrors(async (req, res) => {
               COALESCE(json_agg(json_build_object(
                 'id', i.id, 'kind', i.item_kind, 'itemId', i.item_id,
                 'title', i.title, 'quantity', i.quantity_text, 'unit', i.unit, 'specs', i.specs
-              )) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items
+              )) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                  'id', o.id,
+                  'rfqId', o.rfq_id,
+                  'supplierId', o.supplier_id,
+                  'supplier', offer_supplier.name,
+                  'priceAmount', o.price_amount,
+                  'price', o.price_text,
+                  'currency', o.currency,
+                  'leadTime', o.lead_time,
+                  'delivery', o.delivery,
+                  'warranty', o.warranty,
+                  'note', o.note,
+                  'status', o.status,
+                  'createdAt', o.created_at,
+                  'updatedAt', o.updated_at
+                ) ORDER BY (o.status = 'accepted') DESC, o.price_amount NULLS LAST, o.created_at DESC)
+                FROM offers o
+                LEFT JOIN suppliers offer_supplier ON offer_supplier.id = o.supplier_id
+                WHERE o.rfq_id = r.id ${offerScope}
+              ), '[]'::json) AS offers
          FROM rfqs r
          LEFT JOIN suppliers s ON s.id = r.supplier_id
          LEFT JOIN rfq_items i ON i.rfq_id = r.id
@@ -47,10 +70,28 @@ export default withApiErrors(async (req, res) => {
   if (req.method === "PATCH") {
     const user = await requireRole(req, ["super_admin", "admin", "sales"]);
     const id = text(body.id || req.query.id, { field: "Sorğu ID-si", required: true, max: 160 });
-    const status = oneOf(body.status, statuses, "Yeni", "Sorğu statusu");
-    const rows = await query("UPDATE rfqs SET status = $2, updated_at = now() WHERE id = $1 RETURNING *", [id, status]);
+    const currentRows = await query("SELECT * FROM rfqs WHERE id = $1 LIMIT 1", [id]);
+    if (!currentRows[0]) throw new ApiError(404, "rfq_not_found", "Qiymət sorğusu tapılmadı.");
+    const hasSupplier = Object.prototype.hasOwnProperty.call(body, "supplierId");
+    const supplierId = hasSupplier ? text(body.supplierId, { max: 160 }) || null : currentRows[0].supplier_id;
+    if (supplierId) {
+      const supplierRows = await query("SELECT id FROM suppliers WHERE id = $1 AND status <> 'Arxiv' LIMIT 1", [supplierId]);
+      if (!supplierRows[0]) throw new ApiError(404, "supplier_not_found", "Təchizatçı tapılmadı.");
+    }
+    const defaultStatus = hasSupplier && supplierId ? "Təklif gözləyir" : currentRows[0].status;
+    const status = oneOf(body.status, statuses, defaultStatus, "Sorğu statusu");
+    const rows = await query(
+      "UPDATE rfqs SET status = $2, supplier_id = $3, updated_at = now() WHERE id = $1 RETURNING *",
+      [id, status, supplierId]
+    );
     if (!rows[0]) throw new ApiError(404, "rfq_not_found", "Qiymət sorğusu tapılmadı.");
-    await recordAudit({ actorId: user.id, action: "status_update", entityType: "rfq", entityId: id, details: { status } });
+    await recordAudit({
+      actorId: user.id,
+      action: "status_update",
+      entityType: "rfq",
+      entityId: id,
+      details: { status, supplierId }
+    });
     return sendJson(res, 200, { ok: true, data: rows[0] });
   }
 

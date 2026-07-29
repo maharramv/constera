@@ -229,3 +229,64 @@ test("mobil kataloq axtarış təklifləri klaviatura ilə seçilir", async ({ p
     Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async ({ page }, testInfo) => {
+  await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  await page.evaluate(() => {
+    localStorage.setItem("constera-rfq-drafts", JSON.stringify([{
+      id: "rfq-layout-test",
+      type: "product",
+      status: "Təklif alındı",
+      product: "Holcim sement təchizatı",
+      quantity: "100 kisə",
+      company: "ConstEra test",
+      contact: "test@constera.az",
+      supplier: "Açıq sorğu",
+      priority: "Qiymət müqayisəsi",
+      createdAt: new Date().toISOString(),
+      offers: [
+        { id: "offer-layout-1", supplier: "TVIM", price: "809 AZN", leadTime: "1 gün", status: "submitted" },
+        { id: "offer-layout-2", supplier: "ELEM", price: "825 AZN", leadTime: "2 gün", status: "submitted" }
+      ]
+    }]));
+  });
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/product-detail.html?product=tvim-qaradag-optimal-300-40kg", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-product-detail] h1")).toContainText("Qaradağ Optimal 300");
+    await expect(page.locator(".detail-media img")).toBeVisible();
+    await expect(page.locator("[data-product-detail]")).toContainText("Qiymət tarixçəsi");
+    await expect.poll(() => page.locator("[data-product-detail] .market-card").count()).toBeGreaterThan(0);
+
+    await page.goto("/rfq-dashboard.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-rfq-dashboard-rows] tr")).toHaveCount(1);
+    await page.locator("[data-rfq-summary]").click();
+    await expect(page.locator(".rfq-offer-card")).toHaveCount(2);
+    await expect(page.locator("[data-rfq-offer-select]")).toHaveCount(2);
+
+    await page.goto("/supplier-portal.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-inventory-bulk-input]")).toBeVisible();
+    await expect(page.locator("[data-supplier-order-rows]")).toBeAttached();
+
+    await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+    await page.locator("[data-admin-quality-dialog]").evaluate((dialog) => dialog.showModal());
+    await expect(page.locator("[data-admin-quality-dialog]")).toBeVisible();
+    const dialogFits = await page.locator("[data-admin-quality-dialog]").evaluate((dialog) => {
+      const rect = dialog.getBoundingClientRect();
+      return rect.width <= window.innerWidth && rect.height <= window.innerHeight;
+    });
+    expect(dialogFits).toBe(true);
+
+    const overflow = await page.evaluate(() =>
+      Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    if (viewport.width === 390) {
+      await testInfo.attach("admin-quality-dialog-mobile.png", {
+        body: await page.screenshot({ fullPage: false, animations: "disabled" }),
+        contentType: "image/png"
+      });
+    }
+  }
+});

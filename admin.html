@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/admin-quality.css" />
   </head>
   <body data-page="admin">
     <div class="ambient ambient-one"></div>
@@ -116,7 +117,7 @@
                 </div>
                 <div class="table-wrap">
                   <table class="admin-table admin-v2-quality-table">
-                    <thead><tr><th>Məhsul</th><th>Brend</th><th>Problemlər</th><th>Son yenilənmə</th></tr></thead>
+                    <thead><tr><th>Məhsul</th><th>Brend</th><th>Problemlər</th><th>Son yenilənmə</th><th>Əməliyyat</th></tr></thead>
                     <tbody data-admin-v2-quality-items></tbody>
                   </table>
                 </div>
@@ -833,6 +834,87 @@
         </section>
       </main>
     </div>
+
+    <dialog class="admin-quality-dialog" data-admin-quality-dialog>
+      <form class="admin-quality-form" data-admin-quality-form>
+        <input type="hidden" name="id" />
+        <header class="admin-quality-dialog-header">
+          <div>
+            <p class="eyebrow">Məlumat keyfiyyəti</p>
+            <h2 data-admin-quality-title>Məhsulu düzəlt</h2>
+          </div>
+          <button class="admin-quality-dialog-close" type="button" data-admin-quality-close aria-label="Pəncərəni bağla" title="Bağla">×</button>
+        </header>
+        <div class="admin-quality-form-grid">
+          <label class="admin-field">
+            <span>SKU</span>
+            <input name="sku" type="text" readonly />
+          </label>
+          <label class="admin-field">
+            <span>Məhsul adı</span>
+            <input name="name" type="text" maxlength="240" required />
+          </label>
+          <label class="admin-field">
+            <span>Brend</span>
+            <input name="brand" type="text" maxlength="160" required />
+          </label>
+          <label class="admin-field">
+            <span>Kateqoriya</span>
+            <select name="category" data-admin-quality-category required></select>
+          </label>
+          <label class="admin-field">
+            <span>Subkateqoriya</span>
+            <input name="subcategory" type="text" maxlength="200" required />
+          </label>
+          <label class="admin-field">
+            <span>Qablaşdırma</span>
+            <input name="package" type="text" maxlength="160" />
+          </label>
+          <label class="admin-field">
+            <span>Foto URL</span>
+            <input name="imageUrl" type="url" inputmode="url" placeholder="https://..." />
+          </label>
+          <label class="admin-field">
+            <span>Mənbə URL</span>
+            <input name="sourceUrl" type="url" inputmode="url" placeholder="https://..." />
+          </label>
+          <label class="admin-field">
+            <span>Qiymət statusu</span>
+            <select name="priceStatus">
+              <option value="request">Sorğu əsasında</option>
+              <option value="confirmed">Təsdiqli</option>
+              <option value="expired">Vaxtı keçib</option>
+            </select>
+          </label>
+          <label class="admin-field">
+            <span>Qiymət, AZN</span>
+            <input name="priceAmount" type="number" min="0" step="0.01" inputmode="decimal" />
+          </label>
+          <label class="admin-field">
+            <span>Stok miqdarı</span>
+            <input name="stockQuantity" type="number" min="0" step="0.01" inputmode="decimal" />
+          </label>
+          <label class="admin-field">
+            <span>Minimum sifariş</span>
+            <input name="minimumOrder" type="number" min="0" step="0.01" inputmode="decimal" />
+          </label>
+          <label class="admin-field admin-field-wide">
+            <span>Mövcudluq</span>
+            <input name="availability" type="text" maxlength="160" />
+          </label>
+          <label class="admin-field admin-field-wide">
+            <span>Texniki xüsusiyyətlər</span>
+            <textarea name="specs" rows="4" placeholder="Xüsusiyyətləri ; ilə ayır"></textarea>
+          </label>
+        </div>
+        <footer class="admin-quality-dialog-actions">
+          <a class="button button-outline" data-admin-quality-product-link href="catalog.html">Məhsul səhifəsi</a>
+          <button class="button button-secondary" type="button" data-admin-quality-close>İmtina</button>
+          <button class="button button-primary" type="submit">Yadda saxla</button>
+        </footer>
+        <p class="admin-import-status" data-admin-quality-status role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
 
     <script src="assets/js/catalog-data.js"></script>
     <script src="assets/js/taxonomy-expansion.js"></script>
