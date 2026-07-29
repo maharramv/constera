@@ -219,7 +219,10 @@ try {
         await query("DELETE FROM sessions WHERE user_id = $1", [application.user_id]);
         await query("DELETE FROM users WHERE id = $1", [application.user_id]);
       }
-      if (application?.supplier_id) await query("DELETE FROM suppliers WHERE id = $1", [application.supplier_id]);
+      if (application?.supplier_id) {
+        await query("DELETE FROM supplier_contracts WHERE supplier_id = $1", [application.supplier_id]);
+        await query("DELETE FROM suppliers WHERE id = $1", [application.supplier_id]);
+      }
       if (application?.company_id) await query("DELETE FROM companies WHERE id = $1", [application.company_id]);
     }
   }

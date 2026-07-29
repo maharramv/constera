@@ -31,8 +31,18 @@ export const mapReservation = (row) => ({
   updatedAt: row.updated_at
 });
 
+const mapTrackingEvent = (row) => ({
+  id: row.id,
+  fulfillmentId: row.fulfillment_id,
+  status: row.status,
+  location: row.location || "",
+  note: row.note || "",
+  source: row.source,
+  occurredAt: row.occurred_at
+});
+
 export const readOrderOperations = async (orderId) => {
-  const [fulfillments, reservations] = await Promise.all([
+  const [fulfillments, reservations, tracking] = await Promise.all([
     query(
       `SELECT fulfillment.*, supplier.name AS supplier_name
          FROM order_fulfillments fulfillment
@@ -47,10 +57,22 @@ export const readOrderOperations = async (orderId) => {
         WHERE order_id = $1
         ORDER BY created_at`,
       [orderId]
+    ),
+    query(
+      `SELECT *
+         FROM delivery_tracking_events
+        WHERE order_id = $1
+        ORDER BY occurred_at DESC`,
+      [orderId]
     )
   ]);
   return {
-    fulfillments: fulfillments.map(mapFulfillment),
+    fulfillments: fulfillments.map((item) => ({
+      ...mapFulfillment(item),
+      trackingEvents: tracking
+        .filter((event) => event.fulfillment_id === item.id)
+        .map(mapTrackingEvent)
+    })),
     reservations: reservations.map(mapReservation)
   };
 };

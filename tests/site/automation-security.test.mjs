@@ -23,3 +23,47 @@ test("2FA, push bildirişi və yeni logistika zonaları production qatında möv
   assert.match(serviceWorker, /addEventListener\("push"/);
   assert.match(serviceWorker, /addEventListener\("notificationclick"/);
 });
+
+test("kommersiya əməliyyat mərkəzi müqavilə, hesablaşma, logistika və təhlükəsizliyi birləşdirir", () => {
+  const migration = read("db/migrations/023_commercial_security_operations.sql");
+  const api = read("api/_admin/operations-center.js");
+  const admin = read("admin.html");
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS supplier_contracts/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS supplier_settlements/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS delivery_tracking_events/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS security_events/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS backup_verifications/);
+  assert.match(api, /generateSettlement/);
+  assert.match(api, /verifyCloudBackup/);
+  assert.match(admin, /data-admin-panel="operations"/);
+  assert.match(read("vercel.json"), /\/api\/operations-center/);
+});
+
+test("feed rollback snapshot-u və media hüquq metadatası idarə olunur", () => {
+  const feed = read("api/_lib/supplier-feeds.js");
+  const media = read("api/_admin/media.js");
+  const migration = read("db/migrations/023_commercial_security_operations.sql");
+  assert.match(feed, /previewSupplierFeed/);
+  assert.match(feed, /rollbackSupplierFeedRun/);
+  assert.match(feed, /supplier_feed_changes/);
+  assert.match(migration, /rollback_status/);
+  assert.match(media, /checksum_sha256/);
+  assert.match(media, /license_type/);
+  assert.match(media, /markPrimary/);
+  assert.match(media, /assertSupplierMediaScope/);
+  assert.match(media, /media_scope_denied/);
+});
+
+test("production kataloqu sıxılmış və versiyalanmış data resursundan yüklənir", () => {
+  const build = read("scripts/vercel-build.mjs");
+  const loader = read("assets/js/catalog-loader.js");
+  const marketplace = read("assets/js/marketplace.js");
+  const serviceWorker = read("service-worker.js");
+  assert.match(build, /gzipSync\(Buffer\.from\(JSON\.stringify\(marketplace\)\)/);
+  assert.match(build, /dist\/assets\/data\/marketplace\.data/);
+  assert.match(build, /catalog-loader\.js/);
+  assert.match(loader, /DecompressionStream\("gzip"\)/);
+  assert.match(loader, /ConstEraCatalogReady/);
+  assert.match(marketplace, /await window\.ConstEraCatalogReady/);
+  assert.match(serviceWorker, /assets\/data\/marketplace\.data/);
+});

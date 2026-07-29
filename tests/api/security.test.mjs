@@ -6,6 +6,7 @@ import { matrixToObjects, parseCsv, readAliased } from "../../api/_lib/imports.j
 import { categoryPublicId, categoryStorageId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug } from "../../api/_lib/validation.js";
 import { hasExpectedSignature } from "../../api/_admin/media.js";
 import { parseOrderQuantity } from "../../api/_admin/orders.js";
+import { calculateSettlementAmounts, settlementTransitionAllowed } from "../../api/_lib/commercial-operations.js";
 
 test("şifrə scrypt ilə heşlənir və yoxlanır", async () => {
   const hash = await hashPassword("CoxGucluSifre-2026!");
@@ -89,4 +90,22 @@ test("sifariş miqdarı üç onluq dəqiqliyə normallaşdırılır", () => {
   assert.equal(parseOrderQuantity(1), 1);
   assert.throws(() => parseOrderQuantity(0), ApiError);
   assert.throws(() => parseOrderQuantity(1_000_001), ApiError);
+});
+
+test("təchizatçı hesablaşması refund və komissiyanı ardıcıl hesablayır", () => {
+  assert.deepEqual(calculateSettlementAmounts({
+    grossAmount: 1_000,
+    refundAmount: 100,
+    commissionRate: 8,
+    adjustmentAmount: 20
+  }), {
+    grossAmount: 1_000,
+    refundAmount: 100,
+    commissionAmount: 72,
+    adjustmentAmount: 20,
+    netAmount: 848
+  });
+  assert.equal(settlementTransitionAllowed("draft", "approved"), true);
+  assert.equal(settlementTransitionAllowed("draft", "paid"), false);
+  assert.equal(settlementTransitionAllowed("paid", "cancelled"), false);
 });

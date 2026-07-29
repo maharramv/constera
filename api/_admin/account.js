@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { hashOpaque, hashPassword, requireRole, verifyPassword } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { recordSecurityEvent } from "../_lib/security-events.js";
 import {
   createTwoFactorSetup,
   findRecoveryCode,
@@ -92,6 +93,15 @@ export default withApiErrors(async (req, res) => {
     );
     await query("DELETE FROM sessions WHERE user_id = $1 AND id <> $2", [user.id, user.sessionId]);
     await recordAudit({ actorId: user.id, action: "change_password", entityType: "user", entityId: user.id });
+    await recordSecurityEvent({
+      req,
+      userId: user.id,
+      email: user.email,
+      eventType: "sessions_revoked",
+      succeeded: true,
+      riskLevel: "medium",
+      metadata: { reason: "password_changed" }
+    });
     return sendJson(res, 200, { ok: true, data: mapAccount(await loadAccount(user.id)) });
   }
 
@@ -234,6 +244,15 @@ export default withApiErrors(async (req, res) => {
       action: "revoke_sessions",
       entityType: "session",
       details: { revoked: rows.length }
+    });
+    await recordSecurityEvent({
+      req,
+      userId: user.id,
+      email: user.email,
+      eventType: "sessions_revoked",
+      succeeded: true,
+      riskLevel: "medium",
+      metadata: { revoked: rows.length }
     });
     return sendJson(res, 200, { ok: true, data: { revoked: rows.length } });
   }

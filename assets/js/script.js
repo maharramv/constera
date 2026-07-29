@@ -193,6 +193,8 @@ const updateMarketplaceCounts = () => {
   });
 };
 
+window.addEventListener("constera:catalog-ready", updateMarketplaceCounts, { once: true });
+
 const animateCounter = (node) => {
   const target = Number(node.dataset.target);
   if (!Number.isFinite(target)) return;

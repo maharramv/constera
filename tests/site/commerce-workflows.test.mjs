@@ -348,7 +348,7 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
-  assert.match(backup, /constera-cloud-backup-v7/);
+  assert.match(backup, /constera-cloud-backup-v8/);
   assert.doesNotMatch(backup, /password_hash/);
   assert.doesNotMatch(backup, /SELECT \* FROM users/);
   assert.match(backup, /Content-Encoding/);

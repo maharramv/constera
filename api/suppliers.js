@@ -176,6 +176,8 @@ const reviewSupplierApplication = async (user, body) => {
   const companyId = `com-${randomUUID()}`;
   const supplierId = `sup-${randomUUID()}`;
   const userId = `usr-${randomUUID()}`;
+  const contractId = `sct-${randomUUID()}`;
+  const contractNumber = `CE-SUP-${new Date().getUTCFullYear()}-${supplierId.slice(-8).toUpperCase()}`;
   const temporaryPassword = `${randomBytes(12).toString("base64url")}Aa7!`;
   const passwordHash = await hashPassword(temporaryPassword);
   const rows = await query(
@@ -199,15 +201,32 @@ const reviewSupplierApplication = async (user, body) => {
        SELECT $4, company.id, selected.contact_email, selected.contact_name, $5,
               'supplier', 'active', true, now()
        FROM selected CROSS JOIN company RETURNING id
+     ), contract AS (
+       INSERT INTO supplier_contracts (
+         id, supplier_id, contract_number, status, created_by
+       )
+       SELECT $8, supplier_profile.id, $9, 'draft', $7
+       FROM supplier_profile
+       RETURNING id
      )
      UPDATE supplier_applications application
         SET status = 'approved', decision_note = $6, reviewed_by = $7,
             reviewed_at = now(), company_id = company.id,
             supplier_id = supplier_profile.id, user_id = account.id, updated_at = now()
-       FROM company, supplier_profile, account
+       FROM company, supplier_profile, account, contract
       WHERE application.id = $1 AND application.status = 'pending'
       RETURNING application.*`,
-    [id, companyId, supplierId, userId, passwordHash, decisionNote || null, user.id]
+    [
+      id,
+      companyId,
+      supplierId,
+      userId,
+      passwordHash,
+      decisionNote || null,
+      user.id,
+      contractId,
+      contractNumber
+    ]
   );
   if (!rows[0]) throw new ApiError(409, "supplier_application_reviewed", "Müraciət eyni vaxtda başqa istifadəçi tərəfindən yeniləndi.");
 
@@ -233,7 +252,7 @@ const reviewSupplierApplication = async (user, body) => {
     action: "approve",
     entityType: "supplier_application",
     entityId: id,
-    details: { companyId, supplierId, userId }
+    details: { companyId, supplierId, userId, contractId }
   });
   return { application: mapApplication(rows[0]), invitationQueued: true };
 };

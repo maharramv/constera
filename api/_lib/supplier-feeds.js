@@ -102,6 +102,113 @@ export const mapSupplierFeed = (row) => ({
   updatedAt: row.updated_at
 });
 
+const recalculateCanonicalProducts = async (productIds) => {
+  const ids = [...new Set(productIds.filter(Boolean))];
+  if (!ids.length) return;
+  await query(
+    `WITH canonical AS (
+       SELECT DISTINCT ON (offer.product_id)
+         offer.product_id, offer.unit_price, offer.currency, offer.price_text,
+         offer.price_status, offer.stock_quantity, offer.minimum_order,
+         offer.price_verified_at, offer.source_url, offer.source_label
+       FROM product_offers offer
+       JOIN suppliers supplier ON supplier.id = offer.supplier_id
+       WHERE offer.product_id = ANY($1::text[])
+         AND offer.status = 'active'
+         AND supplier.status <> 'Arxiv'
+       ORDER BY offer.product_id,
+         CASE offer.price_status WHEN 'confirmed' THEN 0 WHEN 'request' THEN 1 ELSE 2 END,
+         CASE WHEN offer.stock_quantity IS NULL THEN 1 WHEN offer.stock_quantity > 0 THEN 0 ELSE 2 END,
+         offer.is_featured DESC,
+         offer.unit_price ASC NULLS LAST,
+         offer.updated_at DESC
+     )
+     UPDATE products product
+        SET price_amount = canonical.unit_price,
+            price_currency = canonical.currency,
+            price_text = canonical.price_text,
+            price_status = canonical.price_status,
+            stock_quantity = canonical.stock_quantity,
+            minimum_order = canonical.minimum_order,
+            price_verified_at = canonical.price_verified_at,
+            source_url = COALESCE(NULLIF(canonical.source_url, ''), product.source_url),
+            source_label = COALESCE(NULLIF(canonical.source_label, ''), product.source_label),
+            updated_at = now()
+       FROM canonical
+      WHERE product.id = canonical.product_id`,
+    [ids]
+  );
+};
+
+const syncFeedInventory = async (supplierId, incoming) => {
+  const stockRows = incoming.filter((item) => item.stockQuantity !== null);
+  if (!stockRows.length) return;
+  await query(
+    `INSERT INTO warehouses (id, supplier_id, name, city, is_default)
+     SELECT 'wh-' || md5(supplier.id), supplier.id,
+            supplier.name || ' əsas anbarı',
+            COALESCE(NULLIF(supplier.region, ''), 'Bakı'), true
+       FROM suppliers supplier
+      WHERE supplier.id = $1
+     ON CONFLICT (id) DO NOTHING`,
+    [supplierId]
+  );
+  await query(
+    `WITH incoming AS (
+       SELECT * FROM jsonb_to_recordset($1::jsonb) AS item(
+         "productId" text, "stockQuantity" numeric
+       )
+     )
+     INSERT INTO inventory_levels (
+       id, warehouse_id, product_id, stock_quantity, updated_at
+     )
+     SELECT 'ivl-' || md5(warehouse.id || ':' || incoming."productId"),
+            warehouse.id, incoming."productId", incoming."stockQuantity", now()
+       FROM incoming
+       JOIN warehouses warehouse
+         ON warehouse.supplier_id = $2
+        AND warehouse.is_default = true
+        AND warehouse.status = 'active'
+     ON CONFLICT (warehouse_id, product_id) DO UPDATE SET
+       stock_quantity = EXCLUDED.stock_quantity,
+       updated_at = now()
+     WHERE EXCLUDED.stock_quantity >= inventory_levels.reserved_quantity`,
+    [JSON.stringify(stockRows), supplierId]
+  );
+};
+
+const queueFeedAlerts = async (feed, runId, alerts) => {
+  if (!alerts.length) return;
+  const supplier = (await query("SELECT company_id FROM suppliers WHERE id = $1 LIMIT 1", [feed.supplier_id]))[0];
+  const payload = {
+    feedId: feed.id,
+    runId,
+    alertCount: alerts.length,
+    alerts: alerts.slice(0, 20)
+  };
+  await query(
+    `INSERT INTO notifications (
+       id, user_id, channel, subject, body, template_key, payload
+     )
+     SELECT 'not-' || md5($1 || ':' || users.id), users.id, 'in_app',
+            'Qiymət və stok feed-i xəbərdarlığı',
+            $2, 'supplier_feed_alert', $3::jsonb
+       FROM users
+      WHERE users.status = 'active'
+        AND (
+          users.role IN ('super_admin', 'admin')
+          OR ($4::text IS NOT NULL AND users.company_id = $4)
+        )
+     ON CONFLICT (id) DO NOTHING`,
+    [
+      runId,
+      `${feed.name} üzrə ${alerts.length} əhəmiyyətli dəyişiklik yoxlama tələb edir.`,
+      JSON.stringify(payload),
+      supplier?.company_id || null
+    ]
+  );
+};
+
 export const runSupplierFeed = async (feedOrId) => {
   const feedRows = typeof feedOrId === "string"
     ? await query("SELECT * FROM supplier_feeds WHERE id = $1 AND active = true LIMIT 1", [feedOrId])
@@ -134,9 +241,19 @@ export const runSupplierFeed = async (feedOrId) => {
     const rows = parseSupplierFeedRows(source, feed.feed_format).slice(0, 5_000);
     const catalog = await query(
       `SELECT product.id AS product_id, product.sku AS product_sku,
+              product.price_amount AS product_price_amount,
+              product.price_currency AS product_price_currency,
+              product.price_text AS product_price_text,
+              product.price_status AS product_price_status,
+              product.stock_quantity AS product_stock_quantity,
+              product.minimum_order AS product_minimum_order,
+              product.price_verified_at AS product_price_verified_at,
+              product.source_url AS product_source_url,
+              product.source_label AS product_source_label,
               offer.id AS offer_id, offer.supplier_sku, offer.unit_price,
-              offer.currency, offer.price_status, offer.stock_quantity,
-              offer.minimum_order, offer.lead_time_days
+              offer.currency, offer.price_text, offer.price_status, offer.stock_quantity,
+              offer.minimum_order, offer.lead_time_days, offer.source_url,
+              offer.source_label, offer.price_verified_at, offer.status AS offer_status
          FROM products product
          LEFT JOIN product_offers offer
            ON offer.product_id = product.id AND offer.supplier_id = $1
@@ -151,6 +268,7 @@ export const runSupplierFeed = async (feedOrId) => {
     const seen = new Set();
     const skipped = [];
     const incoming = [];
+    const alerts = [];
     rows.forEach((row, index) => {
       const sku = String(readMapped(row, "supplierSku", feed.mapping) || readMapped(row, "sku", feed.mapping)).trim();
       const key = sku.toLowerCase();
@@ -190,7 +308,19 @@ export const runSupplierFeed = async (feedOrId) => {
       } catch {
         // Feed ünvanı etibarlı əsas mənbə kimi qalır.
       }
-      incoming.push({
+      const stockQuantity = stock.provided
+        ? stock.value
+        : match.stock_quantity === null ? null : Number(match.stock_quantity);
+      if (currentPrice !== null && unitPrice !== null && currentPrice > 0) {
+        const changePercent = Math.round(Math.abs(unitPrice - currentPrice) / currentPrice * 10_000) / 100;
+        if (changePercent >= 20) {
+          alerts.push({ sku, type: "price_change", from: currentPrice, to: unitPrice, changePercent });
+        }
+      }
+      if (Number(match.stock_quantity) > 0 && stockQuantity === 0) {
+        alerts.push({ sku, type: "out_of_stock", from: Number(match.stock_quantity), to: 0 });
+      }
+      const item = {
         id: match.offer_id || offerId(match.product_id, feed.supplier_id),
         productId: match.product_id,
         supplierId: feed.supplier_id,
@@ -201,13 +331,41 @@ export const runSupplierFeed = async (feedOrId) => {
           ? "Sorğu əsasında"
           : `${unitPrice.toFixed(2)} ${currency}`,
         priceStatus,
-        stockQuantity: stock.provided ? stock.value : match.stock_quantity === null ? null : Number(match.stock_quantity),
+        stockQuantity,
         minimumOrder: minimumOrder.provided ? minimumOrder.value : match.minimum_order === null ? null : Number(match.minimum_order),
         leadTimeDays: leadTime.provided ? leadTime.value : match.lead_time_days === null ? null : Number(match.lead_time_days),
         sourceUrl,
         sourceLabel: feed.name,
-        priceVerifiedAt: priceStatus === "confirmed" ? parsedVerifiedAt : null
-      });
+        priceVerifiedAt: priceStatus === "confirmed" ? parsedVerifiedAt : null,
+        beforeData: {
+          offer: match.offer_id ? {
+            supplierSku: match.supplier_sku,
+            unitPrice: currentPrice,
+            currency: match.currency,
+            priceText: match.price_text,
+            priceStatus: match.price_status,
+            stockQuantity: match.stock_quantity === null ? null : Number(match.stock_quantity),
+            minimumOrder: match.minimum_order === null ? null : Number(match.minimum_order),
+            leadTimeDays: match.lead_time_days === null ? null : Number(match.lead_time_days),
+            sourceUrl: match.source_url,
+            sourceLabel: match.source_label,
+            priceVerifiedAt: match.price_verified_at,
+            status: match.offer_status
+          } : null,
+          product: {
+            priceAmount: match.product_price_amount === null ? null : Number(match.product_price_amount),
+            priceCurrency: match.product_price_currency,
+            priceText: match.product_price_text,
+            priceStatus: match.product_price_status,
+            stockQuantity: match.product_stock_quantity === null ? null : Number(match.product_stock_quantity),
+            minimumOrder: match.product_minimum_order === null ? null : Number(match.product_minimum_order),
+            priceVerifiedAt: match.product_price_verified_at,
+            sourceUrl: match.product_source_url,
+            sourceLabel: match.product_source_label
+          }
+        }
+      };
+      incoming.push(item);
     });
     let updatedRows = [];
     if (incoming.length) {
@@ -246,6 +404,26 @@ export const runSupplierFeed = async (feedOrId) => {
          RETURNING id, unit_price, currency, price_status, stock_quantity, minimum_order`,
         [JSON.stringify(incoming)]
       );
+      const changes = incoming.map(({ beforeData, ...afterData }) => ({
+        id: afterData.id,
+        productId: afterData.productId,
+        beforeData,
+        afterData
+      }));
+      await query(
+        `WITH changes AS (
+           SELECT * FROM jsonb_to_recordset($1::jsonb) AS item(
+             id text, "productId" text, "beforeData" jsonb, "afterData" jsonb
+           )
+         )
+         INSERT INTO supplier_feed_changes (
+           id, feed_run_id, product_offer_id, product_id, before_data, after_data
+         )
+         SELECT 'sfc-' || md5($2 || ':' || id), $2, id, "productId",
+                "beforeData", "afterData"
+           FROM changes`,
+        [JSON.stringify(changes), runId]
+      );
       await query(
         `WITH history AS (
            SELECT * FROM jsonb_to_recordset($1::jsonb) AS item(
@@ -263,51 +441,23 @@ export const runSupplierFeed = async (feedOrId) => {
         [JSON.stringify(incoming), runId]
       );
       const affectedProductIds = [...new Set(incoming.map((item) => item.productId))];
-      await query(
-        `WITH canonical AS (
-           SELECT DISTINCT ON (offer.product_id)
-             offer.product_id, offer.unit_price, offer.currency, offer.price_text,
-             offer.price_status, offer.stock_quantity, offer.minimum_order,
-             offer.price_verified_at, offer.source_url, offer.source_label
-           FROM product_offers offer
-           JOIN suppliers supplier ON supplier.id = offer.supplier_id
-           WHERE offer.product_id = ANY($1::text[])
-             AND offer.status = 'active'
-             AND supplier.status <> 'Arxiv'
-           ORDER BY offer.product_id,
-             CASE offer.price_status WHEN 'confirmed' THEN 0 WHEN 'request' THEN 1 ELSE 2 END,
-             CASE WHEN offer.stock_quantity IS NULL THEN 1 WHEN offer.stock_quantity > 0 THEN 0 ELSE 2 END,
-             offer.is_featured DESC,
-             offer.unit_price ASC NULLS LAST,
-             offer.updated_at DESC
-         )
-         UPDATE products product
-            SET price_amount = canonical.unit_price,
-                price_currency = canonical.currency,
-                price_text = canonical.price_text,
-                price_status = canonical.price_status,
-                stock_quantity = canonical.stock_quantity,
-                minimum_order = canonical.minimum_order,
-                price_verified_at = canonical.price_verified_at,
-                source_url = COALESCE(NULLIF(canonical.source_url, ''), product.source_url),
-                source_label = COALESCE(NULLIF(canonical.source_label, ''), product.source_label),
-                updated_at = now()
-           FROM canonical
-          WHERE product.id = canonical.product_id`,
-        [affectedProductIds]
-      );
+      await recalculateCanonicalProducts(affectedProductIds);
+      await syncFeedInventory(feed.supplier_id, incoming);
     }
     const summary = {
       sourceRows: rows.length,
       matchedRows: incoming.length,
       updatedRows: updatedRows.length,
       skippedRows: skipped.length,
-      skipped: skipped.slice(0, 100)
+      skipped: skipped.slice(0, 100),
+      alertCount: alerts.length,
+      alerts: alerts.slice(0, 100)
     };
     await query(
       `UPDATE supplier_feed_runs
           SET status = 'completed', total_rows = $2, matched_rows = $3,
               updated_rows = $4, skipped_rows = $5, summary = $6::jsonb,
+              rollback_status = CASE WHEN $4 > 0 THEN 'available' ELSE 'unavailable' END,
               completed_at = now()
         WHERE id = $1`,
       [runId, rows.length, incoming.length, updatedRows.length, skipped.length, JSON.stringify(summary)]
@@ -320,11 +470,15 @@ export const runSupplierFeed = async (feedOrId) => {
         WHERE id = $1`,
       [feed.id]
     );
+    await queueFeedAlerts(feed, runId, alerts);
     return { id: runId, feedId: feed.id, ...summary };
   } catch (error) {
     const message = String(error.message || "Feed sinxronizasiya xətası").slice(0, 500);
     await query(
-      "UPDATE supplier_feed_runs SET status = 'failed', error_text = $2, completed_at = now() WHERE id = $1",
+      `UPDATE supplier_feed_runs
+          SET status = 'failed', rollback_status = 'unavailable',
+              error_text = $2, completed_at = now()
+        WHERE id = $1`,
       [runId, message]
     );
     await query(
@@ -334,6 +488,189 @@ export const runSupplierFeed = async (feedOrId) => {
         WHERE id = $1`,
       [feed.id, message]
     );
+    throw error;
+  }
+};
+
+export const previewSupplierFeed = async (feedOrId) => {
+  const feed = typeof feedOrId === "string"
+    ? (await query("SELECT * FROM supplier_feeds WHERE id = $1 AND active = true LIMIT 1", [feedOrId]))[0]
+    : feedOrId;
+  if (!feed) throw new ApiError(404, "supplier_feed_not_found", "Aktiv təchizatçı feed-i tapılmadı.");
+  const rows = parseSupplierFeedRows(await fetchFeed(feed), feed.feed_format).slice(0, 5_000);
+  const catalog = await query(
+    `SELECT product.sku, offer.supplier_sku
+       FROM products product
+       LEFT JOIN product_offers offer
+         ON offer.product_id = product.id AND offer.supplier_id = $1
+      WHERE product.status = 'active'`,
+    [feed.supplier_id]
+  );
+  const known = new Set(catalog.flatMap((item) => [item.sku, item.supplier_sku])
+    .filter(Boolean).map((value) => String(value).trim().toLowerCase()));
+  const seen = new Set();
+  const samples = [];
+  let matchedRows = 0;
+  let duplicateRows = 0;
+  rows.forEach((row, index) => {
+    const sku = String(readMapped(row, "supplierSku", feed.mapping) || readMapped(row, "sku", feed.mapping)).trim();
+    const key = sku.toLowerCase();
+    if (seen.has(key) && key) duplicateRows += 1;
+    else if (known.has(key)) matchedRows += 1;
+    else if (samples.length < 25) samples.push({ row: index + 2, sku, reason: sku ? "SKU kataloqda tapılmadı" : "SKU boşdur" });
+    if (key) seen.add(key);
+  });
+  return {
+    feedId: feed.id,
+    sourceRows: rows.length,
+    matchedRows,
+    unknownRows: rows.length - matchedRows - duplicateRows,
+    duplicateRows,
+    samples
+  };
+};
+
+export const rollbackSupplierFeedRun = async (runId, actorId) => {
+  const run = (await query(
+    `SELECT run.*, feed.supplier_id, feed.name AS feed_name
+       FROM supplier_feed_runs run
+       JOIN supplier_feeds feed ON feed.id = run.feed_id
+      WHERE run.id = $1
+        AND run.status = 'completed'
+        AND run.rollback_status IN ('available', 'failed')
+      LIMIT 1`,
+    [runId]
+  ))[0];
+  if (!run) {
+    throw new ApiError(404, "feed_run_not_rollbackable", "Geri qaytarıla bilən feed işi tapılmadı.");
+  }
+  const later = await query(
+    `SELECT id FROM supplier_feed_runs
+      WHERE feed_id = $1 AND status = 'completed' AND started_at > $2
+      LIMIT 1`,
+    [run.feed_id, run.started_at]
+  );
+  if (later[0]) {
+    throw new ApiError(409, "feed_run_not_latest", "Yalnız həmin feed-in son uğurlu işi geri qaytarıla bilər.");
+  }
+  const changes = await query(
+    "SELECT * FROM supplier_feed_changes WHERE feed_run_id = $1 ORDER BY created_at",
+    [runId]
+  );
+  if (!changes.length) {
+    throw new ApiError(409, "feed_run_without_changes", "Bu iş üçün geri qaytarma snapshot-u yoxdur.");
+  }
+  const productIds = [...new Set(changes.map((item) => item.product_id))];
+  try {
+    await query(
+      `WITH changes AS (
+         SELECT * FROM supplier_feed_changes WHERE feed_run_id = $1
+       )
+       UPDATE product_offers offer
+          SET supplier_sku = changes.before_data #>> '{offer,supplierSku}',
+              unit_price = NULLIF(changes.before_data #>> '{offer,unitPrice}', '')::numeric,
+              currency = COALESCE(changes.before_data #>> '{offer,currency}', 'AZN'),
+              price_text = COALESCE(changes.before_data #>> '{offer,priceText}', 'Sorğu əsasında'),
+              price_status = COALESCE(changes.before_data #>> '{offer,priceStatus}', 'request'),
+              stock_quantity = NULLIF(changes.before_data #>> '{offer,stockQuantity}', '')::numeric,
+              minimum_order = NULLIF(changes.before_data #>> '{offer,minimumOrder}', '')::numeric,
+              lead_time_days = NULLIF(changes.before_data #>> '{offer,leadTimeDays}', '')::integer,
+              source_url = changes.before_data #>> '{offer,sourceUrl}',
+              source_label = changes.before_data #>> '{offer,sourceLabel}',
+              price_verified_at = NULLIF(changes.before_data #>> '{offer,priceVerifiedAt}', '')::timestamptz,
+              status = COALESCE(changes.before_data #>> '{offer,status}', 'active'),
+              updated_at = now()
+         FROM changes
+        WHERE offer.id = changes.product_offer_id
+          AND jsonb_typeof(changes.before_data->'offer') = 'object'`,
+      [runId]
+    );
+    await query(
+      `UPDATE product_offers offer
+          SET status = 'archived', updated_at = now()
+         FROM supplier_feed_changes changes
+        WHERE changes.feed_run_id = $1
+          AND offer.id = changes.product_offer_id
+          AND jsonb_typeof(changes.before_data->'offer') IS DISTINCT FROM 'object'`,
+      [runId]
+    );
+    await query(
+      `WITH changes AS (
+         SELECT DISTINCT ON (product_id) product_id, before_data
+           FROM supplier_feed_changes
+          WHERE feed_run_id = $1
+          ORDER BY product_id, created_at
+       )
+       UPDATE products product
+          SET price_amount = NULLIF(changes.before_data #>> '{product,priceAmount}', '')::numeric,
+              price_currency = COALESCE(changes.before_data #>> '{product,priceCurrency}', 'AZN'),
+              price_text = COALESCE(changes.before_data #>> '{product,priceText}', 'Sorğu əsasında'),
+              price_status = COALESCE(changes.before_data #>> '{product,priceStatus}', 'request'),
+              stock_quantity = NULLIF(changes.before_data #>> '{product,stockQuantity}', '')::numeric,
+              minimum_order = NULLIF(changes.before_data #>> '{product,minimumOrder}', '')::numeric,
+              price_verified_at = NULLIF(changes.before_data #>> '{product,priceVerifiedAt}', '')::timestamptz,
+              source_url = changes.before_data #>> '{product,sourceUrl}',
+              source_label = changes.before_data #>> '{product,sourceLabel}',
+              updated_at = now()
+         FROM changes
+        WHERE product.id = changes.product_id
+          AND NOT EXISTS (
+            SELECT 1 FROM product_offers offer
+             WHERE offer.product_id = product.id AND offer.status = 'active'
+          )`,
+      [runId]
+    );
+    await recalculateCanonicalProducts(productIds);
+    await query(
+      `WITH changes AS (
+         SELECT * FROM supplier_feed_changes WHERE feed_run_id = $1
+       )
+       UPDATE inventory_levels level
+          SET stock_quantity = NULLIF(changes.before_data #>> '{offer,stockQuantity}', '')::numeric,
+              updated_at = now()
+         FROM changes
+         JOIN warehouses warehouse
+           ON warehouse.supplier_id = $2
+          AND warehouse.is_default = true
+          AND warehouse.status = 'active'
+        WHERE level.warehouse_id = warehouse.id
+          AND level.product_id = changes.product_id
+          AND jsonb_typeof(changes.before_data->'offer') = 'object'
+          AND NULLIF(changes.before_data #>> '{offer,stockQuantity}', '') IS NOT NULL
+          AND NULLIF(changes.before_data #>> '{offer,stockQuantity}', '')::numeric >= level.reserved_quantity`,
+      [runId, run.supplier_id]
+    );
+    await query(
+      `DELETE FROM inventory_levels level
+        USING supplier_feed_changes changes, warehouses warehouse
+        WHERE changes.feed_run_id = $1
+          AND warehouse.supplier_id = $2
+          AND warehouse.is_default = true
+          AND level.warehouse_id = warehouse.id
+          AND level.product_id = changes.product_id
+          AND level.reserved_quantity = 0
+          AND jsonb_typeof(changes.before_data->'offer') IS DISTINCT FROM 'object'`,
+      [runId, run.supplier_id]
+    );
+    await query(
+      `UPDATE supplier_feed_runs
+          SET rollback_status = 'completed', rolled_back_at = now(), rolled_back_by = $2
+        WHERE id = $1`,
+      [runId, actorId]
+    );
+    return {
+      id: runId,
+      feedId: run.feed_id,
+      feedName: run.feed_name,
+      restoredOffers: changes.filter((item) => item.before_data?.offer).length,
+      archivedOffers: changes.filter((item) => !item.before_data?.offer).length,
+      affectedProducts: productIds.length
+    };
+  } catch (error) {
+    await query(
+      "UPDATE supplier_feed_runs SET rollback_status = 'failed' WHERE id = $1",
+      [runId]
+    ).catch(() => null);
     throw error;
   }
 };

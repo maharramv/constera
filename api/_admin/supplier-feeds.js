@@ -1,7 +1,12 @@
 import { requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { validatePublicUrl } from "../_lib/catalog-quality.js";
-import { mapSupplierFeed, runSupplierFeed } from "../_lib/supplier-feeds.js";
+import {
+  mapSupplierFeed,
+  previewSupplierFeed,
+  rollbackSupplierFeedRun,
+  runSupplierFeed
+} from "../_lib/supplier-feeds.js";
 import {
   ApiError,
   assertMethod,
@@ -137,6 +142,8 @@ const mapRun = (row) => ({
   skippedRows: Number(row.skipped_rows),
   summary: row.summary || {},
   error: row.error_text || "",
+  rollbackStatus: row.rollback_status || "unavailable",
+  rolledBackAt: row.rolled_back_at,
   startedAt: row.started_at,
   completedAt: row.completed_at
 });
@@ -187,16 +194,40 @@ export default withApiErrors(async (req, res) => {
   assertSameOrigin(req);
   const body = await readJson(req, 50_000);
 
-  if (req.method === "POST" && body.action === "run") {
+  if (req.method === "POST" && ["run", "preview"].includes(body.action)) {
     const id = text(body.id, { field: "Feed ID-si", required: true, max: 160 });
     const feed = await loadFeed(id, scopedSupplier?.id || "");
     if (!feed) throw new ApiError(404, "supplier_feed_not_found", "Feed tapılmadı.");
-    const result = await runSupplierFeed(feed);
+    const result = body.action === "preview"
+      ? await previewSupplierFeed(feed)
+      : await runSupplierFeed(feed);
     await recordAudit({
       actorId: user.id,
-      action: "run",
+      action: body.action,
       entityType: "supplier_feed",
       entityId: id,
+      details: result
+    });
+    return sendJson(res, 200, { ok: true, data: result });
+  }
+
+  if (req.method === "POST" && body.action === "rollback") {
+    const runId = text(body.runId, { field: "Feed işi", required: true, max: 160 });
+    const rows = await query(
+      `SELECT run.id
+         FROM supplier_feed_runs run
+         JOIN supplier_feeds feed ON feed.id = run.feed_id
+        WHERE run.id = $1 ${scopedSupplier ? "AND feed.supplier_id = $2" : ""}
+        LIMIT 1`,
+      scopedSupplier ? [runId, scopedSupplier.id] : [runId]
+    );
+    if (!rows[0]) throw new ApiError(404, "supplier_feed_run_not_found", "Feed işi tapılmadı.");
+    const result = await rollbackSupplierFeedRun(runId, user.id);
+    await recordAudit({
+      actorId: user.id,
+      action: "rollback",
+      entityType: "supplier_feed_run",
+      entityId: runId,
       details: result
     });
     return sendJson(res, 200, { ok: true, data: result });

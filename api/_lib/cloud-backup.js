@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { query, recordAudit } from "./db.js";
 
@@ -68,6 +69,13 @@ const backupQueries = Object.freeze({
                     FROM supplier_feeds ORDER BY created_at`,
   supplierFeedRuns: "SELECT * FROM supplier_feed_runs ORDER BY started_at",
   supplierOfferHistory: "SELECT * FROM supplier_offer_history ORDER BY captured_at",
+  supplierFeedChanges: "SELECT * FROM supplier_feed_changes ORDER BY created_at",
+  supplierContracts: "SELECT * FROM supplier_contracts ORDER BY created_at",
+  supplierSettlements: "SELECT * FROM supplier_settlements ORDER BY created_at",
+  supplierSettlementItems: "SELECT * FROM supplier_settlement_items ORDER BY created_at",
+  deliveryTrackingEvents: "SELECT * FROM delivery_tracking_events ORDER BY occurred_at",
+  securityEvents: "SELECT * FROM security_events ORDER BY created_at",
+  backupVerifications: "SELECT * FROM backup_verifications ORDER BY created_at",
   auditLogs: "SELECT * FROM audit_logs ORDER BY created_at"
 });
 
@@ -88,11 +96,11 @@ export const buildCloudBackup = async () => {
   );
   const data = Object.fromEntries(entries);
   return {
-    version: "constera-cloud-backup-v7",
+    version: "constera-cloud-backup-v8",
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: 22,
+    schemaMigrations: 23,
     data
   };
 };
@@ -100,6 +108,51 @@ export const buildCloudBackup = async () => {
 export const backupSummary = (backup) => Object.fromEntries(
   Object.entries(backup.data || {}).map(([name, rows]) => [name, Array.isArray(rows) ? rows.length : 0])
 );
+
+export const verifyCloudBackup = async ({ actorId = null } = {}) => {
+  const backup = await buildCloudBackup();
+  const summary = backupSummary(backup);
+  const required = ["companies", "users", "categories", "products", "suppliers", "auditLogs"];
+  const missing = required.filter((name) => !Array.isArray(backup.data?.[name]));
+  const serialized = JSON.stringify(backup);
+  const checksum = createHash("sha256").update(serialized).digest("hex");
+  const tableCount = Object.keys(summary).length;
+  const recordCount = Object.values(summary).reduce((total, count) => total + Number(count || 0), 0);
+  const status = missing.length || backup.schemaMigrations !== 23 ? "failed" : "verified";
+  const details = {
+    missing,
+    requiredCollections: required.length,
+    nonEmptyCollections: Object.values(summary).filter((count) => Number(count) > 0).length
+  };
+  await query(
+    `INSERT INTO backup_verifications (
+       id, backup_id, status, backup_version, schema_migrations,
+       table_count, record_count, checksum_sha256, details, verified_by
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
+    [
+      `bvf-${randomUUID()}`,
+      backup.backupId,
+      status,
+      backup.version,
+      backup.schemaMigrations,
+      tableCount,
+      recordCount,
+      checksum,
+      JSON.stringify(details),
+      actorId
+    ]
+  );
+  return {
+    backupId: backup.backupId,
+    status,
+    version: backup.version,
+    schemaMigrations: backup.schemaMigrations,
+    tableCount,
+    recordCount,
+    checksum,
+    details
+  };
+};
 
 export const deliverScheduledBackup = async () => {
   if (!backupReadiness()) {

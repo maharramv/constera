@@ -186,6 +186,32 @@
     reader.readAsDataURL(file);
   });
 
+  const optimizeMediaFile = async (file) => {
+    if (!["image/jpeg", "image/png"].includes(file.type) || !window.createImageBitmap) {
+      return { file, filename: file.name, contentType: file.type };
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 2200 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.86));
+      if (!blob || (blob.size >= file.size && file.size <= 3_000_000)) {
+        return { file, filename: file.name, contentType: file.type };
+      }
+      return {
+        file: blob,
+        filename: file.name.replace(/\.[^.]+$/, "") + ".webp",
+        contentType: "image/webp"
+      };
+    } catch {
+      return { file, filename: file.name, contentType: file.type };
+    }
+  };
+
   const downloadJson = (filename, value) => {
     const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -599,10 +625,11 @@
     const grid = qs("[data-admin-v2-media]");
     if (!grid) return;
     setText("[data-admin-v2-media-count]", `${state.media.length} fayl`);
+    const licenseLabels = { own: "ConstEra", supplier: "Təchizatçı", official: "Rəsmi media", licensed: "Lisenziyalı", unspecified: "Hüquq qeyd edilməyib" };
     grid.innerHTML = state.media.map((item) => `<article>
       <div class="admin-v2-media-preview">${item.contentType.startsWith("image/") ? `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.altText || item.filename)}" loading="lazy" />` : '<span>PDF</span>'}</div>
-      <div><strong>${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${Math.round(item.sizeBytes / 1024)} KB · ${formatDate(item.createdAt)}</small></div>
-      <div class="admin-v2-row-actions"><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button><button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
+      <div><strong>${item.isPrimary ? "Əsas · " : ""}${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${escapeHtml(licenseLabels[item.licenseType] || item.licenseType)} · ${Math.round(item.sizeBytes / 1024)} KB · ${formatDate(item.createdAt)}</small></div>
+      <div class="admin-v2-row-actions"><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button>${item.contentType.startsWith("image/") && item.entityId && !item.isPrimary ? `<button class="table-action" type="button" data-media-primary="${escapeHtml(item.id)}">Əsas et</button>` : ""}<button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
     </article>`).join("") || "<p>Yüklənmiş media yoxdur.</p>";
   };
 
@@ -1378,22 +1405,28 @@
     event.preventDefault();
     const form = event.currentTarget;
     const button = form.querySelector('button[type="submit"]');
-    const file = form.elements.file.files[0];
-    if (!file) return;
+    const files = [...form.elements.file.files].slice(0, 20);
+    if (!files.length) return;
     setButtonBusy(button, true, "Yüklənir...");
     try {
-      const fileBase64 = await fileToDataUrl(file);
-      await api.uploadMedia({
-        filename: file.name,
-        contentType: file.type,
-        fileBase64,
-        entityType: form.elements.entityType.value,
-        entityId: form.elements.entityId.value,
-        altText: form.elements.altText.value
-      });
+      for (const [index, sourceFile] of files.entries()) {
+        const optimized = await optimizeMediaFile(sourceFile);
+        await api.uploadMedia({
+          filename: optimized.filename,
+          contentType: optimized.contentType,
+          fileBase64: await fileToDataUrl(optimized.file),
+          entityType: form.elements.entityType.value,
+          entityId: form.elements.entityId.value,
+          altText: form.elements.altText.value,
+          sourceUrl: form.elements.sourceUrl.value,
+          licenseType: form.elements.licenseType.value,
+          licenseNote: form.elements.licenseNote.value,
+          isPrimary: form.elements.isPrimary.checked && index === 0
+        });
+      }
       form.reset();
       await loadMedia();
-      setStatus("[data-admin-v2-media-status]", "Fayl Vercel Blob kitabxanasına yükləndi.", "success");
+      setStatus("[data-admin-v2-media-status]", `${files.length} fayl media kitabxanasına yükləndi.`, "success");
     } catch (error) {
       setStatus("[data-admin-v2-media-status]", error.message, "error");
     } finally {
@@ -1402,10 +1435,22 @@
   });
   qs("[data-admin-v2-media]")?.addEventListener("click", async (event) => {
     const copy = event.target.closest("[data-media-copy]");
+    const primary = event.target.closest("[data-media-primary]");
     const remove = event.target.closest("[data-media-delete]");
     if (copy) {
       await navigator.clipboard.writeText(copy.dataset.mediaCopy).catch(() => null);
       setStatus("[data-admin-v2-media-status]", "Media URL-i mübadilə buferinə köçürüldü.", "success");
+    }
+    if (primary) {
+      const item = state.media.find((entry) => entry.id === primary.dataset.mediaPrimary);
+      if (!item) return;
+      try {
+        await api.updateMedia({ id: item.id, isPrimary: true });
+        await loadMedia();
+        setStatus("[data-admin-v2-media-status]", "Əsas media yeniləndi.", "success");
+      } catch (error) {
+        setStatus("[data-admin-v2-media-status]", error.message, "error");
+      }
     }
     if (remove && window.confirm("Bu media faylı silinsin?")) {
       try {

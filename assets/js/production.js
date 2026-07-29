@@ -176,6 +176,7 @@
       return request(`/api/media?${params}`);
     },
     uploadMedia: (data) => request("/api/media", { method: "POST", body: JSON.stringify(data) }),
+    updateMedia: (data) => request("/api/media", { method: "PATCH", body: JSON.stringify(data) }),
     deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
     notifications: () => request("/api/notifications?limit=200"),
     myNotifications: () => request("/api/notifications?scope=mine&limit=100"),
@@ -284,6 +285,14 @@
       method: "POST",
       body: JSON.stringify({ action: "run", id })
     }),
+    previewSupplierFeed: (id) => request("/api/supplier-feeds", {
+      method: "POST",
+      body: JSON.stringify({ action: "preview", id })
+    }),
+    rollbackSupplierFeed: (runId) => request("/api/supplier-feeds", {
+      method: "POST",
+      body: JSON.stringify({ action: "rollback", runId })
+    }),
     deleteSupplierFeed: (id) => request("/api/supplier-feeds", {
       method: "DELETE",
       body: JSON.stringify({ id })
@@ -298,7 +307,28 @@
     processNotifications: () => request("/api/notifications", { method: "POST", body: JSON.stringify({ action: "process" }) }),
     updateNotification: (id, action) => request("/api/notifications", { method: "PATCH", body: JSON.stringify({ id, action }) }),
     audit: () => request("/api/audit?limit=200"),
-    cloudBackup: () => request("/api/backup")
+    cloudBackup: () => request("/api/backup"),
+    operationsCenter: () => request("/api/operations-center"),
+    saveSupplierContract: (data) => request("/api/operations-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "save-contract", ...data })
+    }),
+    generateSupplierSettlement: (data) => request("/api/operations-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "generate-settlement", ...data })
+    }),
+    updateSupplierSettlement: (data) => request("/api/operations-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "update-settlement", ...data })
+    }),
+    addDeliveryTracking: (data) => request("/api/operations-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "add-tracking", ...data })
+    }),
+    verifyCloudBackup: () => request("/api/operations-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "verify-backup" })
+    })
   };
   window.ConstEraAPI = api;
 

@@ -1,3 +1,6 @@
+(async () => {
+if (window.ConstEraCatalogReady) await window.ConstEraCatalogReady;
+
 const marketplace = window.CONSTERA_MARKETPLACE || {
   categories: [],
   serviceCategories: [],
@@ -6912,3 +6915,4 @@ renderCheckout();
 initActions();
 initCartDock();
 applyUrlFilters();
+})();

@@ -47,7 +47,7 @@
       const run = latestRun(feed.id);
       const state = feed.lastStatus || "gözləyir";
       const detail = run
-        ? `${run.updatedRows} yeniləndi · ${run.skippedRows} keçildi`
+        ? `${run.updatedRows} yeniləndi · ${run.skippedRows} keçildi${run.summary?.alertCount ? ` · ${run.summary.alertCount} xəbərdarlıq` : ""}`
         : `${feed.scheduleMinutes} dəqiqədən bir`;
       return `
         <article class="supplier-feed-item">
@@ -61,7 +61,9 @@
             <div><small>Son iş: ${escapeHtml(formatDate(feed.lastRunAt))}${feed.lastError ? ` · ${escapeHtml(feed.lastError)}` : ""}</small></div>
           </div>
           <div class="supplier-feed-actions">
+            <button class="button button-outline" type="button" data-supplier-feed-preview="${escapeHtml(feed.id)}">Önbaxış</button>
             <button class="button button-secondary" type="button" data-supplier-feed-run="${escapeHtml(feed.id)}">İndi yenilə</button>
+            ${run?.status === "completed" && run.rollbackStatus === "available" ? `<button class="button button-outline" type="button" data-supplier-feed-rollback="${escapeHtml(run.id)}">Geri qaytar</button>` : ""}
             <button class="button button-outline" type="button" data-supplier-feed-edit="${escapeHtml(feed.id)}">Redaktə et</button>
             <button class="table-action is-danger" type="button" data-supplier-feed-delete="${escapeHtml(feed.id)}">Arxivlə</button>
           </div>
@@ -122,6 +124,8 @@
 
   list.addEventListener("click", async (event) => {
     const runButton = event.target.closest("[data-supplier-feed-run]");
+    const previewButton = event.target.closest("[data-supplier-feed-preview]");
+    const rollbackButton = event.target.closest("[data-supplier-feed-rollback]");
     const editButton = event.target.closest("[data-supplier-feed-edit]");
     const deleteButton = event.target.closest("[data-supplier-feed-delete]");
     if (editButton) {
@@ -137,6 +141,20 @@
       form.elements.name.focus();
       return;
     }
+    if (previewButton) {
+      previewButton.disabled = true;
+      setStatus("Feed dəyişiklik edilmədən yoxlanılır...");
+      try {
+        const response = await api.previewSupplierFeed(previewButton.dataset.supplierFeedPreview);
+        const result = response.data || {};
+        setStatus(`${result.sourceRows || 0} sətirdən ${result.matchedRows || 0}-i uyğun gəldi, ${result.unknownRows || 0} SKU tapılmadı.`, result.unknownRows ? "warning" : "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        previewButton.disabled = false;
+      }
+      return;
+    }
     if (runButton) {
       runButton.disabled = true;
       setStatus("Feed yüklənir və uyğun SKU-lar yenilənir...");
@@ -148,6 +166,20 @@
         setStatus(error.message, "error");
       } finally {
         runButton.disabled = false;
+      }
+      return;
+    }
+    if (rollbackButton && window.confirm("Son feed yeniləməsi əvvəlki qiymət və stok vəziyyətinə qaytarılsın?")) {
+      rollbackButton.disabled = true;
+      setStatus("Əvvəlki vəziyyət bərpa edilir...");
+      try {
+        const response = await api.rollbackSupplierFeed(rollbackButton.dataset.supplierFeedRollback);
+        const result = response.data || {};
+        await load(`${result.affectedProducts || 0} məhsul üzrə əvvəlki vəziyyət bərpa edildi.`);
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        rollbackButton.disabled = false;
       }
       return;
     }

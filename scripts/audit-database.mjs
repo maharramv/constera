@@ -42,6 +42,14 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM catalog_quality_remediations) AS quality_remediations,
     (SELECT count(*)::int FROM supplier_feeds WHERE active = true) AS active_supplier_feeds,
     (SELECT count(*)::int FROM supplier_feed_runs) AS supplier_feed_runs,
+    (SELECT count(*)::int FROM supplier_feed_changes) AS supplier_feed_changes,
+    (SELECT count(*)::int FROM supplier_contracts) AS supplier_contracts,
+    (SELECT count(*)::int FROM supplier_contracts WHERE status = 'active') AS active_supplier_contracts,
+    (SELECT count(*)::int FROM supplier_settlements) AS supplier_settlements,
+    (SELECT count(*)::int FROM delivery_tracking_events) AS delivery_tracking_events,
+    (SELECT count(*)::int FROM security_events) AS security_events,
+    (SELECT count(*)::int FROM backup_verifications) AS backup_verifications,
+    (SELECT count(*)::int FROM media_assets WHERE status = 'active' AND is_primary = true) AS primary_media_assets,
     (SELECT count(*)::int FROM web_push_subscriptions WHERE status = 'active') AS active_push_subscriptions
 `);
 
@@ -268,7 +276,70 @@ const [integrity] = await query(`
         endpoint !~ '^https://'
         OR NULLIF(p256dh, '') IS NULL
         OR NULLIF(auth, '') IS NULL
-      )) AS invalid_push_subscriptions
+      )) AS invalid_push_subscriptions,
+    (SELECT count(*)::int FROM suppliers supplier
+      WHERE supplier.status <> 'Arxiv'
+        AND NOT EXISTS (
+          SELECT 1 FROM supplier_contracts contract
+          WHERE contract.supplier_id = supplier.id
+        )) AS suppliers_without_contract,
+    (SELECT count(*)::int FROM supplier_contracts
+      WHERE ends_on IS NOT NULL AND ends_on < starts_on) AS invalid_supplier_contract_dates,
+    (SELECT count(*)::int FROM (
+      SELECT supplier_id FROM supplier_contracts
+      WHERE status = 'active'
+      GROUP BY supplier_id HAVING count(*) > 1
+    ) duplicate_active_contracts) AS suppliers_with_multiple_active_contracts,
+    (SELECT count(*)::int FROM supplier_settlements settlement
+      WHERE abs(
+        settlement.net_amount
+        - (
+          settlement.gross_amount
+          - settlement.refund_amount
+          - settlement.commission_amount
+          + settlement.adjustment_amount
+        )
+      ) > 0.01) AS settlement_amount_mismatch,
+    (SELECT count(*)::int FROM supplier_settlements settlement
+      WHERE settlement.status = 'paid'
+        AND (NULLIF(settlement.payment_reference, '') IS NULL OR settlement.paid_at IS NULL)
+    ) AS paid_settlements_without_reference,
+    (SELECT count(*)::int FROM supplier_settlements settlement
+      WHERE EXISTS (
+        SELECT 1
+          FROM supplier_settlement_items item
+         WHERE item.settlement_id = settlement.id
+         GROUP BY item.settlement_id
+        HAVING abs(sum(item.gross_amount) - settlement.gross_amount) > 0.01
+            OR abs(sum(item.refund_amount) - settlement.refund_amount) > 0.01
+            OR abs(sum(item.commission_amount) - settlement.commission_amount) > 0.01
+            OR abs(sum(item.net_amount) + settlement.adjustment_amount - settlement.net_amount) > 0.01
+      )) AS settlement_item_total_mismatch,
+    (SELECT count(*)::int FROM supplier_feed_runs run
+      WHERE run.rollback_status = 'available'
+        AND NOT EXISTS (
+          SELECT 1 FROM supplier_feed_changes change
+          WHERE change.feed_run_id = run.id
+        )) AS rollback_runs_without_snapshot,
+    (SELECT count(*)::int FROM delivery_tracking_events event
+      JOIN order_fulfillments fulfillment ON fulfillment.id = event.fulfillment_id
+      LEFT JOIN supplier_purchase_orders purchase_order ON purchase_order.id = event.purchase_order_id
+      WHERE event.order_id <> fulfillment.order_id
+         OR (event.purchase_order_id IS NOT NULL AND (
+           purchase_order.fulfillment_id <> event.fulfillment_id
+           OR purchase_order.order_id <> event.order_id
+         ))) AS tracking_scope_mismatch,
+    (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active' AND is_primary = true
+        AND content_type NOT LIKE 'image/%') AS non_image_primary_media,
+    (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active'
+        AND license_type <> 'own'
+        AND NULLIF(source_url, '') IS NULL) AS sourced_media_without_source,
+    (SELECT count(*)::int FROM backup_verifications
+      WHERE status = 'verified'
+        AND (schema_migrations <> 23 OR NULLIF(checksum_sha256, '') IS NULL)
+    ) AS invalid_backup_verifications
 `);
 
 const [schema] = await query(`
@@ -313,6 +384,13 @@ const [schema] = await query(`
     to_regclass('public.supplier_feeds') IS NOT NULL AS supplier_feeds_ready,
     to_regclass('public.supplier_feed_runs') IS NOT NULL AS supplier_feed_runs_ready,
     to_regclass('public.supplier_offer_history') IS NOT NULL AS supplier_offer_history_ready,
+    to_regclass('public.supplier_feed_changes') IS NOT NULL AS supplier_feed_changes_ready,
+    to_regclass('public.supplier_contracts') IS NOT NULL AS supplier_contracts_ready,
+    to_regclass('public.supplier_settlements') IS NOT NULL AS supplier_settlements_ready,
+    to_regclass('public.supplier_settlement_items') IS NOT NULL AS supplier_settlement_items_ready,
+    to_regclass('public.delivery_tracking_events') IS NOT NULL AS delivery_tracking_events_ready,
+    to_regclass('public.security_events') IS NOT NULL AS security_events_ready,
+    to_regclass('public.backup_verifications') IS NOT NULL AS backup_verifications_ready,
     to_regclass('public.web_push_subscriptions') IS NOT NULL AS web_push_subscriptions_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
@@ -328,7 +406,9 @@ const [schema] = await query(`
     to_regclass('public.order_items_supplier_idx') IS NOT NULL AS order_supplier_scope_ready,
     to_regclass('public.product_offers_product_idx') IS NOT NULL AS product_offer_search_ready,
     to_regclass('public.procurement_requests_company_idx') IS NOT NULL AS procurement_scope_ready,
-    to_regclass('public.supplier_purchase_orders_supplier_idx') IS NOT NULL AS purchase_order_scope_ready
+    to_regclass('public.supplier_purchase_orders_supplier_idx') IS NOT NULL AS purchase_order_scope_ready,
+    to_regclass('public.supplier_contracts_one_active_idx') IS NOT NULL AS supplier_contract_scope_ready,
+    to_regclass('public.media_assets_one_primary_idx') IS NOT NULL AS media_primary_scope_ready
 `);
 
 const minimums = {

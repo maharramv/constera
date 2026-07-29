@@ -78,6 +78,7 @@
             <button class="admin-tab-button" type="button" data-admin-tab="services">Xidmət və icarə</button>
             <button class="admin-tab-button" type="button" data-admin-tab="requests">Sorğu və tender</button>
             <button class="admin-tab-button" type="button" data-admin-tab="b2b">B2B əməliyyatlar</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="operations">Əməliyyat mərkəzi</button>
             <button class="admin-tab-button" type="button" data-admin-tab="crm">CRM və rezervasiya</button>
             <button class="admin-tab-button" type="button" data-admin-tab="users">İstifadəçilər</button>
             <button class="admin-tab-button" type="button" data-admin-tab="media">Media</button>
@@ -907,15 +908,94 @@
             <div class="market-section-heading"><div><p class="eyebrow">Vercel Blob</p><h2>Şəkil və sənəd kitabxanası</h2></div><span class="data-badge" data-admin-v2-media-count>0 fayl</span></div>
             <form class="admin-form" data-admin-v2-media-form>
               <div class="admin-form-grid">
-                <label class="admin-field"><span>Fayl</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp,image/avif,application/pdf" required /></label>
+                <label class="admin-field"><span>Fayllar</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp,image/avif,application/pdf" multiple required /></label>
                 <label class="admin-field"><span>Əlaqəli bölmə</span><select name="entityType"><option value="product">Məhsul</option><option value="supplier">Təchizatçı</option><option value="service">Xidmət</option><option value="package">Paket</option><option value="rental">İcarə</option><option value="general">Ümumi</option></select></label>
                 <label class="admin-field"><span>Qeyd ID-si</span><input name="entityId" placeholder="product-..." /></label>
                 <label class="admin-field"><span>Alternativ mətn</span><input name="altText" placeholder="Məhsulun görünüşü" /></label>
+                <label class="admin-field"><span>Mənbə URL-i</span><input name="sourceUrl" type="url" placeholder="https://istehsalci.az/..." /></label>
+                <label class="admin-field"><span>İstifadə hüququ</span><select name="licenseType"><option value="unspecified">Dəqiqləşdirilməyib</option><option value="own">ConstEra-ya məxsus</option><option value="supplier">Təchizatçı təqdim edib</option><option value="official">Rəsmi istehsalçı mediası</option><option value="licensed">Lisenziyalı media</option></select></label>
+                <label class="admin-field"><span>Hüquq qeydi</span><input name="licenseNote" maxlength="1000" placeholder="İcazə və ya müqavilə qeydi" /></label>
+                <label class="admin-field admin-checkbox-field"><input name="isPrimary" type="checkbox" /><span>İlk şəkli əsas media et</span></label>
               </div>
               <div class="admin-actions"><button class="button button-primary" type="submit">Faylı yüklə</button></div>
-              <p class="admin-import-status" data-admin-v2-media-status>JPEG, PNG, WebP, AVIF və PDF. Maksimum 3 MB.</p>
+              <p class="admin-import-status" data-admin-v2-media-status>JPEG və PNG brauzerdə WebP-yə optimallaşdırılır. Hər fayl maksimum 3 MB.</p>
             </form>
             <div class="admin-v2-media-grid" data-admin-v2-media></div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="operations" hidden>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Kommersiya və nəzarət</p>
+                <h2>Təchizatçı, maliyyə, logistika və təhlükəsizlik əməliyyatları</h2>
+              </div>
+              <button class="table-action" type="button" data-operations-refresh>Yenilə</button>
+            </div>
+            <p class="admin-import-status" data-operations-status role="status" aria-live="polite">Əməliyyat məlumatları yüklənir.</p>
+            <div class="admin-v2-kpi-grid" data-operations-kpis></div>
+            <div class="admin-v2-dashboard-grid">
+              <section class="admin-v2-section">
+                <h3>Təchizatçı müqaviləsi</h3>
+                <form class="admin-form" data-contract-form>
+                  <input name="id" type="hidden" />
+                  <label class="admin-field"><span>Təchizatçı</span><select name="supplierId" required data-contract-supplier></select></label>
+                  <label class="admin-field"><span>Müqavilə nömrəsi</span><input name="contractNumber" required maxlength="120" placeholder="CE-SUP-2026-001" /></label>
+                  <label class="admin-field"><span>Vəziyyət</span><select name="status"><option value="draft">Qaralama</option><option value="active">Aktiv</option><option value="suspended">Dayandırılıb</option><option value="expired">Müddəti bitib</option><option value="terminated">Xitam verilib</option></select></label>
+                  <label class="admin-field"><span>Komissiya, %</span><input name="commissionRate" type="number" min="0" max="100" step="0.01" value="8" required /></label>
+                  <label class="admin-field"><span>Ödəniş müddəti, gün</span><input name="paymentTermsDays" type="number" min="0" max="365" value="14" required /></label>
+                  <label class="admin-field"><span>Başlanğıc</span><input name="startsOn" type="date" required /></label>
+                  <label class="admin-field"><span>Bitmə</span><input name="endsOn" type="date" /></label>
+                  <label class="admin-field"><span>Sənəd URL-i</span><input name="documentUrl" type="url" placeholder="https://..." /></label>
+                  <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="2" maxlength="2000"></textarea></label>
+                  <div class="admin-actions"><button class="button button-primary" type="submit">Müqaviləni saxla</button><button class="button button-outline" type="button" data-contract-clear>Təmizlə</button></div>
+                </form>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Hesablaşma yarat</h3>
+                <form class="admin-form" data-settlement-form>
+                  <label class="admin-field"><span>Təchizatçı</span><select name="supplierId" required data-settlement-supplier></select></label>
+                  <label class="admin-field"><span>Dövrün başlanğıcı</span><input name="periodStart" type="date" required /></label>
+                  <label class="admin-field"><span>Dövrün sonu</span><input name="periodEnd" type="date" required /></label>
+                  <label class="admin-field"><span>Düzəliş, AZN</span><input name="adjustmentAmount" type="number" step="0.01" value="0" /></label>
+                  <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="2" maxlength="2000"></textarea></label>
+                  <button class="button button-primary" type="submit">Çatdırılmış sifarişləri hesabla</button>
+                </form>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Müqavilələr</h3><span class="data-badge" data-contract-count>0 müqavilə</span></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Təchizatçı</th><th>Müqavilə</th><th>Komissiya</th><th>Müddət</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-contract-rows></tbody></table></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Təchizatçı hesablaşmaları</h3><span class="data-badge" data-settlement-count>0 hesablaşma</span></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Hesablaşma</th><th>Dövr</th><th>Brüt</th><th>Komissiya / refund</th><th>Ödəniləcək</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-settlement-rows></tbody></table></div>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Çatdırılma hadisəsi</h3>
+                <form class="admin-form" data-tracking-form>
+                  <label class="admin-field"><span>Alt-sifariş icrası</span><select name="fulfillmentId" required data-tracking-fulfillment></select></label>
+                  <label class="admin-field"><span>Hadisə</span><select name="status"><option value="in_transit">Yoldadır</option><option value="exception">Problem var</option><option value="returned">Geri qaytarılıb</option></select></label>
+                  <label class="admin-field"><span>Məkan</span><input name="location" maxlength="240" placeholder="Bakı çeşidləmə mərkəzi" /></label>
+                  <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="2" maxlength="1000"></textarea></label>
+                  <button class="button button-secondary" type="submit">İzləmə hadisəsi əlavə et</button>
+                </form>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Son çatdırılma hadisələri</h3>
+                <div class="admin-v2-compact-list" data-tracking-events></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <h3>Ödəniş və geri ödəniş axını</h3>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sifariş</th><th>Növ</th><th>Provayder</th><th>Məbləğ</th><th>Vəziyyət</th><th>Tarix</th></tr></thead><tbody data-finance-rows></tbody></table></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Giriş təhlükəsizliyi</h3><span class="data-badge" data-security-count>0 hadisə</span></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Vaxt</th><th>İstifadəçi</th><th>Hadisə</th><th>Nəticə</th><th>Risk</th></tr></thead><tbody data-security-rows></tbody></table></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><div><h3>Backup bütövlüyü</h3><p class="admin-import-status">Yeni snapshot yaradılır, kolleksiyalar sayılır və SHA-256 yoxlanır.</p></div><button class="button button-secondary" type="button" data-backup-verify>İndi yoxla</button></div>
+                <div class="admin-v2-compact-list" data-backup-verifications></div>
+              </section>
+            </div>
           </div>
 
           <div class="admin-panel glass" data-admin-panel="system" hidden>
@@ -1099,5 +1179,6 @@
     <script src="assets/js/production.js"></script>
     <script src="assets/js/admin-v2.js"></script>
     <script src="assets/js/enterprise-admin.js"></script>
+    <script src="assets/js/operations-center.js"></script>
   </body>
 </html>

@@ -107,6 +107,7 @@
       return `<article>
         <strong>${escapeHtml(item.supplierName || "Təchizatçı")} · ${escapeHtml(labels[item.status] || item.status)}</strong>
         <span>${escapeHtml([item.deliveryProvider, item.trackingCode].filter(Boolean).join(" · ") || "Göndəriş məlumatı gözlənilir")}</span>
+        ${(item.trackingEvents || []).slice(0, 3).map((event) => `<small>${escapeHtml(event.location ? `${event.location} · ` : "")}${escapeHtml(labels[event.status] || event.status)} · ${formatDate(event.occurredAt)}</small>`).join("")}
         ${supplierReservations.map((reservation) => `<small>${escapeHtml(reservationLabels[reservation.status] || reservation.status)} · ${Number(reservation.quantity).toLocaleString("az-AZ")}</small>`).join("")}
       </article>`;
     }).join("") || "<p>Təchizatçı icra qeydi yoxdur.</p>";

@@ -12,6 +12,7 @@ import {
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { deliverNotificationNow } from "./_lib/notifications.js";
+import { recordSecurityEvent } from "./_lib/security-events.js";
 import {
   findRecoveryCode,
   openTwoFactorSecret,
@@ -82,6 +83,12 @@ export default withApiErrors(async (req, res) => {
     );
     const challenge = challenges[0];
     if (!challenge) {
+      await recordSecurityEvent({
+        req,
+        eventType: "two_factor_failed",
+        riskLevel: "high",
+        metadata: { reason: "challenge_invalid" }
+      });
       throw new ApiError(401, "two_factor_challenge_invalid", "Giriş təsdiqinin vaxtı bitib. Yenidən daxil ol.");
     }
     const rows = await query(
@@ -101,7 +108,17 @@ export default withApiErrors(async (req, res) => {
     const secret = openTwoFactorSecret(user.two_factor_secret);
     const recoveryIndex = findRecoveryCode(code, user.two_factor_recovery_codes);
     const valid = verifyTotp(secret, code) || recoveryIndex >= 0;
-    if (!valid) throw new ApiError(401, "two_factor_invalid", "Authenticator və ya bərpa kodu düzgün deyil.");
+    if (!valid) {
+      await recordSecurityEvent({
+        req,
+        userId: user.id,
+        email: user.email,
+        eventType: "two_factor_failed",
+        riskLevel: challenge.attempts >= 5 ? "critical" : "high",
+        metadata: { attempts: challenge.attempts }
+      });
+      throw new ApiError(401, "two_factor_invalid", "Authenticator və ya bərpa kodu düzgün deyil.");
+    }
     const consumed = await query(
       `UPDATE auth_challenges SET consumed_at = now()
         WHERE id = $1 AND consumed_at IS NULL RETURNING id`,
@@ -122,6 +139,14 @@ export default withApiErrors(async (req, res) => {
       action: "login_2fa",
       entityType: "session",
       details: { recoveryCodeUsed: recoveryIndex >= 0, ipHash: hashOpaque(getClientIp(req)) }
+    });
+    await recordSecurityEvent({
+      req,
+      userId: user.id,
+      email: user.email,
+      eventType: "two_factor_succeeded",
+      succeeded: true,
+      metadata: { recoveryCodeUsed: recoveryIndex >= 0 }
     });
     return sendJson(res, 200, sessionResponse({
       id: user.id,
@@ -174,6 +199,14 @@ export default withApiErrors(async (req, res) => {
         }
       }
     }
+    await recordSecurityEvent({
+      req,
+      userId: user?.id || null,
+      email: userEmail,
+      eventType: "password_reset_requested",
+      succeeded: Boolean(user),
+      riskLevel: user ? "medium" : "low"
+    });
     return sendJson(res, 200, {
       ok: true,
       message: "Hesab mövcuddursa, şifrə bərpası təlimatı göndərildi."
@@ -202,6 +235,14 @@ export default withApiErrors(async (req, res) => {
     if (!user) throw new ApiError(400, "reset_token_invalid", "Bərpa keçidi yanlışdır və ya vaxtı bitib.");
     await query("DELETE FROM sessions WHERE user_id = $1", [user.id]);
     await recordAudit({ actorId: user.id, action: "reset_password", entityType: "user", entityId: user.id });
+    await recordSecurityEvent({
+      req,
+      userId: user.id,
+      email: user.email,
+      eventType: "password_reset_completed",
+      succeeded: true,
+      riskLevel: "medium"
+    });
     return sendJson(res, 200, { ok: true, message: "Şifrə yeniləndi. Yeni şifrə ilə daxil ola bilərsən." });
   }
 
@@ -238,7 +279,18 @@ export default withApiErrors(async (req, res) => {
     const userEmail = email(body.email);
     const password = text(body.password, { field: "Şifrə", required: true, max: 128 });
     const identityHash = hashOpaque(`${userEmail}:${getClientIp(req)}`);
-    await assertLoginAllowed(identityHash);
+    try {
+      await assertLoginAllowed(identityHash);
+    } catch (error) {
+      await recordSecurityEvent({
+        req,
+        email: userEmail,
+        eventType: "login_blocked",
+        riskLevel: "critical",
+        metadata: { reason: "rate_limit" }
+      });
+      throw error;
+    }
     const rows = await query(
       `SELECT u.id, u.name, u.email, u.password_hash, u.role, u.status, u.must_change_password,
               u.two_factor_enabled, u.two_factor_secret,
@@ -252,17 +304,35 @@ export default withApiErrors(async (req, res) => {
     const user = rows[0];
     const valid = user ? await verifyPassword(password, user.password_hash) : false;
     await recordLoginAttempt(identityHash, valid);
-    if (!valid) throw new ApiError(401, "invalid_credentials", "E-poçt və ya şifrə düzgün deyil.");
+    if (!valid) {
+      await recordSecurityEvent({
+        req,
+        userId: user?.id || null,
+        email: userEmail,
+        eventType: "login_failed",
+        riskLevel: "high"
+      });
+      throw new ApiError(401, "invalid_credentials", "E-poçt və ya şifrə düzgün deyil.");
+    }
 
     if (user.two_factor_enabled) {
       if (!twoFactorReadiness() || !user.two_factor_secret) {
         throw new ApiError(503, "two_factor_unavailable", "İki mərhələli giriş konfiqurasiyası hazır deyil.");
       }
+      const challengeToken = await createLoginChallenge(user.id);
+      await recordSecurityEvent({
+        req,
+        userId: user.id,
+        email: user.email,
+        eventType: "login_challenged",
+        succeeded: true,
+        riskLevel: "medium"
+      });
       return sendJson(res, 200, {
         ok: true,
         authenticated: false,
         twoFactorRequired: true,
-        challengeToken: await createLoginChallenge(user.id),
+        challengeToken,
         expiresInSeconds: 300
       });
     }
@@ -271,6 +341,13 @@ export default withApiErrors(async (req, res) => {
     await query("DELETE FROM sessions WHERE expires_at <= now()");
     await createSession(req, res, user.id);
     await recordAudit({ actorId: user.id, action: "login", entityType: "session", details: { ipHash: hashOpaque(getClientIp(req)) } });
+    await recordSecurityEvent({
+      req,
+      userId: user.id,
+      email: user.email,
+      eventType: "login_succeeded",
+      succeeded: true
+    });
     return sendJson(res, 200, sessionResponse({
       id: user.id,
       name: user.name,

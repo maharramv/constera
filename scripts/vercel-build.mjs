@@ -1,6 +1,7 @@
 import { accessSync, constants, cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { extname, join } from "node:path";
+import { gzipSync } from "node:zlib";
 import vm from "node:vm";
 import { transformSync } from "esbuild";
 import { renderSitePage, siteShellTemplateFiles } from "./site-shell.mjs";
@@ -44,6 +45,7 @@ const requiredFiles = [
   "assets/js/catalog-data.js",
   "assets/js/taxonomy-expansion.js",
   "assets/js/azerbaijan-real-products.js",
+  "assets/js/catalog-loader.js",
   "assets/js/production.js",
   "assets/js/supplier-automation.js",
   "assets/js/pwa-notifications.js",
@@ -52,6 +54,7 @@ const requiredFiles = [
   "assets/js/marketplace.js",
   "assets/js/enterprise.js",
   "assets/js/enterprise-admin.js",
+  "assets/js/operations-center.js",
   "service-worker.js",
   "scripts/site-shell.mjs",
   ...siteShellTemplateFiles
@@ -120,7 +123,10 @@ staticEntries.forEach((entry) => {
 staticEntries
   .filter((entry) => entry.endsWith(".html"))
   .forEach((entry) => {
-    const rendered = renderSitePage(readFileSync(entry, "utf8"), { file: entry });
+    const rendered = renderSitePage(readFileSync(entry, "utf8"), { file: entry }).replace(
+      /\s*<script src="assets\/js\/catalog-data\.js"><\/script>\s*<script src="assets\/js\/taxonomy-expansion\.js"><\/script>\s*<script src="assets\/js\/azerbaijan-real-products\.js"><\/script>/,
+      '\n    <script src="assets/js/catalog-loader.js"></script>'
+    );
     writeFileSync(`dist/${entry}`, rendered);
   });
 
@@ -134,6 +140,16 @@ vm.createContext(dataContext);
 ].forEach((file) => vm.runInContext(readFileSync(file, "utf8"), dataContext, { filename: file }));
 
 const marketplace = dataContext.window.CONSTERA_MARKETPLACE;
+mkdirSync("dist/assets/data", { recursive: true });
+writeFileSync(
+  "dist/assets/data/marketplace.data",
+  gzipSync(Buffer.from(JSON.stringify(marketplace)), { level: 9 })
+);
+[
+  "dist/assets/js/catalog-data.js",
+  "dist/assets/js/taxonomy-expansion.js",
+  "dist/assets/js/azerbaijan-real-products.js"
+].forEach((file) => rmSync(file, { force: true }));
 const sitemapUrls = new Map();
 const addSitemapUrl = (path, changefreq, priority, params = {}) => {
   const url = new URL(path, `${siteOrigin}/`);
@@ -226,7 +242,9 @@ const revisionFiles = [
   ...readdirSync("dist/assets/css").filter((name) => name.endsWith(".css")).sort()
     .map((name) => `dist/assets/css/${name}`),
   ...readdirSync("dist/assets/js").filter((name) => name.endsWith(".js")).sort()
-    .map((name) => `dist/assets/js/${name}`)
+    .map((name) => `dist/assets/js/${name}`),
+  ...readdirSync("dist/assets/data").sort()
+    .map((name) => `dist/assets/data/${name}`)
 ];
 const assetRevision = createHash("sha256");
 revisionFiles.forEach((file) => assetRevision.update(readFileSync(file)));
@@ -248,6 +266,12 @@ const serviceWorker = readFileSync("dist/service-worker.js", "utf8")
   .replace(
     /"\/assets\/(css|js)\/([^"?]+)(?:\?v=[^"]*)?"/g,
     `"/assets/$1/$2?v=${revision}"`
+  )
+  .replace(
+    "const APP_SHELL = [",
+    `const APP_SHELL = [
+  "/assets/js/catalog-loader.js?v=${revision}",
+  "/assets/data/marketplace.data?v=${revision}",`
   );
 writeFileSync("dist/service-worker.js", serviceWorker);
 optimizeFile("dist/service-worker.js");

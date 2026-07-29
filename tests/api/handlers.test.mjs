@@ -86,6 +86,7 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
     "events",
     "fulfillments",
     "inventory",
+    "operations-center",
     "procurement",
     "product-offers",
     "purchase-orders",

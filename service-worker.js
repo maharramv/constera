@@ -56,7 +56,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (!["style", "script", "image", "font", "manifest"].includes(request.destination)) return;
+  const isCatalogData = url.pathname.endsWith("/assets/data/marketplace.data");
+  if (!isCatalogData && !["style", "script", "image", "font", "manifest"].includes(request.destination)) return;
   event.respondWith(
     caches.match(request).then((cached) => {
       const update = fetch(request).then((response) => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
@@ -172,6 +173,33 @@ export default withApiErrors(async (req, res) => {
       WHERE id = $1`,
     [id, status, trackingCode, deliveryProvider, note, user.id]
   );
+  const trackingChanged = status !== current.status
+    || trackingCode !== current.tracking_code
+    || deliveryProvider !== current.delivery_provider
+    || note !== current.note;
+  if (trackingChanged) {
+    await query(
+      `INSERT INTO delivery_tracking_events (
+         id, fulfillment_id, order_id, purchase_order_id, status,
+         note, source, actor_id
+       )
+       SELECT $1, fulfillment.id, fulfillment.order_id, purchase_order.id, $3,
+              $4, $5, $6
+         FROM order_fulfillments fulfillment
+         LEFT JOIN supplier_purchase_orders purchase_order
+           ON purchase_order.fulfillment_id = fulfillment.id
+        WHERE fulfillment.id = $2
+        LIMIT 1`,
+      [
+        `trk-${randomUUID()}`,
+        id,
+        status,
+        note || [deliveryProvider, trackingCode].filter(Boolean).join(" · ") || null,
+        user.role === "supplier" ? "supplier" : "manual",
+        user.id
+      ]
+    );
+  }
 
   if (status === "cancelled") {
     await releaseOrderReservations(current.order_id, current.supplier_id, "Təchizatçı sifariş icrasını ləğv etdi");
