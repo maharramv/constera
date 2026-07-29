@@ -33,7 +33,7 @@ const isPrivateAddress = (address) => {
     || value.startsWith("feb") || value.startsWith("ff");
 };
 
-const validatePublicUrl = async (value) => {
+export const validatePublicUrl = async (value) => {
   let url;
   try {
     url = new URL(String(value || ""));
@@ -143,7 +143,11 @@ const buildStructuralIssues = (products, offers) => {
       issues.push(issue("product", product.id, "stale_price", "high", "Təsdiqli qiymət 30 gündən köhnədir."));
     }
     if (product.price_status === "expired") issues.push(issue("product", product.id, "expired_price", "high", "Qiymətin vaxtı keçib."));
-    if (product.stock_quantity === null) issues.push(issue("product", product.id, "unknown_stock", "medium", "Stok miqdarı dəqiqləşdirilməyib."));
+    const explicitRequestStock = product.price_status !== "confirmed"
+      || /sorğu|sorgu|sifariş|sifaris|dəqiqləş|deqiqles/i.test(String(product.availability || ""));
+    if (product.stock_quantity === null && !explicitRequestStock) {
+      issues.push(issue("product", product.id, "unknown_stock", "medium", "Satışda göstərilən məhsulun stok miqdarı dəqiqləşdirilməyib."));
+    }
     if (duplicateCounts.get(duplicateKey) > 1) issues.push(issue("product", product.id, "duplicate_name", "medium", "Eyni ad və brendlə təkrarlanan məhsul var."));
   });
   offers.forEach((offer) => {
@@ -154,7 +158,9 @@ const buildStructuralIssues = (products, offers) => {
     if (offer.price_status === "confirmed" && (!offer.price_verified_at || Date.now() - Date.parse(offer.price_verified_at) > 30 * 86_400_000)) {
       issues.push(issue("product_offer", offer.id, "offer_stale_price", "high", "Təklifin qiyməti 30 gündən köhnədir."));
     }
-    if (offer.stock_quantity === null) issues.push(issue("product_offer", offer.id, "offer_unknown_stock", "medium", "Təklifin stok miqdarı bilinmir."));
+    if (offer.stock_quantity === null && offer.price_status === "confirmed") {
+      issues.push(issue("product_offer", offer.id, "offer_unknown_stock", "medium", "Təsdiqli təklifin stok miqdarı bilinmir."));
+    }
   });
   return issues;
 };
@@ -166,7 +172,7 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
     const [products, offers] = await Promise.all([
       query(
         `SELECT id, sku, name, brand, category_id, specs, image_url, source_url,
-                price_status, price_verified_at, stock_quantity, updated_at
+                price_status, price_verified_at, stock_quantity, availability, updated_at
            FROM products
           WHERE status = 'active'
             AND lower(trim(coalesce(brand, ''))) <> 'constera sorğu'
@@ -246,3 +252,232 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
 };
 
 export const qualityIssueTypes = Object.freeze([...structuralIssueTypes, ...linkIssueTypes]);
+
+const remediationRows = async (issueIds = []) => {
+  const values = [];
+  const where = ["issue.status = 'open'"];
+  if (issueIds.length) {
+    values.push(issueIds);
+    where.push(`issue.id = ANY($${values.length}::text[])`);
+  }
+  return query(
+    `SELECT issue.*, product.name, product.brand, product.status AS product_status,
+            product.price_status AS product_price_status,
+            product.image_url, product.source_url,
+            offer.product_id AS offer_product_id,
+            offer.price_status AS offer_price_status
+       FROM catalog_quality_issues issue
+       LEFT JOIN products product
+         ON issue.entity_type = 'product' AND product.id = issue.entity_id
+       LEFT JOIN product_offers offer
+         ON issue.entity_type = 'product_offer' AND offer.id = issue.entity_id
+      WHERE ${where.join(" AND ")}
+      ORDER BY issue.first_seen_at
+      LIMIT 500`,
+    values
+  );
+};
+
+export const previewCatalogRemediation = async (issueIds = []) => {
+  const rows = await remediationRows(issueIds);
+  const unverifiedProducts = new Set(rows.filter((row) =>
+    row.entity_type === "product"
+    && ["missing_image", "missing_source"].includes(row.issue_type)
+    && row.product_status === "active"
+    && row.product_price_status === "request"
+    && !row.image_url
+    && !row.source_url
+  ).map((row) => row.entity_id));
+  const duplicateProducts = new Set(rows.filter((row) => row.issue_type === "duplicate_name").map((row) => row.entity_id));
+  const safeFieldFixes = rows.filter((row) => [
+    "invalid_image_url", "broken_image_url", "invalid_image_content",
+    "invalid_source_url", "broken_source_url", "stale_price", "expired_price",
+    "invalid_offer_price", "offer_stale_price"
+  ].includes(row.issue_type));
+  return {
+    selectedIssues: rows.length,
+    quarantineProducts: unverifiedProducts.size,
+    duplicateProducts: duplicateProducts.size,
+    safeFieldFixes: safeFieldFixes.length,
+    manualIssues: Math.max(0, rows.length - unverifiedProducts.size - duplicateProducts.size - safeFieldFixes.length)
+  };
+};
+
+const logRemediation = async ({ runId, issueId, entityType, entityId, action, before, after, actorId }) => {
+  await query(
+    `INSERT INTO catalog_quality_remediations (
+       id, run_id, issue_id, entity_type, entity_id, action,
+       before_data, after_data, actor_id
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9)`,
+    [
+      `cqm-${randomUUID()}`, runId || null, issueId || null, entityType, entityId, action,
+      JSON.stringify(before || {}), JSON.stringify(after || {}), actorId || null
+    ]
+  );
+};
+
+const quarantineUnverifiedProducts = async (rows, actorId) => {
+  const candidates = new Map();
+  rows.forEach((row) => {
+    if (
+      row.entity_type === "product"
+      && ["missing_image", "missing_source"].includes(row.issue_type)
+      && row.product_status === "active"
+      && row.product_price_status === "request"
+      && !row.image_url
+      && !row.source_url
+    ) {
+      const current = candidates.get(row.entity_id) || { issueId: row.id, issues: [] };
+      current.issues.push(row.issue_type);
+      candidates.set(row.entity_id, current);
+    }
+  });
+  let count = 0;
+  for (const [productId, candidate] of candidates) {
+    if (!candidate.issues.includes("missing_image") || !candidate.issues.includes("missing_source")) continue;
+    const updated = await query(
+      `UPDATE products
+          SET status = 'draft',
+              price_note = CASE
+                WHEN NULLIF(price_note, '') IS NULL THEN 'Real mənbə və foto təsdiqi gözlənilir'
+                ELSE price_note
+              END,
+              updated_at = now()
+        WHERE id = $1 AND status = 'active' AND price_status = 'request'
+          AND NULLIF(image_url, '') IS NULL AND NULLIF(source_url, '') IS NULL
+      RETURNING id, sku, name`,
+      [productId]
+    );
+    if (!updated[0]) continue;
+    await query("UPDATE product_offers SET status = 'draft', updated_at = now() WHERE product_id = $1 AND status = 'active'", [productId]);
+    await logRemediation({
+      issueId: candidate.issueId,
+      entityType: "product",
+      entityId: productId,
+      action: "quarantine_unverified",
+      before: { status: "active", issues: candidate.issues },
+      after: { status: "draft" },
+      actorId
+    });
+    count += 1;
+  }
+  return count;
+};
+
+const archiveDuplicateProducts = async (rows, actorId) => {
+  const duplicateIds = [...new Set(rows.filter((row) => row.issue_type === "duplicate_name").map((row) => row.entity_id))];
+  if (!duplicateIds.length) return 0;
+  const duplicateRows = await query(
+    `SELECT candidate.*
+       FROM products candidate
+       JOIN products selected
+         ON lower(trim(candidate.name)) = lower(trim(selected.name))
+        AND lower(trim(candidate.brand)) = lower(trim(selected.brand))
+      WHERE selected.id = ANY($1::text[]) AND candidate.status = 'active'`,
+    [duplicateIds]
+  );
+  const groups = new Map();
+  duplicateRows.forEach((product) => {
+    const key = `${String(product.name).trim().toLowerCase()}::${String(product.brand).trim().toLowerCase()}`;
+    const list = groups.get(key) || [];
+    list.push(product);
+    groups.set(key, list);
+  });
+  let count = 0;
+  for (const products of groups.values()) {
+    if (products.length < 2) continue;
+    const score = (product) =>
+      (product.source_url ? 8 : 0)
+      + (product.image_url ? 6 : 0)
+      + (product.price_status === "confirmed" ? 4 : 0)
+      + (product.stock_quantity !== null ? 2 : 0)
+      + (product.source_label ? 1 : 0)
+      + Math.min(1, Date.parse(product.updated_at) / 1e15);
+    products.sort((left, right) => score(right) - score(left));
+    const keeper = products[0];
+    for (const duplicate of products.slice(1)) {
+      const updated = await query(
+        "UPDATE products SET status = 'archived', updated_at = now() WHERE id = $1 AND status = 'active' RETURNING id",
+        [duplicate.id]
+      );
+      if (!updated[0]) continue;
+      await query("UPDATE product_offers SET status = 'archived', updated_at = now() WHERE product_id = $1 AND status = 'active'", [duplicate.id]);
+      await logRemediation({
+        issueId: rows.find((row) => row.entity_id === duplicate.id && row.issue_type === "duplicate_name")?.id,
+        entityType: "product",
+        entityId: duplicate.id,
+        action: "archive_duplicate",
+        before: { status: "active", name: duplicate.name },
+        after: { status: "archived", canonicalProductId: keeper.id },
+        actorId
+      });
+      count += 1;
+    }
+  }
+  return count;
+};
+
+const applySafeFieldFixes = async (rows, actorId) => {
+  let count = 0;
+  for (const row of rows) {
+    let updated = [];
+    let after = {};
+    if (row.entity_type === "product" && ["invalid_image_url", "broken_image_url", "invalid_image_content"].includes(row.issue_type)) {
+      updated = await query("UPDATE products SET image_url = NULL, updated_at = now() WHERE id = $1 RETURNING id", [row.entity_id]);
+      after = { imageUrl: null };
+    } else if (row.entity_type === "product" && ["invalid_source_url", "broken_source_url"].includes(row.issue_type)) {
+      updated = await query(
+        `UPDATE products
+            SET source_url = NULL, price_amount = NULL, price_status = 'request',
+                price_text = 'Sorğu əsasında', price_verified_at = NULL, updated_at = now()
+          WHERE id = $1 RETURNING id`,
+        [row.entity_id]
+      );
+      after = { sourceUrl: null, priceAmount: null, priceStatus: "request", priceVerifiedAt: null };
+    } else if (row.entity_type === "product" && ["stale_price", "expired_price"].includes(row.issue_type)) {
+      updated = await query(
+        "UPDATE products SET price_status = 'request', price_text = 'Sorğu əsasında', price_verified_at = NULL, updated_at = now() WHERE id = $1 RETURNING id",
+        [row.entity_id]
+      );
+      after = { priceStatus: "request", priceVerifiedAt: null };
+    } else if (row.entity_type === "product_offer" && ["invalid_offer_price", "offer_stale_price"].includes(row.issue_type)) {
+      updated = await query(
+        `UPDATE product_offers
+            SET unit_price = NULL, price_status = 'request', price_text = 'Sorğu əsasında',
+                price_verified_at = NULL, updated_at = now()
+          WHERE id = $1 RETURNING id`,
+        [row.entity_id]
+      );
+      after = { unitPrice: null, priceStatus: "request", priceVerifiedAt: null };
+    }
+    if (!updated[0]) continue;
+    await logRemediation({
+      issueId: row.id,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      action: `normalize_${row.issue_type}`,
+      before: { issueType: row.issue_type },
+      after,
+      actorId
+    });
+    count += 1;
+  }
+  return count;
+};
+
+export const remediateCatalogIssues = async ({ issueIds = [], actorId = null } = {}) => {
+  const selected = [...new Set(issueIds.map(String).filter(Boolean))].slice(0, 500);
+  const rows = await remediationRows(selected);
+  const quarantinedProducts = await quarantineUnverifiedProducts(rows, actorId);
+  const archivedDuplicates = await archiveDuplicateProducts(rows, actorId);
+  const safeFieldFixes = await applySafeFieldFixes(rows, actorId);
+  const scan = await runCatalogQualityScan({ probeLinks: false, linkLimit: 0 });
+  return {
+    selectedIssues: rows.length,
+    quarantinedProducts,
+    archivedDuplicates,
+    safeFieldFixes,
+    remainingOpenIssues: scan.openIssues,
+    scan
+  };
+};

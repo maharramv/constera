@@ -1,5 +1,17 @@
 import { randomUUID } from "node:crypto";
+import webPush from "web-push";
 import { query } from "./db.js";
+
+export const webPushReadiness = () => {
+  try {
+    const subject = new URL(String(process.env.VAPID_SUBJECT || ""));
+    return ["mailto:", "https:"].includes(subject.protocol)
+      && String(process.env.VAPID_PUBLIC_KEY || "").length >= 40
+      && String(process.env.VAPID_PRIVATE_KEY || "").length >= 30;
+  } catch {
+    return false;
+  }
+};
 
 export const queueNotification = async ({
   userId = null,
@@ -16,6 +28,26 @@ export const queueNotification = async ({
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
     [id, userId, channel, recipient, subject, body, templateKey, JSON.stringify(payload)]
   );
+  if (channel === "in_app" && userId) {
+    await query(
+      `INSERT INTO notifications (
+         id, user_id, channel, recipient, subject, body, template_key, payload
+       )
+       SELECT $1, $2, 'web_push', NULL, $3, $4, $5, $6::jsonb
+       WHERE EXISTS (
+         SELECT 1 FROM web_push_subscriptions
+          WHERE user_id = $2 AND status = 'active'
+       )`,
+      [
+        `ntf-${randomUUID()}`,
+        userId,
+        subject,
+        body,
+        templateKey,
+        JSON.stringify(payload)
+      ]
+    );
+  }
   return id;
 };
 
@@ -51,6 +83,66 @@ const postWebhook = async (item) => {
   return { sent: true };
 };
 
+const deliverWebPush = async (item) => {
+  if (!webPushReadiness()) {
+    return { sent: false, skipped: true, reason: "Web push VAPID açarları qurulmayıb" };
+  }
+  if (!item.user_id) {
+    return { sent: false, skipped: true, reason: "Web push istifadəçisi göstərilməyib" };
+  }
+  const subscriptions = await query(
+    `SELECT id, endpoint, p256dh, auth
+       FROM web_push_subscriptions
+      WHERE user_id = $1 AND status = 'active'`,
+    [item.user_id]
+  );
+  if (!subscriptions.length) {
+    return { sent: true, recipients: 0 };
+  }
+  webPush.setVapidDetails(
+    process.env.VAPID_SUBJECT,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  const payload = JSON.stringify({
+    title: item.subject || "ConstEra",
+    body: item.body,
+    url: item.payload?.url || "/customer-cabinet.html",
+    tag: item.template_key || `constera-${item.id}`,
+    data: item.payload || {}
+  });
+  const results = await Promise.allSettled(subscriptions.map(async (subscription) => {
+    try {
+      await webPush.sendNotification({
+        endpoint: subscription.endpoint,
+        keys: { p256dh: subscription.p256dh, auth: subscription.auth }
+      }, payload, {
+        TTL: 86_400,
+        urgency: "normal"
+      });
+      await query(
+        "UPDATE web_push_subscriptions SET last_used_at = now(), updated_at = now() WHERE id = $1",
+        [subscription.id]
+      );
+      return true;
+    } catch (error) {
+      if ([404, 410].includes(Number(error?.statusCode))) {
+        await query(
+          "UPDATE web_push_subscriptions SET status = 'expired', updated_at = now() WHERE id = $1",
+          [subscription.id]
+        );
+        return false;
+      }
+      throw error;
+    }
+  }));
+  const sent = results.filter((result) => result.status === "fulfilled" && result.value).length;
+  const failed = results.filter((result) => result.status === "rejected").length;
+  if (!sent && failed) throw new Error("Web push provayderi bildirişi qəbul etmədi");
+  if (!sent) return { sent: true, recipients: 0 };
+  return { sent: true, recipients: sent };
+};
+
 export const deliverNotificationNow = async ({
   channel,
   recipient,
@@ -70,6 +162,7 @@ export const deliverNotificationNow = async ({
 
 const deliverOne = async (item) => {
   if (item.channel === "in_app") return { sent: true };
+  if (item.channel === "web_push") return deliverWebPush(item);
   return postWebhook(item);
 };
 

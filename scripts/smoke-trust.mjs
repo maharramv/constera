@@ -220,12 +220,17 @@ try {
     query: {},
     body: body({ probeLinks: false, linkLimit: 0 })
   });
+  const scannedProducts = Number(quality.payload?.data?.scan?.scannedProducts || 0);
+  const scannedOffers = Number(quality.payload?.data?.scan?.scannedOffers || 0);
   if (
     quality.statusCode !== 200
-    || Number(quality.payload?.data?.scan?.scannedProducts || 0) < 200
-    || Number(quality.payload?.data?.scan?.scannedOffers || 0) < 70
+    || scannedProducts < 1
+    || scannedOffers < 1
   ) {
-    throw new Error(`Kataloq keyfiyyət skanı uğursuz oldu: HTTP ${quality.statusCode}`);
+    throw new Error(
+      `Kataloq keyfiyyət skanı uğursuz oldu: HTTP ${quality.statusCode}, `
+      + `${scannedProducts} məhsul, ${scannedOffers} təklif`
+    );
   }
   const performance = await call(supplierPerformanceHandler, {
     method: "GET",

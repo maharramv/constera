@@ -45,6 +45,8 @@ const requiredFiles = [
   "assets/js/taxonomy-expansion.js",
   "assets/js/azerbaijan-real-products.js",
   "assets/js/production.js",
+  "assets/js/supplier-automation.js",
+  "assets/js/pwa-notifications.js",
   "assets/js/order-detail.js",
   "assets/js/admin-v2.js",
   "assets/js/marketplace.js",

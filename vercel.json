@@ -32,6 +32,7 @@
     { "source": "/api/reviews", "destination": "/api/admin?__route=reviews" },
     { "source": "/api/scheduled-backup", "destination": "/api/admin?__route=scheduled-backup" },
     { "source": "/api/supplier-performance", "destination": "/api/admin?__route=supplier-performance" },
+    { "source": "/api/supplier-feeds", "destination": "/api/admin?__route=supplier-feeds" },
     { "source": "/api/support", "destination": "/api/admin?__route=support" },
     { "source": "/api/tender-bids", "destination": "/api/admin?__route=tender-bids" },
     { "source": "/api/tenders", "destination": "/api/admin?__route=tenders" },

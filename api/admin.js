@@ -28,6 +28,7 @@ const routeLoaders = Object.freeze({
   reviews: () => import("./_admin/reviews.js"),
   "scheduled-backup": () => import("./_admin/scheduled-backup.js"),
   "supplier-performance": () => import("./_admin/supplier-performance.js"),
+  "supplier-feeds": () => import("./_admin/supplier-feeds.js"),
   support: () => import("./_admin/support.js"),
   "tender-bids": () => import("./_admin/tender-bids.js"),
   tenders: () => import("./_admin/tenders.js"),

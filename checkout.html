@@ -71,7 +71,26 @@
               <label class="admin-field"><span>Əlaqələndirici şəxs</span><input name="contactName" required maxlength="160" autocomplete="name" /></label>
               <label class="admin-field"><span>E-poçt</span><input name="email" type="email" required autocomplete="email" /></label>
               <label class="admin-field"><span>Telefon</span><input name="phone" type="tel" required maxlength="80" autocomplete="tel" /></label>
-              <label class="admin-field"><span>Şəhər / rayon</span><input name="city" required maxlength="160" autocomplete="address-level2" /></label>
+              <label class="admin-field"><span>Şəhər / rayon</span><input name="city" list="azerbaijan-city-list" required maxlength="160" autocomplete="address-level2" /></label>
+              <datalist id="azerbaijan-city-list">
+                <option value="Bakı"></option>
+                <option value="Sumqayıt"></option>
+                <option value="Xırdalan"></option>
+                <option value="Gəncə"></option>
+                <option value="Mingəçevir"></option>
+                <option value="Şəki"></option>
+                <option value="Qəbələ"></option>
+                <option value="Quba"></option>
+                <option value="Xaçmaz"></option>
+                <option value="Şamaxı"></option>
+                <option value="Şirvan"></option>
+                <option value="Lənkəran"></option>
+                <option value="Astara"></option>
+                <option value="Ağdam"></option>
+                <option value="Füzuli"></option>
+                <option value="Şuşa"></option>
+                <option value="Naxçıvan"></option>
+              </datalist>
               <label class="admin-field"><span>Çatdırılma ünvanı</span><textarea name="address" rows="3" required maxlength="500" autocomplete="street-address"></textarea></label>
               <label class="admin-field">
                 <span>Çatdırılma üsulu</span>

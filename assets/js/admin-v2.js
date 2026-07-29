@@ -26,7 +26,9 @@
     managedSuppliers: [],
     productOffers: [],
     logisticsZones: [],
-    procurementRequests: []
+    procurementRequests: [],
+    twoFactorSetupToken: "",
+    recoveryCodes: []
   };
 
   const qs = (selector, root = document) => root.querySelector(selector);
@@ -647,6 +649,24 @@
       "[data-admin-v2-account-status]",
       `${account.name} · ${roleLabels[account.role] || account.role} · ${account.activeSessions} aktiv sessiya${account.mustChangePassword ? " · şifrə dəyişdirilməlidir" : ""}`,
       account.mustChangePassword ? "warning" : "success"
+    );
+    const twoFactorBadge = qs("[data-admin-two-factor-badge]");
+    const twoFactorStart = qs("[data-admin-two-factor-start]");
+    const twoFactorManage = qs("[data-admin-two-factor-manage]");
+    if (account && twoFactorBadge) {
+      twoFactorBadge.textContent = account.twoFactorEnabled ? "Aktiv" : account.twoFactorReady ? "Söndürülüb" : "Server açarı tələb edir";
+      twoFactorBadge.classList.toggle("is-real", account.twoFactorEnabled);
+    }
+    if (twoFactorStart) twoFactorStart.hidden = Boolean(account?.twoFactorEnabled) || !account?.twoFactorReady;
+    if (twoFactorManage) twoFactorManage.hidden = !account?.twoFactorEnabled;
+    if (account) setStatus(
+      "[data-admin-two-factor-status]",
+      account.twoFactorEnabled
+        ? `2FA aktivdir · ${account.recoveryCodesRemaining} bərpa kodu qalıb.`
+        : account.twoFactorReady
+          ? "Authenticator tətbiqi ilə əlavə giriş qorumasını aktivləşdir."
+          : "TWO_FACTOR_ENCRYPTION_KEY server dəyişəni qurulduqdan sonra aktiv olacaq.",
+      account.twoFactorEnabled ? "success" : account.twoFactorReady ? "info" : "warning"
     );
 
     const notifications = qs("[data-admin-v2-notifications]");
@@ -1423,6 +1443,114 @@
     } catch (error) {
       setStatus("[data-admin-v2-account-status]", error.message, "error");
     }
+  });
+
+  qs("[data-admin-two-factor-start]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Hazırlanır...");
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      const result = await api.updateAccount({ action: "setup_2fa", ...fields });
+      state.twoFactorSetupToken = result.data.setupToken;
+      const panel = qs("[data-admin-two-factor-setup]");
+      const secret = qs("[data-admin-two-factor-secret]");
+      const link = qs("[data-admin-two-factor-link]");
+      if (secret) secret.textContent = result.data.secret;
+      if (link) link.href = result.data.otpauthUrl;
+      if (panel) panel.hidden = false;
+      form.reset();
+      setStatus("[data-admin-two-factor-status]", "Açarı Authenticator tətbiqinə əlavə et və yaranan kodu təsdiqlə.", "success");
+    } catch (error) {
+      setStatus("[data-admin-two-factor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+
+  const showRecoveryCodes = (codes) => {
+    state.recoveryCodes = codes || [];
+    const panel = qs("[data-admin-recovery-codes]");
+    const list = qs("[data-admin-recovery-code-list]");
+    if (list) list.textContent = state.recoveryCodes.join("\n");
+    if (panel) panel.hidden = !state.recoveryCodes.length;
+  };
+
+  qs("[data-admin-two-factor-confirm]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Aktivləşdirilir...");
+    try {
+      const code = new FormData(form).get("code");
+      const result = await api.updateAccount({
+        action: "confirm_2fa",
+        setupToken: state.twoFactorSetupToken,
+        code
+      });
+      state.account = result.data.account;
+      state.twoFactorSetupToken = "";
+      form.reset();
+      const panel = qs("[data-admin-two-factor-setup]");
+      if (panel) panel.hidden = true;
+      const secret = qs("[data-admin-two-factor-secret]");
+      const link = qs("[data-admin-two-factor-link]");
+      if (secret) secret.textContent = "";
+      if (link) link.removeAttribute("href");
+      showRecoveryCodes(result.data.recoveryCodes);
+      renderSystem();
+      setStatus("[data-admin-two-factor-status]", "İki mərhələli giriş aktivləşdirildi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-two-factor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+
+  qs("[data-admin-two-factor-manage]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    if (!window.confirm("İki mərhələli giriş söndürülsün?")) return;
+    setButtonBusy(button, true, "Söndürülür...");
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      const result = await api.updateAccount({ action: "disable_2fa", ...fields });
+      state.account = result.data;
+      form.reset();
+      showRecoveryCodes([]);
+      renderSystem();
+      setStatus("[data-admin-two-factor-status]", "İki mərhələli giriş söndürüldü.", "warning");
+    } catch (error) {
+      setStatus("[data-admin-two-factor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+
+  qs("[data-admin-two-factor-recovery]")?.addEventListener("click", async (event) => {
+    const form = event.currentTarget.closest("form");
+    const button = event.currentTarget;
+    setButtonBusy(button, true, "Yaradılır...");
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      const result = await api.updateAccount({ action: "regenerate_recovery_codes", ...fields });
+      state.account = result.data.account;
+      form.reset();
+      showRecoveryCodes(result.data.recoveryCodes);
+      renderSystem();
+      setStatus("[data-admin-two-factor-status]", "Yeni bərpa kodları yaradıldı; əvvəlkilər artıq işləmir.", "success");
+    } catch (error) {
+      setStatus("[data-admin-two-factor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+
+  qs("[data-admin-recovery-copy]")?.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(state.recoveryCodes.join("\n")).catch(() => null);
+    setStatus("[data-admin-two-factor-status]", "Bərpa kodları mübadilə buferinə köçürüldü.", "success");
   });
 
   const runImport = async (action, button) => {

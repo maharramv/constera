@@ -23,6 +23,7 @@
     "db:seed": "node scripts/seed-database.mjs",
     "db:import-scraper": "node scripts/import-scraper-catalog.mjs",
     "db:audit": "node scripts/audit-database.mjs",
+    "db:remediate": "node scripts/remediate-catalog-quality.mjs",
     "db:smoke": "node scripts/smoke-commerce.mjs && node scripts/smoke-operations.mjs && node scripts/smoke-trust.mjs",
     "db:create-admin": "node scripts/create-admin.mjs",
     "check:production": "node scripts/check-production.mjs",
@@ -33,7 +34,8 @@
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
     "fflate": "^0.8.3",
-    "read-excel-file": "^9.3.2"
+    "read-excel-file": "^9.3.2",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

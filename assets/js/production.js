@@ -36,6 +36,10 @@
     health: () => request("/api/health"),
     session: () => request("/api/auth?action=session"),
     login: (credentials) => request("/api/auth?action=login", { method: "POST", body: JSON.stringify(credentials) }),
+    verifyTwoFactor: (challengeToken, code) => request("/api/auth?action=verify-2fa", {
+      method: "POST",
+      body: JSON.stringify({ challengeToken, code })
+    }),
     requestPasswordReset: (email) => request("/api/auth?action=request-reset", {
       method: "POST",
       body: JSON.stringify({ email })
@@ -174,6 +178,16 @@
     uploadMedia: (data) => request("/api/media", { method: "POST", body: JSON.stringify(data) }),
     deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
     notifications: () => request("/api/notifications?limit=200"),
+    myNotifications: () => request("/api/notifications?scope=mine&limit=100"),
+    pushSettings: () => request("/api/notifications?scope=push"),
+    subscribePush: (subscription) => request("/api/notifications", {
+      method: "POST",
+      body: JSON.stringify({ action: "subscribe-push", subscription })
+    }),
+    unsubscribePush: (endpoint = "") => request("/api/notifications", {
+      method: "POST",
+      body: JSON.stringify({ action: "unsubscribe-push", endpoint })
+    }),
     orders: () => request("/api/orders?limit=500"),
     order: (id) => request(`/api/orders?id=${encodeURIComponent(id)}`),
     createOrder: (data) => request("/api/orders", { method: "POST", body: JSON.stringify(data) }),
@@ -251,8 +265,29 @@
     updateSupportCase: (data) => request("/api/support", { method: "PATCH", body: JSON.stringify(data) }),
     catalogQuality: () => request("/api/catalog-quality?limit=200"),
     scanCatalogQuality: () => request("/api/catalog-quality", { method: "POST", body: "{}" }),
+    previewCatalogRemediation: (issueIds = []) => request("/api/catalog-quality", {
+      method: "POST",
+      body: JSON.stringify({ action: "preview-remediation", issueIds })
+    }),
+    remediateCatalogQuality: (issueIds = []) => request("/api/catalog-quality", {
+      method: "POST",
+      body: JSON.stringify({ action: "remediate", issueIds })
+    }),
     updateCatalogQuality: (data) => request("/api/catalog-quality", { method: "PATCH", body: JSON.stringify(data) }),
     supplierPerformance: () => request("/api/supplier-performance"),
+    supplierFeeds: (supplierId = "") => request(`/api/supplier-feeds?limit=100${supplierId ? `&supplierId=${encodeURIComponent(supplierId)}` : ""}`),
+    saveSupplierFeed: (data, update = false) => request("/api/supplier-feeds", {
+      method: update ? "PATCH" : "POST",
+      body: JSON.stringify(data)
+    }),
+    runSupplierFeed: (id) => request("/api/supplier-feeds", {
+      method: "POST",
+      body: JSON.stringify({ action: "run", id })
+    }),
+    deleteSupplierFeed: (id) => request("/api/supplier-feeds", {
+      method: "DELETE",
+      body: JSON.stringify({ id })
+    }),
     trackEvent: (data) => request("/api/events", { method: "POST", body: JSON.stringify(data) }),
     priceMonitor: () => request("/api/price-monitor"),
     scanPriceMonitor: () => request("/api/price-monitor", { method: "POST", body: "{}" }),
@@ -285,6 +320,9 @@
 
   const initLogin = async () => {
     const loginForm = document.querySelector("[data-login-form]");
+    const twoFactorForm = document.querySelector("[data-two-factor-form]");
+    const twoFactorChallenge = document.querySelector("[data-two-factor-challenge]");
+    const twoFactorCancel = document.querySelector("[data-two-factor-cancel]");
     const setupForm = document.querySelector("[data-setup-form]");
     const resetRequestForm = document.querySelector("[data-password-reset-request-form]");
     const resetForm = document.querySelector("[data-password-reset-form]");
@@ -296,6 +334,7 @@
     const logoutButton = document.querySelector("[data-auth-logout]");
     if (!loginForm || !status) return;
     let resetToken = new URLSearchParams(window.location.search).get("reset") || "";
+    let twoFactorToken = "";
 
     const setStatus = (message, type = "info") => {
       status.textContent = message;
@@ -303,7 +342,8 @@
     };
     const showSession = (user) => {
       sessionPanel.hidden = !user;
-      loginForm.hidden = Boolean(user) || Boolean(resetToken);
+      loginForm.hidden = Boolean(user) || Boolean(resetToken) || Boolean(twoFactorToken);
+      if (twoFactorForm) twoFactorForm.hidden = Boolean(user) || Boolean(resetToken) || !twoFactorToken;
       if (recoveryPanel) recoveryPanel.hidden = Boolean(user) || Boolean(resetToken);
       if (resetForm) resetForm.hidden = Boolean(user) || !resetToken;
       if (resetTokenInput) resetTokenInput.value = resetToken;
@@ -336,6 +376,14 @@
       try {
         const fields = Object.fromEntries(new FormData(loginForm).entries());
         const result = await api.login(fields);
+        if (result.twoFactorRequired) {
+          twoFactorToken = result.challengeToken;
+          if (twoFactorChallenge) twoFactorChallenge.value = twoFactorToken;
+          showSession(null);
+          twoFactorForm?.elements.code?.focus();
+          setStatus("Şifrə düzgündür. İndi Authenticator kodunu təsdiqlə.", "success");
+          return;
+        }
         showSession(result.user);
         setStatus("Giriş uğurludur. Yönləndirilirsən...", "success");
         if (result.user?.mustChangePassword) {
@@ -351,6 +399,33 @@
       } finally {
         setButtonBusy(submit, false);
       }
+    });
+
+    twoFactorForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = twoFactorForm.querySelector('button[type="submit"]');
+      const fields = Object.fromEntries(new FormData(twoFactorForm).entries());
+      setButtonBusy(submit, true, "Təsdiqlənir...");
+      try {
+        const result = await api.verifyTwoFactor(twoFactorToken || fields.challengeToken, fields.code);
+        twoFactorToken = "";
+        twoFactorForm.reset();
+        showSession(result.user);
+        setStatus("Təhlükəsiz giriş uğurludur. Yönləndirilirsən...", "success");
+        window.setTimeout(() => window.location.assign(safeNextUrl()), 350);
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        setButtonBusy(submit, false);
+      }
+    });
+
+    twoFactorCancel?.addEventListener("click", () => {
+      twoFactorToken = "";
+      twoFactorForm?.reset();
+      showSession(null);
+      setStatus("E-poçt və şifrə ilə yenidən daxil ol.", "info");
+      loginForm.elements.email?.focus();
     });
 
     resetRequestForm?.addEventListener("submit", async (event) => {

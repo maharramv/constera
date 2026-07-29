@@ -931,6 +931,41 @@
                   <p class="admin-import-status" data-admin-v2-account-status></p>
                 </form>
               </section>
+              <section class="admin-v2-section" data-admin-two-factor>
+                <div class="admin-v2-section-heading">
+                  <h3>İki mərhələli giriş</h3>
+                  <span class="status-pill" data-admin-two-factor-badge>Yoxlanılır</span>
+                </div>
+                <p class="admin-import-status" data-admin-two-factor-status>
+                  Authenticator tətbiqi ilə administrator girişini qoruyur.
+                </p>
+                <form class="admin-form" data-admin-two-factor-start>
+                  <label class="admin-field"><span>Cari şifrə</span><input name="currentPassword" type="password" required autocomplete="current-password" /></label>
+                  <button class="button button-secondary" type="submit">Quraşdırmaya başla</button>
+                </form>
+                <div class="admin-two-factor-setup" data-admin-two-factor-setup hidden>
+                  <p>Authenticator tətbiqində bu açarı əl ilə əlavə et:</p>
+                  <code data-admin-two-factor-secret></code>
+                  <a class="table-action" data-admin-two-factor-link href="#">Authenticator-də aç</a>
+                  <form class="admin-form" data-admin-two-factor-confirm>
+                    <label class="admin-field"><span>6 rəqəmli kod</span><input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /></label>
+                    <button class="button button-primary" type="submit">Aktivləşdir</button>
+                  </form>
+                </div>
+                <form class="admin-form" data-admin-two-factor-manage hidden>
+                  <label class="admin-field"><span>Cari şifrə</span><input name="currentPassword" type="password" required autocomplete="current-password" /></label>
+                  <label class="admin-field"><span>Authenticator və ya bərpa kodu</span><input name="code" type="text" autocomplete="one-time-code" maxlength="20" required /></label>
+                  <div class="admin-actions">
+                    <button class="button button-outline" type="button" data-admin-two-factor-recovery>Yeni bərpa kodları</button>
+                    <button class="button button-secondary" type="submit">2FA-nı söndür</button>
+                  </div>
+                </form>
+                <div class="admin-recovery-codes" data-admin-recovery-codes hidden>
+                  <strong>Bərpa kodlarını indi təhlükəsiz yerdə saxla</strong>
+                  <pre class="admin-import-area" data-admin-recovery-code-list></pre>
+                  <button class="button button-outline" type="button" data-admin-recovery-copy>Kodları köçür</button>
+                </div>
+              </section>
               <section class="admin-v2-section">
                 <h3>CSV / Excel idxalı</h3>
                 <form class="admin-form" data-admin-v2-import-form>

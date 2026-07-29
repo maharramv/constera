@@ -1,5 +1,9 @@
 import { requireRole } from "../_lib/auth.js";
-import { runCatalogQualityScan } from "../_lib/catalog-quality.js";
+import {
+  previewCatalogRemediation,
+  remediateCatalogIssues,
+  runCatalogQualityScan
+} from "../_lib/catalog-quality.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { oneOf, parseLimit, text } from "../_lib/validation.js";
@@ -85,6 +89,26 @@ export default withApiErrors(async (req, res) => {
   assertSameOrigin(req);
   const body = await readJson(req, 20_000);
   if (req.method === "POST") {
+    const action = text(body.action, { max: 80 }) || "scan";
+    if (action === "preview-remediation") {
+      const issueIds = Array.isArray(body.issueIds) ? body.issueIds.map((id) => text(id, { max: 160 })).filter(Boolean) : [];
+      return sendJson(res, 200, { ok: true, data: await previewCatalogRemediation(issueIds) });
+    }
+    if (action === "remediate") {
+      if (!["super_admin", "admin"].includes(user.role)) {
+        throw new ApiError(403, "permission_denied", "Avtomatik düzəlişi yalnız administrator icra edə bilər.");
+      }
+      const issueIds = Array.isArray(body.issueIds) ? body.issueIds.map((id) => text(id, { max: 160 })).filter(Boolean) : [];
+      const result = await remediateCatalogIssues({ issueIds, actorId: user.id });
+      await recordAudit({
+        actorId: user.id,
+        action: "remediate",
+        entityType: "catalog_quality",
+        details: result
+      });
+      return sendJson(res, 200, { ok: true, data: { remediation: result, center: await loadQualityCenter(200) } });
+    }
+    if (action !== "scan") throw new ApiError(400, "unknown_action", "Keyfiyyət əməliyyatı tanınmadı.");
     const result = await runCatalogQualityScan({
       probeLinks: body.probeLinks !== false,
       linkLimit: Math.max(0, Math.min(Number(body.linkLimit) || 12, 20))

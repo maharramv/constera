@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
-const normalizeHeader = (value) => String(value || "")
+export const normalizeImportHeader = (value) => String(value || "")
   .trim()
   .toLocaleLowerCase("az")
   .replace(/[^a-z0-9əöüğışç]+/g, "");
@@ -53,7 +53,7 @@ export const matrixToObjects = (matrix) => {
     Array.isArray(row) && row.filter((value) => String(value ?? "").trim()).length >= 2
   );
   if (headerIndex < 0 || headerIndex >= matrix.length - 1) return [];
-  const headers = matrix[headerIndex].map(normalizeHeader);
+  const headers = matrix[headerIndex].map(normalizeImportHeader);
   return matrix.slice(headerIndex + 1).filter((row) => row.some((value) => String(value ?? "").trim())).map((row) =>
     headers.reduce((result, header, index) => {
       if (header) result[header] = row[index] ?? "";
@@ -96,6 +96,7 @@ export const firstWorksheetMatrix = (workbookResult) => {
 const aliases = {
   id: ["id", "kod", "code", "xidmetkodu", "xidmətkodu", "paketkodu", "icarekodu", "icarəkodu"],
   sku: ["sku", "kod", "mehsulkodu", "məhsulkodu"],
+  supplierSku: ["techizatciskusu", "təchizatçıskusu", "suppliersku", "suppliercode"],
   name: ["ad", "name", "mehsul", "məhsul", "mehsuladi", "məhsuladı"],
   brand: ["brend", "brand"],
   category: ["kateqoriya", "category"],
@@ -109,6 +110,8 @@ const aliases = {
   availability: ["movcudluq", "mövcudluq", "stok", "availability"],
   stockQuantity: ["stok", "stokmiqdari", "stokmiqdarı", "stock", "stockquantity", "quantity"],
   minimumOrder: ["minimumsifaris", "minimumsifariş", "minimumorder"],
+  leadTimeDays: ["teslimatgunu", "təslimatgünü", "catdirilmagunu", "çatdırılmagünü", "leadtimedays"],
+  priceVerifiedAt: ["yoxlamatarixi", "qiymetyoxlamatarixi", "qiymətyoxlamatarixi", "verifiedat", "priceverifiedat"],
   imageUrl: ["fotourl", "sekilurl", "şəkilurl", "imageurl"],
   sourceUrl: ["menbeurl", "mənbəurl", "sourceurl"],
   sourceLabel: ["menbeadi", "mənbəadı", "sourcelabel"],
@@ -125,7 +128,7 @@ const aliases = {
 export const readAliased = (row, key) => {
   const candidates = aliases[key] || [key];
   for (const candidate of candidates) {
-    const value = row[normalizeHeader(candidate)];
+    const value = row[normalizeImportHeader(candidate)];
     if (value !== undefined && value !== null && String(value).trim() !== "") return value;
   }
   return "";

@@ -1,4 +1,4 @@
-const CACHE_NAME = "constera-shell-v5";
+const CACHE_NAME = "constera-shell-v6";
 const APP_SHELL = [
   "/offline.html",
   "/assets/css/styles.css",
@@ -64,6 +64,40 @@ self.addEventListener("fetch", (event) => {
         return response;
       }).catch(() => cached);
       return cached || update;
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json() || {};
+  } catch {
+    payload = { body: event.data?.text() || "ConstEra hesabında yeni məlumat var." };
+  }
+  event.waitUntil(self.registration.showNotification(payload.title || "ConstEra", {
+    body: payload.body || "Hesabında yeni məlumat var.",
+    icon: "/assets/icons/web-app-manifest-192x192.png",
+    badge: "/assets/icons/web-app-manifest-192x192.png",
+    tag: payload.tag || "constera-notification",
+    data: { url: payload.url || "/customer-cabinet.html" }
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  let target = "/customer-cabinet.html";
+  try {
+    const candidate = new URL(event.notification.data?.url || target, self.location.origin);
+    if (candidate.origin === self.location.origin) target = `${candidate.pathname}${candidate.search}${candidate.hash}`;
+  } catch {
+    // Təhlükəsiz kabinet ünvanı saxlanılır.
+  }
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => new URL(client.url).pathname === new URL(target, self.location.origin).pathname);
+      if (existing) return existing.focus();
+      return self.clients.openWindow(target);
     })
   );
 });

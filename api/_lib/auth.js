@@ -44,6 +44,7 @@ const publicUser = (user) => ({
   role: user.role,
   status: user.status || "active",
   mustChangePassword: Boolean(user.must_change_password),
+  twoFactorEnabled: Boolean(user.two_factor_enabled),
   companyId: user.company_id || null,
   companyName: user.company_name || null
 });
@@ -53,6 +54,7 @@ export const getSessionUser = async (req) => {
   if (!token) return null;
   const rows = await query(
     `SELECT u.id, u.name, u.email, u.role, u.status, u.must_change_password,
+            u.two_factor_enabled,
             u.company_id, c.name AS company_name, s.id AS session_id
        FROM sessions s
        JOIN users u ON u.id = s.user_id
@@ -92,7 +94,7 @@ export const createSession = async (req, res, userId) => {
   );
   res.setHeader(
     "Set-Cookie",
-    `${getCookieName()}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionDays * 86_400}${secure ? "; Secure" : ""}`
+    `${getCookieName()}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Priority=High; Max-Age=${sessionDays * 86_400}${secure ? "; Secure" : ""}`
   );
 };
 

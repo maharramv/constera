@@ -61,6 +61,13 @@ const backupQueries = Object.freeze({
                       ORDER BY created_at`,
   catalogQualityRuns: "SELECT * FROM catalog_quality_runs ORDER BY started_at",
   catalogQualityIssues: "SELECT * FROM catalog_quality_issues ORDER BY first_seen_at",
+  catalogQualityRemediations: "SELECT * FROM catalog_quality_remediations ORDER BY created_at",
+  supplierFeeds: `SELECT id, supplier_id, name, endpoint_url, feed_format, auth_env_key,
+                         mapping, schedule_minutes, active, next_run_at, last_run_at,
+                         last_status, last_error, created_by, created_at, updated_at
+                    FROM supplier_feeds ORDER BY created_at`,
+  supplierFeedRuns: "SELECT * FROM supplier_feed_runs ORDER BY started_at",
+  supplierOfferHistory: "SELECT * FROM supplier_offer_history ORDER BY captured_at",
   auditLogs: "SELECT * FROM audit_logs ORDER BY created_at"
 });
 
@@ -81,11 +88,11 @@ export const buildCloudBackup = async () => {
   );
   const data = Object.fromEntries(entries);
   return {
-    version: "constera-cloud-backup-v6",
+    version: "constera-cloud-backup-v7",
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: 21,
+    schemaMigrations: 22,
     data
   };
 };

@@ -92,6 +92,7 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
     "price-monitor",
     "rental-bookings",
     "supplier-performance",
+    "supplier-feeds",
     "support"
   ]) {
     const response = createResponse();

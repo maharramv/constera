@@ -12,6 +12,12 @@ import {
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { deliverNotificationNow } from "./_lib/notifications.js";
+import {
+  findRecoveryCode,
+  openTwoFactorSecret,
+  twoFactorReadiness,
+  verifyTotp
+} from "./_lib/two-factor.js";
 import { email, text } from "./_lib/validation.js";
 
 const tokenMatches = (provided, expected) => {
@@ -30,10 +36,23 @@ const sessionResponse = (user) => ({
     role: user.role,
     status: user.status || "active",
     mustChangePassword: Boolean(user.mustChangePassword),
+    twoFactorEnabled: Boolean(user.twoFactorEnabled),
     companyId: user.companyId,
     companyName: user.companyName
   } : null
 });
+
+const createLoginChallenge = async (userId) => {
+  const token = randomBytes(32).toString("base64url");
+  await query("DELETE FROM auth_challenges WHERE expires_at <= now() OR consumed_at IS NOT NULL");
+  await query(
+    `INSERT INTO auth_challenges (
+       id, user_id, token_hash, challenge_type, expires_at
+     ) VALUES ($1, $2, $3, 'login_2fa', now() + interval '5 minutes')`,
+    [`ach-${randomUUID()}`, userId, hashOpaque(token)]
+  );
+  return token;
+};
 
 export default withApiErrors(async (req, res) => {
   const action = String(req.query.action || (req.method === "GET" ? "session" : ""));
@@ -46,6 +65,76 @@ export default withApiErrors(async (req, res) => {
   assertMethod(req, ["POST"]);
   assertSameOrigin(req);
   const body = await readJson(req, 20_000);
+
+  if (action === "verify-2fa") {
+    const challengeToken = text(body.challengeToken, { field: "Giriş təsdiqi", required: true, max: 200 });
+    const code = text(body.code, { field: "Təsdiq kodu", required: true, max: 32 });
+    const challenges = await query(
+      `UPDATE auth_challenges
+          SET attempts = attempts + 1
+        WHERE token_hash = $1
+          AND challenge_type = 'login_2fa'
+          AND consumed_at IS NULL
+          AND expires_at > now()
+          AND attempts < 10
+      RETURNING id, user_id, attempts`,
+      [hashOpaque(challengeToken)]
+    );
+    const challenge = challenges[0];
+    if (!challenge) {
+      throw new ApiError(401, "two_factor_challenge_invalid", "Giriş təsdiqinin vaxtı bitib. Yenidən daxil ol.");
+    }
+    const rows = await query(
+      `SELECT u.id, u.name, u.email, u.role, u.status, u.must_change_password,
+              u.two_factor_enabled, u.two_factor_secret, u.two_factor_recovery_codes,
+              u.company_id, c.name AS company_name
+         FROM users u
+         LEFT JOIN companies c ON c.id = u.company_id
+        WHERE u.id = $1 AND u.status = 'active'
+        LIMIT 1`,
+      [challenge.user_id]
+    );
+    const user = rows[0];
+    if (!user?.two_factor_enabled || !user.two_factor_secret) {
+      throw new ApiError(401, "two_factor_not_enabled", "Bu hesabda iki mərhələli giriş aktiv deyil.");
+    }
+    const secret = openTwoFactorSecret(user.two_factor_secret);
+    const recoveryIndex = findRecoveryCode(code, user.two_factor_recovery_codes);
+    const valid = verifyTotp(secret, code) || recoveryIndex >= 0;
+    if (!valid) throw new ApiError(401, "two_factor_invalid", "Authenticator və ya bərpa kodu düzgün deyil.");
+    const consumed = await query(
+      `UPDATE auth_challenges SET consumed_at = now()
+        WHERE id = $1 AND consumed_at IS NULL RETURNING id`,
+      [challenge.id]
+    );
+    if (!consumed[0]) throw new ApiError(409, "two_factor_challenge_used", "Bu giriş təsdiqi artıq istifadə olunub.");
+    if (recoveryIndex >= 0) {
+      const remaining = user.two_factor_recovery_codes.filter((_, index) => index !== recoveryIndex);
+      await query(
+        "UPDATE users SET two_factor_recovery_codes = $2::jsonb, updated_at = now() WHERE id = $1",
+        [user.id, JSON.stringify(remaining)]
+      );
+    }
+    await query("UPDATE users SET last_login_at = now(), updated_at = now() WHERE id = $1", [user.id]);
+    await createSession(req, res, user.id);
+    await recordAudit({
+      actorId: user.id,
+      action: "login_2fa",
+      entityType: "session",
+      details: { recoveryCodeUsed: recoveryIndex >= 0, ipHash: hashOpaque(getClientIp(req)) }
+    });
+    return sendJson(res, 200, sessionResponse({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      mustChangePassword: user.must_change_password,
+      twoFactorEnabled: true,
+      companyId: user.company_id,
+      companyName: user.company_name
+    }));
+  }
 
   if (action === "request-reset") {
     const userEmail = email(body.email);
@@ -152,6 +241,7 @@ export default withApiErrors(async (req, res) => {
     await assertLoginAllowed(identityHash);
     const rows = await query(
       `SELECT u.id, u.name, u.email, u.password_hash, u.role, u.status, u.must_change_password,
+              u.two_factor_enabled, u.two_factor_secret,
               u.company_id, c.name AS company_name
          FROM users u
          LEFT JOIN companies c ON c.id = u.company_id
@@ -164,6 +254,19 @@ export default withApiErrors(async (req, res) => {
     await recordLoginAttempt(identityHash, valid);
     if (!valid) throw new ApiError(401, "invalid_credentials", "E-poçt və ya şifrə düzgün deyil.");
 
+    if (user.two_factor_enabled) {
+      if (!twoFactorReadiness() || !user.two_factor_secret) {
+        throw new ApiError(503, "two_factor_unavailable", "İki mərhələli giriş konfiqurasiyası hazır deyil.");
+      }
+      return sendJson(res, 200, {
+        ok: true,
+        authenticated: false,
+        twoFactorRequired: true,
+        challengeToken: await createLoginChallenge(user.id),
+        expiresInSeconds: 300
+      });
+    }
+
     await query("UPDATE users SET last_login_at = now(), updated_at = now() WHERE id = $1", [user.id]);
     await query("DELETE FROM sessions WHERE expires_at <= now()");
     await createSession(req, res, user.id);
@@ -175,6 +278,7 @@ export default withApiErrors(async (req, res) => {
       role: user.role,
       status: user.status,
       mustChangePassword: user.must_change_password,
+      twoFactorEnabled: false,
       companyId: user.company_id,
       companyName: user.company_name
     }));

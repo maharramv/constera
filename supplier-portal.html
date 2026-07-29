@@ -213,6 +213,62 @@
             <div class="inventory-bulk-preview" data-inventory-bulk-preview-list hidden></div>
           </div>
 
+          <div class="admin-panel glass portal-wide" data-supplier-feed-panel>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">Avtomatik sinxronizasiya</p>
+                <h2>Qiymət və stok feed-ləri</h2>
+              </div>
+              <span class="data-badge" data-supplier-feed-count>0 feed</span>
+            </div>
+            <form class="admin-form supplier-feed-form" data-supplier-feed-form>
+              <input name="id" type="hidden" />
+              <div class="admin-form-grid">
+                <label class="admin-field" data-supplier-feed-supplier-field hidden>
+                  <span>Təchizatçı</span>
+                  <select name="supplierId" data-supplier-feed-supplier></select>
+                </label>
+                <label class="admin-field">
+                  <span>Feed adı</span>
+                  <input name="name" maxlength="160" placeholder="Gündəlik anbar siyahısı" required />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>CSV və ya JSON URL-i</span>
+                  <input name="endpointUrl" type="url" maxlength="2000" placeholder="https://supplier.az/feed.csv" required />
+                </label>
+                <label class="admin-field">
+                  <span>Format</span>
+                  <select name="format">
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Yenilənmə intervalı</span>
+                  <select name="scheduleMinutes">
+                    <option value="60">Hər saat</option>
+                    <option value="360">Hər 6 saat</option>
+                    <option value="720">Hər 12 saat</option>
+                    <option value="1440" selected>Gündə bir dəfə</option>
+                    <option value="10080">Həftədə bir dəfə</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Giriş açarının environment adı</span>
+                  <input name="authEnvKey" maxlength="90" pattern="[A-Z][A-Z0-9_]{2,89}" placeholder="SUPPLIER_FEED_TOKEN" />
+                </label>
+              </div>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Feed-i saxla</button>
+                <button class="button button-outline" type="button" data-supplier-feed-clear>Formu təmizlə</button>
+              </div>
+            </form>
+            <p class="admin-import-status" data-supplier-feed-status role="status" aria-live="polite">
+              Feed yalnız kataloqdakı uyğun SKU-ların təklif qiyməti və stokunu yeniləyir.
+            </p>
+            <div class="admin-v2-compact-list supplier-feed-list" data-supplier-feed-list></div>
+          </div>
+
           <div class="admin-panel glass portal-wide">
             <div class="market-section-heading">
               <div>
@@ -351,6 +407,7 @@
     <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
     <script src="assets/js/production.js"></script>
+    <script src="assets/js/supplier-automation.js"></script>
     <script src="assets/js/marketplace.js"></script>
     <script src="assets/js/enterprise.js"></script>
   </body>

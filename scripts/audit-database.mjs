@@ -38,7 +38,11 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM support_cases WHERE status NOT IN ('resolved', 'rejected', 'closed')) AS open_support_cases,
     (SELECT count(*)::int FROM marketplace_reviews WHERE status = 'published') AS published_reviews,
     (SELECT count(*)::int FROM analytics_events) AS analytics_events,
-    (SELECT count(*)::int FROM catalog_quality_issues WHERE status = 'open') AS open_quality_issues
+    (SELECT count(*)::int FROM catalog_quality_issues WHERE status = 'open') AS open_quality_issues,
+    (SELECT count(*)::int FROM catalog_quality_remediations) AS quality_remediations,
+    (SELECT count(*)::int FROM supplier_feeds WHERE active = true) AS active_supplier_feeds,
+    (SELECT count(*)::int FROM supplier_feed_runs) AS supplier_feed_runs,
+    (SELECT count(*)::int FROM web_push_subscriptions WHERE status = 'active') AS active_push_subscriptions
 `);
 
 const [integrity] = await query(`
@@ -246,7 +250,25 @@ const [integrity] = await query(`
         ))
       )) AS reviews_without_verified_source,
     (SELECT count(*)::int FROM catalog_quality_runs
-      WHERE status = 'running' AND started_at < now() - interval '15 minutes') AS stale_quality_runs
+      WHERE status = 'running' AND started_at < now() - interval '15 minutes') AS stale_quality_runs,
+    (SELECT count(*)::int FROM supplier_feed_runs
+      WHERE status = 'running' AND started_at < now() - interval '30 minutes') AS stale_supplier_feed_runs,
+    (SELECT count(*)::int FROM supplier_feeds
+      WHERE active = true AND (
+        endpoint_url !~ '^https://'
+        OR (auth_env_key IS NOT NULL AND auth_env_key !~ '^[A-Z][A-Z0-9_]{2,89}$')
+      )) AS invalid_supplier_feeds,
+    (SELECT count(*)::int FROM users
+      WHERE two_factor_enabled = true AND (
+        NULLIF(two_factor_secret, '') IS NULL
+        OR jsonb_typeof(two_factor_recovery_codes) <> 'array'
+      )) AS invalid_two_factor_accounts,
+    (SELECT count(*)::int FROM web_push_subscriptions
+      WHERE status = 'active' AND (
+        endpoint !~ '^https://'
+        OR NULLIF(p256dh, '') IS NULL
+        OR NULLIF(auth, '') IS NULL
+      )) AS invalid_push_subscriptions
 `);
 
 const [schema] = await query(`
@@ -286,6 +308,12 @@ const [schema] = await query(`
     to_regclass('public.analytics_events') IS NOT NULL AS analytics_events_ready,
     to_regclass('public.catalog_quality_runs') IS NOT NULL AS quality_runs_ready,
     to_regclass('public.catalog_quality_issues') IS NOT NULL AS quality_issues_ready,
+    to_regclass('public.catalog_quality_remediations') IS NOT NULL AS quality_remediations_ready,
+    to_regclass('public.auth_challenges') IS NOT NULL AS auth_challenges_ready,
+    to_regclass('public.supplier_feeds') IS NOT NULL AS supplier_feeds_ready,
+    to_regclass('public.supplier_feed_runs') IS NOT NULL AS supplier_feed_runs_ready,
+    to_regclass('public.supplier_offer_history') IS NOT NULL AS supplier_offer_history_ready,
+    to_regclass('public.web_push_subscriptions') IS NOT NULL AS web_push_subscriptions_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,

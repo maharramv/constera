@@ -43,6 +43,23 @@
             <button class="button button-primary" type="submit">Daxil ol</button>
           </form>
 
+          <form class="admin-form auth-form" data-two-factor-form hidden>
+            <div class="auth-copy">
+              <p class="eyebrow">İki mərhələli giriş</p>
+              <h2>Authenticator kodunu təsdiqlə</h2>
+              <p>6 rəqəmli kodu və ya saxladığın bərpa kodlarından birini daxil et.</p>
+            </div>
+            <input name="challengeToken" type="hidden" data-two-factor-challenge />
+            <label class="admin-field">
+              <span>Təsdiq kodu</span>
+              <input name="code" type="text" autocomplete="one-time-code" maxlength="20" placeholder="123456 və ya ABCD-EFGH" required />
+            </label>
+            <div class="admin-actions">
+              <button class="button button-primary" type="submit">Girişi təsdiqlə</button>
+              <button class="button button-outline" type="button" data-two-factor-cancel>Geri qayıt</button>
+            </div>
+          </form>
+
           <div class="auth-session" data-auth-session hidden>
             <strong data-auth-session-name>Aktiv sessiya</strong>
             <div class="admin-actions">

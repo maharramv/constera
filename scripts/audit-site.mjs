@@ -41,6 +41,7 @@ const requiredProductionFiles = [
   "api/_admin/reviews.js",
   "api/_admin/scheduled-backup.js",
   "api/_admin/supplier-performance.js",
+  "api/_admin/supplier-feeds.js",
   "api/_admin/support.js",
   "api/_admin/tenders.js",
   "api/_admin/tender-bids.js",
@@ -55,6 +56,8 @@ const requiredProductionFiles = [
   "api/_lib/catalog-quality.js",
   "api/_lib/estimate-import.js",
   "api/_lib/supplier-performance.js",
+  "api/_lib/supplier-feeds.js",
+  "api/_lib/two-factor.js",
   "api/_lib/rfq-order.js",
   "api/_lib/tender-order.js",
   "api/rfqs.js",
@@ -95,9 +98,12 @@ const requiredProductionFiles = [
   "db/migrations/019_b2b_procurement_logistics.sql",
   "db/migrations/020_supplier_purchase_orders.sql",
   "db/migrations/021_trust_analytics_quality.sql",
+  "db/migrations/022_automation_security_pwa.sql",
   "assets/js/order-detail.js",
   "assets/js/enterprise.js",
   "assets/js/enterprise-admin.js",
+  "assets/js/supplier-automation.js",
+  "assets/js/pwa-notifications.js",
   "assets/css/enterprise.css",
   "assets/css/order-document.css",
   "tools/catalog-scraper/src/main.py",
@@ -284,6 +290,7 @@ try {
   }
   if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
   if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
+  if (!packageJson.dependencies?.["web-push"]) report(errors, "package.json", "Web push kitabxanası tapılmadı.");
   ["build:static", "vercel-build", "verify:deploy", "audit:dist", "db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:production", "check:full"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
@@ -304,6 +311,10 @@ const envTemplate = readFileSync(join(root, ".env.example"), "utf8");
   "AI_ESTIMATE_WEBHOOK_SECRET",
   "BACKUP_WEBHOOK_URL",
   "BACKUP_WEBHOOK_SECRET",
+  "TWO_FACTOR_ENCRYPTION_KEY",
+  "VAPID_SUBJECT",
+  "VAPID_PUBLIC_KEY",
+  "VAPID_PRIVATE_KEY",
   "APP_ORIGIN"
 ].forEach((key) => {
   if (!new RegExp(`^${key}=`, "m").test(envTemplate)) report(errors, ".env.example", `${key} dəyişəni tapılmadı.`);
