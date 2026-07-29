@@ -249,12 +249,14 @@ test("xarici providerlər açarsız imitasiya edilmir və təhlükəsiz adapterl
   assert.match(orderClient, /issueElectronicInvoice/);
 });
 
-test("tam backup, CI və production monitorinqi repozitoriyada aktivdir", () => {
+test("tam backup, deployment quality gate və production monitorinqi hazırdır", () => {
   const backup = read("api/_lib/cloud-backup.js");
   const scheduled = read("api/_admin/scheduled-backup.js");
-  const qualityWorkflow = read(".github/workflows/quality.yml");
-  const monitorWorkflow = read(".github/workflows/production-monitor.yml");
+  const qualityWorkflow = read("docs/quality-workflow.yml");
+  const monitorWorkflow = read("docs/production-monitor-workflow.yml");
   const productionCheck = read("scripts/check-production.mjs");
+  const packageJson = JSON.parse(read("package.json"));
+  const vercelConfig = JSON.parse(read("vercel.json"));
 
   assert.match(backup, /constera-cloud-backup-v3/);
   assert.doesNotMatch(backup, /password_hash/);
@@ -265,4 +267,7 @@ test("tam backup, CI və production monitorinqi repozitoriyada aktivdir", () => 
   assert.match(qualityWorkflow, /npm run test:layout/);
   assert.match(monitorWorkflow, /npm run check:production/);
   assert.match(productionCheck, /database === "ready"/);
+  assert.match(packageJson.scripts["vercel-build"], /npm run test:api/);
+  assert.match(packageJson.scripts["vercel-build"], /npm run test:site/);
+  assert.equal(vercelConfig.buildCommand, "npm run vercel-build");
 });

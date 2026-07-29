@@ -1,0 +1,29 @@
+name: ConstEra production monitorinqi
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: constera-production-monitor
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Repozitoriyanı yüklə
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Production smoke testini işə sal
+        run: npm run check:production -- https://constera.az
