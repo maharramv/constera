@@ -123,6 +123,23 @@
                 </div>
               </section>
               <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Qiymət yenilənmə nəzarəti</h3>
+                    <p class="admin-v2-quality-summary" data-admin-price-monitor-summary>Qiymət baxış növbəsi yüklənir.</p>
+                  </div>
+                  <button class="table-action" type="button" data-admin-price-monitor-scan>İndi yoxla</button>
+                </div>
+                <div class="admin-v2-kpi-grid" data-admin-price-monitor-kpis></div>
+                <div class="table-wrap">
+                  <table class="admin-table">
+                    <thead><tr><th>Məhsul</th><th>Təchizatçı</th><th>Son təsdiq</th><th>Son tarix</th><th>Xatırlatma</th><th>Əməliyyat</th></tr></thead>
+                    <tbody data-admin-price-monitor-items></tbody>
+                  </table>
+                </div>
+                <p class="admin-import-status" data-admin-price-monitor-status role="status" aria-live="polite"></p>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
                 <h3>Son fəaliyyətlər</h3>
                 <div class="admin-v2-activity" data-admin-v2-activity></div>
               </section>
@@ -415,6 +432,22 @@
               </div>
               <a class="card-link" href="suppliers.html">Təchizatçılar səhifəsi</a>
             </div>
+            <section class="admin-v2-section admin-v2-section-wide">
+              <div class="admin-v2-section-heading">
+                <div>
+                  <h3>Təchizatçı müraciətləri</h3>
+                  <p class="admin-v2-quality-summary">VÖEN və əlaqə məlumatlarını yoxla, sonra kabinet hesabını aktivləşdir.</p>
+                </div>
+                <span class="data-badge" data-admin-supplier-application-count>0 gözləyən</span>
+              </div>
+              <div class="table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>Şirkət</th><th>Əlaqə</th><th>VÖEN</th><th>İxtisaslaşma</th><th>Sənəd</th><th>Əməliyyat</th></tr></thead>
+                  <tbody data-admin-supplier-applications></tbody>
+                </table>
+              </div>
+              <p class="admin-import-status" data-admin-supplier-application-status role="status" aria-live="polite"></p>
+            </section>
             <div class="admin-manager-grid">
               <form class="admin-form" data-admin-supplier-form>
                 <input type="hidden" name="id" />
@@ -735,7 +768,7 @@
               </section>
               <section class="admin-v2-section admin-v2-section-wide">
                 <h3>Sifarişlər</h3>
-                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sifariş</th><th>Şirkət və əlaqə</th><th>Məhsul</th><th>Məbləğ</th><th>Vəziyyət</th><th>Ödəniş</th></tr></thead><tbody data-admin-v2-orders></tbody></table></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sifariş</th><th>Şirkət və əlaqə</th><th>Məhsul</th><th>Məbləğ</th><th>Vəziyyət</th><th>Ödəniş</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-orders></tbody></table></div>
               </section>
             </div>
           </div>
@@ -916,12 +949,8 @@
       </form>
     </dialog>
 
-    <script src="assets/js/catalog-data.js"></script>
-    <script src="assets/js/taxonomy-expansion.js"></script>
-    <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
     <script src="assets/js/production.js"></script>
-    <script src="assets/js/marketplace.js"></script>
     <script src="assets/js/admin-v2.js"></script>
   </body>
 </html>

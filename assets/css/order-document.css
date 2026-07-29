@@ -1,0 +1,143 @@
+.order-document-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-document-tabs button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px 13px;
+  cursor: pointer;
+}
+
+.order-document-tabs button.is-active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(15, 143, 111, 0.12);
+}
+
+.order-document-header,
+.order-document-footer,
+.order-party-grid,
+.order-lifecycle-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.order-document-header {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 22px;
+}
+
+.order-document-header span,
+.order-party-grid span,
+.order-party-grid p,
+.order-document-footer p {
+  color: var(--muted);
+}
+
+.order-party-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 22px 0;
+}
+
+.order-party-grid section {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  border-left: 2px solid var(--line-strong);
+  padding-left: 14px;
+}
+
+.order-document-footer {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.45fr);
+  align-items: start;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.order-document-totals {
+  display: grid;
+  gap: 8px;
+}
+
+.order-document-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.order-document-totals div:last-child {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.order-lifecycle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-history article {
+  border-left: 2px solid var(--accent);
+  padding: 5px 0 5px 14px;
+}
+
+@media (max-width: 760px) {
+  .order-document-header,
+  .order-document-footer,
+  .order-party-grid,
+  .order-lifecycle-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    color: #111;
+    background: #fff;
+  }
+
+  .ambient,
+  .header,
+  .site-footer,
+  .order-screen-actions,
+  .order-document-tabs,
+  .order-lifecycle-grid,
+  .order-customer-actions,
+  [data-order-detail-status] {
+    display: none !important;
+  }
+
+  .site-shell,
+  .section,
+  .order-document {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .order-document {
+    display: block !important;
+    border: 0;
+    color: #111;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .order-document * {
+    color: #111 !important;
+  }
+
+}

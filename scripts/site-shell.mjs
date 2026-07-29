@@ -46,6 +46,7 @@ const activeNavigationByPage = Object.freeze({
   "price-import": "price-import",
   "customer-cabinet": "customer-cabinet",
   checkout: "checkout",
+  "order-detail": "customer-cabinet",
   rfq: "rfq",
   "rfq-dashboard": "rfq-dashboard",
   tender: "tender",

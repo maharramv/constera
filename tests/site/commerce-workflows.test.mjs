@@ -91,3 +91,56 @@ test("ağıllı smeta Neon kabinetinə və canlı RFQ axınına qoşulur", () =>
   assert.match(marketplace, /ConstEraAPI\.createRfq/);
   assert.match(marketplace, /cloudSyncedAt/);
 });
+
+test("sifariş mərhələləri tarixçə və dəyişməz proforma sənədi yaradır", () => {
+  const ordersApi = read("api/_admin/orders.js");
+  const migration = read("db/migrations/013_commerce_lifecycle.sql");
+  const page = read("order-detail.html");
+  const client = read("assets/js/order-detail.js");
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS order_status_history/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS order_documents/);
+  assert.match(ordersApi, /allowedOrderTransitions/);
+  assert.match(ordersApi, /issueOrderDocument/);
+  assert.match(ordersApi, /proforma_invoice/);
+  assert.match(page, /data-order-document/);
+  assert.match(page, /data-order-admin-form/);
+  assert.match(client, /window\.print\(\)/);
+  assert.match(client, /ConstEraAPI\.order/);
+});
+
+test("təchizatçı müraciəti VÖEN yoxlaması və admin təsdiqi ilə hesaba çevrilir", () => {
+  const page = read("suppliers.html");
+  const supplierApi = read("api/suppliers.js");
+  const admin = read("admin.html");
+  const adminClient = read("assets/js/admin-v2.js");
+  const production = read("assets/js/production.js");
+
+  assert.match(page, /data-supplier-application-form/);
+  assert.match(page, /name="taxId"/);
+  assert.match(supplierApi, /supplier_applications/);
+  assert.match(supplierApi, /VÖEN 10 rəqəmdən/);
+  assert.match(supplierApi, /password_reset_tokens/);
+  assert.match(supplierApi, /supplier_application_approved/);
+  assert.match(admin, /data-admin-supplier-applications/);
+  assert.match(adminClient, /reviewSupplierApplication/);
+  assert.match(production, /applyAsSupplier:/);
+});
+
+test("qiymət monitoru 21 və 30 günlük nəzarət növbəsini idarə edir", () => {
+  const helper = read("api/_lib/price-monitor.js");
+  const monitorApi = read("api/_admin/price-monitor.js");
+  const cron = read("api/cron-price-freshness.js");
+  const inventory = read("api/_admin/inventory.js");
+  const products = read("api/products.js");
+  const admin = read("admin.html");
+
+  assert.match(helper, /interval '21 days'/);
+  assert.match(helper, /interval '30 days'/);
+  assert.match(helper, /price_review_requests/);
+  assert.match(monitorApi, /remindPriceReview/);
+  assert.match(cron, /runPriceFreshnessScan/);
+  assert.match(inventory, /status = 'completed'/);
+  assert.match(products, /price_review_requests/);
+  assert.match(admin, /data-admin-price-monitor-items/);
+});

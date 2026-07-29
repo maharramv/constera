@@ -1303,6 +1303,39 @@ const renderSuppliers = () => {
   `).join("");
 };
 
+const initSupplierApplication = () => {
+  const form = document.querySelector("[data-supplier-application-form]");
+  const status = document.querySelector("[data-supplier-application-status]");
+  if (!form || !status) return;
+  const setApplicationStatus = (message, type = "info") => {
+    status.textContent = message;
+    status.dataset.type = type;
+  };
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!window.ConstEraAPI?.applyAsSupplier) {
+      setApplicationStatus("Müraciət xidməti hazırda əlçatan deyil.", "error");
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = "Yoxlanılır...";
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      const result = await window.ConstEraAPI.applyAsSupplier(fields);
+      form.reset();
+      form.elements.region.value = "Azərbaycan";
+      setApplicationStatus(result.message || "Müraciət qəbul edildi.", "success");
+    } catch (error) {
+      setApplicationStatus(error.message || "Müraciət göndərilmədi.", "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  });
+};
+
 const createServiceCard = (service) => {
   const category = getServiceCategory(service.category);
   const sourceUrl = getSafeHttpsUrl(service.sourceUrl);
@@ -5689,6 +5722,7 @@ const initCustomerCabinet = () => {
         <header><strong>Sifariş #${escapeHtml(order.orderNumber)}</strong><span class="mini-badge">${escapeHtml(orderStatusLabels[order.status] || order.status)}</span></header>
         <p>${(order.items || []).length} məhsul · ${order.totalAmount === null ? "Qiymət təsdiqi gözlənilir" : formatMoney(order.totalAmount, order.currency)}</p>
         <span>${new Date(order.createdAt).toLocaleString("az-AZ")}</span>
+        <div class="cabinet-item-actions"><a class="table-action" href="order-detail.html?order=${encodeURIComponent(order.id)}">Tarixçə və sənəd</a></div>
       </article>
     `).join("") : empty("Sifariş yoxdur.", "Kataloqdan məhsulları səbətə əlavə et və ilk sifarişi göndər.");
     rfqList.innerHTML = state.rfqs.length ? state.rfqs.slice(0, 20).map((rfq) => {
@@ -5955,6 +5989,7 @@ const renderCheckout = () => {
           <header><strong>Sifariş #${escapeHtml(order.orderNumber)}</strong><span class="mini-badge">${escapeHtml(orderStatusLabels[order.status] || order.status)}</span></header>
           <p>${order.items.length} məhsul · ${order.totalAmount === null ? "Qiymət təsdiqi gözlənilir" : formatMoney(order.totalAmount, order.currency)}</p>
           <span>${new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span>
+          <div class="cabinet-item-actions"><a class="table-action" href="order-detail.html?order=${encodeURIComponent(order.id)}">Tarixçə və sənəd</a></div>
         </article>`).join("") : '<article class="cabinet-item"><strong>Sifariş yoxdur.</strong><span>İlk sifarişin burada görünəcək.</span></article>';
     } catch (error) {
       history.innerHTML = `<article class="cabinet-item"><strong>Tarixçə yüklənmədi.</strong><span>${escapeHtml(error.message || "Server xətası")}</span></article>`;
@@ -6080,6 +6115,7 @@ renderHomeSourcedShowcase();
 renderCatalog();
 renderBrands();
 renderSuppliers();
+initSupplierApplication();
 renderServices();
 renderPackages();
 renderRentals();

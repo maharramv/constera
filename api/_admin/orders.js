@@ -3,12 +3,29 @@ import { getSessionUser, hashOpaque, requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
-import { email, oneOf, parseLimit, text } from "../_lib/validation.js";
+import { email, oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const orderStatuses = ["submitted", "confirmed", "processing", "shipped", "completed", "cancelled"];
 const paymentStatuses = ["pending", "awaiting", "paid", "failed", "refunded"];
 const paymentMethods = ["invoice", "bank_transfer"];
 const deliveryModes = ["delivery", "pickup", "supplier_delivery"];
+const privilegedRoles = ["super_admin", "admin", "sales"];
+const allowedOrderTransitions = Object.freeze({
+  submitted: ["confirmed", "cancelled"],
+  confirmed: ["processing", "cancelled"],
+  processing: ["shipped", "cancelled"],
+  shipped: ["completed"],
+  completed: [],
+  cancelled: []
+});
+
+const mapDocument = (row) => ({
+  id: row.id,
+  type: row.document_type,
+  number: row.document_number,
+  payload: row.payload || null,
+  issuedAt: row.issued_at
+});
 
 const mapOrder = (row) => ({
   id: row.id,
@@ -29,8 +46,12 @@ const mapOrder = (row) => ({
   totalAmount: row.total_amount === null ? null : Number(row.total_amount),
   currency: row.currency,
   hasPendingPrice: Boolean(row.has_pending_price),
+  trackingCode: row.tracking_code || "",
+  deliveryProvider: row.delivery_provider || "",
   note: row.note || "",
   items: row.items || [],
+  documents: (row.documents || []).map(mapDocument),
+  history: row.history || [],
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -42,7 +63,14 @@ const readOrder = async (id) => {
               'id', i.id, 'productId', i.product_id, 'sku', i.sku, 'title', i.title,
               'quantity', i.quantity, 'unit', i.unit, 'unitPrice', i.unit_price,
               'priceText', i.price_text, 'lineTotal', i.line_total, 'snapshot', i.snapshot
-            ) ORDER BY i.created_at) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items
+            ) ORDER BY i.created_at) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items,
+            COALESCE((
+              SELECT json_agg(json_build_object(
+                'id', document.id, 'document_type', document.document_type,
+                'document_number', document.document_number, 'issued_at', document.issued_at
+              ) ORDER BY document.issued_at DESC)
+              FROM order_documents document WHERE document.order_id = o.id
+            ), '[]'::json) AS documents
        FROM orders o
        LEFT JOIN order_items i ON i.order_id = o.id
       WHERE o.id = $1
@@ -51,6 +79,112 @@ const readOrder = async (id) => {
     [id]
   );
   return rows[0] ? mapOrder(rows[0]) : null;
+};
+
+const readOrderDetails = async (id) => {
+  const order = await readOrder(id);
+  if (!order) return null;
+  const [historyRows, documentRows] = await Promise.all([
+    query(
+      `SELECT history.*, actor.name AS actor_name
+         FROM order_status_history history
+         LEFT JOIN users actor ON actor.id = history.actor_id
+        WHERE history.order_id = $1
+        ORDER BY history.created_at DESC`,
+      [id]
+    ),
+    query(
+      `SELECT id, document_type, document_number, payload, issued_at
+         FROM order_documents
+        WHERE order_id = $1
+        ORDER BY issued_at DESC`,
+      [id]
+    )
+  ]);
+  return {
+    ...order,
+    documents: documentRows.map(mapDocument),
+    history: historyRows.map((item) => ({
+      id: item.id,
+      actorName: item.actor_name || "Sistem",
+      fromStatus: item.from_status,
+      toStatus: item.to_status,
+      fromPaymentStatus: item.from_payment_status,
+      toPaymentStatus: item.to_payment_status,
+      note: item.note || "",
+      createdAt: item.created_at
+    }))
+  };
+};
+
+const recordOrderHistory = async ({ order, actorId = null, status, paymentStatus, note = "" }) => {
+  await query(
+    `INSERT INTO order_status_history (
+       id, order_id, actor_id, from_status, to_status,
+       from_payment_status, to_payment_status, note
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      `osh-${randomUUID()}`,
+      order.id,
+      actorId,
+      order.status || null,
+      status,
+      order.paymentStatus || null,
+      paymentStatus,
+      text(note, { max: 1_000 }) || null
+    ]
+  );
+};
+
+const issueOrderDocument = async (order, documentType, actorId = null) => {
+  if (!order) return null;
+  if (documentType === "proforma_invoice" && (order.hasPendingPrice || order.totalAmount === null)) return null;
+  const year = new Date().getUTCFullYear();
+  const prefix = documentType === "proforma_invoice" ? "PF" : "SIF";
+  const documentNumber = `${prefix}-${year}-${String(order.orderNumber).padStart(6, "0")}`;
+  const snapshot = {
+    version: 1,
+    documentType,
+    documentNumber,
+    issuedAt: new Date().toISOString(),
+    marketplace: {
+      name: "ConstEra",
+      note: documentType === "proforma_invoice"
+        ? "Bu sənəd marketplace sifarişi üzrə proforma hesabdır və rəsmi vergi hesab-fakturasını əvəz etmir."
+        : "ConstEra marketplace sifariş xülasəsi."
+    },
+    order: {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      companyName: order.companyName,
+      contactName: order.contactName,
+      email: order.email,
+      phone: order.phone,
+      city: order.city,
+      address: order.address,
+      deliveryMode: order.deliveryMode,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      status: order.status,
+      trackingCode: order.trackingCode,
+      deliveryProvider: order.deliveryProvider,
+      subtotal: order.subtotal,
+      deliveryAmount: order.deliveryAmount,
+      totalAmount: order.totalAmount,
+      currency: order.currency,
+      note: order.note,
+      items: order.items
+    }
+  };
+  const rows = await query(
+    `INSERT INTO order_documents (
+       id, order_id, document_type, document_number, payload, issued_by
+     ) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+     ON CONFLICT (order_id, document_type) DO NOTHING
+     RETURNING id, document_type, document_number, payload, issued_at`,
+    [`doc-${randomUUID()}`, order.id, documentType, documentNumber, JSON.stringify(snapshot), actorId]
+  );
+  return rows[0] ? mapDocument(rows[0]) : null;
 };
 
 export const parseOrderQuantity = (value) => {
@@ -64,6 +198,29 @@ export const parseOrderQuantity = (value) => {
 export default withApiErrors(async (req, res) => {
   if (req.method === "GET") {
     const user = await requireRole(req);
+    const id = text(req.query.id, { max: 160 });
+    if (id) {
+      const order = await readOrderDetails(id);
+      if (!order) throw new ApiError(404, "order_not_found", "Sifariş tapılmadı.");
+      if (user.role === "customer" && order.customerId !== user.id) {
+        throw new ApiError(403, "forbidden", "Bu sifarişə giriş yoxdur.");
+      }
+      if (user.role === "supplier") {
+        const visibleRows = await query(
+          `SELECT item.id
+             FROM order_items item
+             JOIN products product ON product.id = item.product_id
+             JOIN suppliers supplier ON supplier.id = product.supplier_id
+            WHERE item.order_id = $1 AND supplier.company_id = $2`,
+          [id, user.companyId || "none"]
+        );
+        const visibleIds = new Set(visibleRows.map((item) => item.id));
+        if (!visibleIds.size) throw new ApiError(403, "forbidden", "Bu sifarişə giriş yoxdur.");
+        order.items = order.items.filter((item) => visibleIds.has(item.id));
+        order.documents = [];
+      }
+      return sendJson(res, 200, { ok: true, data: order });
+    }
     const limit = parseLimit(req.query.limit, 100, 500);
     const values = [];
     const where = [];
@@ -92,7 +249,14 @@ export default withApiErrors(async (req, res) => {
                 'id', i.id, 'productId', i.product_id, 'sku', i.sku, 'title', i.title,
                 'quantity', i.quantity, 'unit', i.unit, 'unitPrice', i.unit_price,
                 'priceText', i.price_text, 'lineTotal', i.line_total, 'snapshot', i.snapshot
-              ) ORDER BY i.created_at) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items
+              ) ORDER BY i.created_at) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                  'id', document.id, 'document_type', document.document_type,
+                  'document_number', document.document_number, 'issued_at', document.issued_at
+                ) ORDER BY document.issued_at DESC)
+                FROM order_documents document WHERE document.order_id = o.id
+              ), '[]'::json) AS documents
          FROM orders o
          ${itemJoin}
         ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
@@ -120,19 +284,56 @@ export default withApiErrors(async (req, res) => {
         throw new ApiError(409, "order_cannot_cancel", "Bu mərhələdə sifarişi ləğv etmək mümkün deyil.");
       }
       await query("UPDATE orders SET status = 'cancelled', updated_at = now() WHERE id = $1", [id]);
+      await recordOrderHistory({
+        order: current,
+        actorId: user.id,
+        status: "cancelled",
+        paymentStatus: current.paymentStatus,
+        note: text(body.note, { max: 1_000 }) || "Müştəri tərəfindən ləğv edildi"
+      });
       await recordAudit({ actorId: user.id, action: "cancel", entityType: "order", entityId: id });
-      return sendJson(res, 200, { ok: true, data: await readOrder(id) });
+      return sendJson(res, 200, { ok: true, data: await readOrderDetails(id) });
     }
 
-    if (!["super_admin", "admin", "sales"].includes(user.role)) {
+    if (!privilegedRoles.includes(user.role)) {
       throw new ApiError(403, "forbidden", "Sifariş statusunu dəyişmək üçün icazə yoxdur.");
     }
     const status = oneOf(body.status ?? current.status, orderStatuses, current.status, "Sifariş statusu");
     const paymentStatus = oneOf(body.paymentStatus ?? current.paymentStatus, paymentStatuses, current.paymentStatus, "Ödəniş statusu");
+    if (status !== current.status && !allowedOrderTransitions[current.status]?.includes(status)) {
+      throw new ApiError(409, "invalid_order_transition", "Sifariş statusu mərhələləri ardıcıllıqla dəyişdirilməlidir.", {
+        current: current.status,
+        allowed: allowedOrderTransitions[current.status] || []
+      });
+    }
+    const deliveryAmount = Object.prototype.hasOwnProperty.call(body, "deliveryAmount")
+      ? parsePriceAmount(body.deliveryAmount)
+      : current.deliveryAmount;
+    if (Object.prototype.hasOwnProperty.call(body, "deliveryAmount") && body.deliveryAmount !== "" && deliveryAmount === null) {
+      throw new ApiError(400, "validation_error", "Çatdırılma məbləği düzgün deyil.");
+    }
+    const totalAmount = current.subtotal === null
+      ? null
+      : Math.round((Number(current.subtotal) + Number(deliveryAmount || 0)) * 100) / 100;
+    const trackingCode = text(body.trackingCode ?? current.trackingCode, { max: 160 }) || null;
+    const deliveryProvider = text(body.deliveryProvider ?? current.deliveryProvider, { max: 200 }) || null;
+    const historyNote = text(body.historyNote, { max: 1_000 });
     await query(
-      "UPDATE orders SET status = $2, payment_status = $3, updated_at = now() WHERE id = $1",
-      [id, status, paymentStatus]
+      `UPDATE orders
+          SET status = $2, payment_status = $3, delivery_amount = $4, total_amount = $5,
+              tracking_code = $6, delivery_provider = $7, updated_at = now()
+        WHERE id = $1`,
+      [id, status, paymentStatus, deliveryAmount, totalAmount, trackingCode, deliveryProvider]
     );
+    if (status !== current.status || paymentStatus !== current.paymentStatus || historyNote) {
+      await recordOrderHistory({
+        order: current,
+        actorId: user.id,
+        status,
+        paymentStatus,
+        note: historyNote || "Sifariş mərhələsi yeniləndi"
+      });
+    }
     await recordAudit({ actorId: user.id, action: "status_update", entityType: "order", entityId: id, details: { status, paymentStatus } });
     if (current.customerId) {
       await queueNotification({
@@ -144,7 +345,9 @@ export default withApiErrors(async (req, res) => {
         payload: { orderId: id, status, paymentStatus }
       });
     }
-    return sendJson(res, 200, { ok: true, data: await readOrder(id) });
+    const updated = await readOrderDetails(id);
+    if (status === "confirmed") await issueOrderDocument(updated, "proforma_invoice", user.id);
+    return sendJson(res, 200, { ok: true, data: await readOrderDetails(id) });
   }
 
   if (text(body.website, { max: 200 })) return sendJson(res, 201, { ok: true, data: { accepted: true } });
@@ -245,6 +448,15 @@ export default withApiErrors(async (req, res) => {
   );
   const orderNumber = Number(rows[0]?.order_number || 0);
   await recordAudit({ actorId: session?.id || null, action: "create", entityType: "order", entityId: id, details: { orderNumber, itemCount: items.length, hasPendingPrice } });
+  const createdOrder = await readOrderDetails(id);
+  await recordOrderHistory({
+    order: { ...createdOrder, status: null, paymentStatus: null },
+    actorId: session?.id || null,
+    status: createdOrder.status,
+    paymentStatus: createdOrder.paymentStatus,
+    note: "Sifariş yaradıldı"
+  });
+  await issueOrderDocument(createdOrder, "order_summary", session?.id || null);
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
   await queueNotification({
     channel: adminEmail ? "email" : "in_app",
@@ -254,5 +466,5 @@ export default withApiErrors(async (req, res) => {
     templateKey: "order_created",
     payload: { orderId: id, orderNumber, itemCount: items.length, hasPendingPrice }
   });
-  return sendJson(res, 201, { ok: true, data: await readOrder(id) });
+  return sendJson(res, 201, { ok: true, data: await readOrderDetails(id) });
 });

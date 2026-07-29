@@ -104,6 +104,15 @@
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)
     }),
+    applyAsSupplier: (data) => request("/api/suppliers?action=apply", {
+      method: "POST",
+      body: JSON.stringify({ action: "apply", ...data })
+    }),
+    supplierApplications: (status = "pending") => request(`/api/suppliers?scope=applications&status=${encodeURIComponent(status)}`),
+    reviewSupplierApplication: (applicationId, action, decisionNote = "") => request("/api/suppliers", {
+      method: "PATCH",
+      body: JSON.stringify({ applicationId, action, decisionNote })
+    }),
     account: () => request("/api/account"),
     updateAccount: (data) => request("/api/account", { method: "PATCH", body: JSON.stringify(data) }),
     analytics: () => request("/api/analytics"),
@@ -146,8 +155,15 @@
     deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
     notifications: () => request("/api/notifications?limit=200"),
     orders: () => request("/api/orders?limit=500"),
+    order: (id) => request(`/api/orders?id=${encodeURIComponent(id)}`),
     createOrder: (data) => request("/api/orders", { method: "POST", body: JSON.stringify(data) }),
     updateOrder: (id, data) => request("/api/orders", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
+    priceMonitor: () => request("/api/price-monitor"),
+    scanPriceMonitor: () => request("/api/price-monitor", { method: "POST", body: "{}" }),
+    updatePriceReview: (id, action, note = "") => request("/api/price-monitor", {
+      method: "PATCH",
+      body: JSON.stringify({ id, action, note })
+    }),
     processNotifications: () => request("/api/notifications", { method: "POST", body: JSON.stringify({ action: "process" }) }),
     updateNotification: (id, action) => request("/api/notifications", { method: "PATCH", body: JSON.stringify({ id, action }) }),
     audit: () => request("/api/audit?limit=200"),
@@ -269,7 +285,7 @@
       try {
         const result = await api.resetPassword(fields.token, fields.password);
         resetToken = "";
-        window.history.replaceState({}, "", "login.html");
+        window.history.replaceState({}, "", `login.html?next=${encodeURIComponent(safeNextUrl())}`);
         resetForm.reset();
         showSession(null);
         setStatus(result.message || "Şifrə yeniləndi.", "success");

@@ -16,6 +16,9 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'package' AND status = 'active') AS packages,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
     (SELECT count(*)::int FROM orders) AS orders,
+    (SELECT count(*)::int FROM order_documents) AS order_documents,
+    (SELECT count(*)::int FROM supplier_applications WHERE status = 'pending') AS pending_supplier_applications,
+    (SELECT count(*)::int FROM price_review_requests WHERE status = 'pending') AS pending_price_reviews,
     (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users,
     (SELECT count(*)::int FROM catalog_import_runs) AS scraper_runs,
     (SELECT count(*)::int FROM catalog_import_items WHERE review_status = 'pending') AS scraper_pending
@@ -35,6 +38,19 @@ const [integrity] = await query(`
       WHERE p.status = 'active' AND p.price_status = 'confirmed'
         AND NOT EXISTS (SELECT 1 FROM price_history h WHERE h.product_id = p.id)) AS confirmed_products_without_history,
     (SELECT count(*)::int FROM order_items WHERE quantity <= 0) AS invalid_order_quantities,
+    (SELECT count(*)::int FROM orders o
+      WHERE NOT EXISTS (SELECT 1 FROM order_status_history history WHERE history.order_id = o.id)) AS orders_without_history,
+    (SELECT count(*)::int FROM order_documents document
+      JOIN orders o ON o.id = document.order_id
+      WHERE document.document_type = 'proforma_invoice'
+        AND (o.has_pending_price OR o.total_amount IS NULL)) AS invalid_proforma_documents,
+    (SELECT count(*)::int FROM supplier_applications
+      WHERE status = 'approved'
+        AND (company_id IS NULL OR supplier_id IS NULL OR user_id IS NULL)) AS incomplete_supplier_approvals,
+    (SELECT count(*)::int FROM (
+      SELECT product_id FROM price_review_requests WHERE status = 'pending'
+      GROUP BY product_id HAVING count(*) > 1
+    ) duplicate_price_reviews) AS duplicate_pending_price_reviews,
     (SELECT count(*)::int FROM users u
       WHERE u.role = 'supplier' AND u.status = 'active' AND (
         u.company_id IS NULL OR NOT EXISTS (SELECT 1 FROM suppliers s WHERE s.company_id = u.company_id)
@@ -80,6 +96,10 @@ const [schema] = await query(`
   SELECT
     to_regclass('public.orders') IS NOT NULL AS orders_ready,
     to_regclass('public.order_items') IS NOT NULL AS order_items_ready,
+    to_regclass('public.order_status_history') IS NOT NULL AS order_history_ready,
+    to_regclass('public.order_documents') IS NOT NULL AS order_documents_ready,
+    to_regclass('public.supplier_applications') IS NOT NULL AS supplier_applications_ready,
+    to_regclass('public.price_review_requests') IS NOT NULL AS price_reviews_ready,
     to_regclass('public.password_reset_tokens') IS NOT NULL AS password_reset_ready,
     to_regclass('public.customer_projects') IS NOT NULL AS customer_projects_ready,
     to_regclass('public.saved_products') IS NOT NULL AS saved_products_ready,
@@ -89,7 +109,8 @@ const [schema] = await query(`
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,
-    to_regclass('public.offers_one_accepted_per_rfq_idx') IS NOT NULL AS offer_selection_ready
+    to_regclass('public.offers_one_accepted_per_rfq_idx') IS NOT NULL AS offer_selection_ready,
+    to_regclass('public.price_review_requests_one_pending_idx') IS NOT NULL AS price_review_scope_ready
 `);
 
 const minimums = {

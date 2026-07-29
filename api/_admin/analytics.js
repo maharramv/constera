@@ -29,6 +29,8 @@ export default withApiErrors(async (req, res) => {
       (SELECT count(*) FROM tender_bids)::int AS tender_bids,
       (SELECT count(*) FROM media_assets WHERE status = 'active')::int AS media,
       (SELECT count(*) FROM import_jobs)::int AS imports,
+      (SELECT count(*) FROM supplier_applications WHERE status = 'pending')::int AS pending_supplier_applications,
+      (SELECT count(*) FROM price_review_requests WHERE status = 'pending')::int AS pending_price_reviews,
       (SELECT count(*) FROM notifications WHERE status IN ('pending', 'failed'))::int AS pending_notifications`),
     query(`SELECT price_status AS status, count(*)::int AS count
              FROM products WHERE status = 'active' GROUP BY price_status ORDER BY price_status`),

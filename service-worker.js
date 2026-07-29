@@ -13,6 +13,7 @@ const PRIVATE_PAGES = new Set([
   "/checkout.html",
   "/customer-cabinet.html",
   "/login.html",
+  "/order-detail.html",
   "/price-import.html",
   "/rfq-dashboard.html",
   "/supplier-portal.html"

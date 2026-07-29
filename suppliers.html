@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/supplier-workflow.css" />
   </head>
   <body data-page="suppliers">
     <div class="ambient ambient-one"></div>
@@ -76,6 +77,95 @@
           </div>
           <div class="market-grid" data-supplier-grid></div>
         </section>
+
+        <section class="section supplier-application-section" id="supplier-application">
+          <div class="market-section-heading">
+            <div>
+              <p class="eyebrow">Tərəfdaşlığa qoşul</p>
+              <h2>ConstEra təchizatçı kabineti üçün müraciət et</h2>
+            </div>
+            <span class="data-badge">VÖEN yoxlaması</span>
+          </div>
+          <div class="supplier-application-layout">
+            <form class="admin-form supplier-application-form" data-supplier-application-form>
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Şirkətin hüquqi adı</span>
+                  <input name="companyName" type="text" maxlength="200" autocomplete="organization" required />
+                </label>
+                <label class="admin-field">
+                  <span>VÖEN</span>
+                  <input name="taxId" type="text" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="10 rəqəm" required />
+                </label>
+                <label class="admin-field">
+                  <span>Əlaqələndirici şəxs</span>
+                  <input name="contactName" type="text" maxlength="160" autocomplete="name" required />
+                </label>
+                <label class="admin-field">
+                  <span>E-poçt</span>
+                  <input name="email" type="email" maxlength="254" autocomplete="email" required />
+                </label>
+                <label class="admin-field">
+                  <span>Telefon</span>
+                  <input name="phone" type="tel" maxlength="80" autocomplete="tel" placeholder="+994..." required />
+                </label>
+                <label class="admin-field">
+                  <span>Fəaliyyət tipi</span>
+                  <select name="type">
+                    <option value="İstehsalçı">İstehsalçı</option>
+                    <option value="Rəsmi distribyutor">Rəsmi distribyutor</option>
+                    <option value="İdxalçı">İdxalçı</option>
+                    <option value="Topdansatış təchizatçısı">Topdansatış təchizatçısı</option>
+                    <option value="Xidmət və icarə tərəfdaşı">Xidmət və icarə tərəfdaşı</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>Region</span>
+                  <input name="region" type="text" maxlength="160" value="Azərbaycan" />
+                </label>
+                <label class="admin-field">
+                  <span>Şirkət saytı</span>
+                  <input name="website" type="url" maxlength="2000" placeholder="https://..." />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>İxtisaslaşma və məhsul qrupları</span>
+                  <textarea name="focus" rows="3" maxlength="1000" placeholder="Sement, boya, elektrik, santexnika, texnika icarəsi..." required></textarea>
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>VÖEN və ya distribyutor statusunu təsdiqləyən açıq sənəd URL-i</span>
+                  <input name="documentUrl" type="url" maxlength="2000" placeholder="https://..." />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Əlavə qeyd</span>
+                  <textarea name="note" rows="3" maxlength="2000"></textarea>
+                </label>
+                <label hidden aria-hidden="true">
+                  <span>Faks</span>
+                  <input name="fax" type="text" tabindex="-1" autocomplete="off" />
+                </label>
+              </div>
+              <label class="supplier-application-consent">
+                <input name="consent" type="checkbox" required />
+                <span>Məlumatların tərəfdaşlıq yoxlaması üçün emalına razıyam.</span>
+              </label>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Müraciəti göndər</button>
+                <a class="button button-outline" href="supplier-portal.html">Kabinetə daxil ol</a>
+              </div>
+              <p class="admin-import-status" data-supplier-application-status role="status" aria-live="polite">
+                Müraciət admin tərəfindən yoxlanıldıqdan sonra nəticə e-poçtla göndəriləcək.
+              </p>
+            </form>
+            <aside class="supplier-application-steps glass">
+              <p class="eyebrow">Yoxlama prosesi</p>
+              <ol>
+                <li><strong>1. Məlumat yoxlaması</strong><span>Şirkət adı, VÖEN və əlaqə məlumatları müqayisə edilir.</span></li>
+                <li><strong>2. Kateqoriya uyğunluğu</strong><span>Məhsul, xidmət və region istiqamətləri müəyyən edilir.</span></li>
+                <li><strong>3. Kabinetin açılması</strong><span>Təsdiqdən sonra təhlükəsiz şifrə-qurma keçidi göndərilir.</span></li>
+              </ol>
+            </aside>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -83,6 +173,7 @@
     <script src="assets/js/taxonomy-expansion.js"></script>
     <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
     <script src="assets/js/marketplace.js"></script>
   </body>
 </html>

@@ -19,6 +19,7 @@ const pages = [
   "price-import.html",
   "customer-cabinet.html",
   "checkout.html",
+  "order-detail.html",
   "rfq.html",
   "rfq-dashboard.html",
   "tender.html",
@@ -289,4 +290,107 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
       });
     }
   }
+});
+
+test("təchizatçı müraciəti və sifariş sənədi mobil ekrana uyğunlaşır", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/suppliers.html#supplier-application", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-supplier-application-form]")).toBeVisible();
+  await expect(page.locator('[name="taxId"]')).toHaveAttribute("pattern", "[0-9]{10}");
+
+  await page.route("**/api/auth?action=session", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      ok: true,
+      authenticated: true,
+      user: { id: "usr-layout", name: "Admin", email: "admin@constera.az", role: "admin" }
+    })
+  }));
+  await page.route("**/api/orders?id=ord-layout", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      ok: true,
+      data: {
+        id: "ord-layout",
+        orderNumber: 42,
+        companyName: "ConstEra Test",
+        contactName: "Test istifadəçi",
+        email: "test@constera.az",
+        phone: "+994 00 000 00 00",
+        city: "Bakı",
+        address: "Test ünvanı",
+        status: "confirmed",
+        paymentStatus: "awaiting",
+        subtotal: 809,
+        deliveryAmount: 20,
+        totalAmount: 829,
+        currency: "AZN",
+        trackingCode: "",
+        deliveryProvider: "",
+        createdAt: "2026-07-29T07:00:00.000Z",
+        updatedAt: "2026-07-29T08:00:00.000Z",
+        items: [{
+          id: "ori-layout",
+          sku: "TVIM-HOLCIM-OPTIMAL-300-40KG",
+          title: "Qaradağ Optimal 300 sement 40 kq",
+          quantity: 100,
+          unit: "kisə",
+          unitPrice: 8.09,
+          lineTotal: 809,
+          snapshot: { supplierName: "TVIM" }
+        }],
+        documents: [{
+          id: "doc-layout",
+          type: "proforma_invoice",
+          number: "PF-2026-000042",
+          issuedAt: "2026-07-29T08:00:00.000Z",
+          payload: {
+            marketplace: { note: "Proforma hesab" },
+            order: {
+              companyName: "ConstEra Test",
+              contactName: "Test istifadəçi",
+              email: "test@constera.az",
+              phone: "+994 00 000 00 00",
+              city: "Bakı",
+              address: "Test ünvanı",
+              subtotal: 809,
+              deliveryAmount: 20,
+              totalAmount: 829,
+              currency: "AZN",
+              items: [{
+                id: "ori-layout",
+                sku: "TVIM-HOLCIM-OPTIMAL-300-40KG",
+                title: "Qaradağ Optimal 300 sement 40 kq",
+                quantity: 100,
+                unit: "kisə",
+                unitPrice: 8.09,
+                lineTotal: 809,
+                snapshot: { supplierName: "TVIM" }
+              }]
+            }
+          }
+        }],
+        history: [{
+          id: "osh-layout",
+          actorName: "Admin",
+          fromStatus: "submitted",
+          toStatus: "confirmed",
+          fromPaymentStatus: "pending",
+          toPaymentStatus: "awaiting",
+          note: "Təsdiqləndi",
+          createdAt: "2026-07-29T08:00:00.000Z"
+        }]
+      }
+    })
+  }));
+  await page.goto("/order-detail.html?order=ord-layout", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-order-document]")).toBeVisible();
+  await expect(page.locator("[data-order-document-number]")).toHaveText("PF-2026-000042");
+  await expect(page.locator("[data-order-history] article")).toHaveCount(1);
+  await expect(page.locator("[data-order-admin-panel]")).toBeVisible();
+  const overflow = await page.evaluate(() =>
+    Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
 });

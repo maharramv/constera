@@ -15,6 +15,8 @@
     imports: [],
     staging: [],
     audit: [],
+    supplierApplications: [],
+    priceMonitor: null,
     account: null,
     qualityProduct: null
   };
@@ -74,6 +76,14 @@
     failed: "Uğursuz",
     refunded: "Geri qaytarılıb"
   };
+  const allowedOrderTransitions = {
+    submitted: ["confirmed", "cancelled"],
+    confirmed: ["processing", "cancelled"],
+    processing: ["shipped", "cancelled"],
+    shipped: ["completed"],
+    completed: [],
+    cancelled: []
+  };
   const kindLabels = { material: "Material", service: "Xidmət", package: "Paket", rental: "İcarə" };
   const actionLabels = {
     create: "Yaratdı",
@@ -91,7 +101,12 @@
     reset_password: "Şifrəni sıfırladı",
     status_update: "Statusu dəyişdi",
     bulk_sync: "Sinxronlaşdırdı",
-    catalog_review: "Kataloq qeydini yoxladı"
+    catalog_review: "Kataloq qeydini yoxladı",
+    approve: "Təsdiqlədi",
+    reject: "Rədd etdi",
+    remind: "Xatırlatdı",
+    scan: "Yoxladı",
+    cancel: "Ləğv etdi"
   };
 
   const setButtonBusy = (button, busy, label = "Gözlə...") => {
@@ -136,6 +151,8 @@
       [counts.orders, "sifariş"],
       [counts.tenders, "tender"],
       [counts.users, "aktiv istifadəçi"],
+      [counts.pending_supplier_applications, "gözləyən tərəfdaş"],
+      [counts.pending_price_reviews, "qiymət yoxlaması"],
       [counts.pending_notifications, "gözləyən bildiriş"]
     ];
     kpis.innerHTML = cards.map(([value, label]) => `
@@ -207,6 +224,53 @@
     if (activity) activity.innerHTML = (data.recentActivity || []).map((item) => `
       <article><span>${escapeHtml(item.actor_name || "Sistem")}</span><strong>${escapeHtml(actionLabels[item.action] || item.action)}</strong><small>${escapeHtml(item.entity_type)} · ${formatDate(item.created_at, true)}</small></article>
     `).join("") || "<p>Son fəaliyyət yoxdur.</p>";
+  };
+
+  const renderPriceMonitor = () => {
+    const monitor = state.priceMonitor;
+    if (!monitor) return;
+    const summary = monitor.summary || {};
+    setText(
+      "[data-admin-price-monitor-summary]",
+      `${Number(summary.pending || 0)} açıq yoxlama · ${Number(summary.overdue || 0)} gecikib · ${Number(summary.completed30Days || 0)} son 30 gündə tamamlanıb`
+    );
+    const kpis = qs("[data-admin-price-monitor-kpis]");
+    if (kpis) {
+      kpis.innerHTML = [
+        [summary.pending, "açıq"],
+        [summary.overdue, "gecikmiş"],
+        [summary.dueSoon, "7 günə bitir"],
+        [summary.completed30Days, "tamamlanıb"]
+      ].map(([value, label]) => `<article><strong>${Number(value || 0).toLocaleString("az-AZ")}</strong><span>${escapeHtml(label)}</span></article>`).join("");
+    }
+    const body = qs("[data-admin-price-monitor-items]");
+    if (!body) return;
+    body.innerHTML = (monitor.items || []).map((item) => {
+      const overdue = Number.isFinite(Date.parse(item.dueAt)) && new Date(item.dueAt).getTime() <= Date.now();
+      return `<tr>
+        <td data-label="Məhsul"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · ${escapeHtml(item.price)}</small></td>
+        <td data-label="Təchizatçı"><strong>${escapeHtml(item.supplier)}</strong><small>${escapeHtml(item.supplierContact || "Əlaqə yoxdur")}</small></td>
+        <td data-label="Son təsdiq">${formatDate(item.priceVerifiedAt, true)}</td>
+        <td data-label="Son tarix"><span class="status-pill${overdue ? " is-danger" : ""}">${formatDate(item.dueAt)}</span></td>
+        <td data-label="Xatırlatma">${Number(item.reminderCount || 0)}<small>${formatDate(item.lastRemindedAt, true)}</small></td>
+        <td data-label="Əməliyyat"><div class="admin-v2-row-actions"><button class="table-action" type="button" data-price-review-remind="${escapeHtml(item.id)}">Xatırlat</button><button class="table-action is-danger" type="button" data-price-review-cancel="${escapeHtml(item.id)}">Bağla</button></div></td>
+      </tr>`;
+    }).join("") || '<tr><td colspan="6">Açıq qiymət yoxlaması yoxdur.</td></tr>';
+  };
+
+  const renderSupplierApplications = () => {
+    const applications = state.supplierApplications || [];
+    setText("[data-admin-supplier-application-count]", `${applications.length.toLocaleString("az-AZ")} gözləyən`);
+    const body = qs("[data-admin-supplier-applications]");
+    if (!body) return;
+    body.innerHTML = applications.map((item) => `<tr>
+      <td data-label="Şirkət"><strong>${escapeHtml(item.companyName)}</strong><small>${escapeHtml(item.type)} · ${escapeHtml(item.region)}</small></td>
+      <td data-label="Əlaqə"><strong>${escapeHtml(item.contactName)}</strong><small>${escapeHtml(item.email)} · ${escapeHtml(item.phone)}</small></td>
+      <td data-label="VÖEN">${escapeHtml(item.taxId)}</td>
+      <td data-label="İxtisaslaşma">${escapeHtml(item.focus)}</td>
+      <td data-label="Sənəd">${item.documentUrl ? `<a class="source-link" href="${escapeHtml(item.documentUrl)}" target="_blank" rel="noopener noreferrer">Sənədi aç</a>` : "Təqdim edilməyib"}</td>
+      <td data-label="Əməliyyat"><div class="admin-v2-row-actions"><button class="table-action" type="button" data-supplier-application-approve="${escapeHtml(item.id)}">Təsdiqlə</button><button class="table-action is-danger" type="button" data-supplier-application-reject="${escapeHtml(item.id)}">Rədd et</button></div></td>
+    </tr>`).join("") || '<tr><td colspan="6">Gözləyən təchizatçı müraciəti yoxdur.</td></tr>';
   };
 
   const parentCategoryOptions = () => {
@@ -295,14 +359,18 @@
     </tr>`).join("") || '<tr><td colspan="6">Tender yoxdur.</td></tr>';
 
     const orderBody = qs("[data-admin-v2-orders]");
-    if (orderBody) orderBody.innerHTML = state.orders.map((item) => `<tr>
+    if (orderBody) orderBody.innerHTML = state.orders.map((item) => {
+      const statusOptions = [item.status, ...(allowedOrderTransitions[item.status] || [])];
+      return `<tr>
       <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}</small></td>
       <td data-label="Şirkət və əlaqə"><strong>${escapeHtml(item.companyName)}</strong><small>${escapeHtml(item.contactName)} · ${escapeHtml(item.phone)}</small></td>
       <td data-label="Məhsul">${item.items.length}<small>${item.hasPendingPrice ? "Qiymət təsdiqi var" : "Qiymətlər təsdiqlidir"}</small></td>
       <td data-label="Məbləğ"><strong>${item.totalAmount === null ? "Sorğu əsasında" : Number(item.totalAmount).toLocaleString("az-AZ", { style: "currency", currency: item.currency })}</strong></td>
-      <td data-label="Status"><select class="table-select" data-order-status="${escapeHtml(item.id)}">${Object.entries(orderStatusLabels).map(([value, label]) => `<option value="${value}" ${value === item.status ? "selected" : ""}>${label}</option>`).join("")}</select></td>
+      <td data-label="Status"><select class="table-select" data-order-status="${escapeHtml(item.id)}">${statusOptions.map((value) => `<option value="${value}" ${value === item.status ? "selected" : ""}>${escapeHtml(orderStatusLabels[value] || value)}</option>`).join("")}</select></td>
       <td data-label="Ödəniş"><select class="table-select" data-order-payment="${escapeHtml(item.id)}">${Object.entries(paymentStatusLabels).map(([value, label]) => `<option value="${value}" ${value === item.paymentStatus ? "selected" : ""}>${label}</option>`).join("")}</select></td>
-    </tr>`).join("") || '<tr><td colspan="6">Sifariş yoxdur.</td></tr>';
+      <td data-label="Əməliyyat"><a class="table-action" href="order-detail.html?order=${encodeURIComponent(item.id)}">Tarixçə və sənəd</a></td>
+    </tr>`;
+    }).join("") || '<tr><td colspan="7">Sifariş yoxdur.</td></tr>';
   };
 
   const clearTenderForm = () => {
@@ -396,9 +464,11 @@
   };
 
   const loadDashboard = async () => {
-    const result = await api.analytics();
+    const [result, monitor] = await Promise.all([api.analytics(), api.priceMonitor()]);
     state.analytics = result.data;
+    state.priceMonitor = monitor.data;
     renderAnalytics();
+    renderPriceMonitor();
     setStatus("[data-admin-v2-status]", `Canlı göstəricilər ${formatDate(result.data.generatedAt, true)} tarixində yeniləndi.`, "success");
   };
 
@@ -410,6 +480,10 @@
   const loadUsers = async () => {
     state.users = (await api.users()).data || [];
     renderUsers();
+  };
+  const loadSupplierApplications = async () => {
+    state.supplierApplications = (await api.supplierApplications("pending")).data || [];
+    renderSupplierApplications();
   };
   const loadRequests = async () => {
     const [rfqs, tenders, orders] = await Promise.all([api.rfqs(), api.tenders(), api.orders()]);
@@ -491,6 +565,51 @@
   qs("[data-admin-v2-refresh]")?.addEventListener("click", (event) => {
     setButtonBusy(event.currentTarget, true, "Yenilənir...");
     loadDashboard().catch((error) => setStatus("[data-admin-v2-status]", error.message, "error")).finally(() => setButtonBusy(event.currentTarget, false));
+  });
+  qs("[data-admin-price-monitor-scan]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    setButtonBusy(button, true, "Yoxlanılır...");
+    try {
+      const result = await api.scanPriceMonitor();
+      state.priceMonitor = result.data.monitor;
+      renderPriceMonitor();
+      setStatus(
+        "[data-admin-price-monitor-status]",
+        `${result.data.scan.createdRequests} yeni yoxlama yaradıldı, ${result.data.scan.expiredProducts} qiymətin vaxtı bitdi.`,
+        "success"
+      );
+      await loadDashboard();
+    } catch (error) {
+      setStatus("[data-admin-price-monitor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-price-monitor-items]")?.addEventListener("click", async (event) => {
+    const remindButton = event.target.closest("[data-price-review-remind]");
+    const cancelButton = event.target.closest("[data-price-review-cancel]");
+    const button = remindButton || cancelButton;
+    if (!button) return;
+    const action = remindButton ? "remind" : "cancel";
+    const id = remindButton?.dataset.priceReviewRemind || cancelButton?.dataset.priceReviewCancel;
+    const note = action === "cancel" ? window.prompt("Bağlanma səbəbini yaz:", "Qiymət yoxlaması tələb olunmur") : "";
+    if (action === "cancel" && note === null) return;
+    setButtonBusy(button, true, action === "remind" ? "Göndərilir..." : "Bağlanır...");
+    try {
+      const result = await api.updatePriceReview(id, action, note || "");
+      state.priceMonitor = result.data;
+      renderPriceMonitor();
+      setStatus(
+        "[data-admin-price-monitor-status]",
+        action === "remind" ? "Təchizatçıya xatırlatma növbəyə əlavə edildi." : "Qiymət yoxlaması bağlandı.",
+        "success"
+      );
+      await loadDashboard();
+    } catch (error) {
+      setStatus("[data-admin-price-monitor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
   });
   qs("[data-admin-v2-quality-items]")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-quality-edit]");
@@ -645,6 +764,39 @@
   qs("[data-admin-v2-requests-refresh]")?.addEventListener("click", (event) => {
     setButtonBusy(event.currentTarget, true, "Yenilənir...");
     loadRequests().finally(() => setButtonBusy(event.currentTarget, false));
+  });
+  qs("[data-admin-supplier-applications]")?.addEventListener("click", async (event) => {
+    const approveButton = event.target.closest("[data-supplier-application-approve]");
+    const rejectButton = event.target.closest("[data-supplier-application-reject]");
+    const button = approveButton || rejectButton;
+    if (!button) return;
+    const action = approveButton ? "approve" : "reject";
+    const id = approveButton?.dataset.supplierApplicationApprove || rejectButton?.dataset.supplierApplicationReject;
+    const application = state.supplierApplications.find((item) => item.id === id);
+    if (!application) return;
+    let decisionNote = "";
+    if (action === "approve") {
+      if (!window.confirm(`${application.companyName} üçün şirkət, təchizatçı profili və giriş hesabı yaradılsın?`)) return;
+    } else {
+      decisionNote = window.prompt("Rədd səbəbini yaz:", "") ?? "";
+      if (!decisionNote) return;
+    }
+    setButtonBusy(button, true, action === "approve" ? "Təsdiqlənir..." : "Rədd edilir...");
+    try {
+      const result = await api.reviewSupplierApplication(id, action, decisionNote);
+      setStatus(
+        "[data-admin-supplier-application-status]",
+        action === "approve" && result.data.invitationQueued
+          ? "Təchizatçı hesabı yaradıldı və təhlükəsiz şifrə-qurma keçidi e-poçt növbəsinə əlavə edildi."
+          : "Müraciət qərarı yadda saxlanıldı.",
+        "success"
+      );
+      await Promise.all([loadSupplierApplications(), loadDashboard(), loadUsers()]);
+    } catch (error) {
+      setStatus("[data-admin-supplier-application-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
   });
   qs("[data-admin-v2-rfqs]")?.addEventListener("change", async (event) => {
     const select = event.target.closest("[data-rfq-status]");
@@ -917,7 +1069,7 @@
         setStatus("[data-admin-v2-status]", "Canlı idarəetmə üçün administrator hesabına daxil ol. Lokal panel işləməyə davam edir.", "warning");
         return;
       }
-      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadRequests(), loadMedia(), loadSystem()];
+      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadRequests(), loadMedia(), loadSystem()];
       const results = await Promise.allSettled(tasks);
       const failed = results.filter((item) => item.status === "rejected");
       if (failed.length) {

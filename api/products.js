@@ -274,6 +274,15 @@ export default withApiErrors(async (req, res) => {
         [item.id, item.priceAmount, item.priceCurrency, item.priceText, item.sourceUrl]
       );
     }
+    if (item.priceStatus === "confirmed") {
+      await query(
+        `UPDATE price_review_requests
+            SET status = 'completed', completed_at = now(), updated_at = now(),
+                note = 'Məhsul qiyməti yenidən təsdiqləndi'
+          WHERE product_id = $1 AND status = 'pending'`,
+        [item.id]
+      );
+    }
     await recordAudit({ actorId: user.id, action: req.method === "POST" ? "create" : "update", entityType: "product", entityId: item.id, details: { sku: item.sku } });
     return sendJson(res, req.method === "POST" ? 201 : 200, { ok: true, data: mapProduct(rows[0]) });
   } catch (error) {

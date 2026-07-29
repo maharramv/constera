@@ -330,6 +330,16 @@ export default withApiErrors(async (req, res) => {
       [JSON.stringify(changedPrices)]
     );
   }
+  const confirmedIds = normalized.filter((item) => item.priceStatus === "confirmed").map((item) => item.id);
+  if (confirmedIds.length) {
+    await query(
+      `UPDATE price_review_requests
+          SET status = 'completed', completed_at = now(), updated_at = now(),
+              note = 'Təchizatçı inventar yeniləməsi ilə təsdiqləndi'
+        WHERE product_id = ANY($1::text[]) AND status = 'pending'`,
+      [confirmedIds]
+    );
+  }
   await recordAudit({
     actorId: user.id,
     action: req.method === "POST" ? "bulk_import" : "bulk_update",

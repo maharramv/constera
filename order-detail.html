@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra | Sifariş sənədi</title>
+    <meta name="description" content="ConstEra sifariş tarixçəsi və çap edilə bilən proforma sənədi." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.az/order-detail.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/order-document.css" />
+  </head>
+  <body data-page="order-detail">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy"><strong>CONSTERA</strong><span>Sifariş sənədi</span></span>
+        </a>
+      </header>
+
+      <main>
+        <section class="section order-document-shell cabinet-list">
+          <div class="market-section-heading admin-v2-section-heading order-screen-actions">
+            <div>
+              <p class="eyebrow">Sifariş idarəetməsi</p>
+              <h1 data-order-detail-title>Sifariş yüklənir</h1>
+            </div>
+            <div class="admin-actions">
+              <a class="button button-outline" href="customer-cabinet.html" data-order-back>Geri qayıt</a>
+              <button class="button button-secondary" type="button" data-order-print disabled>PDF / çap</button>
+            </div>
+          </div>
+
+          <p class="admin-import-status" data-order-detail-status role="status" aria-live="polite">
+            Təhlükəsiz sessiya və sifariş məlumatları yoxlanılır.
+          </p>
+
+          <nav class="order-document-tabs" data-order-documents aria-label="Sifariş sənədləri"></nav>
+
+          <article class="order-document glass admin-v2-section" data-order-document hidden>
+            <header class="order-document-header">
+              <div>
+                <p class="eyebrow" data-order-document-kind>Sifariş xülasəsi</p>
+                <h2 data-order-document-number>—</h2>
+                <span data-order-document-date>—</span>
+              </div>
+              <div class="order-document-brand">
+                <strong>CONSTERA</strong>
+                <span>Tikinti satınalma platforması</span>
+              </div>
+            </header>
+
+            <div class="order-party-grid">
+              <section>
+                <span>Sifarişçi</span>
+                <strong data-order-company>—</strong>
+                <p data-order-contact>—</p>
+              </section>
+              <section>
+                <span>Çatdırılma</span>
+                <strong data-order-city>—</strong>
+                <p data-order-address>—</p>
+              </section>
+              <section>
+                <span>Vəziyyət</span>
+                <strong data-order-status-label>—</strong>
+                <p data-order-tracking>—</p>
+              </section>
+            </div>
+
+            <div class="table-wrap order-document-table-wrap">
+              <table class="admin-table order-document-table">
+                <thead><tr><th>Məhsul</th><th>SKU</th><th>Miqdar</th><th>Vahid qiymət</th><th>Cəm</th></tr></thead>
+                <tbody data-order-document-items></tbody>
+              </table>
+            </div>
+
+            <div class="order-document-footer">
+              <p data-order-document-note></p>
+              <dl class="order-document-totals">
+                <div><dt>Ara cəm</dt><dd data-order-subtotal>—</dd></div>
+                <div><dt>Çatdırılma</dt><dd data-order-delivery>—</dd></div>
+                <div><dt>Yekun</dt><dd data-order-total>—</dd></div>
+              </dl>
+            </div>
+          </article>
+
+          <div class="order-lifecycle-grid">
+            <section class="admin-v2-section">
+              <div class="admin-v2-section-heading">
+                <h2>Sifariş tarixçəsi</h2>
+                <span class="data-badge" data-order-history-count>0 mərhələ</span>
+              </div>
+              <div class="order-history" data-order-history></div>
+            </section>
+
+            <section class="admin-v2-section" data-order-admin-panel hidden>
+              <div class="admin-v2-section-heading"><h2>Əməliyyat məlumatları</h2></div>
+              <form class="admin-form" data-order-admin-form>
+                <div class="admin-form-grid">
+                  <label class="admin-field"><span>Sifariş vəziyyəti</span><select name="status"></select></label>
+                  <label class="admin-field"><span>Ödəniş vəziyyəti</span><select name="paymentStatus"></select></label>
+                  <label class="admin-field"><span>Çatdırılma məbləği</span><input name="deliveryAmount" type="number" min="0" step="0.01" /></label>
+                  <label class="admin-field"><span>Daşıyıcı</span><input name="deliveryProvider" type="text" maxlength="200" /></label>
+                  <label class="admin-field admin-field-wide"><span>İzləmə kodu</span><input name="trackingCode" type="text" maxlength="160" /></label>
+                  <label class="admin-field admin-field-wide"><span>Tarixçə qeydi</span><textarea name="historyNote" rows="3" maxlength="1000"></textarea></label>
+                </div>
+                <div class="admin-actions"><button class="button button-primary" type="submit">Mərhələni yenilə</button></div>
+                <p class="admin-import-status" data-order-admin-status role="status" aria-live="polite"></p>
+              </form>
+            </section>
+          </div>
+
+          <div class="admin-actions order-customer-actions" data-order-customer-actions hidden>
+            <button class="button button-outline" type="button" data-order-cancel>Sifarişi ləğv et</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+    <script src="assets/js/order-detail.js"></script>
+  </body>
+</html>
