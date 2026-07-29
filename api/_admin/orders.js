@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSessionUser, hashOpaque, requireRole } from "../_lib/auth.js";
+import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
@@ -10,11 +11,15 @@ import {
   readOrderDetails,
   recordOrderHistory
 } from "../_lib/order-lifecycle.js";
+import {
+  ensureOrderOperations,
+  syncOperationsForOrderStatus
+} from "../_lib/order-operations.js";
 import { email, oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const orderStatuses = ["submitted", "confirmed", "processing", "shipped", "completed", "cancelled"];
 const paymentStatuses = ["pending", "awaiting", "paid", "failed", "refunded"];
-const paymentMethods = ["invoice", "bank_transfer"];
+const paymentMethods = ["invoice", "bank_transfer", "card"];
 const deliveryModes = ["delivery", "pickup", "supplier_delivery"];
 const privilegedRoles = ["super_admin", "admin", "sales"];
 const allowedOrderTransitions = Object.freeze({
@@ -55,7 +60,13 @@ export default withApiErrors(async (req, res) => {
         );
         const visibleIds = new Set(visibleRows.map((item) => item.id));
         if (!visibleIds.size) throw new ApiError(403, "forbidden", "Bu sifarişə giriş yoxdur.");
+        const visibleSupplierIds = new Set(order.items
+          .filter((item) => visibleIds.has(item.id))
+          .map((item) => item.supplierId)
+          .filter(Boolean));
         order.items = order.items.filter((item) => visibleIds.has(item.id));
+        order.fulfillments = order.fulfillments.filter((item) => visibleSupplierIds.has(item.supplierId));
+        order.reservations = order.reservations.filter((item) => visibleIds.has(item.orderItemId));
         order.documents = [];
       }
       return sendJson(res, 200, { ok: true, data: order });
@@ -127,6 +138,8 @@ export default withApiErrors(async (req, res) => {
         throw new ApiError(409, "order_cannot_cancel", "Bu mərhələdə sifarişi ləğv etmək mümkün deyil.");
       }
       await query("UPDATE orders SET status = 'cancelled', updated_at = now() WHERE id = $1", [id]);
+      await syncOperationsForOrderStatus(id, "cancelled");
+      await syncOrderLead(id);
       await recordOrderHistory({
         order: current,
         actorId: user.id,
@@ -168,6 +181,8 @@ export default withApiErrors(async (req, res) => {
         WHERE id = $1`,
       [id, status, paymentStatus, deliveryAmount, totalAmount, trackingCode, deliveryProvider]
     );
+    if (status !== current.status) await syncOperationsForOrderStatus(id, status);
+    await syncOrderLead(id);
     if (status !== current.status || paymentStatus !== current.paymentStatus || historyNote) {
       await recordOrderHistory({
         order: current,
@@ -291,6 +306,8 @@ export default withApiErrors(async (req, res) => {
     ]
   );
   const orderNumber = Number(rows[0]?.order_number || 0);
+  await ensureOrderOperations(id);
+  await syncOrderLead(id);
   await recordAudit({ actorId: session?.id || null, action: "create", entityType: "order", entityId: id, details: { orderNumber, itemCount: items.length, hasPendingPrice } });
   const createdOrder = await readOrderDetails(id);
   await recordOrderHistory({

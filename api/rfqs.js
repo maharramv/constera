@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSessionUser, hashOpaque, requireRole } from "./_lib/auth.js";
+import { syncRfqLead } from "./_lib/crm.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { queueNotification } from "./_lib/notifications.js";
@@ -96,6 +97,7 @@ export default withApiErrors(async (req, res) => {
       entityId: id,
       details: { status, supplierId }
     });
+    await syncRfqLead(id);
     return sendJson(res, 200, { ok: true, data: rows[0] });
   }
 
@@ -172,6 +174,7 @@ export default withApiErrors(async (req, res) => {
       submissionHash
     ]
   );
+  await syncRfqLead(id);
   await recordAudit({ actorId: session?.id || null, action: "create", entityType: "rfq", entityId: id, details: { type, supplierId } });
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
   const notification = {

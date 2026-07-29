@@ -3,6 +3,7 @@ import { requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
+import { ensureOrderForAcceptedTenderBid } from "../_lib/tender-order.js";
 import { oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const statuses = ["draft", "submitted", "accepted", "rejected", "withdrawn"];
@@ -20,6 +21,11 @@ const mapBid = (row) => ({
   delivery: row.delivery || "",
   note: row.note || "",
   status: row.status,
+  orderId: row.order_id || row.order?.id || null,
+  orderNumber: row.order_number === null || row.order_number === undefined
+    ? row.order?.orderNumber || null
+    : Number(row.order_number),
+  orderStatus: row.order_status || row.order?.status || "",
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -56,10 +62,14 @@ export default withApiErrors(async (req, res) => {
     }
     values.push(limit);
     const rows = await query(
-      `SELECT b.*, t.title AS tender_title, s.name AS supplier_name
+      `SELECT b.*, t.title AS tender_title, s.name AS supplier_name,
+              converted_order.id AS order_id,
+              converted_order.order_number,
+              converted_order.status AS order_status
          FROM tender_bids b
          JOIN tenders t ON t.id = b.tender_id
          LEFT JOIN suppliers s ON s.id = b.supplier_id
+         LEFT JOIN orders converted_order ON converted_order.tender_bid_id = b.id
         ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
         ORDER BY b.created_at DESC LIMIT $${values.length}`,
       values
@@ -134,8 +144,14 @@ export default withApiErrors(async (req, res) => {
 
   const id = text(body.id || req.query.id, { field: "Təklif ID-si", required: true, max: 160 });
   const existingRows = await query(
-    `SELECT b.*, t.created_by AS tender_owner, t.customer_id AS tender_customer
-       FROM tender_bids b JOIN tenders t ON t.id = b.tender_id WHERE b.id = $1 LIMIT 1`,
+    `SELECT b.*, t.created_by AS tender_owner, t.customer_id AS tender_customer,
+            t.title AS tender_title, supplier.name AS supplier_name,
+            supplier.company_id AS supplier_company_id
+       FROM tender_bids b
+       JOIN tenders t ON t.id = b.tender_id
+       LEFT JOIN suppliers supplier ON supplier.id = b.supplier_id
+      WHERE b.id = $1
+      LIMIT 1`,
     [id]
   );
   const existing = existingRows[0];
@@ -149,11 +165,130 @@ export default withApiErrors(async (req, res) => {
   if (["withdrawn", "draft", "submitted"].includes(status) && !privileged && !isSupplierOwner) {
     throw new ApiError(403, "permission_denied", "Bu təklifi dəyişmək icazəsi yoxdur.");
   }
-  await query("UPDATE tender_bids SET status = $2, updated_at = now() WHERE id = $1", [id, status]);
+
   if (status === "accepted") {
-    await query("UPDATE tenders SET status = 'awarded', updated_at = now() WHERE id = $1", [existing.tender_id]);
-    await query("UPDATE tender_bids SET status = 'rejected', updated_at = now() WHERE tender_id = $1 AND id <> $2 AND status = 'submitted'", [existing.tender_id, id]);
+    if (existing.price_amount === null || Number(existing.price_amount) <= 0) {
+      throw new ApiError(409, "tender_bid_price_required", "Qalib seçmək üçün tender təklifinin yekun qiyməti olmalıdır.");
+    }
+    if (!existing.supplier_id) {
+      throw new ApiError(409, "tender_bid_supplier_required", "Qalib tender təklifi aktiv təchizatçıya bağlı olmalıdır.");
+    }
+    const convertedOrders = await query(
+      "SELECT id, tender_bid_id FROM orders WHERE tender_id = $1 LIMIT 1",
+      [existing.tender_id]
+    );
+    if (convertedOrders[0] && convertedOrders[0].tender_bid_id !== id) {
+      throw new ApiError(409, "tender_already_converted", "Bu tender artıq başqa qalib təklif üzrə sifarişə çevrilib.");
+    }
+    const selectedRows = await query(
+      `WITH selected AS (
+         SELECT id, tender_id
+         FROM tender_bids
+         WHERE id = $1 AND status IN ('draft', 'submitted', 'accepted')
+       ), rejected AS (
+         UPDATE tender_bids bid_row
+            SET status = 'rejected', updated_at = now()
+           FROM selected
+          WHERE bid_row.tender_id = selected.tender_id
+            AND bid_row.id <> selected.id
+            AND bid_row.status IN ('draft', 'submitted', 'accepted')
+         RETURNING bid_row.id
+       ), accepted AS (
+         UPDATE tender_bids bid_row
+            SET status = 'accepted', updated_at = now()
+           FROM selected
+          WHERE bid_row.id = selected.id
+            AND (SELECT count(*) FROM rejected) >= 0
+         RETURNING bid_row.*
+       ), tender_updated AS (
+         UPDATE tenders tender_row
+            SET status = 'awarded', updated_at = now()
+           FROM accepted
+          WHERE tender_row.id = accepted.tender_id
+       )
+       SELECT accepted.*
+       FROM accepted`,
+      [id]
+    );
+    if (!selectedRows[0]) {
+      throw new ApiError(409, "tender_bid_not_selectable", "Bu tender təklifi artıq seçilə bilən vəziyyətdə deyil.");
+    }
+    const conversion = await ensureOrderForAcceptedTenderBid({ bidId: id, actorId: user.id });
+    if (!conversion?.order) {
+      throw new ApiError(409, "tender_order_conversion_failed", "Tender qalibi sifarişə çevrilmədi.");
+    }
+    if (conversion.created) {
+      await recordAudit({
+        actorId: user.id,
+        action: "accept",
+        entityType: "tender_bid",
+        entityId: id,
+        details: {
+          tenderId: existing.tender_id,
+          supplierId: existing.supplier_id,
+          orderId: conversion.order.id,
+          orderNumber: conversion.order.orderNumber
+        }
+      });
+      const supplierUsers = existing.supplier_company_id ? await query(
+        "SELECT id FROM users WHERE company_id = $1 AND role = 'supplier' AND status = 'active'",
+        [existing.supplier_company_id]
+      ) : [];
+      const tenderOwner = existing.tender_customer || existing.tender_owner;
+      await Promise.allSettled([
+        ...supplierUsers.map((supplierUser) => queueNotification({
+          userId: supplierUser.id,
+          subject: `Tender təklifiniz qalib seçildi · Sifariş #${conversion.order.orderNumber}`,
+          body: `${existing.tender_title} tenderi üzrə sifariş və proforma yaradıldı.`,
+          templateKey: "tender_bid_accepted",
+          payload: {
+            tenderId: existing.tender_id,
+            bidId: id,
+            orderId: conversion.order.id,
+            orderNumber: conversion.order.orderNumber
+          }
+        })),
+        ...(
+          tenderOwner && tenderOwner !== user.id
+            ? [queueNotification({
+                userId: tenderOwner,
+                subject: `Tender sifarişə çevrildi · #${conversion.order.orderNumber}`,
+                body: `${existing.supplier_name || "Təchizatçı"} qalib seçildi, sifariş və proforma hazırdır.`,
+                templateKey: "tender_awarded",
+                payload: {
+                  tenderId: existing.tender_id,
+                  bidId: id,
+                  orderId: conversion.order.id,
+                  orderNumber: conversion.order.orderNumber
+                }
+              })]
+            : []
+        )
+      ]);
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      data: {
+        ...mapBid({
+          ...selectedRows[0],
+          tender_title: existing.tender_title,
+          supplier_name: existing.supplier_name,
+          order: conversion.order
+        }),
+        order: conversion.order,
+        conversionCreated: conversion.created
+      }
+    });
   }
+
+  const convertedOrders = await query(
+    "SELECT id FROM orders WHERE tender_bid_id = $1 LIMIT 1",
+    [id]
+  );
+  if (convertedOrders[0]) {
+    throw new ApiError(409, "converted_tender_bid_locked", "Sifarişə çevrilmiş tender təklifinin statusu dəyişdirilə bilməz.");
+  }
+  await query("UPDATE tender_bids SET status = $2, updated_at = now() WHERE id = $1", [id, status]);
   await recordAudit({ actorId: user.id, action: status, entityType: "tender_bid", entityId: id });
   return sendJson(res, 200, { ok: true, data: { id, status } });
 });

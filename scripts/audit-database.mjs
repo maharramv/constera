@@ -17,7 +17,13 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
     (SELECT count(*)::int FROM orders) AS orders,
     (SELECT count(*)::int FROM orders WHERE offer_id IS NOT NULL) AS rfq_converted_orders,
+    (SELECT count(*)::int FROM orders WHERE tender_bid_id IS NOT NULL) AS tender_converted_orders,
     (SELECT count(*)::int FROM order_documents) AS order_documents,
+    (SELECT count(*)::int FROM order_fulfillments) AS order_fulfillments,
+    (SELECT count(*)::int FROM inventory_reservations WHERE status = 'active') AS active_reservations,
+    (SELECT count(*)::int FROM inventory_reservations WHERE status = 'shortage') AS shortage_reservations,
+    (SELECT count(*)::int FROM crm_leads) AS crm_leads,
+    (SELECT count(*)::int FROM rental_bookings) AS rental_bookings,
     (SELECT count(*)::int FROM supplier_applications WHERE status = 'pending') AS pending_supplier_applications,
     (SELECT count(*)::int FROM price_review_requests WHERE status = 'pending') AS pending_price_reviews,
     (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users,
@@ -49,6 +55,46 @@ const [integrity] = await query(`
           WHERE item.order_id = o.id AND item.supplier_id IS NOT NULL
         )
       )) AS incomplete_rfq_order_conversions,
+    (SELECT count(*)::int FROM orders o
+      WHERE o.tender_bid_id IS NOT NULL AND (
+        o.tender_id IS NULL
+        OR NOT EXISTS (
+          SELECT 1 FROM order_items item
+          WHERE item.order_id = o.id AND item.supplier_id IS NOT NULL
+        )
+      )) AS incomplete_tender_order_conversions,
+    (SELECT count(*)::int FROM (
+      SELECT tender_id FROM tender_bids WHERE status = 'accepted'
+      GROUP BY tender_id HAVING count(*) > 1
+    ) duplicate_tender_acceptances) AS tenders_with_multiple_accepted_bids,
+    (SELECT count(*)::int FROM order_items item
+      JOIN orders o ON o.id = item.order_id
+      JOIN products product ON product.id = item.product_id
+      WHERE o.status NOT IN ('completed', 'cancelled')
+        AND product.stock_quantity IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM inventory_reservations reservation
+          WHERE reservation.order_item_id = item.id
+        )) AS active_order_items_without_reservation,
+    (SELECT count(*)::int FROM order_fulfillments fulfillment
+      WHERE NOT EXISTS (
+        SELECT 1 FROM order_items item
+        WHERE item.order_id = fulfillment.order_id
+          AND item.supplier_id = fulfillment.supplier_id
+      )) AS orphan_fulfillments,
+    (SELECT count(*)::int FROM inventory_levels level
+      WHERE level.reserved_quantity > level.stock_quantity) AS inventory_over_reserved,
+    (SELECT count(*)::int FROM inventory_levels level
+      JOIN warehouses warehouse ON warehouse.id = level.warehouse_id
+      WHERE warehouse.is_default = true
+        AND level.reserved_quantity <> COALESCE((
+        SELECT sum(reservation.quantity)
+        FROM inventory_reservations reservation
+        WHERE reservation.product_id = level.product_id
+          AND reservation.status = 'active'
+      ), 0)) AS inventory_reservation_mismatch,
+    (SELECT count(*)::int FROM electronic_invoices
+      WHERE status = 'issued' AND NULLIF(document_url, '') IS NULL) AS issued_invoices_without_document,
     (SELECT count(*)::int FROM order_documents document
       JOIN orders o ON o.id = document.order_id
       WHERE document.document_type = 'proforma_invoice'
@@ -107,6 +153,15 @@ const [schema] = await query(`
     to_regclass('public.order_items') IS NOT NULL AS order_items_ready,
     to_regclass('public.order_status_history') IS NOT NULL AS order_history_ready,
     to_regclass('public.order_documents') IS NOT NULL AS order_documents_ready,
+    to_regclass('public.order_fulfillments') IS NOT NULL AS order_fulfillments_ready,
+    to_regclass('public.inventory_reservations') IS NOT NULL AS inventory_reservations_ready,
+    to_regclass('public.inventory_levels') IS NOT NULL AS inventory_levels_ready,
+    to_regclass('public.warehouses') IS NOT NULL AS warehouses_ready,
+    to_regclass('public.crm_leads') IS NOT NULL AS crm_leads_ready,
+    to_regclass('public.crm_activities') IS NOT NULL AS crm_activities_ready,
+    to_regclass('public.rental_bookings') IS NOT NULL AS rental_bookings_ready,
+    to_regclass('public.payment_transactions') IS NOT NULL AS payment_transactions_ready,
+    to_regclass('public.electronic_invoices') IS NOT NULL AS electronic_invoices_ready,
     to_regclass('public.supplier_applications') IS NOT NULL AS supplier_applications_ready,
     to_regclass('public.price_review_requests') IS NOT NULL AS price_reviews_ready,
     to_regclass('public.password_reset_tokens') IS NOT NULL AS password_reset_ready,
@@ -122,6 +177,10 @@ const [schema] = await query(`
     to_regclass('public.price_review_requests_one_pending_idx') IS NOT NULL AS price_review_scope_ready,
     to_regclass('public.orders_offer_unique') IS NOT NULL
       AND to_regclass('public.orders_rfq_unique') IS NOT NULL AS rfq_order_scope_ready,
+    to_regclass('public.orders_tender_unique') IS NOT NULL
+      AND to_regclass('public.orders_tender_bid_unique') IS NOT NULL AS tender_order_scope_ready,
+    to_regclass('public.tender_bids_one_accepted_per_tender_idx') IS NOT NULL AS tender_selection_ready,
+    to_regclass('public.crm_leads_source_unique') IS NOT NULL AS crm_source_scope_ready,
     to_regclass('public.order_items_supplier_idx') IS NOT NULL AS order_supplier_scope_ready
 `);
 

@@ -75,7 +75,15 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
   assert.equal(ordersResponse.statusCode, 401);
   assert.equal(ordersResponse.payload.error.code, "authentication_required");
 
-  for (const route of ["cabinet", "catalog-staging", "inventory", "price-monitor"]) {
+  for (const route of [
+    "cabinet",
+    "catalog-staging",
+    "crm",
+    "fulfillments",
+    "inventory",
+    "price-monitor",
+    "rental-bookings"
+  ]) {
     const response = createResponse();
     await adminHandler({ method: "GET", headers: {}, query: { __route: route } }, response);
     assert.equal(response.statusCode, 401, route);
@@ -86,6 +94,46 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
   await adminHandler({ method: "GET", headers: {}, query: { __route: "unknown" } }, missingResponse);
   assert.equal(missingResponse.statusCode, 404);
   assert.equal(missingResponse.payload.error.code, "admin_route_not_found");
+});
+
+test("provider hazırlığı açarsız rejimdə açıq və təhlükəsiz cavab verir", async () => {
+  const keys = [
+    "PAYMENT_WEBHOOK_URL",
+    "PAYMENT_WEBHOOK_SECRET",
+    "EINVOICE_WEBHOOK_URL",
+    "EINVOICE_WEBHOOK_SECRET",
+    "AI_ESTIMATE_WEBHOOK_URL",
+    "AI_ESTIMATE_WEBHOOK_SECRET",
+    "EMAIL_WEBHOOK_URL",
+    "WHATSAPP_WEBHOOK_URL",
+    "NOTIFICATION_WEBHOOK_SECRET"
+  ];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  keys.forEach((key) => delete process.env[key]);
+  try {
+    const response = createResponse();
+    await adminHandler({ method: "GET", headers: {}, query: { __route: "integrations" } }, response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.payload.data.readiness, {
+      payment: false,
+      electronicInvoice: false,
+      aiEstimate: false,
+      email: false,
+      whatsapp: false
+    });
+  } finally {
+    keys.forEach((key) => {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    });
+  }
+});
+
+test("scheduled backup endpoint-i cron sirri olmadan bağlıdır", async () => {
+  const response = createResponse();
+  await adminHandler({ method: "GET", headers: {}, query: { __route: "scheduled-backup" } }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.error.code, "cron_unauthorized");
 });
 
 test("təchizatçının şəxsi məhsul siyahısı anonim sorğuya açılmır", async () => withoutDatabase(async () => {

@@ -23,6 +23,8 @@ test("təchizatçı toplu inventarı əvvəl yoxlayır və təhlükəsiz hissəl
   const portal = read("supplier-portal.html");
   const marketplace = read("assets/js/marketplace.js");
   const inventoryApi = read("api/_admin/inventory.js");
+  const productsApi = read("api/products.js");
+  const syncApi = read("api/sync.js");
   const production = read("assets/js/production.js");
 
   for (const marker of [
@@ -41,6 +43,9 @@ test("təchizatçı toplu inventarı əvvəl yoxlayır və təhlükəsiz hissəl
   assert.match(inventoryApi, /SKU bu təchizatçıya aid deyil/);
   assert.match(inventoryApi, /Təsdiqli qiymət üçün məbləğ və HTTPS mənbə tələb olunur/);
   assert.match(inventoryApi, /maksimum 1 000 SKU/);
+  assert.match(productsApi, /syncProductInventoryLevels/);
+  assert.match(productsApi, /stock_below_reserved/);
+  assert.match(syncApi, /COALESCE\(products\.stock_quantity, EXCLUDED\.stock_quantity\)/);
 });
 
 test("RFQ təklifləri serverdə müqayisə olunur və yalnız bir qalib seçilir", () => {
@@ -163,4 +168,101 @@ test("qiymət monitoru 21 və 30 günlük nəzarət növbəsini idarə edir", ()
   assert.match(inventory, /status = 'completed'/);
   assert.match(products, /price_review_requests/);
   assert.match(admin, /data-admin-price-monitor-items/);
+});
+
+test("qalib tender təklifi idempotent sifariş və proforma axınına çevrilir", () => {
+  const bidsApi = read("api/_admin/tender-bids.js");
+  const conversion = read("api/_lib/tender-order.js");
+  const migration = read("db/migrations/015_tender_order_conversion.sql");
+  const adminClient = read("assets/js/admin-v2.js");
+
+  assert.match(bidsApi, /ensureOrderForAcceptedTenderBid/);
+  assert.match(bidsApi, /tender_already_converted/);
+  assert.match(conversion, /ON CONFLICT \(tender_id\) WHERE tender_id IS NOT NULL DO NOTHING/);
+  assert.match(conversion, /if \(created\) \{\s*await recordOrderHistory/);
+  assert.match(conversion, /proforma_invoice/);
+  assert.match(migration, /tender_bids_one_accepted_per_tender_idx/);
+  assert.match(migration, /orders_tender_unique/);
+  assert.match(adminClient, /data-tender-bid-accept/);
+  assert.match(adminClient, /order-detail\.html\?order=/);
+});
+
+test("stok rezervi anbar səviyyəsində atomik ayrılır və fulfillment ilə idarə olunur", () => {
+  const operations = read("api/_lib/order-operations.js");
+  const fulfillment = read("api/_admin/fulfillments.js");
+  const inventory = read("api/_admin/inventory.js");
+  const migration = read("db/migrations/016_fulfillment_inventory.sql");
+  const supplierPage = read("supplier-portal.html");
+
+  assert.match(operations, /reserved_quantity = level\.reserved_quantity \+ requested\.quantity/);
+  assert.match(operations, /level\.stock_quantity - level\.reserved_quantity >= requested\.quantity/);
+  assert.match(operations, /releaseOrderReservations/);
+  assert.match(operations, /consumeOrderReservations/);
+  assert.match(fulfillment, /invalid_fulfillment_transition/);
+  assert.match(fulfillment, /shipping_reference_required/);
+  assert.match(inventory, /stock_below_reserved/);
+  assert.match(inventory, /reconcileShortageReservations/);
+  assert.match(migration, /Mövcud sifariş üçün migrasiya zamanı rezerv edildi/);
+  assert.match(supplierPage, /data-supplier-order-rows/);
+});
+
+test("CRM və icarə rezervasiyası satış mənbələrini vahid pipeline-da birləşdirir", () => {
+  const crm = read("api/_admin/crm.js");
+  const crmSync = read("api/_lib/crm.js");
+  const rentals = read("api/_admin/rental-bookings.js");
+  const migration = read("db/migrations/017_crm_rental_bookings.sql");
+  const admin = read("admin.html");
+  const marketplace = read("assets/js/marketplace.js");
+
+  assert.match(crm, /crm_owner_not_found/);
+  assert.match(crm, /crm_activities/);
+  assert.match(crmSync, /syncRfqLead/);
+  assert.match(crmSync, /syncOrderLead/);
+  assert.match(crmSync, /syncRentalLead/);
+  assert.match(rentals, /daterange\(start_date, end_date, '\[\]'\)/);
+  assert.match(rentals, /rental_not_available/);
+  assert.match(migration, /crm_leads_source_unique/);
+  assert.match(admin, /data-admin-v2-crm-leads/);
+  assert.match(admin, /data-admin-v2-rental-bookings/);
+  assert.match(marketplace, /data-rental-booking-form/);
+});
+
+test("xarici providerlər açarsız imitasiya edilmir və təhlükəsiz adapterlə aktivləşir", () => {
+  const adapters = read("api/_lib/provider-adapters.js");
+  const integrations = read("api/_admin/integrations.js");
+  const migration = read("db/migrations/018_provider_integrations.sql");
+  const checkout = read("checkout.html");
+  const orderClient = read("assets/js/order-detail.js");
+
+  assert.match(adapters, /configuredHttpsEndpoint/);
+  assert.match(adapters, /provider_unreachable/);
+  assert.match(adapters, /PAYMENT_WEBHOOK_URL/);
+  assert.match(adapters, /EINVOICE_WEBHOOK_URL/);
+  assert.match(adapters, /AI_ESTIMATE_WEBHOOK_URL/);
+  assert.match(integrations, /safeProviderPayload/);
+  assert.match(integrations, /paymentTransitionAllowed/);
+  assert.match(integrations, /invalid_webhook_signature/);
+  assert.match(migration, /payment_transactions/);
+  assert.match(migration, /electronic_invoices/);
+  assert.match(checkout, /data-payment-card/);
+  assert.match(orderClient, /createPayment/);
+  assert.match(orderClient, /issueElectronicInvoice/);
+});
+
+test("tam backup, CI və production monitorinqi repozitoriyada aktivdir", () => {
+  const backup = read("api/_lib/cloud-backup.js");
+  const scheduled = read("api/_admin/scheduled-backup.js");
+  const qualityWorkflow = read(".github/workflows/quality.yml");
+  const monitorWorkflow = read(".github/workflows/production-monitor.yml");
+  const productionCheck = read("scripts/check-production.mjs");
+
+  assert.match(backup, /constera-cloud-backup-v3/);
+  assert.doesNotMatch(backup, /password_hash/);
+  assert.doesNotMatch(backup, /SELECT \* FROM users/);
+  assert.match(backup, /Content-Encoding/);
+  assert.match(scheduled, /cron_unauthorized/);
+  assert.match(qualityWorkflow, /npm run check/);
+  assert.match(qualityWorkflow, /npm run test:layout/);
+  assert.match(monitorWorkflow, /npm run check:production/);
+  assert.match(productionCheck, /database === "ready"/);
 });

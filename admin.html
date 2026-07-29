@@ -76,6 +76,7 @@
             <button class="admin-tab-button" type="button" data-admin-tab="suppliers">Təchizatçılar</button>
             <button class="admin-tab-button" type="button" data-admin-tab="services">Xidmət və icarə</button>
             <button class="admin-tab-button" type="button" data-admin-tab="requests">Sorğu və tender</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="crm">CRM və rezervasiya</button>
             <button class="admin-tab-button" type="button" data-admin-tab="users">İstifadəçilər</button>
             <button class="admin-tab-button" type="button" data-admin-tab="media">Media</button>
             <button class="admin-tab-button" type="button" data-admin-tab="system">Sistem</button>
@@ -767,10 +768,54 @@
                 <div class="table-wrap"><table class="admin-table"><thead><tr><th>Tender</th><th>Şirkət</th><th>Son tarix</th><th>Lot/təklif</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-tenders></tbody></table></div>
               </section>
               <section class="admin-v2-section admin-v2-section-wide">
+                <h3>Tender təklifləri</h3>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Tender</th><th>Təchizatçı</th><th>Qiymət</th><th>Çatdırılma</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-tender-bids></tbody></table></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
                 <h3>Sifarişlər</h3>
                 <div class="table-wrap"><table class="admin-table"><thead><tr><th>Sifariş</th><th>Şirkət və əlaqə</th><th>Məhsul</th><th>Məbləğ</th><th>Vəziyyət</th><th>Ödəniş</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-orders></tbody></table></div>
               </section>
             </div>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="crm" hidden>
+            <div class="market-section-heading">
+              <div><p class="eyebrow">Satış və icarə əməliyyatları</p><h2>CRM boru xətti və rezervasiyalar</h2></div>
+              <button class="table-action" type="button" data-admin-v2-commercial-refresh>Yenilə</button>
+            </div>
+            <div class="admin-v2-kpi-grid" data-admin-v2-crm-stages></div>
+            <div class="admin-manager-grid">
+              <form class="admin-form" data-admin-v2-crm-form>
+                <div class="admin-form-grid">
+                  <label class="admin-field"><span>Şirkət</span><input name="companyName" required maxlength="200" /></label>
+                  <label class="admin-field"><span>Əlaqələndirici şəxs</span><input name="contactName" required maxlength="160" /></label>
+                  <label class="admin-field"><span>Telefon</span><input name="phone" type="tel" maxlength="80" /></label>
+                  <label class="admin-field"><span>E-poçt</span><input name="email" type="email" maxlength="254" /></label>
+                  <label class="admin-field"><span>Mövzu</span><input name="title" required maxlength="300" /></label>
+                  <label class="admin-field"><span>Potensial məbləğ, AZN</span><input name="valueAmount" type="number" min="0" step="0.01" /></label>
+                  <label class="admin-field"><span>Mərhələ</span><select name="stage"><option value="new">Yeni</option><option value="qualified">Dəqiqləşdirilib</option><option value="proposal">Təklif</option><option value="won">Qazanılıb</option><option value="lost">İtirilib</option></select></label>
+                  <label class="admin-field"><span>Növbəti əlaqə</span><input name="nextActionAt" type="datetime-local" /></label>
+                </div>
+                <label class="admin-field admin-field-wide"><span>Qeyd</span><textarea name="note" rows="3" maxlength="2000"></textarea></label>
+                <div class="admin-actions"><button class="button button-primary" type="submit">Lead yarat</button></div>
+                <p class="admin-import-status" data-admin-v2-crm-status></p>
+              </form>
+              <div class="admin-import-box">
+                <p class="admin-import-status">RFQ, sifariş və icarə müraciətləri avtomatik olaraq CRM boru xəttinə daxil olur. Manual lead yalnız telefon və görüşdən gələn müraciətlər üçündür.</p>
+              </div>
+            </div>
+            <section class="admin-v2-section admin-v2-section-wide">
+              <h3>Satış lead-ləri</h3>
+              <div class="table-wrap"><table class="admin-table"><thead><tr><th>Lead</th><th>Şirkət və əlaqə</th><th>Mənbə</th><th>Məbləğ</th><th>Mərhələ</th><th>Növbəti əlaqə</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-crm-leads></tbody></table></div>
+            </section>
+            <section class="admin-v2-section admin-v2-section-wide">
+              <h3>İcarə rezervasiyaları</h3>
+              <div class="table-wrap"><table class="admin-table"><thead><tr><th>Avadanlıq</th><th>Müştəri</th><th>Tarix</th><th>Şərt</th><th>Qiymət</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-admin-v2-rental-bookings></tbody></table></div>
+            </section>
+            <section class="admin-v2-section admin-v2-section-wide">
+              <h3>Son CRM fəaliyyəti</h3>
+              <div class="admin-v2-activity" data-admin-v2-crm-activities></div>
+            </section>
           </div>
 
           <div class="admin-panel glass" data-admin-panel="users" hidden>

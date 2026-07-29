@@ -20,7 +20,10 @@ const requiredProductionFiles = [
   "api/_admin/account.js",
   "api/_admin/users.js",
   "api/_admin/categories.js",
+  "api/_admin/crm.js",
   "api/_admin/entities.js",
+  "api/_admin/fulfillments.js",
+  "api/_admin/integrations.js",
   "api/_admin/analytics.js",
   "api/_admin/audit.js",
   "api/_admin/backup.js",
@@ -32,25 +35,37 @@ const requiredProductionFiles = [
   "api/_admin/notifications.js",
   "api/_admin/orders.js",
   "api/_admin/price-monitor.js",
+  "api/_admin/rental-bookings.js",
+  "api/_admin/scheduled-backup.js",
   "api/_admin/tenders.js",
   "api/_admin/tender-bids.js",
   "api/products.js",
   "api/suppliers.js",
   "api/_lib/price-monitor.js",
+  "api/_lib/cloud-backup.js",
+  "api/_lib/crm.js",
   "api/_lib/order-lifecycle.js",
+  "api/_lib/order-operations.js",
+  "api/_lib/provider-adapters.js",
   "api/_lib/rfq-order.js",
+  "api/_lib/tender-order.js",
   "api/rfqs.js",
   "api/offers.js",
   "api/sync.js",
   "scripts/site-shell.mjs",
   "scripts/audit-build.mjs",
   "scripts/audit-database.mjs",
+  "scripts/check-production.mjs",
   "scripts/import-scraper-catalog.mjs",
   "scripts/smoke-commerce.mjs",
+  "scripts/smoke-operations.mjs",
   ...siteShellTemplateFiles,
   "playwright.config.mjs",
   "tests/layout/site-layout.spec.mjs",
   "docs/quality-workflow.yml",
+  ".github/dependabot.yml",
+  ".github/workflows/quality.yml",
+  ".github/workflows/production-monitor.yml",
   "db/migrations/001_initial.sql",
   "db/migrations/002_indexes.sql",
   "db/migrations/003_marketplace_entities.sql",
@@ -65,6 +80,10 @@ const requiredProductionFiles = [
   "db/migrations/012_price_history_baseline.sql",
   "db/migrations/013_commerce_lifecycle.sql",
   "db/migrations/014_rfq_order_conversion.sql",
+  "db/migrations/015_tender_order_conversion.sql",
+  "db/migrations/016_fulfillment_inventory.sql",
+  "db/migrations/017_crm_rental_bookings.sql",
+  "db/migrations/018_provider_integrations.sql",
   "assets/js/order-detail.js",
   "assets/css/order-document.css",
   "tools/catalog-scraper/src/main.py",
@@ -249,7 +268,7 @@ try {
   }
   if (!packageJson.dependencies?.["@vercel/blob"]) report(errors, "package.json", "Vercel Blob SDK tapılmadı.");
   if (!packageJson.dependencies?.["read-excel-file"]) report(errors, "package.json", "XLSX idxal kitabxanası tapılmadı.");
-  ["build:static", "audit:dist", "db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:full"].forEach((script) => {
+  ["build:static", "vercel-build", "audit:dist", "db:migrate", "db:seed", "db:audit", "db:smoke", "test:api", "test:site", "test:layout", "check:production", "check:full"].forEach((script) => {
     if (!packageJson.scripts?.[script]) report(errors, "package.json", `${script} əmri tapılmadı.`);
   });
 } catch (error) {
@@ -257,7 +276,20 @@ try {
 }
 
 const envTemplate = readFileSync(join(root, ".env.example"), "utf8");
-["DATABASE_URL", "ADMIN_SETUP_TOKEN", "CRON_SECRET", "APP_ORIGIN"].forEach((key) => {
+[
+  "DATABASE_URL",
+  "ADMIN_SETUP_TOKEN",
+  "CRON_SECRET",
+  "PAYMENT_WEBHOOK_URL",
+  "PAYMENT_WEBHOOK_SECRET",
+  "EINVOICE_WEBHOOK_URL",
+  "EINVOICE_WEBHOOK_SECRET",
+  "AI_ESTIMATE_WEBHOOK_URL",
+  "AI_ESTIMATE_WEBHOOK_SECRET",
+  "BACKUP_WEBHOOK_URL",
+  "BACKUP_WEBHOOK_SECRET",
+  "APP_ORIGIN"
+].forEach((key) => {
   if (!new RegExp(`^${key}=`, "m").test(envTemplate)) report(errors, ".env.example", `${key} dəyişəni tapılmadı.`);
 });
 

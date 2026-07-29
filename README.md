@@ -4,11 +4,11 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 
 ## Hazırkı məlumat bazası
 
-- 70 material kateqoriyası və 695 subkateqoriya
-- 826 məhsul kartı
-- 12 xidmət kateqoriyası, 116 subkateqoriya və 118 xidmət
-- 7 paket kateqoriyası və 75 hazır paket
-- 15 icarə kateqoriyası və 108 avadanlıq mövqeyi
+- 70 material kateqoriyası və Neon-da 702 subkateqoriya
+- production kataloqunda 849 məhsul kartı
+- 12 xidmət kateqoriyası, 116 subkateqoriya və 125 xidmət
+- 7 paket kateqoriyası və 80 hazır paket
+- 15 icarə kateqoriyası və 115 avadanlıq mövqeyi
 - yerli mənbələrdən 9 hazır tikinti-təmir paketi və 8 texnika icarəsi
 - mənbəli qiymətlər və şəkillər üçün açıq məhsul keçidləri
 - kataloq, ana səhifə, brend, paket və icarə bölmələrində mənbə keyfiyyətinə görə vahid prioritet sıralaması
@@ -44,8 +44,13 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `api/admin.js?__route=imports` - admin və təchizatçı sərhədləri ilə CSV/XLSX idxalı
 - `api/admin.js?__route=cabinet` - layihə, smeta, seçilmişlər və müqayisə üçün server kabineti
 - `api/admin.js?__route=inventory` - təchizatçı qiymət, stok və mənbə idarəetmə mərkəzi
+- `api/admin.js?__route=fulfillments` - təchizatçı icrası, stok rezervi və çatdırılma mərhələləri
+- `api/admin.js?__route=crm`, `api/admin.js?__route=rental-bookings` - CRM pipeline və tarix əsaslı icarə rezervasiyası
+- `api/admin.js?__route=integrations` - kart ödənişi, elektron qaimə və xarici AI smeta adapterləri
+- `api/admin.js?__route=backup` - şifrələri və həssas provider payload-larını daxil etməyən tam əməliyyat backup-u
 - `api/sync.js` - statik kataloqun PostgreSQL bazasına kütləvi sinxronizasiyası
 - `api/cron-price-freshness.js` - köhnə qiymətləri gündəlik işarələyən və sessiyaları təmizləyən cron
+- `api/admin.js?__route=scheduled-backup` - gzip backup-ını qorunan HTTPS yaddaşa ötürən gündəlik cron
 - `db/migrations/` - istifadəçi, şirkət, kataloq, qiymət tarixçəsi, RFQ və audit sxemi
 - `service-worker.js` - API və şəxsi kabinetləri keşləməyən PWA tətbiq qabığı
 
@@ -65,7 +70,8 @@ Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçat
 - `scripts/audit-site.mjs` - səhifə, keçid, SEO, məlumat və SKU bütövlüyü auditi
 - `scripts/vercel-build.mjs` - statik Vercel ixracı
 - `tests/layout/` - bütün səhifələrin mobile və desktop ölçülərində Playwright layout testləri
-- `docs/quality-workflow.yml` - GitHub tokeninə `workflow` icazəsi verildikdən sonra `.github/workflows/quality.yml` yoluna köçürüləcək hazır CI audit və brauzer yoxlaması
+- `.github/workflows/quality.yml` - hər push və pull request üçün audit, build və responsiv brauzer testləri
+- `.github/workflows/production-monitor.yml` - `constera.az` üçün altı saatlıq API və səhifə smoke monitorinqi
 
 ## Lokal yoxlama
 
@@ -97,7 +103,13 @@ Sonra bütün audit, build və layout testlərini bir əmrlə işə sal:
 npm run check:full
 ```
 
-Layout testi 23 səhifəni mobile, `1100/1101 px` menyu sərhədi və desktop ölçülərində yoxlayır. `docs/quality-workflow.yml` şablonu `.github/workflows/quality.yml` yoluna qoşulduqda GitHub Actions nəticəyə Playwright hesabatı və nəzarət şəkilləri əlavə edir.
+Layout testi 25 səhifəni mobile, `1100/1101 px` menyu sərhədi və desktop ölçülərində yoxlayır. GitHub Actions uğursuz yoxlamada Playwright hesabatını və nəzarət şəkillərini artifact kimi saxlayır.
+
+Canlı production müqaviləsini lokal yoxlamaq üçün:
+
+```bash
+npm run check:production -- https://constera.az
+```
 
 ## PostgreSQL quraşdırılması
 
@@ -116,6 +128,8 @@ npm run db:smoke
 5. `login.html` səhifəsində “İlk super administratoru yarat” bölməsini bir dəfə doldur. İlk istifadəçi yarandıqdan sonra quraşdırma endpoint-i avtomatik bağlanır.
 
 Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır.
+
+Gündəlik bulud backup-ı üçün `BACKUP_WEBHOOK_URL` və `BACKUP_WEBHOOK_SECRET` birlikdə qurulmalıdır. Endpoint gzip edilmiş JSON qəbul etməli və faylı özəl yaddaşda saxlamalıdır. Kart ödənişi, elektron qaimə və xarici AI smeta yalnız müvafiq HTTPS webhook və gizli açar cütü olduqda interfeysdə aktivləşir.
 
 Alternativ olaraq lokal terminaldan administrator yaratmaq olar:
 
@@ -140,4 +154,4 @@ Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstər
 
 Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir. Mənbəsiz mövqelər silinmir: gələcək təchizatçı məlumatı üçün taksonomiya strukturu kimi mənbəli nəticələrdən sonra saxlanılır.
 
-Onlayn kart ödənişi provayder müqaviləsi və açarları olmadan imitasiya edilmir. Hazır sifariş axını faktura və bank köçürməsi üsullarını dəstəkləyir; kart ödənişi ayrıca provayder inteqrasiyası ilə əlavə olunmalıdır.
+Onlayn kart ödənişi provayder müqaviləsi və açarları olmadan imitasiya edilmir. Adapter hazırdır, lakin kart seçimi yalnız `PAYMENT_WEBHOOK_URL` və `PAYMENT_WEBHOOK_SECRET` production mühitində düzgün qurulduqda aktiv olur.

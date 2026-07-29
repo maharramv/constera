@@ -99,6 +99,14 @@
               <div class="order-history" data-order-history></div>
             </section>
 
+            <section class="admin-v2-section">
+              <div class="admin-v2-section-heading">
+                <h2>Təchizatçı icrası və stok</h2>
+                <span class="data-badge" data-order-fulfillment-count>0 icra</span>
+              </div>
+              <div class="order-history" data-order-fulfillments></div>
+            </section>
+
             <section class="admin-v2-section" data-order-admin-panel hidden>
               <div class="admin-v2-section-heading"><h2>Əməliyyat məlumatları</h2></div>
               <form class="admin-form" data-order-admin-form>
@@ -110,13 +118,14 @@
                   <label class="admin-field admin-field-wide"><span>İzləmə kodu</span><input name="trackingCode" type="text" maxlength="160" /></label>
                   <label class="admin-field admin-field-wide"><span>Tarixçə qeydi</span><textarea name="historyNote" rows="3" maxlength="1000"></textarea></label>
                 </div>
-                <div class="admin-actions"><button class="button button-primary" type="submit">Mərhələni yenilə</button></div>
+                <div class="admin-actions"><button class="button button-primary" type="submit">Mərhələni yenilə</button><button class="button button-secondary" type="button" data-order-issue-invoice hidden>Elektron qaimə yarat</button></div>
                 <p class="admin-import-status" data-order-admin-status role="status" aria-live="polite"></p>
               </form>
             </section>
           </div>
 
           <div class="admin-actions order-customer-actions" data-order-customer-actions hidden>
+            <button class="button button-primary" type="button" data-order-pay hidden>Kartla ödə</button>
             <button class="button button-outline" type="button" data-order-cancel>Sifarişi ləğv et</button>
           </div>
         </section>

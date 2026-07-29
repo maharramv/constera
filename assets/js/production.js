@@ -119,6 +119,10 @@
     users: () => request("/api/users?limit=500"),
     saveUser: (data, update = false) => request("/api/users", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     categories: (kind = "") => request(`/api/categories?includeArchived=true${kind ? `&kind=${encodeURIComponent(kind)}` : ""}`),
+    crm: () => request("/api/crm?limit=1000"),
+    createCrmLead: (data) => request("/api/crm", { method: "POST", body: JSON.stringify({ action: "lead", ...data }) }),
+    createCrmActivity: (data) => request("/api/crm", { method: "POST", body: JSON.stringify({ action: "activity", ...data }) }),
+    updateCrmLead: (id, data) => request("/api/crm", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
     saveCategory: (data, update = false) => request("/api/categories", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteCategory: (data) => request("/api/categories", { method: "DELETE", body: JSON.stringify(data) }),
     catalogStaging: (status = "pending") => request(`/api/catalog-staging?limit=200&status=${encodeURIComponent(status)}`),
@@ -158,6 +162,34 @@
     order: (id) => request(`/api/orders?id=${encodeURIComponent(id)}`),
     createOrder: (data) => request("/api/orders", { method: "POST", body: JSON.stringify(data) }),
     updateOrder: (id, data) => request("/api/orders", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
+    fulfillments: (orderId = "") => request(`/api/fulfillments?limit=500${orderId ? `&orderId=${encodeURIComponent(orderId)}` : ""}`),
+    updateFulfillment: (id, data) => request("/api/fulfillments", {
+      method: "PATCH",
+      body: JSON.stringify({ id, ...data })
+    }),
+    rentalBookings: () => request("/api/rental-bookings?limit=500"),
+    rentalAvailability: (rentalId, startDate, endDate) => {
+      const params = new URLSearchParams({ rentalId, startDate, endDate });
+      return request(`/api/rental-bookings?${params}`);
+    },
+    createRentalBooking: (data) => request("/api/rental-bookings", { method: "POST", body: JSON.stringify(data) }),
+    updateRentalBooking: (id, data) => request("/api/rental-bookings", {
+      method: "PATCH",
+      body: JSON.stringify({ id, ...data })
+    }),
+    integrationReadiness: () => request("/api/integrations"),
+    createPayment: (orderId, idempotencyKey = "") => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "create-payment", orderId, idempotencyKey })
+    }),
+    issueElectronicInvoice: (orderId) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "issue-invoice", orderId })
+    }),
+    aiEstimate: (input, deterministicEstimate) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "ai-estimate", input, deterministicEstimate })
+    }),
     priceMonitor: () => request("/api/price-monitor"),
     scanPriceMonitor: () => request("/api/price-monitor", { method: "POST", body: "{}" }),
     updatePriceReview: (id, action, note = "") => request("/api/price-monitor", {

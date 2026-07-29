@@ -1,6 +1,8 @@
 import { requireRole } from "../_lib/auth.js";
+import { backupReadiness } from "../_lib/cloud-backup.js";
 import { query } from "../_lib/db.js";
 import { assertMethod, sendJson, withApiErrors } from "../_lib/http.js";
+import { providerReadiness } from "../_lib/provider-adapters.js";
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET"]);
@@ -27,6 +29,9 @@ export default withApiErrors(async (req, res) => {
       (SELECT count(*) FROM orders)::int AS orders,
       (SELECT count(*) FROM tenders)::int AS tenders,
       (SELECT count(*) FROM tender_bids)::int AS tender_bids,
+      (SELECT count(*) FROM crm_leads)::int AS crm_leads,
+      (SELECT count(*) FROM rental_bookings WHERE status NOT IN ('completed', 'cancelled'))::int AS active_rental_bookings,
+      (SELECT count(*) FROM payment_transactions WHERE status IN ('pending', 'requires_action'))::int AS pending_payments,
       (SELECT count(*) FROM media_assets WHERE status = 'active')::int AS media,
       (SELECT count(*) FROM import_jobs)::int AS imports,
       (SELECT count(*) FROM supplier_applications WHERE status = 'pending')::int AS pending_supplier_applications,
@@ -257,7 +262,11 @@ export default withApiErrors(async (req, res) => {
         database: true,
         blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
         emailWebhook: Boolean(process.env.EMAIL_WEBHOOK_URL),
-        whatsappWebhook: Boolean(process.env.WHATSAPP_WEBHOOK_URL)
+        whatsappWebhook: Boolean(process.env.WHATSAPP_WEBHOOK_URL),
+        payment: providerReadiness().payment,
+        electronicInvoice: providerReadiness().electronicInvoice,
+        aiEstimate: providerReadiness().aiEstimate,
+        scheduledBackup: backupReadiness()
       },
       generatedAt: new Date().toISOString()
     }

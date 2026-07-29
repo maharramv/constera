@@ -564,6 +564,8 @@ const ensureAdminProductShape = (product, index = 0) => {
     sourceLabel: product.sourceLabel || (product.sourceUrl ? "Mənbə" : ""),
     availability: product.availability || "Stok sorğu ilə",
     stockQuantity: product.stockQuantity ?? "",
+    reservedQuantity: product.reservedQuantity ?? 0,
+    availableQuantity: product.availableQuantity ?? product.stockQuantity ?? "",
     minimumOrder: product.minimumOrder ?? "",
     priceVerifiedAt: product.priceVerifiedAt || "",
     priceHistory: Array.isArray(product.priceHistory) ? product.priceHistory : [],
@@ -2219,7 +2221,93 @@ const renderRentalDetail = () => {
         ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(rental.sourceLabel || "Mənbəni aç")}</a>` : ""}
       </article>
     </div>
+    <section class="detail-panel glass">
+      <div class="market-section-heading">
+        <div>
+          <p class="eyebrow">Tarixə bağlı rezervasiya</p>
+          <h2>${escapeHtml(rental.name)} üçün icarə müraciəti</h2>
+        </div>
+        <span class="data-badge">Uyğunluq yoxlaması</span>
+      </div>
+      <form class="admin-form" data-rental-booking-form>
+        <input type="hidden" name="rentalId" value="${escapeAttr(rental.id)}" />
+        <input class="form-honeypot" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <div class="admin-form-grid">
+          <label class="admin-field"><span>Şirkət</span><input name="companyName" required maxlength="200" /></label>
+          <label class="admin-field"><span>Əlaqələndirici şəxs</span><input name="contactName" required maxlength="160" /></label>
+          <label class="admin-field"><span>E-poçt</span><input name="email" type="email" required maxlength="254" /></label>
+          <label class="admin-field"><span>Telefon</span><input name="phone" type="tel" required maxlength="80" /></label>
+          <label class="admin-field"><span>Şəhər</span><input name="city" required maxlength="160" value="${escapeAttr(rental.city || "Bakı")}" /></label>
+          <label class="admin-field"><span>Obyekt ünvanı</span><input name="address" required maxlength="500" /></label>
+          <label class="admin-field"><span>Başlanğıc tarixi</span><input name="startDate" type="date" required /></label>
+          <label class="admin-field"><span>Bitmə tarixi</span><input name="endDate" type="date" required /></label>
+          <label class="admin-field"><span>Say</span><input name="quantity" type="number" min="1" max="100" value="1" required /></label>
+          <label class="admin-field"><span>Operator</span><select name="operatorPreference"><option>Operatorla</option><option>Operatorsuz</option><option>Razılaşma ilə</option></select></label>
+          <label class="admin-field"><span>Çatdırılma</span><select name="deliveryRequired"><option value="true">Obyektə çatdırılma</option><option value="false">Özüm götürəcəyəm</option></select></label>
+        </div>
+        <label class="admin-field admin-field-wide"><span>Qeyd</span><textarea name="note" rows="3" maxlength="2000" placeholder="İş rejimi, sahə şərti və xüsusi tələblər"></textarea></label>
+        <div class="admin-actions">
+          <button class="button button-primary" type="submit">Rezervasiya göndər</button>
+          <a class="button button-outline" href="rfq.html?rental=${encodeURIComponent(rental.id)}">Qiymət sorğusu yarat</a>
+        </div>
+        <p class="admin-import-status" data-rental-booking-status role="status" aria-live="polite">
+          Tarixlər və avadanlığın mövcudluğu təsdiqdən əvvəl yoxlanılır.
+        </p>
+      </form>
+    </section>
   `;
+  const bookingForm = container.querySelector("[data-rental-booking-form]");
+  const bookingStatus = container.querySelector("[data-rental-booking-status]");
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const followingDay = new Date(today);
+  followingDay.setDate(today.getDate() + 2);
+  const toDateInput = (date) => [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+  bookingForm.elements.startDate.min = toDateInput(today);
+  bookingForm.elements.endDate.min = toDateInput(today);
+  bookingForm.elements.startDate.value = toDateInput(tomorrow);
+  bookingForm.elements.endDate.value = toDateInput(followingDay);
+  bookingForm.elements.startDate.addEventListener("change", () => {
+    bookingForm.elements.endDate.min = bookingForm.elements.startDate.value || toDateInput(today);
+    if (bookingForm.elements.endDate.value < bookingForm.elements.startDate.value) {
+      bookingForm.elements.endDate.value = bookingForm.elements.startDate.value;
+    }
+  });
+  bookingForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = bookingForm.querySelector('button[type="submit"]');
+    if (!window.ConstEraAPI?.createRentalBooking) {
+      bookingStatus.textContent = "Canlı rezervasiya xidməti hazırda əlçatan deyil. Qiymət sorğusu yarat.";
+      bookingStatus.dataset.type = "warning";
+      return;
+    }
+    button.disabled = true;
+    bookingStatus.textContent = "Tarixlər və məlumatlar yoxlanılır...";
+    bookingStatus.dataset.type = "info";
+    try {
+      const payload = Object.fromEntries(new FormData(bookingForm).entries());
+      payload.deliveryRequired = payload.deliveryRequired === "true";
+      payload.quantity = Number(payload.quantity);
+      const result = await window.ConstEraAPI.createRentalBooking(payload);
+      bookingStatus.textContent = `Rezervasiya müraciəti qəbul edildi: ${result.data.id}. Menecer qiymət və mövcudluğu təsdiqləyəcək.`;
+      bookingStatus.dataset.type = "success";
+      bookingForm.reset();
+      bookingForm.elements.rentalId.value = rental.id;
+      bookingForm.elements.city.value = rental.city || "Bakı";
+      bookingForm.elements.startDate.value = toDateInput(tomorrow);
+      bookingForm.elements.endDate.value = toDateInput(followingDay);
+    } catch (error) {
+      bookingStatus.textContent = error.message || "Rezervasiya göndərilmədi.";
+      bookingStatus.dataset.type = "error";
+    } finally {
+      button.disabled = false;
+    }
+  });
   injectEntitySchema("constera-rental-schema", {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -4161,7 +4249,10 @@ const initTender = () => {
       ...lot,
       name: lot.title || lot.name,
       quantity: lot.quantity || lot.quantityText
-    }))
+    })),
+    orderId: tender.orderId || "",
+    orderNumber: tender.orderNumber || null,
+    orderStatus: tender.orderStatus || ""
   });
   const getTenders = () => (cloudTenders ?? storage.read("constera-tenders")).map((tender, index) => ({
     id: tender.id || `tender-migrated-${index}`,
@@ -4262,6 +4353,7 @@ const initTender = () => {
             <span>${escapeHtml(lot.name)} · ${escapeHtml(lot.quantity)} ${escapeHtml(lot.unit)}</span>
           `).join("")}
         </div>
+        ${tender.orderId ? `<a class="button button-secondary" href="order-detail.html?order=${encodeURIComponent(tender.orderId)}">Sifariş #${escapeHtml(tender.orderNumber || "")} və proforma</a>` : ""}
         ${!cloudUser || ["super_admin", "admin", "sales"].includes(cloudUser.role) ? `
           <div class="status-actions">
             ${statusList.map((status) => `<button type="button" data-tender-status="${escapeAttr(status)}" data-tender-id="${escapeAttr(tender.id)}">${escapeHtml(status)}</button>`).join("")}
@@ -4542,6 +4634,7 @@ const initAiSmeta = () => {
     complex: 1.14
   };
   let cloudUser = null;
+  let aiProviderReady = false;
   const projectProfiles = {
     villa: { concrete: 0.24, rebar: 0.034, block: 12.2, plaster: 1.75, paint: 0.24, tile: 0.42, cable: 5.6, pipe: 1.05, insulation: 0.9, roof: 0.72 },
     apartment: { concrete: 0.04, rebar: 0.006, block: 3.8, plaster: 1.45, paint: 0.28, tile: 0.38, cable: 4.8, pipe: 0.86, insulation: 0.18, roof: 0 },
@@ -4736,7 +4829,7 @@ const initAiSmeta = () => {
     output.innerHTML = `
       <div class="market-section-heading">
         <div>
-          <p class="eyebrow">İlkin nəticə</p>
+          <p class="eyebrow">${estimate.aiProvider ? "AI + qayda əsaslı nəticə" : "Qayda əsaslı ilkin nəticə"}</p>
           <h2>${escapeHtml(estimate.projectLabel)} · ${escapeHtml(estimate.area)} m²</h2>
         </div>
         <span class="data-badge">${escapeHtml(estimate.scopeLabel)}</span>
@@ -4751,6 +4844,7 @@ const initAiSmeta = () => {
         <article><strong>${escapeHtml(estimate.deliveryPercent || 0)}%</strong><span>logistika</span></article>
         <article><strong>${escapeHtml(estimate.laborPercent || 0)}%</strong><span>işçilik indeksi</span></article>
       </div>
+      ${estimate.aiSummary ? `<p class="admin-import-status" data-type="success">${escapeHtml(estimate.aiSummary)}</p>` : ""}
       <div class="ai-smeta-table">
         ${estimate.rows.map((row) => `
           <article class="ai-smeta-row">
@@ -4786,11 +4880,52 @@ const initAiSmeta = () => {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    currentEstimate = createEstimate(new FormData(form));
+    const formData = new FormData(form);
+    const estimateInput = Object.fromEntries(formData.entries());
+    currentEstimate = createEstimate(formData);
     writeEstimates([currentEstimate, ...readEstimates()]);
     renderEstimate(currentEstimate);
     renderHistory();
     if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. Sorğu qaralaması yarada bilərsən.`;
+    if (cloudUser && aiProviderReady && window.ConstEraAPI?.aiEstimate) {
+      try {
+        if (status) status.textContent = "Qayda əsaslı nəticə hazırdır. Xarici AI smetanı yoxlayır...";
+        const result = await window.ConstEraAPI.aiEstimate(estimateInput, currentEstimate);
+        const providerEstimate = result.data?.estimate || {};
+        const providerRows = Array.isArray(providerEstimate.rows) ? providerEstimate.rows : [];
+        const normalizedRows = providerRows.map((row, index) => {
+          const fallback = currentEstimate.rows.find((item) => item.key === row.key)
+            || currentEstimate.rows.find((item) => normalize(item.title) === normalize(row.title))
+            || currentEstimate.rows[index]
+            || {};
+          const quantity = Number(row.quantity);
+          return {
+            ...fallback,
+            title: String(row.title || fallback.title || `Material ${index + 1}`),
+            category: String(row.category || fallback.category || "Material"),
+            unit: String(row.unit || fallback.unit || "ədəd"),
+            quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : fallback.quantity || 1,
+            confidence: String(row.confidence || fallback.confidence || "Orta"),
+            products: Array.isArray(fallback.products) ? fallback.products : []
+          };
+        }).filter((row) => row.title);
+        currentEstimate = {
+          ...currentEstimate,
+          rows: normalizedRows.length ? normalizedRows : currentEstimate.rows,
+          riskReserve: Number.isFinite(Number(providerEstimate.riskReserve))
+            ? Number(providerEstimate.riskReserve)
+            : currentEstimate.riskReserve,
+          aiProvider: true,
+          aiSummary: String(providerEstimate.summary || providerEstimate.note || "Xarici AI miqdarları və layihə risklərini yoxladı.").slice(0, 1_000)
+        };
+        writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+        renderEstimate(currentEstimate, false);
+        renderHistory();
+        if (status) status.textContent = `${currentEstimate.rows.length} material qrupu xarici AI ilə yoxlanıldı.`;
+      } catch (error) {
+        if (status) status.textContent = `Qayda əsaslı smeta hazırdır. Xarici AI cavab vermədi: ${error.message}`;
+      }
+    }
     if (cloudUser && window.ConstEraAPI?.saveEstimate) {
       try {
         await window.ConstEraAPI.saveEstimate({
@@ -4875,10 +5010,14 @@ const initAiSmeta = () => {
   const connectEstimateAccount = async () => {
     if (!window.ConstEraAPI?.session) return;
     try {
-      const session = await window.ConstEraAPI.session();
+      const [session, integrations] = await Promise.all([
+        window.ConstEraAPI.session(),
+        window.ConstEraAPI.integrationReadiness?.().catch(() => ({ data: { readiness: {} } }))
+      ]);
       cloudUser = session.user;
+      aiProviderReady = Boolean(integrations?.data?.readiness?.aiEstimate);
       if (cloudUser && status) {
-        status.textContent = `${cloudUser.name} hesabı qoşuldu. Yeni smetalar Neon kabinetində saxlanacaq.`;
+        status.textContent = `${cloudUser.name} hesabı qoşuldu. ${aiProviderReady ? "Xarici AI yoxlaması aktivdir." : "Smetalar qayda əsaslı hesablanacaq və Neon kabinetində saxlanacaq."}`;
       }
     } catch {
       cloudUser = null;
@@ -4927,6 +5066,7 @@ const initSupplierPortal = () => {
   let cloudUser = null;
   let inventoryState = null;
   let supplierOrders = [];
+  let supplierFulfillments = [];
   let bulkInventoryPreview = [];
   const inventoryDrafts = new Map();
   const inventoryDirty = new Set();
@@ -4963,7 +5103,7 @@ const initSupplierPortal = () => {
     const confirmed = metrics?.confirmed ?? supplierProducts.filter((product) => product.priceStatus === "confirmed").length;
     const stale = metrics?.stale ?? supplierProducts.filter((product) => product.priceStatus === "expired").length;
     const lowStock = metrics?.lowStock ?? supplierProducts.filter((product) =>
-      product.stockQuantity !== "" && Number(product.stockQuantity) <= Math.max(Number(product.minimumOrder || 0), 5)
+      product.availableQuantity !== "" && Number(product.availableQuantity) <= Math.max(Number(product.minimumOrder || 0), 5)
     ).length;
     const inventoryValue = metrics?.inventoryValue ?? supplierProducts.reduce((sum, product) =>
       sum + Number(product.priceAmount || 0) * Number(product.stockQuantity || 0), 0
@@ -4989,8 +5129,26 @@ const initSupplierPortal = () => {
       completed: "Tamamlanıb",
       cancelled: "Ləğv edilib"
     };
+    const fulfillmentLabels = {
+      pending: "Gözləyir",
+      accepted: "Qəbul edilib",
+      preparing: "Hazırlanır",
+      ready: "Göndərişə hazırdır",
+      shipped: "Göndərilib",
+      delivered: "Çatdırılıb",
+      cancelled: "Ləğv edilib"
+    };
+    const nextActions = {
+      pending: ["accepted", "Qəbul et"],
+      accepted: ["preparing", "Hazırlamağa başla"],
+      preparing: ["ready", "Hazırdır"],
+      ready: ["shipped", "Göndər"],
+      shipped: ["delivered", "Çatdırıldı"]
+    };
     orderRows.innerHTML = supplierOrders.length ? supplierOrders.map((order) => {
       const visibleItems = order.items || [];
+      const fulfillment = supplierFulfillments.find((item) => item.orderId === order.id);
+      const next = fulfillment ? nextActions[fulfillment.status] : null;
       const lineTotals = visibleItems.map((item) => Number(item.lineTotal)).filter(Number.isFinite);
       const amount = lineTotals.length === visibleItems.length && lineTotals.length
         ? lineTotals.reduce((sum, value) => sum + value, 0)
@@ -5002,10 +5160,30 @@ const initSupplierPortal = () => {
           <td data-label="Məhsullarım">${visibleItems.length}<small>${visibleItems.slice(0, 2).map((item) => escapeHtml(item.title)).join(" · ")}</small></td>
           <td data-label="Məbləğ"><strong>${amount === null ? "Sorğu əsasında" : amount.toLocaleString("az-AZ", { style: "currency", currency: order.currency || "AZN" })}</strong></td>
           <td data-label="Vəziyyət"><span class="status-pill">${escapeHtml(orderLabels[order.status] || order.status)}</span></td>
+          <td data-label="İcra">
+            ${fulfillment ? `
+              <span class="status-pill">${escapeHtml(fulfillmentLabels[fulfillment.status] || fulfillment.status)}</span>
+              ${fulfillment.trackingCode || fulfillment.deliveryProvider
+                ? `<small>${escapeHtml([fulfillment.deliveryProvider, fulfillment.trackingCode].filter(Boolean).join(" · "))}</small>`
+                : ""}
+              ${next ? `
+                <div class="inventory-actions">
+                  <button class="table-action" type="button"
+                    data-fulfillment-update="${escapeAttr(fulfillment.id)}"
+                    data-fulfillment-next="${escapeAttr(next[0])}">${escapeHtml(next[1])}</button>
+                  ${!["shipped", "delivered"].includes(fulfillment.status)
+                    ? `<button class="table-action is-danger" type="button"
+                        data-fulfillment-update="${escapeAttr(fulfillment.id)}"
+                        data-fulfillment-next="cancelled">Ləğv et</button>`
+                    : ""}
+                </div>
+              ` : ""}
+            ` : "<small>İcra qeydi hazırlanır</small>"}
+          </td>
           <td data-label="Tarix">${Number.isFinite(Date.parse(order.createdAt)) ? new Date(order.createdAt).toLocaleDateString("az-AZ") : "-"}</td>
         </tr>
       `;
-    }).join("") : '<tr><td colspan="6"><strong>Sifariş yoxdur.</strong><small>Məhsullarınız olan sifarişlər burada görünəcək.</small></td></tr>';
+    }).join("") : '<tr><td colspan="7"><strong>Sifariş yoxdur.</strong><small>Məhsullarınız olan sifarişlər burada görünəcək.</small></td></tr>';
   };
 
   const renderRows = () => {
@@ -5017,7 +5195,7 @@ const initSupplierPortal = () => {
     const supplierProducts = allProducts.filter((product) => {
       const searchable = normalize([product.sku, product.name, product.brand, product.subcategory].join(" "));
       const stale = !product.priceVerifiedAt || now - new Date(product.priceVerifiedAt).getTime() > 30 * 86_400_000;
-      const lowStock = product.stockQuantity !== "" && product.stockQuantity !== null && Number(product.stockQuantity) <= Math.max(Number(product.minimumOrder || 0), 5);
+      const lowStock = product.availableQuantity !== "" && product.availableQuantity !== null && Number(product.availableQuantity) <= Math.max(Number(product.minimumOrder || 0), 5);
       const matchesFilter = filter === "all"
         || (filter === "stale" && stale)
         || (filter === "low-stock" && lowStock)
@@ -5041,6 +5219,7 @@ const initSupplierPortal = () => {
         </td>
         <td data-label="Stok">
           <input class="inventory-input" data-inventory-field="stockQuantity" type="number" min="0" step="0.01" inputmode="decimal" value="${escapeAttr(view.stockQuantity ?? "")}" aria-label="${escapeAttr(product.name)} stok miqdarı" />
+          <small>${Number(product.reservedQuantity || 0).toLocaleString("az-AZ")} rezerv · ${product.availableQuantity === null || product.availableQuantity === "" ? "-" : Number(product.availableQuantity).toLocaleString("az-AZ")} sərbəst</small>
         </td>
         <td data-label="Min. sifariş">
           <input class="inventory-input" data-inventory-field="minimumOrder" type="number" min="0" step="0.01" inputmode="decimal" value="${escapeAttr(view.minimumOrder ?? "")}" aria-label="${escapeAttr(product.name)} minimum sifariş" />
@@ -5094,9 +5273,13 @@ const initSupplierPortal = () => {
     renderRows();
   };
   const refreshSupplierOrders = async () => {
-    if (!window.ConstEraAPI?.orders || cloudUser?.role !== "supplier") return;
-    const result = await window.ConstEraAPI.orders();
-    supplierOrders = result.data || [];
+    if (!window.ConstEraAPI?.orders || !window.ConstEraAPI?.fulfillments || cloudUser?.role !== "supplier") return;
+    const [orderResult, fulfillmentResult] = await Promise.all([
+      window.ConstEraAPI.orders(),
+      window.ConstEraAPI.fulfillments()
+    ]);
+    supplierOrders = orderResult.data || [];
+    supplierFulfillments = fulfillmentResult.data || [];
     renderOrders();
     renderStats();
   };
@@ -5472,6 +5655,33 @@ const initSupplierPortal = () => {
   inventoryFilter?.addEventListener("change", renderRows);
   inventorySaveAll?.addEventListener("click", () => saveInventoryUpdates([...inventoryDirty]));
   historyClose?.addEventListener("click", () => { if (historyPanel) historyPanel.hidden = true; });
+  orderRows?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-fulfillment-update]");
+    if (!button || !window.ConstEraAPI?.updateFulfillment) return;
+    const nextStatus = button.dataset.fulfillmentNext;
+    const id = button.dataset.fulfillmentUpdate;
+    const payload = { status: nextStatus };
+    if (nextStatus === "shipped") {
+      const provider = window.prompt("Çatdırılma şirkəti", "Təchizatçı çatdırılması");
+      if (provider === null) return;
+      const trackingCode = window.prompt("İzləmə kodu (varsa)", "");
+      if (trackingCode === null) return;
+      payload.deliveryProvider = provider;
+      payload.trackingCode = trackingCode;
+    }
+    if (nextStatus === "cancelled" && !window.confirm("Bu təchizatçı icrasını ləğv etmək istəyirsən?")) return;
+    button.disabled = true;
+    setStatus("Sifariş icrası yenilənir...");
+    try {
+      await window.ConstEraAPI.updateFulfillment(id, payload);
+      await refreshSupplierOrders();
+      setStatus("Sifariş icra mərhələsi yeniləndi.");
+    } catch (error) {
+      setStatus(error.message || "Sifariş icrası yenilənmədi.");
+    } finally {
+      button.disabled = false;
+    }
+  });
   connectSupplierAccount();
 };
 
@@ -5921,6 +6131,7 @@ const renderCheckout = () => {
   const form = document.querySelector("[data-checkout-form]");
   const status = document.querySelector("[data-checkout-status]");
   const history = document.querySelector("[data-customer-orders]");
+  const cardOption = form?.querySelector("[data-payment-card]");
   if (!itemsContainer || !summary || !form) return;
 
   const productById = new Map((marketplace.products || []).map((product) => [product.id, product]));
@@ -6012,6 +6223,20 @@ const renderCheckout = () => {
     }
   };
 
+  const loadPaymentReadiness = async () => {
+    if (!cardOption || !window.ConstEraAPI?.integrationReadiness) return;
+    try {
+      const result = await window.ConstEraAPI.integrationReadiness();
+      const ready = Boolean(result.data?.readiness?.payment);
+      cardOption.disabled = !ready;
+      cardOption.textContent = ready
+        ? "Kartla təhlükəsiz onlayn ödəniş"
+        : "Kartla ödəniş (provayder qoşulmayıb)";
+    } catch {
+      cardOption.disabled = true;
+    }
+  };
+
   const hydrateMissingCartProducts = async () => {
     if (!window.ConstEraAPI?.product) return;
     const missingIds = getCart().map((item) => item.id).filter((id) => !productById.has(id));
@@ -6050,22 +6275,43 @@ const renderCheckout = () => {
       setStatus("Sifariş göndərmək üçün səbət boş olmamalıdır.", "error");
       return;
     }
+    const requestedPayment = form.elements.paymentMethod.value;
+    if (requestedPayment === "card") {
+      const session = await window.ConstEraAPI.session().catch(() => ({ user: null }));
+      if (!session.user) {
+        setStatus("Kartla ödəniş üçün əvvəl müştəri hesabına daxil ol.", "warning");
+        return;
+      }
+    }
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     const originalLabel = button.textContent;
     button.textContent = "Göndərilir...";
+    let createdOrder = null;
     try {
       const fields = Object.fromEntries(new FormData(form).entries());
       const result = await window.ConstEraAPI.createOrder({
         ...fields,
         items: entries.map((entry) => ({ productId: entry.product.id, quantity: entry.quantity, unit: entry.product.package || "ədəd" }))
       });
+      createdOrder = result.data;
       saveCart([]);
       paint();
       setStatus(`Sifariş #${result.data.orderNumber} qəbul edildi.`, "success");
+      if (requestedPayment === "card") {
+        setStatus(`Sifariş #${result.data.orderNumber} yaradıldı. Təhlükəsiz ödəniş səhifəsi açılır...`, "success");
+        const payment = await window.ConstEraAPI.createPayment(result.data.id, `order-${result.data.id}`);
+        window.location.assign(payment.data.checkoutUrl);
+        return;
+      }
       await loadOrders();
     } catch (error) {
-      setStatus(error.message || "Sifariş göndərilmədi.", "error");
+      setStatus(
+        createdOrder
+          ? `Sifariş #${createdOrder.orderNumber} yaradıldı, lakin kart ödənişi açılmadı: ${error.message}`
+          : error.message || "Sifariş göndərilmədi.",
+        "error"
+      );
     } finally {
       button.textContent = originalLabel;
       button.disabled = currentItems().length === 0;
@@ -6074,6 +6320,7 @@ const renderCheckout = () => {
 
   paint();
   hydrateMissingCartProducts();
+  loadPaymentReadiness();
   loadOrders();
 };
 

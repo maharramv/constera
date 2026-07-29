@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { query } from "./db.js";
+import { readOrderOperations } from "./order-operations.js";
 import { text } from "./validation.js";
 
 const mapDocument = (row) => ({
@@ -16,6 +17,8 @@ export const mapOrder = (row) => ({
   customerId: row.customer_id,
   rfqId: row.rfq_id || null,
   offerId: row.offer_id || null,
+  tenderId: row.tender_id || null,
+  tenderBidId: row.tender_bid_id || null,
   companyName: row.company_name,
   contactName: row.contact_name,
   email: row.email,
@@ -37,6 +40,8 @@ export const mapOrder = (row) => ({
   items: row.items || [],
   documents: (row.documents || []).map(mapDocument),
   history: row.history || [],
+  fulfillments: row.fulfillments || [],
+  reservations: row.reservations || [],
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -70,7 +75,7 @@ export const readOrder = async (id) => {
 export const readOrderDetails = async (id) => {
   const order = await readOrder(id);
   if (!order) return null;
-  const [historyRows, documentRows] = await Promise.all([
+  const [historyRows, documentRows, operations] = await Promise.all([
     query(
       `SELECT history.*, actor.name AS actor_name
          FROM order_status_history history
@@ -85,11 +90,14 @@ export const readOrderDetails = async (id) => {
         WHERE order_id = $1
         ORDER BY issued_at DESC`,
       [id]
-    )
+    ),
+    readOrderOperations(id)
   ]);
   return {
     ...order,
     documents: documentRows.map(mapDocument),
+    fulfillments: operations.fulfillments,
+    reservations: operations.reservations,
     history: historyRows.map((item) => ({
       id: item.id,
       actorName: item.actor_name || "Sistem",
@@ -153,6 +161,8 @@ export const issueOrderDocument = async (order, documentType, actorId = null) =>
       orderNumber: order.orderNumber,
       rfqId: order.rfqId,
       offerId: order.offerId,
+      tenderId: order.tenderId,
+      tenderBidId: order.tenderBidId,
       companyName: order.companyName,
       contactName: order.contactName,
       email: order.email,

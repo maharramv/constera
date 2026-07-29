@@ -145,6 +145,9 @@ test("mənbəli paket və texnika icarəsi axını responsiv işləyir", async (
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/rental-detail.html?rental=az-rental-avtokran-xcmg-25t", { waitUntil: "domcontentloaded" });
   await expect(page.locator(".detail-media img")).toBeVisible();
+  await expect(page.locator("[data-rental-booking-form]")).toBeVisible();
+  await expect(page.locator('[data-rental-booking-form] [name="startDate"]')).toHaveAttribute("required", "");
+  await expect(page.locator('[data-rental-booking-form] [name="endDate"]')).toHaveAttribute("required", "");
   await expect(page.locator("body")).not.toContainText("undefined");
   const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -278,6 +281,10 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
       return rect.width <= window.innerWidth && rect.height <= window.innerHeight;
     });
     expect(dialogFits).toBe(true);
+    await page.locator("[data-admin-quality-dialog]").evaluate((dialog) => dialog.close());
+    await page.locator('[data-admin-tab="crm"]').click();
+    await expect(page.locator('[data-admin-panel="crm"]')).toBeVisible();
+    await expect(page.locator("[data-admin-v2-crm-form]")).toBeVisible();
 
     const overflow = await page.evaluate(() =>
       Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);

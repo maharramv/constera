@@ -2,6 +2,7 @@ import { requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { matrixToObjects, parseCsv, readAliased } from "../_lib/imports.js";
+import { reconcileShortageReservations } from "../_lib/order-operations.js";
 import { categoryPublicId, oneOf, parseLimit, parsePriceAmount, safeUrl, text } from "../_lib/validation.js";
 
 const formatPrice = (amount, currency) => `${Number(amount).toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
@@ -64,6 +65,10 @@ const mapInventoryProduct = (row, history = []) => ({
   priceStatus: row.price_status,
   priceVerifiedAt: row.price_verified_at,
   stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
+  reservedQuantity: Number(row.reserved_quantity || 0),
+  availableQuantity: row.stock_quantity === null
+    ? null
+    : Math.max(0, Number(row.stock_quantity) - Number(row.reserved_quantity || 0)),
   minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
   availability: row.availability,
   sourceUrl: row.source_url || "",
@@ -88,7 +93,15 @@ const loadInventory = async (user, requestedSupplierId = "", limitValue = 500) =
   }
   values.push(limit);
   const products = await query(
-    `SELECT p.* FROM products p
+    `SELECT p.*,
+            COALESCE(reservation.reserved_quantity, 0) AS reserved_quantity
+       FROM products p
+       LEFT JOIN LATERAL (
+         SELECT sum(active.quantity) AS reserved_quantity
+           FROM inventory_reservations active
+          WHERE active.product_id = p.id
+            AND active.status = 'active'
+       ) reservation ON true
       WHERE ${where.join(" AND ")}
       ORDER BY p.updated_at DESC, p.name
       LIMIT $${values.length}`,
@@ -113,7 +126,7 @@ const loadInventory = async (user, requestedSupplierId = "", limitValue = 500) =
   const mapped = products.map((product) => mapInventoryProduct(product, historyByProduct.get(product.id) || []));
   const now = Date.now();
   const stale = mapped.filter((product) => !product.priceVerifiedAt || now - new Date(product.priceVerifiedAt).getTime() > 30 * 86_400_000).length;
-  const lowStock = mapped.filter((product) => product.stockQuantity !== null && product.stockQuantity <= Math.max(product.minimumOrder || 0, 5)).length;
+  const lowStock = mapped.filter((product) => product.availableQuantity !== null && product.availableQuantity <= Math.max(product.minimumOrder || 0, 5)).length;
   const inventoryValue = mapped.reduce((sum, product) => sum + (product.priceAmount || 0) * (product.stockQuantity || 0), 0);
   return {
     supplier,
@@ -259,6 +272,15 @@ export default withApiErrors(async (req, res) => {
   const currentRows = await query(`SELECT * FROM products WHERE ${where.join(" AND ")}`, values);
   if (currentRows.length !== ids.length) throw new ApiError(403, "inventory_scope_violation", "Məhsullardan biri bu təchizatçıya aid deyil.");
   const currentById = new Map(currentRows.map((row) => [row.id, row]));
+  const reservationRows = await query(
+    `SELECT product_id, COALESCE(sum(quantity), 0) AS reserved_quantity
+       FROM inventory_reservations
+      WHERE product_id = ANY($1::text[])
+        AND status = 'active'
+      GROUP BY product_id`,
+    [ids]
+  );
+  const reservedByProduct = new Map(reservationRows.map((row) => [row.product_id, Number(row.reserved_quantity || 0)]));
   const now = new Date().toISOString();
   const normalized = items.map((source) => {
     const current = currentById.get(source.id);
@@ -277,6 +299,14 @@ export default withApiErrors(async (req, res) => {
     const stockQuantity = Object.prototype.hasOwnProperty.call(source, "stockQuantity")
       ? optionalAmount(source.stockQuantity, "Stok")
       : current.stock_quantity === null ? null : Number(current.stock_quantity);
+    const reservedQuantity = reservedByProduct.get(current.id) || 0;
+    if (stockQuantity !== null && stockQuantity < reservedQuantity) {
+      throw new ApiError(
+        409,
+        "stock_below_reserved",
+        `${current.sku}: stok aktiv rezervdən (${reservedQuantity}) aşağı ola bilməz.`
+      );
+    }
     const minimumOrder = Object.prototype.hasOwnProperty.call(source, "minimumOrder")
       ? optionalAmount(source.minimumOrder, "Minimum sifariş")
       : current.minimum_order === null ? null : Number(current.minimum_order);
@@ -340,6 +370,39 @@ export default withApiErrors(async (req, res) => {
       [confirmedIds]
     );
   }
+  await query(
+    `INSERT INTO warehouses (id, supplier_id, name, city, is_default)
+     SELECT
+       'wh-' || md5(supplier.id),
+       supplier.id,
+       supplier.name || ' əsas anbarı',
+       CASE WHEN supplier.region IS NULL OR btrim(supplier.region) = '' THEN 'Bakı' ELSE supplier.region END,
+       true
+     FROM suppliers supplier
+     WHERE supplier.id = ANY($1::text[])
+     ON CONFLICT (id) DO NOTHING`,
+    [[...new Set(currentRows.map((item) => item.supplier_id).filter(Boolean))]]
+  );
+  await query(
+    `INSERT INTO inventory_levels (id, warehouse_id, product_id, stock_quantity)
+     SELECT
+       'ivl-' || md5(warehouse.id || ':' || product.id),
+       warehouse.id,
+       product.id,
+       product.stock_quantity
+     FROM products product
+     JOIN warehouses warehouse
+       ON warehouse.supplier_id = product.supplier_id
+      AND warehouse.is_default = true
+      AND warehouse.status = 'active'
+     WHERE product.id = ANY($1::text[])
+       AND product.stock_quantity IS NOT NULL
+     ON CONFLICT (warehouse_id, product_id) DO UPDATE SET
+       stock_quantity = EXCLUDED.stock_quantity,
+       updated_at = now()`,
+    [ids]
+  );
+  await reconcileShortageReservations(ids);
   await recordAudit({
     actorId: user.id,
     action: req.method === "POST" ? "bulk_import" : "bulk_update",

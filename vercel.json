@@ -12,13 +12,18 @@
     { "source": "/api/cabinet", "destination": "/api/admin?__route=cabinet" },
     { "source": "/api/catalog-staging", "destination": "/api/admin?__route=catalog-staging" },
     { "source": "/api/categories", "destination": "/api/admin?__route=categories" },
+    { "source": "/api/crm", "destination": "/api/admin?__route=crm" },
     { "source": "/api/entities", "destination": "/api/admin?__route=entities" },
+    { "source": "/api/fulfillments", "destination": "/api/admin?__route=fulfillments" },
     { "source": "/api/imports", "destination": "/api/admin?__route=imports" },
+    { "source": "/api/integrations", "destination": "/api/admin?__route=integrations" },
     { "source": "/api/inventory", "destination": "/api/admin?__route=inventory" },
     { "source": "/api/media", "destination": "/api/admin?__route=media" },
     { "source": "/api/notifications", "destination": "/api/admin?__route=notifications" },
     { "source": "/api/orders", "destination": "/api/admin?__route=orders" },
     { "source": "/api/price-monitor", "destination": "/api/admin?__route=price-monitor" },
+    { "source": "/api/rental-bookings", "destination": "/api/admin?__route=rental-bookings" },
+    { "source": "/api/scheduled-backup", "destination": "/api/admin?__route=scheduled-backup" },
     { "source": "/api/tender-bids", "destination": "/api/admin?__route=tender-bids" },
     { "source": "/api/tenders", "destination": "/api/admin?__route=tenders" },
     { "source": "/api/users", "destination": "/api/admin?__route=users" }
@@ -36,6 +41,10 @@
     {
       "path": "/api/cron-notifications",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/scheduled-backup",
+      "schedule": "15 3 * * *"
     }
   ],
   "headers": [

@@ -10,6 +10,7 @@ import offersHandler from "../api/offers.js";
 import suppliersHandler from "../api/suppliers.js";
 import { getCookieName, hashOpaque } from "../api/_lib/auth.js";
 import { query } from "../api/_lib/db.js";
+import { releaseOrderReservations } from "../api/_lib/order-operations.js";
 
 if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
   console.error("DATABASE_URL tapılmadı. Neon bağlantısını .env.local faylında qur.");
@@ -349,8 +350,10 @@ try {
     await query("DELETE FROM notifications WHERE payload->>'rfqId' = $1", [smokeRfqId]);
     await query("DELETE FROM audit_logs WHERE entity_type = 'offer' AND entity_id IN ($1, $2)", [firstOfferId, winningOfferId]);
     if (convertedOrderId) {
+      await releaseOrderReservations(convertedOrderId, null, "Smoke-test təmizlənməsi");
       await query("DELETE FROM notifications WHERE payload->>'orderId' = $1", [convertedOrderId]);
       await query("DELETE FROM audit_logs WHERE entity_type = 'order' AND entity_id = $1", [convertedOrderId]);
+      await query("DELETE FROM crm_leads WHERE source_type = 'order' AND source_id = $1", [convertedOrderId]);
       await query("DELETE FROM orders WHERE id = $1", [convertedOrderId]);
     }
     await query("DELETE FROM rfqs WHERE id = $1", [smokeRfqId]);
@@ -494,8 +497,10 @@ try {
   console.log(`Sifariş axını: #${orderResponse.payload.data.orderNumber} yaradıldı, təsdiqləndi və ${updatedOrder.documents.length} sənədlə oxundu.`);
 } finally {
   if (orderId) {
+    await releaseOrderReservations(orderId, null, "Smoke-test təmizlənməsi");
     await query("DELETE FROM notifications WHERE payload->>'orderId' = $1", [orderId]);
     await query("DELETE FROM audit_logs WHERE entity_type = 'order' AND entity_id = $1", [orderId]);
+    await query("DELETE FROM crm_leads WHERE source_type = 'order' AND source_id = $1", [orderId]);
     await query("DELETE FROM orders WHERE id = $1", [orderId]);
     console.log("Smoke sifarişi və əlaqəli test qeydləri silindi.");
   }

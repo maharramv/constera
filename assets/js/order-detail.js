@@ -47,6 +47,7 @@
   const adminForm = qs("[data-order-admin-form]");
   let order = null;
   let sessionUser = null;
+  let integrations = {};
   let activeDocumentId = "";
 
   const setStatus = (message, type = "info") => {
@@ -74,6 +75,35 @@
         ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
       </article>`;
     }).join("") || "<p>Tarixçə qeydi yoxdur.</p>";
+  };
+
+  const renderFulfillments = () => {
+    const labels = {
+      pending: "Gözləyir",
+      accepted: "Qəbul edilib",
+      preparing: "Hazırlanır",
+      ready: "Göndərişə hazırdır",
+      shipped: "Göndərilib",
+      delivered: "Çatdırılıb",
+      cancelled: "Ləğv edilib"
+    };
+    const reservationLabels = {
+      active: "Stok rezerv edilib",
+      shortage: "Stok çatışmır",
+      released: "Rezerv buraxılıb",
+      consumed: "Stokdan çıxılıb"
+    };
+    const fulfillments = order?.fulfillments || [];
+    const reservations = order?.reservations || [];
+    qs("[data-order-fulfillment-count]").textContent = `${fulfillments.length} icra`;
+    qs("[data-order-fulfillments]").innerHTML = fulfillments.map((item) => {
+      const supplierReservations = reservations.filter((reservation) => reservation.supplierId === item.supplierId);
+      return `<article>
+        <strong>${escapeHtml(item.supplierName || "Təchizatçı")} · ${escapeHtml(labels[item.status] || item.status)}</strong>
+        <span>${escapeHtml([item.deliveryProvider, item.trackingCode].filter(Boolean).join(" · ") || "Göndəriş məlumatı gözlənilir")}</span>
+        ${supplierReservations.map((reservation) => `<small>${escapeHtml(reservationLabels[reservation.status] || reservation.status)} · ${Number(reservation.quantity).toLocaleString("az-AZ")}</small>`).join("")}
+      </article>`;
+    }).join("") || "<p>Təchizatçı icra qeydi yoxdur.</p>";
   };
 
   const renderDocument = () => {
@@ -105,7 +135,9 @@
     qs("[data-order-total]").textContent = formatMoney(snapshot.totalAmount, currency);
     const sourceNote = snapshot.rfqId
       ? ` Mənbə: RFQ ${snapshot.rfqId}, qalib təklif ${snapshot.offerId || "-"}.`
-      : "";
+      : snapshot.tenderId
+        ? ` Mənbə: tender ${snapshot.tenderId}, qalib təklif ${snapshot.tenderBidId || "-"}.`
+        : "";
     qs("[data-order-document-note]").textContent = `${document?.payload?.marketplace?.note
       || "Sifariş məlumatları serverdə təsdiqlənmiş snapshot əsasında göstərilir."}${sourceNote}`;
     document.title = `${document?.number || `Sifariş ${order.orderNumber}`} | ConstEra`;
@@ -144,10 +176,26 @@
     renderDocuments();
     renderDocument();
     renderHistory();
+    renderFulfillments();
     renderAdmin();
     const customerCanCancel = sessionUser?.role === "customer"
       && ["submitted", "confirmed"].includes(order.status);
-    qs("[data-order-customer-actions]").hidden = !customerCanCancel;
+    const customerCanPay = sessionUser?.role === "customer"
+      && integrations.payment
+      && order.paymentStatus !== "paid"
+      && order.status !== "cancelled"
+      && !order.hasPendingPrice
+      && Number(order.totalAmount) > 0;
+    qs("[data-order-customer-actions]").hidden = !customerCanCancel && !customerCanPay;
+    qs("[data-order-cancel]").hidden = !customerCanCancel;
+    qs("[data-order-pay]").hidden = !customerCanPay;
+    const invoiceButton = qs("[data-order-issue-invoice]");
+    if (invoiceButton) {
+      invoiceButton.hidden = !["super_admin", "admin", "sales"].includes(sessionUser?.role)
+        || !integrations.electronicInvoice
+        || order.hasPendingPrice
+        || order.totalAmount === null;
+    }
     setStatus(`Sifariş ${formatDate(order.updatedAt)} tarixində yenilənib.`, "success");
   };
 
@@ -157,8 +205,12 @@
       return;
     }
     try {
-      const session = await window.ConstEraAPI.session();
+      const [session, readiness] = await Promise.all([
+        window.ConstEraAPI.session(),
+        window.ConstEraAPI.integrationReadiness?.().catch(() => ({ data: { readiness: {} } }))
+      ]);
       sessionUser = session.user;
+      integrations = readiness?.data?.readiness || {};
       if (!sessionUser) {
         setStatus("Sifariş sənədini görmək üçün hesabına daxil ol.", "warning");
         window.setTimeout(() => {
@@ -216,6 +268,34 @@
       render();
     } catch (error) {
       setStatus(error.message, "error");
+    }
+  });
+  qs("[data-order-pay]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      setStatus("Təhlükəsiz ödəniş səhifəsi hazırlanır...");
+      const result = await window.ConstEraAPI.createPayment(orderId, `order-${orderId}`);
+      window.location.assign(result.data.checkoutUrl);
+    } catch (error) {
+      setStatus(error.message || "Ödəniş səhifəsi açılmadı.", "error");
+      button.disabled = false;
+    }
+  });
+  qs("[data-order-issue-invoice]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const result = await window.ConstEraAPI.issueElectronicInvoice(orderId);
+      qs("[data-order-admin-status]").textContent = result.data.documentUrl
+        ? "Elektron qaimə yaradıldı və sənəd URL-i provayderdən alındı."
+        : "Elektron qaimə provayderə göndərildi.";
+      qs("[data-order-admin-status]").dataset.type = "success";
+    } catch (error) {
+      qs("[data-order-admin-status]").textContent = error.message;
+      qs("[data-order-admin-status]").dataset.type = "error";
+    } finally {
+      button.disabled = false;
     }
   });
 

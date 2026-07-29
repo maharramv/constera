@@ -9,7 +9,10 @@
     users: [],
     rfqs: [],
     tenders: [],
+    tenderBids: [],
     orders: [],
+    crm: null,
+    rentalBookings: [],
     media: [],
     notifications: [],
     imports: [],
@@ -76,6 +79,29 @@
     failed: "Uğursuz",
     refunded: "Geri qaytarılıb"
   };
+  const crmStageLabels = {
+    new: "Yeni",
+    qualified: "Dəqiqləşdirilib",
+    proposal: "Təklif",
+    won: "Qazanılıb",
+    lost: "İtirilib"
+  };
+  const rentalStatusLabels = {
+    requested: "Müraciət",
+    quoted: "Qiymət verilib",
+    confirmed: "Təsdiqlənib",
+    active: "İcarədədir",
+    completed: "Tamamlanıb",
+    cancelled: "Ləğv edilib"
+  };
+  const rentalTransitions = {
+    requested: ["quoted", "cancelled"],
+    quoted: ["confirmed", "cancelled"],
+    confirmed: ["active", "cancelled"],
+    active: ["completed", "cancelled"],
+    completed: [],
+    cancelled: []
+  };
   const allowedOrderTransitions = {
     submitted: ["confirmed", "cancelled"],
     confirmed: ["processing", "cancelled"],
@@ -120,6 +146,32 @@
     button.disabled = busy;
   };
 
+  const activateAdminTab = (name) => {
+    const target = [...document.querySelectorAll("[data-admin-panel]")]
+      .some((panel) => panel.dataset.adminPanel === name) ? name : "overview";
+    document.querySelectorAll("[data-admin-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.adminPanel !== target;
+    });
+    document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+      const active = button.dataset.adminTab === target;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    try {
+      localStorage.setItem("constera-admin-active-tab", target);
+    } catch {
+      // Tab seçiminin yadda saxlanması könüllüdür.
+    }
+  };
+  document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+    button.addEventListener("click", () => activateAdminTab(button.dataset.adminTab));
+  });
+  try {
+    activateAdminTab(localStorage.getItem("constera-admin-active-tab") || "overview");
+  } catch {
+    activateAdminTab("overview");
+  }
+
   const fileToDataUrl = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
@@ -150,6 +202,9 @@
       [counts.rfqs, "qiymət sorğusu"],
       [counts.orders, "sifariş"],
       [counts.tenders, "tender"],
+      [counts.crm_leads, "CRM lead"],
+      [counts.active_rental_bookings, "aktiv icarə"],
+      [counts.pending_payments, "gözləyən ödəniş"],
       [counts.users, "aktiv istifadəçi"],
       [counts.pending_supplier_applications, "gözləyən tərəfdaş"],
       [counts.pending_price_reviews, "qiymət yoxlaması"],
@@ -213,7 +268,11 @@
       database: "Neon PostgreSQL",
       blob: "Vercel Blob",
       emailWebhook: "E-poçt webhook-u",
-      whatsappWebhook: "WhatsApp webhook-u"
+      whatsappWebhook: "WhatsApp webhook-u",
+      payment: "Kart ödənişi",
+      electronicInvoice: "Elektron qaimə",
+      aiEstimate: "Xarici AI smeta",
+      scheduledBackup: "Gündəlik bulud backup-ı"
     };
     const integrations = qs("[data-admin-v2-integrations]");
     if (integrations) integrations.innerHTML = Object.entries(data.integrations || {}).map(([key, active]) => `
@@ -355,14 +414,30 @@
       <td data-label="Son tarix">${formatDate(item.deadline)}</td>
       <td data-label="Lot/təklif">${item.lots.length} / ${item.bidCount}</td>
       <td data-label="Status"><span class="status-pill">${escapeHtml(tenderStatusLabels[item.status] || item.status)}</span></td>
-      <td data-label="Əməliyyat"><div class="admin-v2-row-actions"><button class="table-action" type="button" data-tender-edit="${escapeHtml(item.id)}">Redaktə</button>${item.status !== "cancelled" ? `<button class="table-action is-danger" type="button" data-tender-cancel="${escapeHtml(item.id)}">Ləğv et</button>` : ""}</div></td>
+      <td data-label="Əməliyyat"><div class="admin-v2-row-actions">${item.orderId ? `<a class="table-action" href="order-detail.html?order=${encodeURIComponent(item.orderId)}">Sifariş #${escapeHtml(item.orderNumber || "")}</a>` : ""}<button class="table-action" type="button" data-tender-edit="${escapeHtml(item.id)}">Redaktə</button>${item.status !== "cancelled" && !item.orderId ? `<button class="table-action is-danger" type="button" data-tender-cancel="${escapeHtml(item.id)}">Ləğv et</button>` : ""}</div></td>
     </tr>`).join("") || '<tr><td colspan="6">Tender yoxdur.</td></tr>';
+
+    const tenderBidBody = qs("[data-admin-v2-tender-bids]");
+    if (tenderBidBody) tenderBidBody.innerHTML = state.tenderBids.map((bid) => `<tr>
+      <td data-label="Tender"><strong>${escapeHtml(bid.tenderTitle || "-")}</strong><small>${formatDate(bid.createdAt, true)}</small></td>
+      <td data-label="Təchizatçı">${escapeHtml(bid.supplierName || "-")}</td>
+      <td data-label="Qiymət"><strong>${bid.priceAmount === null ? escapeHtml(bid.price || "Sorğu əsasında") : Number(bid.priceAmount).toLocaleString("az-AZ", { style: "currency", currency: bid.currency || "AZN" })}</strong></td>
+      <td data-label="Çatdırılma">${escapeHtml(bid.delivery || "Dəqiqləşdirilməyib")}</td>
+      <td data-label="Vəziyyət"><span class="status-pill">${escapeHtml(bid.status)}</span></td>
+      <td data-label="Əməliyyat"><div class="admin-v2-row-actions">
+        ${bid.orderId
+          ? `<a class="table-action" href="order-detail.html?order=${encodeURIComponent(bid.orderId)}">Sifariş #${escapeHtml(bid.orderNumber || "")}</a>`
+          : ["draft", "submitted"].includes(bid.status)
+            ? `<button class="table-action" type="button" data-tender-bid-accept="${escapeHtml(bid.id)}">Qalib seç</button><button class="table-action is-danger" type="button" data-tender-bid-reject="${escapeHtml(bid.id)}">Rədd et</button>`
+            : ""}
+      </div></td>
+    </tr>`).join("") || '<tr><td colspan="6">Tender təklifi yoxdur.</td></tr>';
 
     const orderBody = qs("[data-admin-v2-orders]");
     if (orderBody) orderBody.innerHTML = state.orders.map((item) => {
       const statusOptions = [item.status, ...(allowedOrderTransitions[item.status] || [])];
       return `<tr>
-      <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}${item.rfqId ? ` · RFQ-dən yaradılıb` : ""}</small></td>
+      <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}${item.rfqId ? " · RFQ-dən yaradılıb" : item.tenderId ? " · Tenderdən yaradılıb" : ""}</small></td>
       <td data-label="Şirkət və əlaqə"><strong>${escapeHtml(item.companyName)}</strong><small>${escapeHtml(item.contactName)} · ${escapeHtml(item.phone)}</small></td>
       <td data-label="Məhsul">${item.items.length}<small>${item.hasPendingPrice ? "Qiymət təsdiqi var" : "Qiymətlər təsdiqlidir"}</small></td>
       <td data-label="Məbləğ"><strong>${item.totalAmount === null ? "Sorğu əsasında" : Number(item.totalAmount).toLocaleString("az-AZ", { style: "currency", currency: item.currency })}</strong></td>
@@ -371,6 +446,54 @@
       <td data-label="Əməliyyat"><a class="table-action" href="order-detail.html?order=${encodeURIComponent(item.id)}">Tarixçə və sənəd</a></td>
     </tr>`;
     }).join("") || '<tr><td colspan="7">Sifariş yoxdur.</td></tr>';
+  };
+
+  const renderCommercial = () => {
+    const crm = state.crm || { leads: [], stages: [], activities: [] };
+    const stageGrid = qs("[data-admin-v2-crm-stages]");
+    if (stageGrid) {
+      stageGrid.innerHTML = ["new", "qualified", "proposal", "won", "lost"].map((stage) => {
+        const metric = (crm.stages || []).find((item) => item.stage === stage) || {};
+        return `<article><strong>${Number(metric.count || 0).toLocaleString("az-AZ")}</strong><span>${escapeHtml(crmStageLabels[stage])} · ${Number(metric.value || 0).toLocaleString("az-AZ", { maximumFractionDigits: 0 })} AZN</span></article>`;
+      }).join("");
+    }
+
+    const leadBody = qs("[data-admin-v2-crm-leads]");
+    if (leadBody) leadBody.innerHTML = (crm.leads || []).map((lead) => {
+      const sourceHref = lead.sourceType === "order"
+        ? `order-detail.html?order=${encodeURIComponent(lead.sourceId || "")}`
+        : lead.sourceType === "rfq"
+          ? "rfq-dashboard.html"
+          : "";
+      return `<tr>
+        <td data-label="Lead"><strong>${escapeHtml(lead.title)}</strong><small>${formatDate(lead.updatedAt, true)}</small></td>
+        <td data-label="Şirkət və əlaqə"><strong>${escapeHtml(lead.companyName)}</strong><small>${escapeHtml([lead.contactName, lead.phone, lead.email].filter(Boolean).join(" · "))}</small></td>
+        <td data-label="Mənbə">${sourceHref ? `<a class="table-action" href="${sourceHref}">${escapeHtml(lead.sourceType)}</a>` : escapeHtml(lead.sourceType)}<small>${escapeHtml(lead.sourceId || "")}</small></td>
+        <td data-label="Məbləğ">${lead.valueAmount === null ? "Dəqiqləşdirilir" : Number(lead.valueAmount).toLocaleString("az-AZ", { style: "currency", currency: lead.currency || "AZN" })}</td>
+        <td data-label="Mərhələ"><select class="table-select" data-crm-stage="${escapeHtml(lead.id)}">${Object.entries(crmStageLabels).map(([value, label]) => `<option value="${value}" ${lead.stage === value ? "selected" : ""}>${label}</option>`).join("")}</select></td>
+        <td data-label="Növbəti əlaqə">${formatDate(lead.nextActionAt, true)}<small>${escapeHtml(lead.ownerName || "Təyin edilməyib")}</small></td>
+        <td data-label="Əməliyyat"><button class="table-action" type="button" data-crm-activity="${escapeHtml(lead.id)}">Fəaliyyət əlavə et</button></td>
+      </tr>`;
+    }).join("") || '<tr><td colspan="7">CRM lead yoxdur.</td></tr>';
+
+    const bookingBody = qs("[data-admin-v2-rental-bookings]");
+    if (bookingBody) bookingBody.innerHTML = state.rentalBookings.map((booking) => {
+      const statusOptions = [booking.status, ...(rentalTransitions[booking.status] || [])];
+      return `<tr data-rental-booking-row="${escapeHtml(booking.id)}">
+        <td data-label="Avadanlıq"><strong>${escapeHtml(booking.rentalTitle)}</strong><small>${escapeHtml(booking.rentalId)} · ${booking.quantity} ədəd</small></td>
+        <td data-label="Müştəri"><strong>${escapeHtml(booking.companyName)}</strong><small>${escapeHtml(booking.contactName)} · ${escapeHtml(booking.phone)}</small></td>
+        <td data-label="Tarix"><strong>${formatDate(booking.startDate)} – ${formatDate(booking.endDate)}</strong><small>${escapeHtml(booking.city)} · ${escapeHtml(booking.address)}</small></td>
+        <td data-label="Şərt">${escapeHtml(booking.operatorPreference)}<small>${booking.deliveryRequired ? "Çatdırılma ilə" : "Özü götürür"}</small></td>
+        <td data-label="Qiymət"><input class="table-select" data-rental-quote type="number" min="0" step="0.01" value="${escapeHtml(booking.quotedAmount ?? "")}" aria-label="İcarə qiyməti" /><small>${escapeHtml(booking.currency || "AZN")}</small></td>
+        <td data-label="Vəziyyət"><select class="table-select" data-rental-status>${statusOptions.map((value) => `<option value="${value}" ${booking.status === value ? "selected" : ""}>${escapeHtml(rentalStatusLabels[value] || value)}</option>`).join("")}</select></td>
+        <td data-label="Əməliyyat"><button class="table-action" type="button" data-rental-booking-save="${escapeHtml(booking.id)}">Saxla</button></td>
+      </tr>`;
+    }).join("") || '<tr><td colspan="7">İcarə rezervasiyası yoxdur.</td></tr>';
+
+    const activity = qs("[data-admin-v2-crm-activities]");
+    if (activity) activity.innerHTML = (crm.activities || []).slice(0, 30).map((item) => `
+      <article><span>${escapeHtml(item.actorName)}</span><strong>${escapeHtml(item.subject)}</strong><small>${escapeHtml(item.leadTitle)} · ${formatDate(item.createdAt, true)}</small></article>
+    `).join("") || "<p>CRM fəaliyyəti yoxdur.</p>";
   };
 
   const clearTenderForm = () => {
@@ -486,11 +609,23 @@
     renderSupplierApplications();
   };
   const loadRequests = async () => {
-    const [rfqs, tenders, orders] = await Promise.all([api.rfqs(), api.tenders(), api.orders()]);
+    const [rfqs, tenders, tenderBids, orders] = await Promise.all([
+      api.rfqs(),
+      api.tenders(),
+      api.tenderBids(),
+      api.orders()
+    ]);
     state.rfqs = rfqs.data || [];
     state.tenders = tenders.data || [];
+    state.tenderBids = tenderBids.data || [];
     state.orders = orders.data || [];
     renderRequests();
+  };
+  const loadCommercial = async () => {
+    const [crm, bookings] = await Promise.all([api.crm(), api.rentalBookings()]);
+    state.crm = crm.data;
+    state.rentalBookings = bookings.data || [];
+    renderCommercial();
   };
   const loadMedia = async () => {
     state.media = (await api.media()).data || [];
@@ -884,6 +1019,105 @@
     tenderForm.elements.requirements.value = (tender.requirements || []).join("; ");
     tenderForm.scrollIntoView({ behavior: "smooth", block: "start" });
   });
+  qs("[data-admin-v2-tender-bids]")?.addEventListener("click", async (event) => {
+    const accept = event.target.closest("[data-tender-bid-accept]");
+    const reject = event.target.closest("[data-tender-bid-reject]");
+    const id = accept?.dataset.tenderBidAccept || reject?.dataset.tenderBidReject;
+    if (!id) return;
+    const status = accept ? "accepted" : "rejected";
+    if (accept && !window.confirm("Bu təklif qalib seçilsin və avtomatik sifariş/proforma yaradılsın?")) return;
+    const button = accept || reject;
+    setButtonBusy(button, true, accept ? "Sifariş yaradılır..." : "Rədd edilir...");
+    try {
+      const result = await api.saveTenderBid({ id, status }, true);
+      await loadRequests();
+      setStatus(
+        "[data-admin-v2-tender-status]",
+        result.data?.order?.orderNumber
+          ? `Tender qalibi təsdiqləndi. Sifariş #${result.data.order.orderNumber} və proforma yaradıldı.`
+          : "Tender təklifi yeniləndi.",
+        "success"
+      );
+    } catch (error) {
+      setStatus("[data-admin-v2-tender-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+
+  qs("[data-admin-v2-crm-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Yaradılır...");
+    try {
+      const result = await api.createCrmLead(Object.fromEntries(new FormData(form).entries()));
+      state.crm = result.data;
+      form.reset();
+      renderCommercial();
+      setStatus("[data-admin-v2-crm-status]", "Manual lead CRM boru xəttinə əlavə edildi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-crm-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-v2-crm-leads]")?.addEventListener("change", async (event) => {
+    const select = event.target.closest("[data-crm-stage]");
+    if (!select) return;
+    select.disabled = true;
+    try {
+      const result = await api.updateCrmLead(select.dataset.crmStage, { stage: select.value });
+      state.crm = result.data;
+      renderCommercial();
+      setStatus("[data-admin-v2-crm-status]", "Lead mərhələsi yeniləndi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-crm-status]", error.message, "error");
+      await loadCommercial().catch(() => null);
+    } finally {
+      select.disabled = false;
+    }
+  });
+  qs("[data-admin-v2-crm-leads]")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-crm-activity]");
+    if (!button) return;
+    const subject = window.prompt("Fəaliyyət mövzusu", "Müştəri ilə əlaqə");
+    if (!subject) return;
+    const note = window.prompt("Qeyd", "") ?? "";
+    setButtonBusy(button, true, "Əlavə edilir...");
+    try {
+      const result = await api.createCrmActivity({ leadId: button.dataset.crmActivity, type: "note", subject, note });
+      state.crm = result.data;
+      renderCommercial();
+    } catch (error) {
+      setStatus("[data-admin-v2-crm-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-v2-rental-bookings]")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-rental-booking-save]");
+    if (!button) return;
+    const row = button.closest("[data-rental-booking-row]");
+    const status = row?.querySelector("[data-rental-status]")?.value;
+    const quotedAmount = row?.querySelector("[data-rental-quote]")?.value || "";
+    setButtonBusy(button, true, "Saxlanır...");
+    try {
+      await api.updateRentalBooking(button.dataset.rentalBookingSave, { status, quotedAmount });
+      await loadCommercial();
+      setStatus("[data-admin-v2-crm-status]", "İcarə rezervasiyası yeniləndi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-crm-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-v2-commercial-refresh]")?.addEventListener("click", (event) => {
+    setButtonBusy(event.currentTarget, true, "Yenilənir...");
+    loadCommercial()
+      .catch((error) => setStatus("[data-admin-v2-crm-status]", error.message, "error"))
+      .finally(() => setButtonBusy(event.currentTarget, false));
+  });
 
   qs("[data-admin-v2-media-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1069,7 +1303,7 @@
         setStatus("[data-admin-v2-status]", "Canlı idarəetmə üçün administrator hesabına daxil ol. Lokal panel işləməyə davam edir.", "warning");
         return;
       }
-      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadRequests(), loadMedia(), loadSystem()];
+      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadRequests(), loadCommercial(), loadMedia(), loadSystem()];
       const results = await Promise.allSettled(tasks);
       const failed = results.filter((item) => item.status === "rejected");
       if (failed.length) {

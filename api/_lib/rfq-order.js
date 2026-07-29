@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { syncOrderLead } from "./crm.js";
 import { query, recordAudit } from "./db.js";
 import {
   issueOrderDocument,
   readOrderDetails,
   recordOrderHistory
 } from "./order-lifecycle.js";
+import { ensureOrderOperations } from "./order-operations.js";
 
 const money = (value) => Math.round(Number(value) * 100) / 100;
 
@@ -234,14 +236,18 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
   }
 
   if (!orderId) return null;
+  await ensureOrderOperations(orderId);
+  await syncOrderLead(orderId);
   let order = await readOrderDetails(orderId);
-  await recordOrderHistory({
-    order: { ...order, status: null, paymentStatus: null },
-    actorId,
-    status: "confirmed",
-    paymentStatus: "awaiting",
-    note: "Qalib RFQ təklifindən avtomatik yaradıldı"
-  });
+  if (created) {
+    await recordOrderHistory({
+      order: { ...order, status: null, paymentStatus: null },
+      actorId,
+      status: "confirmed",
+      paymentStatus: "awaiting",
+      note: "Qalib RFQ təklifindən avtomatik yaradıldı"
+    });
+  }
   await issueOrderDocument(order, "order_summary", actorId);
   await issueOrderDocument(order, "proforma_invoice", actorId);
   order = await readOrderDetails(orderId);

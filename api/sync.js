@@ -1,6 +1,7 @@
 import { requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
+import { syncProductInventoryLevels } from "./_lib/order-operations.js";
 import { categoryStorageId, entityId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug, stringList, text } from "./_lib/validation.js";
 
 const limitArray = (value, limit, label) => {
@@ -58,7 +59,7 @@ const normalizeCategoryRows = (categories, kind) => {
 
 const upsertCategories = async (rows) => {
   if (!rows.length) return 0;
-  await query(
+  const saved = await query(
     `WITH incoming AS (
        SELECT * FROM jsonb_to_recordset($1::jsonb) AS x(
          id text, "parentId" text, kind text, title text, slug text,
@@ -184,13 +185,16 @@ export const upsertProducts = async (products) => {
        price_amount = EXCLUDED.price_amount, price_currency = EXCLUDED.price_currency,
        price_text = EXCLUDED.price_text, price_note = EXCLUDED.price_note,
        price_status = EXCLUDED.price_status, availability = EXCLUDED.availability,
-       stock_quantity = EXCLUDED.stock_quantity, minimum_order = EXCLUDED.minimum_order,
+       stock_quantity = COALESCE(products.stock_quantity, EXCLUDED.stock_quantity),
+       minimum_order = EXCLUDED.minimum_order,
        price_verified_at = EXCLUDED.price_verified_at,
        image_url = EXCLUDED.image_url, source_url = EXCLUDED.source_url,
        source_label = EXCLUDED.source_label, specs = EXCLUDED.specs,
-       extra_data = products.extra_data || EXCLUDED.extra_data, status = 'active', updated_at = now()`,
+       extra_data = products.extra_data || EXCLUDED.extra_data, status = 'active', updated_at = now()
+     RETURNING products.id`,
     [JSON.stringify(rows)]
   );
+  await syncProductInventoryLevels(saved.map((item) => item.id));
   return rows.length;
 };
 

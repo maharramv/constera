@@ -1,6 +1,7 @@
 import { query, recordAudit } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
+import { syncProductInventoryLevels } from "./_lib/order-operations.js";
 import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stringList, text } from "./_lib/validation.js";
 
 const productFields = `id, sku, name, slug, brand, category_id, subcategory, package_text, origin,
@@ -212,6 +213,23 @@ export default withApiErrors(async (req, res) => {
     source = { ...mapProduct(existing[0]), ...body, id };
   }
   const item = normalizeProduct(source);
+  if (item.stockQuantity !== null) {
+    const reservationRows = await query(
+      `SELECT COALESCE(sum(quantity), 0) AS reserved_quantity
+         FROM inventory_reservations
+        WHERE product_id = $1
+          AND status = 'active'`,
+      [item.id]
+    );
+    const reservedQuantity = Number(reservationRows[0]?.reserved_quantity || 0);
+    if (item.stockQuantity < reservedQuantity) {
+      throw new ApiError(
+        409,
+        "stock_below_reserved",
+        `Stok aktiv rezervdən (${reservedQuantity}) aşağı ola bilməz.`
+      );
+    }
+  }
   if (ownSupplier && req.method === "POST") {
     const conflicts = await query(
       "SELECT id, sku, supplier_id FROM products WHERE id = $1 OR sku = $2 LIMIT 1",
@@ -283,6 +301,7 @@ export default withApiErrors(async (req, res) => {
         [item.id]
       );
     }
+    await syncProductInventoryLevels([item.id]);
     await recordAudit({ actorId: user.id, action: req.method === "POST" ? "create" : "update", entityType: "product", entityId: item.id, details: { sku: item.sku } });
     return sendJson(res, req.method === "POST" ? 201 : 200, { ok: true, data: mapProduct(rows[0]) });
   } catch (error) {

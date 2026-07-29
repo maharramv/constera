@@ -28,6 +28,8 @@ const mapOrder = (row) => ({
   orderNumber: Number(row.order_number),
   rfqId: row.rfq_id || null,
   offerId: row.offer_id || null,
+  tenderId: row.tender_id || null,
+  tenderBidId: row.tender_bid_id || null,
   status: row.status,
   paymentStatus: row.payment_status,
   totalAmount: row.total_amount === null ? null : Number(row.total_amount),

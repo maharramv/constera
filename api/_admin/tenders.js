@@ -35,30 +35,40 @@ const loadSupplierId = async (user) => {
   return rows[0]?.id || null;
 };
 
-const mapTender = (row, lots = [], bids = []) => ({
-  id: row.id,
-  companyName: row.company_name,
-  title: row.title,
-  description: row.description || "",
-  city: row.city || "",
-  deadline: row.deadline,
-  budget: row.budget_text || "",
-  status: row.status,
-  visibility: row.visibility,
-  contact: row.contact || "",
-  requirements: row.requirements || [],
-  createdBy: row.created_by,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  lots: lots.filter((item) => item.tender_id === row.id).map((item) => ({
-    id: item.id,
-    title: item.title,
-    quantity: item.quantity_text,
-    unit: item.unit || "",
-    specifications: item.specifications || []
-  })),
-  bidCount: bids.filter((item) => item.tender_id === row.id).length
-});
+const mapTender = (row, lots = [], bids = []) => {
+  const tenderBids = bids.filter((item) => item.tender_id === row.id);
+  const accepted = tenderBids.find((item) => item.status === "accepted");
+  return {
+    id: row.id,
+    companyName: row.company_name,
+    title: row.title,
+    description: row.description || "",
+    city: row.city || "",
+    deadline: row.deadline,
+    budget: row.budget_text || "",
+    status: row.status,
+    visibility: row.visibility,
+    contact: row.contact || "",
+    requirements: row.requirements || [],
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lots: lots.filter((item) => item.tender_id === row.id).map((item) => ({
+      id: item.id,
+      title: item.title,
+      quantity: item.quantity_text,
+      unit: item.unit || "",
+      specifications: item.specifications || []
+    })),
+    bidCount: tenderBids.length,
+    acceptedBidId: accepted?.id || null,
+    orderId: accepted?.order_id || null,
+    orderNumber: accepted?.order_number === null || accepted?.order_number === undefined
+      ? null
+      : Number(accepted.order_number),
+    orderStatus: accepted?.order_status || ""
+  };
+};
 
 const loadTenders = async (user, limit) => {
   const values = [];
@@ -85,7 +95,17 @@ const loadTenders = async (user, limit) => {
   const ids = rows.map((item) => item.id);
   const [lots, bids] = await Promise.all([
     query("SELECT * FROM tender_lots WHERE tender_id = ANY($1::text[]) ORDER BY sort_order", [ids]),
-    query("SELECT id, tender_id FROM tender_bids WHERE tender_id = ANY($1::text[]) AND status <> 'withdrawn'", [ids])
+    query(
+      `SELECT bid.id, bid.tender_id, bid.status,
+              converted_order.id AS order_id,
+              converted_order.order_number,
+              converted_order.status AS order_status
+         FROM tender_bids bid
+         LEFT JOIN orders converted_order ON converted_order.tender_bid_id = bid.id
+        WHERE bid.tender_id = ANY($1::text[])
+          AND bid.status <> 'withdrawn'`,
+      [ids]
+    )
   ]);
   return rows.map((row) => mapTender(row, lots, bids));
 };
