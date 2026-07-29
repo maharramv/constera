@@ -7,6 +7,7 @@ import adminHandler from "../../api/admin.js";
 import productsHandler from "../../api/products.js";
 import rfqsHandler from "../../api/rfqs.js";
 import offersHandler from "../../api/offers.js";
+import { parseRfqQuantity } from "../../api/_lib/rfq-order.js";
 
 const createResponse = () => ({
   headers: {},
@@ -105,3 +106,10 @@ test("RFQ və təklif müqayisəsi anonim istifadəçiyə açılmır", async () 
   assert.equal(offerResponse.statusCode, 401);
   assert.equal(offerResponse.payload.error.code, "authentication_required");
 }));
+
+test("RFQ miqdarı Azərbaycan yazılışından təhlükəsiz rəqəmə çevrilir", () => {
+  assert.equal(parseRfqQuantity("500 kisə"), 500);
+  assert.equal(parseRfqQuantity("1 250,5 kq"), 1250.5);
+  assert.equal(parseRfqQuantity("dəqiqləşdiriləcək"), 1);
+  assert.equal(parseRfqQuantity("0 ədəd"), 1);
+});

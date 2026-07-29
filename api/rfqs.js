@@ -3,7 +3,7 @@ import { getSessionUser, hashOpaque, requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { queueNotification } from "./_lib/notifications.js";
-import { oneOf, parseLimit, stringList, text } from "./_lib/validation.js";
+import { email, oneOf, parseLimit, stringList, text } from "./_lib/validation.js";
 
 const statuses = ["Yeni", "Baxılır", "Təklif gözləyir", "Təklif alındı", "Bağlandı", "Ləğv edildi"];
 const rfqTypes = ["product", "service", "package", "rental", "custom"];
@@ -44,11 +44,15 @@ export default withApiErrors(async (req, res) => {
                   'warranty', o.warranty,
                   'note', o.note,
                   'status', o.status,
+                  'orderId', converted_order.id,
+                  'orderNumber', converted_order.order_number,
+                  'orderStatus', converted_order.status,
                   'createdAt', o.created_at,
                   'updatedAt', o.updated_at
                 ) ORDER BY (o.status = 'accepted') DESC, o.price_amount NULLS LAST, o.created_at DESC)
                 FROM offers o
                 LEFT JOIN suppliers offer_supplier ON offer_supplier.id = o.supplier_id
+                LEFT JOIN orders converted_order ON converted_order.offer_id = o.id
                 WHERE o.rfq_id = r.id ${offerScope}
               ), '[]'::json) AS offers
          FROM rfqs r
@@ -112,7 +116,17 @@ export default withApiErrors(async (req, res) => {
   const title = text(body.product || body.title, { field: "Sorğu mövzusu", required: true, max: 300 });
   const quantity = text(body.quantity, { field: "Miqdar", required: true, max: 160 });
   const company = text(body.company, { field: "Şirkət", required: true, max: 200 });
-  const contact = text(body.contact, { field: "Əlaqə", required: true, max: 300 });
+  const contactName = text(body.contactName || session?.name || company, {
+    field: "Əlaqələndirici şəxs",
+    required: true,
+    max: 160
+  });
+  const legacyContact = text(body.contact, { max: 300 });
+  const legacyEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(legacyContact) ? legacyContact : "";
+  const contactEmailSource = text(body.email || session?.email || legacyEmail, { max: 254 });
+  const contactEmail = contactEmailSource ? email(contactEmailSource) : null;
+  const phone = text(body.phone || (legacyEmail ? "" : legacyContact), { field: "Telefon", max: 80 }) || null;
+  const contact = [contactName, phone, contactEmail].filter(Boolean).join(" · ");
   const supplierId = text(body.supplierId, { max: 160 }) || null;
   const needDate = text(body.needDate, { max: 10 }) || null;
   if (needDate && !/^\d{4}-\d{2}-\d{2}$/.test(needDate)) throw new ApiError(400, "validation_error", "Tələb tarixi düzgün deyil.");
@@ -120,13 +134,18 @@ export default withApiErrors(async (req, res) => {
   await query(
     `WITH new_rfq AS (
        INSERT INTO rfqs (
-         id, customer_id, supplier_id, rfq_type, title, company_name, contact, city,
+         id, customer_id, supplier_id, rfq_type, title, company_name,
+         contact, contact_name, email, phone, city, address,
          priority, need_date, budget, delivery_mode, usage_text, note, submission_hash
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $19)
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6,
+         $7, $8, $9, $10, $11, $12,
+         $13, $14, $15, $16, $17, $18, $23
+       )
        RETURNING id
      )
      INSERT INTO rfq_items (id, rfq_id, item_kind, item_id, title, quantity_text, specs)
-     SELECT $15, new_rfq.id, $4, $16, $5, $17, $18::jsonb FROM new_rfq`,
+     SELECT $19, new_rfq.id, $4, $20, $5, $21, $22::jsonb FROM new_rfq`,
     [
       id,
       session?.id || null,
@@ -135,7 +154,11 @@ export default withApiErrors(async (req, res) => {
       title,
       company,
       contact,
+      contactName,
+      contactEmail,
+      phone,
       text(body.city, { max: 160 }) || null,
+      text(body.address, { max: 500 }) || null,
       text(body.priority, { max: 80 }) || "Normal",
       needDate,
       text(body.budget, { max: 160 }) || null,
@@ -151,13 +174,23 @@ export default withApiErrors(async (req, res) => {
   );
   await recordAudit({ actorId: session?.id || null, action: "create", entityType: "rfq", entityId: id, details: { type, supplierId } });
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
-  await queueNotification({
-    channel: adminEmail ? "email" : "in_app",
-    recipient: adminEmail || null,
+  const notification = {
     subject: "Yeni qiymət sorğusu",
     body: `${company}: ${title} · ${quantity}`,
     templateKey: "rfq_created",
     payload: { rfqId: id, type, supplierId, company, title, quantity }
-  });
+  };
+  if (adminEmail) {
+    await queueNotification({ ...notification, channel: "email", recipient: adminEmail });
+  } else {
+    const admins = await query(
+      "SELECT id FROM users WHERE role IN ('super_admin', 'admin', 'sales') AND status = 'active'"
+    );
+    await Promise.allSettled(admins.map((admin) => queueNotification({
+      ...notification,
+      userId: admin.id,
+      channel: "in_app"
+    })));
+  }
   return sendJson(res, 201, { ok: true, data: { id, status: "Yeni", cloud: true } });
 });

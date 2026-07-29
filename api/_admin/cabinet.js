@@ -26,6 +26,8 @@ const mapProduct = (row) => ({
 const mapOrder = (row) => ({
   id: row.id,
   orderNumber: Number(row.order_number),
+  rfqId: row.rfq_id || null,
+  offerId: row.offer_id || null,
   status: row.status,
   paymentStatus: row.payment_status,
   totalAmount: row.total_amount === null ? null : Number(row.total_amount),
@@ -41,7 +43,11 @@ const mapRfq = (row) => ({
   type: row.rfq_type,
   title: row.title,
   companyName: row.company_name,
+  contactName: row.contact_name || "",
+  email: row.email || "",
+  phone: row.phone || "",
   city: row.city || "",
+  address: row.address || "",
   status: row.status,
   priority: row.priority,
   needDate: row.need_date,
@@ -86,7 +92,8 @@ const readCabinet = async (user) => {
     query(
       `SELECT o.*,
               COALESCE(json_agg(json_build_object(
-                'id', i.id, 'productId', i.product_id, 'sku', i.sku, 'title', i.title,
+                'id', i.id, 'productId', i.product_id, 'supplierId', i.supplier_id,
+                'sku', i.sku, 'title', i.title,
                 'quantity', i.quantity, 'unit', i.unit, 'priceText', i.price_text,
                 'lineTotal', i.line_total, 'snapshot', i.snapshot
               ) ORDER BY i.created_at) FILTER (WHERE i.id IS NOT NULL), '[]'::json) AS items
@@ -112,9 +119,16 @@ const readCabinet = async (user) => {
                   'id', o.id, 'supplierId', o.supplier_id, 'supplierName', s.name,
                   'priceAmount', o.price_amount, 'priceText', o.price_text, 'currency', o.currency,
                   'leadTime', o.lead_time, 'delivery', o.delivery, 'warranty', o.warranty,
-                  'status', o.status, 'createdAt', o.created_at
+                  'status', o.status,
+                  'orderId', converted_order.id,
+                  'orderNumber', converted_order.order_number,
+                  'orderStatus', converted_order.status,
+                  'createdAt', o.created_at
                 ) ORDER BY o.created_at DESC)
-                FROM offers o LEFT JOIN suppliers s ON s.id = o.supplier_id WHERE o.rfq_id = r.id
+                FROM offers o
+                LEFT JOIN suppliers s ON s.id = o.supplier_id
+                LEFT JOIN orders converted_order ON converted_order.offer_id = o.id
+                WHERE o.rfq_id = r.id
               ), '[]'::json) AS offers
          FROM rfqs r
         WHERE r.customer_id = $1

@@ -65,6 +65,26 @@ test("RFQ təklifləri serverdə müqayisə olunur və yalnız bir qalib seçili
   assert.match(migration, /WHERE status = 'accepted'/);
 });
 
+test("qalib RFQ təklifi bir dəfə sifarişə çevrilir və proforma yaradır", () => {
+  const offersApi = read("api/offers.js");
+  const conversion = read("api/_lib/rfq-order.js");
+  const lifecycle = read("api/_lib/order-lifecycle.js");
+  const migration = read("db/migrations/014_rfq_order_conversion.sql");
+  const marketplace = read("assets/js/marketplace.js");
+
+  assert.match(offersApi, /ensureOrderForAcceptedOffer/);
+  assert.match(offersApi, /rfq_already_converted/);
+  assert.match(offersApi, /WHERE id = \$1 AND status IN \('draft', 'submitted', 'accepted'\)/);
+  assert.match(conversion, /ON CONFLICT \(rfq_id\) WHERE rfq_id IS NOT NULL DO NOTHING/);
+  assert.match(conversion, /proforma_invoice/);
+  assert.match(conversion, /order_summary/);
+  assert.match(lifecycle, /rfqId: order\.rfqId/);
+  assert.match(migration, /orders_rfq_unique/);
+  assert.match(migration, /orders_offer_unique/);
+  assert.match(migration, /order_items_supplier_idx/);
+  assert.match(marketplace, /order-detail\.html\?order=/);
+});
+
 test("məhsul səhifəsi qalereya, qiymət tarixçəsi və əlaqəli məhsullar alır", () => {
   const productsApi = read("api/products.js");
   const marketplace = read("assets/js/marketplace.js");

@@ -103,8 +103,11 @@
     qs("[data-order-subtotal]").textContent = formatMoney(snapshot.subtotal, currency);
     qs("[data-order-delivery]").textContent = formatMoney(snapshot.deliveryAmount || 0, currency);
     qs("[data-order-total]").textContent = formatMoney(snapshot.totalAmount, currency);
-    qs("[data-order-document-note]").textContent = document?.payload?.marketplace?.note
-      || "Sifariş məlumatları serverdə təsdiqlənmiş snapshot əsasında göstərilir.";
+    const sourceNote = snapshot.rfqId
+      ? ` Mənbə: RFQ ${snapshot.rfqId}, qalib təklif ${snapshot.offerId || "-"}.`
+      : "";
+    qs("[data-order-document-note]").textContent = `${document?.payload?.marketplace?.note
+      || "Sifariş məlumatları serverdə təsdiqlənmiş snapshot əsasında göstərilir."}${sourceNote}`;
     document.title = `${document?.number || `Sifariş ${order.orderNumber}`} | ConstEra`;
   };
 

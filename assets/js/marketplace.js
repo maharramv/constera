@@ -3548,7 +3548,7 @@ const renderRfqDashboard = () => {
     }
     return `
       <strong>${escapeHtml(bestOffer.price || "Qiymət yoxdur")}</strong>
-      <small>${bestOffer.status === "accepted" ? "Qalib · " : ""}${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif</small>
+      <small>${bestOffer.status === "accepted" ? "Qalib · " : ""}${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif${bestOffer.orderNumber ? ` · Sifariş #${escapeHtml(bestOffer.orderNumber)}` : ""}</small>
     `;
   };
 
@@ -3571,6 +3571,9 @@ const renderRfqDashboard = () => {
     price: offer.price || offer.price_text || "Qiymət yoxdur",
     currency: offer.currency || "AZN",
     leadTime: offer.leadTime || offer.lead_time || "",
+    orderId: offer.orderId || offer.order_id || offer.order?.id || "",
+    orderNumber: Number(offer.orderNumber || offer.order_number || offer.order?.orderNumber || 0) || null,
+    orderStatus: offer.orderStatus || offer.order_status || offer.order?.status || "",
     createdAt: offer.createdAt || offer.created_at || new Date().toISOString(),
     status: offer.status || "submitted"
   });
@@ -3585,8 +3588,12 @@ const renderRfqDashboard = () => {
     product: rfq.title || rfq.product || "Sərbəst sorğu",
     quantity: rfq.items?.[0]?.quantity || rfq.quantity || "Miqdar yazılmayıb",
     company: rfq.company_name || rfq.company || "",
-    contact: rfq.contact || "",
+    contactName: rfq.contact_name || rfq.contactName || "",
+    email: rfq.email || "",
+    phone: rfq.phone || "",
+    contact: rfq.contact || [rfq.contact_name, rfq.phone, rfq.email].filter(Boolean).join(" · "),
     city: rfq.city || "",
+    address: rfq.address || "",
     needDate: rfq.need_date || rfq.needDate || "",
     budget: rfq.budget || "",
     deliveryMode: rfq.delivery_mode || rfq.deliveryMode || "",
@@ -3724,6 +3731,9 @@ const renderRfqDashboard = () => {
             <small>Çatdırılma: ${escapeHtml(offer.delivery || "açıq")}</small>
             <small>Zəmanət: ${escapeHtml(offer.warranty || "açıq")}</small>
             <p class="rfq-summary-note">${escapeHtml(offer.note || "Qeyd yoxdur.")}</p>
+            ${offer.orderId
+              ? `<a class="button button-secondary" href="order-detail.html?order=${encodeURIComponent(offer.orderId)}">Sifariş #${escapeHtml(offer.orderNumber || "")} və proforma</a>`
+              : ""}
             ${canChooseOffer && (!offer.status || ["draft", "submitted"].includes(offer.status))
               ? `<button class="button button-primary" type="button" data-rfq-offer-select="${escapeAttr(offer.id)}" data-rfq-offer-rfq="${escapeAttr(draft.id)}">Qalib seç</button>`
               : ""}
@@ -4074,11 +4084,15 @@ const renderRfqDashboard = () => {
     if (cloudDrafts !== null && window.ConstEraAPI?.updateOffer) {
       button.disabled = true;
       try {
-        await window.ConstEraAPI.updateOffer(button.dataset.rfqOfferSelect, "accepted");
+        const result = await window.ConstEraAPI.updateOffer(button.dataset.rfqOfferSelect, "accepted");
         await refreshCloudRfqs();
         const updated = getDrafts().find((item) => item.id === draft.id);
         if (updated) renderSummaryPanel(updated);
-        if (summaryStatus) summaryStatus.textContent = "Qalib təklif təsdiqləndi, digər təkliflər bağlandı.";
+        if (summaryStatus) {
+          summaryStatus.textContent = result.data?.order?.orderNumber
+            ? `Qalib təklif təsdiqləndi. Sifariş #${result.data.order.orderNumber} və proforma yaradıldı.`
+            : "Qalib təklif təsdiqləndi, digər təkliflər bağlandı.";
+        }
       } catch (error) {
         if (summaryStatus) summaryStatus.textContent = error.message;
       }
@@ -5729,12 +5743,14 @@ const initCustomerCabinet = () => {
       const offers = rfq.offers || [];
       const pricedOffers = offers.filter((offer) => offer.priceAmount !== null && Number.isFinite(Number(offer.priceAmount)));
       const lowest = pricedOffers.length ? Math.min(...pricedOffers.map((offer) => Number(offer.priceAmount))) : null;
+      const convertedOrder = offers.find((offer) => offer.orderId);
       const quantity = rfq.quantity || rfq.items?.[0]?.quantity || "Miqdar yoxdur";
       return `
       <article class="cabinet-item">
         <header><strong>${escapeHtml(rfq.title || rfq.product || "Qiymət sorğusu")}</strong><span class="mini-badge">${escapeHtml(rfq.status || "Yeni")}</span></header>
         <p>${escapeHtml(quantity)} · ${escapeHtml(rfq.city || "Şəhər seçilməyib")} · ${offers.length} təklif</p>
         <span>${lowest === null ? escapeHtml(rfq.budget || "Büdcə açıq") : `Ən aşağı təklif: ${formatMoney(lowest)}`}</span>
+        ${convertedOrder ? `<div class="cabinet-item-actions"><a class="table-action" href="order-detail.html?order=${encodeURIComponent(convertedOrder.orderId)}">Sifariş #${escapeHtml(convertedOrder.orderNumber || "")} və proforma</a></div>` : ""}
       </article>`;
     }).join("") : empty("Qiymət sorğusu yoxdur.", "Kataloqdan və ya ağıllı smetadan ilk qiymət sorğunu yarat.");
     estimateList.innerHTML = state.estimates.length ? state.estimates.slice(0, 20).map((entry) => {

@@ -3,6 +3,7 @@ import { requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { queueNotification } from "./_lib/notifications.js";
+import { ensureOrderForAcceptedOffer } from "./_lib/rfq-order.js";
 import { oneOf, parsePriceAmount, text } from "./_lib/validation.js";
 
 const offerStatuses = ["submitted", "accepted", "rejected", "withdrawn"];
@@ -22,10 +23,14 @@ export default withApiErrors(async (req, res) => {
       scope = `AND s.company_id = $${values.length}`;
     }
     const rows = await query(
-      `SELECT o.*, s.name AS supplier_name
+      `SELECT o.*, s.name AS supplier_name,
+              converted_order.id AS order_id,
+              converted_order.order_number,
+              converted_order.status AS order_status
          FROM offers o
          JOIN rfqs r ON r.id = o.rfq_id
          LEFT JOIN suppliers s ON s.id = o.supplier_id
+         LEFT JOIN orders converted_order ON converted_order.offer_id = o.id
         WHERE o.rfq_id = $1 ${scope}
         ORDER BY o.created_at DESC`,
       values
@@ -60,9 +65,28 @@ export default withApiErrors(async (req, res) => {
       if (!privileged && !ownsRfq) {
         throw new ApiError(403, "permission_denied", "Qalib təklifi yalnız sorğu sahibi və ya administrator seçə bilər.");
       }
+      if (target.price_amount === null || Number(target.price_amount) <= 0) {
+        throw new ApiError(409, "offer_price_required", "Qalib seçmək üçün təklifin yekun qiyməti 0-dan böyük olmalıdır.");
+      }
+      if (!target.supplier_id) {
+        throw new ApiError(409, "offer_supplier_required", "Qalib təklif aktiv təchizatçıya bağlı olmalıdır.");
+      }
+      const convertedOrders = await query(
+        "SELECT id, offer_id FROM orders WHERE rfq_id = $1 LIMIT 1",
+        [target.rfq_id]
+      );
+      if (convertedOrders[0] && convertedOrders[0].offer_id !== id) {
+        throw new ApiError(
+          409,
+          "rfq_already_converted",
+          "Bu RFQ artıq başqa qalib təklif üzrə sifarişə çevrilib."
+        );
+      }
       const rows = await query(
         `WITH selected AS (
-           SELECT id, rfq_id FROM offers WHERE id = $1
+           SELECT id, rfq_id
+           FROM offers
+           WHERE id = $1 AND status IN ('draft', 'submitted', 'accepted')
          ), rejected AS (
            UPDATE offers offer_row SET status = 'rejected', updated_at = now()
            FROM selected
@@ -88,38 +112,66 @@ export default withApiErrors(async (req, res) => {
         [id]
       );
       if (!rows[0]) throw new ApiError(409, "offer_not_selectable", "Bu təklif artıq seçilə bilən vəziyyətdə deyil.");
-      await recordAudit({
-        actorId: user.id,
-        action: "accept",
-        entityType: "offer",
-        entityId: id,
-        details: { rfqId: target.rfq_id, supplierId: target.supplier_id }
+      const conversion = await ensureOrderForAcceptedOffer({ offerId: id, actorId: user.id });
+      if (!conversion?.order) {
+        throw new ApiError(409, "offer_order_conversion_failed", "Qalib təklif sifarişə çevrilmədi. Təklif qiymətini və RFQ məlumatlarını yoxla.");
+      }
+      if (conversion.created) {
+        await recordAudit({
+          actorId: user.id,
+          action: "accept",
+          entityType: "offer",
+          entityId: id,
+          details: {
+            rfqId: target.rfq_id,
+            supplierId: target.supplier_id,
+            orderId: conversion.order.id,
+            orderNumber: conversion.order.orderNumber
+          }
+        });
+        const supplierUsers = target.supplier_company_id ? await query(
+          "SELECT id FROM users WHERE company_id = $1 AND role = 'supplier' AND status = 'active'",
+          [target.supplier_company_id]
+        ) : [];
+        await Promise.allSettled([
+          ...supplierUsers.map((supplierUser) => queueNotification({
+            userId: supplierUser.id,
+            subject: `Təklifiniz qalib seçildi · Sifariş #${conversion.order.orderNumber}`,
+            body: `Qiymət sorğusu üzrə ${target.price_text || "təklifiniz"} qəbul edildi və sifariş yaradıldı.`,
+            templateKey: "offer_accepted",
+            payload: {
+              offerId: id,
+              rfqId: target.rfq_id,
+              orderId: conversion.order.id,
+              orderNumber: conversion.order.orderNumber
+            }
+          })),
+          ...(
+            target.customer_id && target.customer_id !== user.id
+              ? [queueNotification({
+                  userId: target.customer_id,
+                  subject: `RFQ sifarişə çevrildi · #${conversion.order.orderNumber}`,
+                  body: `${target.price_text || "Seçilmiş təklif"} təsdiqləndi, sifariş və proforma hazırdır.`,
+                  templateKey: "rfq_awarded",
+                  payload: {
+                    offerId: id,
+                    rfqId: target.rfq_id,
+                    orderId: conversion.order.id,
+                    orderNumber: conversion.order.orderNumber
+                  }
+                })]
+              : []
+          )
+        ]);
+      }
+      return sendJson(res, 200, {
+        ok: true,
+        data: {
+          ...rows[0],
+          order: conversion.order,
+          conversionCreated: conversion.created
+        }
       });
-      const supplierUsers = target.supplier_company_id ? await query(
-        "SELECT id FROM users WHERE company_id = $1 AND role = 'supplier' AND status = 'active'",
-        [target.supplier_company_id]
-      ) : [];
-      await Promise.allSettled([
-        ...supplierUsers.map((supplierUser) => queueNotification({
-          userId: supplierUser.id,
-          subject: "Təklifiniz qalib seçildi",
-          body: `Qiymət sorğusu üzrə ${target.price_text || "təklifiniz"} qəbul edildi.`,
-          templateKey: "offer_accepted",
-          payload: { offerId: id, rfqId: target.rfq_id }
-        })),
-        ...(
-          target.customer_id && target.customer_id !== user.id
-            ? [queueNotification({
-                userId: target.customer_id,
-                subject: "Qiymət sorğusu bağlandı",
-                body: `${target.price_text || "Seçilmiş təklif"} qalib kimi təsdiqləndi.`,
-                templateKey: "rfq_awarded",
-                payload: { offerId: id, rfqId: target.rfq_id }
-              })]
-            : []
-        )
-      ]);
-      return sendJson(res, 200, { ok: true, data: rows[0] });
     }
 
     const canChange = privileged

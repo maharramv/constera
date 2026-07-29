@@ -229,11 +229,24 @@ try {
   const smokeRfqId = `rfq-smoke-${randomUUID()}`;
   const firstOfferId = `off-smoke-${randomUUID()}`;
   const winningOfferId = `off-smoke-${randomUUID()}`;
+  let convertedOrderId = "";
   try {
     await query(
-      `INSERT INTO rfqs (id, customer_id, title, company_name, contact, status)
-       VALUES ($1, $2, 'Avtomatik təklif seçimi', 'ConstEra smoke test', 'smoke-test@constera.az', 'Təklif alındı')`,
+      `INSERT INTO rfqs (
+         id, customer_id, title, company_name, contact,
+         contact_name, email, phone, city, address, status
+       )
+       VALUES (
+         $1, $2, 'Avtomatik təklif seçimi', 'ConstEra smoke test', 'Smoke test · +994 00 000 00 02 · smoke-test@constera.az',
+         'Smoke test', 'smoke-test@constera.az', '+994 00 000 00 02', 'Bakı', 'Avtomatik RFQ ünvanı', 'Təklif alındı'
+       )`,
       [smokeRfqId, admin.id]
+    );
+    await query(
+      `INSERT INTO rfq_items (
+         id, rfq_id, item_kind, item_id, title, quantity_text, unit, specs
+       ) VALUES ($1, $2, 'product', $3, $4, '2 ədəd', 'ədəd', '{}'::jsonb)`,
+      [`rfi-smoke-${randomUUID()}`, smokeRfqId, product.id, product.name]
     );
     await query(
       `INSERT INTO offers (id, rfq_id, supplier_id, created_by, price_amount, price_text, status)
@@ -267,11 +280,128 @@ try {
     ) {
       throw new Error(`Təklif seçimi smoke testi uğursuz oldu: HTTP ${offerResponse.statusCode}`);
     }
-    console.log("RFQ təklif seçimi: əvvəlki qalib rədd edildi və yalnız yeni qalib saxlanıldı.");
+    const convertedOrder = offerResponse.payload?.data?.order;
+    convertedOrderId = convertedOrder?.id || "";
+    if (
+      !convertedOrderId
+      || offerResponse.payload?.data?.conversionCreated !== true
+      || convertedOrder.rfqId !== smokeRfqId
+      || convertedOrder.offerId !== winningOfferId
+      || convertedOrder.status !== "confirmed"
+      || convertedOrder.paymentStatus !== "awaiting"
+      || convertedOrder.totalAmount !== 110
+      || convertedOrder.items?.[0]?.supplierId !== supplierRows[1].id
+      || convertedOrder.history?.length !== 1
+      || !convertedOrder.documents?.some((document) => document.type === "order_summary")
+      || !convertedOrder.documents?.some((document) => document.type === "proforma_invoice")
+    ) {
+      throw new Error("Qalib RFQ təklifi tam sifariş və proforma axınına çevrilmədi.");
+    }
+
+    const repeatedResponse = createResponse();
+    await offersHandler({
+      method: "PATCH",
+      headers: {
+        cookie: `${getCookieName()}=${sessionToken}`,
+        origin: "https://constera.az",
+        host: "constera.az"
+      },
+      query: {},
+      body: Buffer.from(JSON.stringify({ id: winningOfferId, status: "accepted" }))
+    }, repeatedResponse);
+    const [conversionCounts] = await query(
+      `SELECT
+         (SELECT count(*)::int FROM orders WHERE rfq_id = $1) AS orders,
+         (SELECT count(*)::int FROM order_status_history WHERE order_id = $2 AND from_status IS NULL) AS initial_history,
+         (SELECT count(*)::int FROM order_documents WHERE order_id = $2) AS documents`,
+      [smokeRfqId, convertedOrderId]
+    );
+    if (
+      repeatedResponse.statusCode !== 200
+      || repeatedResponse.payload?.data?.conversionCreated !== false
+      || repeatedResponse.payload?.data?.order?.id !== convertedOrderId
+      || conversionCounts.orders !== 1
+      || conversionCounts.initial_history !== 1
+      || conversionCounts.documents !== 2
+    ) {
+      throw new Error("RFQ çevrilməsi təkrar sorğuda idempotent qalmadı.");
+    }
+
+    const replacementResponse = createResponse();
+    await offersHandler({
+      method: "PATCH",
+      headers: {
+        cookie: `${getCookieName()}=${sessionToken}`,
+        origin: "https://constera.az",
+        host: "constera.az"
+      },
+      query: {},
+      body: Buffer.from(JSON.stringify({ id: firstOfferId, status: "accepted" }))
+    }, replacementResponse);
+    if (
+      replacementResponse.statusCode !== 409
+      || replacementResponse.payload?.error?.code !== "rfq_already_converted"
+    ) {
+      throw new Error("Sifarişə çevrilmiş RFQ üçün ikinci qalib bloklanmadı.");
+    }
+    console.log(`RFQ təklif seçimi: sifariş #${convertedOrder.orderNumber} və proforma bir dəfə yaradıldı.`);
   } finally {
     await query("DELETE FROM notifications WHERE payload->>'rfqId' = $1", [smokeRfqId]);
     await query("DELETE FROM audit_logs WHERE entity_type = 'offer' AND entity_id IN ($1, $2)", [firstOfferId, winningOfferId]);
+    if (convertedOrderId) {
+      await query("DELETE FROM notifications WHERE payload->>'orderId' = $1", [convertedOrderId]);
+      await query("DELETE FROM audit_logs WHERE entity_type = 'order' AND entity_id = $1", [convertedOrderId]);
+      await query("DELETE FROM orders WHERE id = $1", [convertedOrderId]);
+    }
     await query("DELETE FROM rfqs WHERE id = $1", [smokeRfqId]);
+  }
+  const guardedRfqId = `rfq-smoke-guard-${randomUUID()}`;
+  const guardedWinnerId = `off-smoke-guard-${randomUUID()}`;
+  const guardedRejectedId = `off-smoke-guard-${randomUUID()}`;
+  try {
+    await query(
+      `INSERT INTO rfqs (id, customer_id, title, company_name, contact, status)
+       VALUES ($1, $2, 'Yan təsirsiz təklif yoxlaması', 'ConstEra smoke test', 'smoke-test@constera.az', 'Təklif alındı')`,
+      [guardedRfqId, admin.id]
+    );
+    await query(
+      `INSERT INTO offers (id, rfq_id, supplier_id, created_by, price_amount, price_text, status)
+       VALUES
+         ($1, $3, $5, $4, 130, '130 AZN', 'accepted'),
+         ($2, $3, $6, $4, 125, '125 AZN', 'rejected')`,
+      [guardedWinnerId, guardedRejectedId, guardedRfqId, admin.id, supplierRows[0].id, supplierRows[1].id]
+    );
+    const rejectedSelectionResponse = createResponse();
+    await offersHandler({
+      method: "PATCH",
+      headers: {
+        cookie: `${getCookieName()}=${sessionToken}`,
+        origin: "https://constera.az",
+        host: "constera.az"
+      },
+      query: {},
+      body: Buffer.from(JSON.stringify({ id: guardedRejectedId, status: "accepted" }))
+    }, rejectedSelectionResponse);
+    const guardedStatuses = await query(
+      "SELECT id, status FROM offers WHERE rfq_id = $1 ORDER BY id",
+      [guardedRfqId]
+    );
+    if (
+      rejectedSelectionResponse.statusCode !== 409
+      || rejectedSelectionResponse.payload?.error?.code !== "offer_not_selectable"
+      || guardedStatuses.find((offer) => offer.id === guardedWinnerId)?.status !== "accepted"
+      || guardedStatuses.find((offer) => offer.id === guardedRejectedId)?.status !== "rejected"
+    ) {
+      throw new Error("Rədd edilmiş təklif seçilərkən mövcud qalib yan təsirsiz qorunmadı.");
+    }
+    console.log("RFQ seçim qoruması: rədd edilmiş təklif mövcud qalibi dəyişmədi.");
+  } finally {
+    await query("DELETE FROM notifications WHERE payload->>'rfqId' = $1", [guardedRfqId]);
+    await query(
+      "DELETE FROM audit_logs WHERE entity_type = 'offer' AND entity_id IN ($1, $2)",
+      [guardedWinnerId, guardedRejectedId]
+    );
+    await query("DELETE FROM rfqs WHERE id = $1", [guardedRfqId]);
   }
   console.log(`Məlumat keyfiyyəti: ${quality.score}%, ${quality.summary.total} real qeyd, ${quality.summary.requestGroups} RFQ qrupu.`);
   console.log("Toplu inventar: real SKU və HTTPS mənbə serverdə yoxlanıldı.");

@@ -362,7 +362,7 @@
     if (orderBody) orderBody.innerHTML = state.orders.map((item) => {
       const statusOptions = [item.status, ...(allowedOrderTransitions[item.status] || [])];
       return `<tr>
-      <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}</small></td>
+      <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}${item.rfqId ? ` · RFQ-dən yaradılıb` : ""}</small></td>
       <td data-label="Şirkət və əlaqə"><strong>${escapeHtml(item.companyName)}</strong><small>${escapeHtml(item.contactName)} · ${escapeHtml(item.phone)}</small></td>
       <td data-label="Məhsul">${item.items.length}<small>${item.hasPendingPrice ? "Qiymət təsdiqi var" : "Qiymətlər təsdiqlidir"}</small></td>
       <td data-label="Məbləğ"><strong>${item.totalAmount === null ? "Sorğu əsasında" : Number(item.totalAmount).toLocaleString("az-AZ", { style: "currency", currency: item.currency })}</strong></td>

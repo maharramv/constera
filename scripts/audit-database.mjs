@@ -16,6 +16,7 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'package' AND status = 'active') AS packages,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
     (SELECT count(*)::int FROM orders) AS orders,
+    (SELECT count(*)::int FROM orders WHERE offer_id IS NOT NULL) AS rfq_converted_orders,
     (SELECT count(*)::int FROM order_documents) AS order_documents,
     (SELECT count(*)::int FROM supplier_applications WHERE status = 'pending') AS pending_supplier_applications,
     (SELECT count(*)::int FROM price_review_requests WHERE status = 'pending') AS pending_price_reviews,
@@ -40,6 +41,14 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM order_items WHERE quantity <= 0) AS invalid_order_quantities,
     (SELECT count(*)::int FROM orders o
       WHERE NOT EXISTS (SELECT 1 FROM order_status_history history WHERE history.order_id = o.id)) AS orders_without_history,
+    (SELECT count(*)::int FROM orders o
+      WHERE o.offer_id IS NOT NULL AND (
+        o.rfq_id IS NULL
+        OR NOT EXISTS (
+          SELECT 1 FROM order_items item
+          WHERE item.order_id = o.id AND item.supplier_id IS NOT NULL
+        )
+      )) AS incomplete_rfq_order_conversions,
     (SELECT count(*)::int FROM order_documents document
       JOIN orders o ON o.id = document.order_id
       WHERE document.document_type = 'proforma_invoice'
@@ -110,7 +119,10 @@ const [schema] = await query(`
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,
     to_regclass('public.offers_one_accepted_per_rfq_idx') IS NOT NULL AS offer_selection_ready,
-    to_regclass('public.price_review_requests_one_pending_idx') IS NOT NULL AS price_review_scope_ready
+    to_regclass('public.price_review_requests_one_pending_idx') IS NOT NULL AS price_review_scope_ready,
+    to_regclass('public.orders_offer_unique') IS NOT NULL
+      AND to_regclass('public.orders_rfq_unique') IS NOT NULL AS rfq_order_scope_ready,
+    to_regclass('public.order_items_supplier_idx') IS NOT NULL AS order_supplier_scope_ready
 `);
 
 const minimums = {
