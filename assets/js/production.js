@@ -92,6 +92,10 @@
       method: "DELETE",
       body: JSON.stringify({ id })
     }),
+    landedCost: (productId, quantity, city, mode = "delivery") => {
+      const params = new URLSearchParams({ productId, quantity: String(quantity), city, mode });
+      return request(`/api/landed-cost?${params}`);
+    },
     sync: (data) => request("/api/sync", { method: "POST", body: JSON.stringify(data) }),
     createRfq: (data) => request("/api/rfqs", { method: "POST", body: JSON.stringify(data) }),
     saveProduct: (data, update = false) => request("/api/products", {
@@ -197,6 +201,7 @@
       body: JSON.stringify({ id, action: "cancel" })
     }),
     fulfillments: (orderId = "") => request(`/api/fulfillments?limit=500${orderId ? `&orderId=${encodeURIComponent(orderId)}` : ""}`),
+    purchaseOrders: (orderId = "") => request(`/api/purchase-orders?limit=500${orderId ? `&orderId=${encodeURIComponent(orderId)}` : ""}`),
     updateFulfillment: (id, data) => request("/api/fulfillments", {
       method: "PATCH",
       body: JSON.stringify({ id, ...data })

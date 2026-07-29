@@ -112,6 +112,28 @@
     }).join("") || "<p>Təchizatçı icra qeydi yoxdur.</p>";
   };
 
+  const renderPurchaseOrders = () => {
+    const labels = {
+      draft: "Satınalma təsdiqi gözləyir",
+      issued: "Təchizatçıya göndərilib",
+      accepted: "Qəbul edilib",
+      preparing: "Hazırlanır",
+      ready: "Göndərişə hazırdır",
+      shipped: "Göndərilib",
+      delivered: "Çatdırılıb",
+      cancelled: "Ləğv edilib"
+    };
+    const purchaseOrders = order?.purchaseOrders || [];
+    qs("[data-order-purchase-order-count]").textContent = `${purchaseOrders.length} alt-sifariş`;
+    qs("[data-order-purchase-orders]").innerHTML = purchaseOrders.map((purchaseOrder) => `
+      <article>
+        <strong>AS-${escapeHtml(purchaseOrder.purchaseOrderNumber)} · ${escapeHtml(purchaseOrder.supplierName || "Təchizatçı")}</strong>
+        <span>${escapeHtml(labels[purchaseOrder.status] || purchaseOrder.status)} · ${purchaseOrder.itemCount} mövqe · ${Number(purchaseOrder.totalQuantity).toLocaleString("az-AZ")} vahid</span>
+        <small>Məhsullar: ${formatMoney(purchaseOrder.subtotal, purchaseOrder.currency)} · logistika payı: ${formatMoney(purchaseOrder.deliveryAmount, purchaseOrder.currency)} · yekun: ${formatMoney(purchaseOrder.totalAmount, purchaseOrder.currency)}${purchaseOrder.leadTimeDays === null ? "" : ` · təslimat: ${purchaseOrder.leadTimeDays} gün`}</small>
+      </article>
+    `).join("") || "<p>Təchizatçı alt-sifarişi hələ formalaşmayıb.</p>";
+  };
+
   const renderProcurement = () => {
     const request = order?.procurement;
     const quote = order?.deliveryQuote;
@@ -235,6 +257,7 @@
     renderDocument();
     renderHistory();
     renderFulfillments();
+    renderPurchaseOrders();
     renderProcurement();
     renderAdmin();
     const customerCanCancel = sessionUser?.role === "customer"

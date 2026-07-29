@@ -30,6 +30,8 @@ const backupQueries = Object.freeze({
   warehouses: "SELECT * FROM warehouses ORDER BY supplier_id, name",
   inventoryLevels: "SELECT * FROM inventory_levels ORDER BY warehouse_id, product_id",
   orderFulfillments: "SELECT * FROM order_fulfillments ORDER BY order_id, supplier_id",
+  supplierPurchaseOrders: "SELECT * FROM supplier_purchase_orders ORDER BY order_id, supplier_id",
+  supplierPurchaseOrderItems: "SELECT * FROM supplier_purchase_order_items ORDER BY purchase_order_id, order_item_id",
   inventoryReservations: "SELECT * FROM inventory_reservations ORDER BY order_id, created_at",
   logisticsZones: "SELECT * FROM logistics_zones ORDER BY priority, name",
   deliveryQuotes: "SELECT * FROM delivery_quotes ORDER BY created_at",
@@ -69,11 +71,11 @@ export const buildCloudBackup = async () => {
   );
   const data = Object.fromEntries(entries);
   return {
-    version: "constera-cloud-backup-v4",
+    version: "constera-cloud-backup-v5",
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: 19,
+    schemaMigrations: 20,
     data
   };
 };

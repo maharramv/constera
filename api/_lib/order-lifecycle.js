@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { query } from "./db.js";
 import { readOrderOperations } from "./order-operations.js";
 import { readProcurementRequest } from "./procurement.js";
+import { readSupplierPurchaseOrders } from "./purchase-orders.js";
 import { text } from "./validation.js";
 
 const mapDocument = (row) => ({
@@ -46,6 +47,7 @@ export const mapOrder = (row) => ({
   reservations: row.reservations || [],
   deliveryQuote: row.deliveryQuote || null,
   procurement: row.procurement || null,
+  purchaseOrders: row.purchaseOrders || [],
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -80,7 +82,7 @@ export const readOrder = async (id) => {
 export const readOrderDetails = async (id) => {
   const order = await readOrder(id);
   if (!order) return null;
-  const [historyRows, documentRows, operations, quoteRows, procurement] = await Promise.all([
+  const [historyRows, documentRows, operations, quoteRows, procurement, purchaseOrders] = await Promise.all([
     query(
       `SELECT history.*, actor.name AS actor_name
          FROM order_status_history history
@@ -105,7 +107,8 @@ export const readOrderDetails = async (id) => {
         LIMIT 1`,
       [id]
     ),
-    readProcurementRequest(id)
+    readProcurementRequest(id),
+    readSupplierPurchaseOrders(id)
   ]);
   return {
     ...order,
@@ -130,6 +133,7 @@ export const readOrderDetails = async (id) => {
       expiresAt: quoteRows[0].expires_at
     } : null,
     procurement,
+    purchaseOrders,
     history: historyRows.map((item) => ({
       id: item.id,
       actorName: item.actor_name || "Sistem",
@@ -213,6 +217,7 @@ export const issueOrderDocument = async (order, documentType, actorId = null) =>
       totalAmount: order.totalAmount,
       deliveryQuote: order.deliveryQuote,
       procurement: order.procurement,
+      purchaseOrders: order.purchaseOrders,
       currency: order.currency,
       note: order.note,
       items: order.items

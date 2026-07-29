@@ -57,10 +57,10 @@
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
             <p class="eyebrow">Təchizatçı kabineti</p>
-            <h1>Məhsul, qiymət və stok məlumatlarını kataloqa sürətli əlavə et.</h1>
+            <h1>Təklif, stok və alt-sifarişləri vahid kabinetdən idarə et.</h1>
             <p class="hero-text">
-              Məhsul kartlarını hazırla, qiymət və stok məlumatlarını yenilə, CSV siyahısını toplu idxal et.
-              Təchizatçı hesabı yalnız öz şirkətinə bağlı məhsulları idarə edir.
+              Məhsul kartlarını hazırla, bazardakı təkliflərini yenilə, CSV siyahısını toplu idxal et və
+              şirkətinə avtomatik ayrılmış sifarişləri icraya qəbul et.
             </p>
           </div>
           <div class="admin-stat-grid" data-supplier-portal-stats></div>
@@ -215,6 +215,52 @@
           <div class="admin-panel glass portal-wide">
             <div class="market-section-heading">
               <div>
+                <p class="eyebrow">Təkliflərim</p>
+                <h2>Qiymət, stok və təslimat şərtləri</h2>
+              </div>
+              <span class="data-badge" data-supplier-offer-count>0 təklif</span>
+            </div>
+            <div class="inventory-toolbar">
+              <label class="admin-field">
+                <span>Axtarış</span>
+                <input data-supplier-offer-search type="search" placeholder="SKU, məhsul və ya brend" />
+              </label>
+              <label class="admin-field">
+                <span>Görünüş</span>
+                <select data-supplier-offer-filter>
+                  <option value="all">Bütün təkliflər</option>
+                  <option value="confirmed">Təsdiqli qiymət</option>
+                  <option value="request">Sorğu əsasında</option>
+                  <option value="low-stock">Az stok</option>
+                  <option value="draft">Qaralama</option>
+                </select>
+              </label>
+            </div>
+            <p class="admin-import-status" data-supplier-offer-status role="status" aria-live="polite">
+              Təkliflər yalnız təchizatçı hesabına bağlı şirkət üçün göstərilir.
+            </p>
+            <div class="admin-table-wrap">
+              <table class="admin-table supplier-offer-table">
+                <thead>
+                  <tr>
+                    <th>Məhsul</th>
+                    <th>Qiymət</th>
+                    <th>Stok</th>
+                    <th>Min. sifariş</th>
+                    <th>Təslimat</th>
+                    <th>Qiymət statusu</th>
+                    <th>Mənbə</th>
+                    <th>Əməliyyat</th>
+                  </tr>
+                </thead>
+                <tbody data-supplier-offer-rows></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-panel glass portal-wide">
+            <div class="market-section-heading">
+              <div>
                 <p class="eyebrow">Məhsullarım</p>
                 <h2>Son əlavə olunan təchizatçı məhsulları</h2>
               </div>
@@ -270,8 +316,8 @@
           <div class="admin-panel glass portal-wide">
             <div class="market-section-heading">
               <div>
-                <p class="eyebrow">Sifarişlər</p>
-                <h2>Məhsullarım olan sifarişlər</h2>
+                <p class="eyebrow">Avtomatik bölünmüş sifarişlər</p>
+                <h2>Şirkətimə ayrılmış alt-sifarişlər</h2>
               </div>
               <span class="data-badge" data-supplier-order-count>0 sifariş</span>
             </div>
@@ -279,7 +325,7 @@
               <table class="admin-table supplier-order-table">
                 <thead>
                   <tr>
-                    <th>Sifariş</th>
+                    <th>Alt-sifariş</th>
                     <th>Müştəri</th>
                     <th>Məhsullarım</th>
                     <th>Məbləğ</th>

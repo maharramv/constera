@@ -9,6 +9,8 @@ import rfqsHandler from "../../api/rfqs.js";
 import offersHandler from "../../api/offers.js";
 import { parseRfqQuantity } from "../../api/_lib/rfq-order.js";
 import { chooseProductOffer } from "../../api/_lib/product-offers.js";
+import { calculateOfferLandedCosts } from "../../api/_lib/landed-cost.js";
+import { parseLandedCostQuantity } from "../../api/landed-cost.js";
 
 const createResponse = () => ({
   headers: {},
@@ -84,6 +86,7 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
     "inventory",
     "procurement",
     "product-offers",
+    "purchase-orders",
     "price-monitor",
     "rental-bookings"
   ]) {
@@ -173,4 +176,55 @@ test("məhsul təklifi seçimi açıq ID-ni qoruyur və uyğunsuz ID-ni qəbul e
   assert.equal(chooseProductOffer(offers).id, "offer-cheap");
   assert.equal(chooseProductOffer(offers, "offer-fast").id, "offer-fast");
   assert.equal(chooseProductOffer(offers, "offer-unknown"), null);
+});
+
+test("yekun maya müqayisəsi qiymət, logistika, stok və minimum sifarişi birlikdə hesablayır", () => {
+  assert.equal(parseLandedCostQuantity("12,5"), 12.5);
+  const offers = calculateOfferLandedCosts({
+    city: "Bakı",
+    mode: "delivery",
+    quantity: 10,
+    zones: [{
+      id: "baku",
+      name: "Bakı",
+      cities: ["Bakı"],
+      baseFee: 8,
+      perSupplierFee: 3,
+      perUnitFee: 0.1,
+      minimumFee: 8,
+      freeAbove: null,
+      etaMinDays: 1,
+      etaMaxDays: 2
+    }],
+    offers: [
+      {
+        id: "offer-a",
+        supplier: "A",
+        unitPrice: 10,
+        currency: "AZN",
+        priceStatus: "confirmed",
+        stockQuantity: 100,
+        minimumOrder: 1,
+        leadTimeDays: 2,
+        deliveryModes: ["supplier_delivery"]
+      },
+      {
+        id: "offer-b",
+        supplier: "B",
+        unitPrice: 9,
+        currency: "AZN",
+        priceStatus: "confirmed",
+        stockQuantity: 5,
+        minimumOrder: 1,
+        leadTimeDays: 1,
+        deliveryModes: ["supplier_delivery"]
+      }
+    ]
+  });
+  assert.equal(offers[0].id, "offer-a");
+  assert.equal(offers[0].landedTotal, 109);
+  assert.equal(offers[0].effectiveUnitCost, 10.9);
+  assert.equal(offers[0].recommended, true);
+  assert.equal(offers[1].eligible, false);
+  assert.match(offers[1].reasons.join(" "), /Stokda yalnız 5/);
 });

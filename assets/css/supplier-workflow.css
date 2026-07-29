@@ -47,6 +47,22 @@
   min-width: 920px;
 }
 
+.supplier-offer-table {
+  min-width: 1160px;
+}
+
+.supplier-offer-table tr.is-dirty {
+  background: rgba(212, 166, 79, 0.07);
+}
+
+.supplier-offer-table .inventory-input {
+  min-width: 92px;
+}
+
+.supplier-offer-table .inventory-source-input {
+  min-width: 210px;
+}
+
 .supplier-application-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.75fr);

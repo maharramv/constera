@@ -4,6 +4,7 @@ import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
 import { mapProcurementRequest, readProcurementRequest } from "../_lib/procurement.js";
+import { ensureSupplierPurchaseOrders } from "../_lib/purchase-orders.js";
 import { oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const allowedRoles = ["super_admin", "admin", "sales", "customer"];
@@ -121,6 +122,7 @@ export default withApiErrors(async (req, res) => {
       }
       throw error;
     }
+    await ensureSupplierPurchaseOrders(orderId);
     await recordAudit({ actorId: user.id, action: "request", entityType: "procurement", entityId: requestId, details: { orderId } });
     return sendJson(res, 201, { ok: true, data: await readProcurementRequest(orderId) });
   }
@@ -155,6 +157,7 @@ export default withApiErrors(async (req, res) => {
         WHERE id = (SELECT order_id FROM cancelled)`,
       [requestId]
     );
+    await ensureSupplierPurchaseOrders(request.order_id);
     await recordAudit({ actorId: user.id, action: "cancel", entityType: "procurement", entityId: requestId });
     return sendJson(res, 200, { ok: true, data: await readProcurementRequest(request.order_id) });
   }
@@ -208,6 +211,7 @@ export default withApiErrors(async (req, res) => {
       WHERE id = (SELECT order_id FROM updated)`,
     [requestId, approvedCount, nextStatus]
   );
+  await ensureSupplierPurchaseOrders(request.order_id);
   await recordAudit({
     actorId: user.id,
     action: decision,

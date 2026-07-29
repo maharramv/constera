@@ -32,6 +32,7 @@ test("təchizatçı toplu inventarı əvvəl yoxlayır və təhlükəsiz hissəl
     "data-inventory-bulk-input",
     "data-inventory-bulk-preview",
     "data-inventory-bulk-apply",
+    "data-supplier-offer-rows",
     "data-supplier-order-rows"
   ]) {
     assert.match(portal, new RegExp(marker));
@@ -161,6 +162,36 @@ test("logistika tarifi və şirkətdaxili satınalma təsdiqi sifariş mərhəl�
   assert.match(orders, /procurement_approval_required/);
   assert.match(checkout, /data-procurement-fields/);
   assert.match(orderClient, /data-procurement-decision/);
+});
+
+test("təchizatçı alt-sifarişləri avtomatik bölünür və yekun maya müqayisəsi kabinetə bağlanır", () => {
+  const migration = read("db/migrations/020_supplier_purchase_orders.sql");
+  const helper = read("api/_lib/purchase-orders.js");
+  const purchaseOrders = read("api/_admin/purchase-orders.js");
+  const landedCost = read("api/_lib/landed-cost.js");
+  const orders = read("api/_admin/orders.js");
+  const procurement = read("api/_admin/procurement.js");
+  const fulfillments = read("api/_admin/fulfillments.js");
+  const productClient = read("assets/js/marketplace.js");
+  const portal = read("supplier-portal.html");
+  const orderPage = read("order-detail.html");
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS supplier_purchase_orders/);
+  assert.match(migration, /UNIQUE \(order_id, supplier_id\)/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS supplier_purchase_order_items/);
+  assert.match(helper, /allocateDelivery/);
+  assert.match(helper, /ON CONFLICT \(order_id, supplier_id\) DO UPDATE/);
+  assert.match(purchaseOrders, /supplierCompanyId = user\.companyId/);
+  assert.match(orders, /ensureSupplierPurchaseOrders/);
+  assert.match(procurement, /ensureSupplierPurchaseOrders/);
+  assert.match(fulfillments, /ensureSupplierPurchaseOrders/);
+  assert.match(landedCost, /effectiveUnitCost/);
+  assert.match(landedCost, /recommended/);
+  assert.match(productClient, /data-landed-cost-form/);
+  assert.match(productClient, /ConstEraAPI\.landedCost/);
+  assert.match(portal, /data-supplier-offer-rows/);
+  assert.match(portal, /Avtomatik bölünmüş sifarişlər/);
+  assert.match(orderPage, /data-order-purchase-orders/);
 });
 
 test("ağıllı smeta təsdiqli kataloq təklifləri və qablaşdırma ilə qiymətləndirilir", () => {
@@ -317,7 +348,7 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
-  assert.match(backup, /constera-cloud-backup-v4/);
+  assert.match(backup, /constera-cloud-backup-v5/);
   assert.doesNotMatch(backup, /password_hash/);
   assert.doesNotMatch(backup, /SELECT \* FROM users/);
   assert.match(backup, /Content-Encoding/);

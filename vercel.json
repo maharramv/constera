@@ -25,6 +25,7 @@
     { "source": "/api/price-monitor", "destination": "/api/admin?__route=price-monitor" },
     { "source": "/api/procurement", "destination": "/api/admin?__route=procurement" },
     { "source": "/api/product-offers", "destination": "/api/admin?__route=product-offers" },
+    { "source": "/api/purchase-orders", "destination": "/api/admin?__route=purchase-orders" },
     { "source": "/api/rental-bookings", "destination": "/api/admin?__route=rental-bookings" },
     { "source": "/api/scheduled-backup", "destination": "/api/admin?__route=scheduled-backup" },
     { "source": "/api/tender-bids", "destination": "/api/admin?__route=tender-bids" },

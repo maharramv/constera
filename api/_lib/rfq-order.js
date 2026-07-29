@@ -7,6 +7,7 @@ import {
   recordOrderHistory
 } from "./order-lifecycle.js";
 import { ensureOrderOperations } from "./order-operations.js";
+import { ensureSupplierPurchaseOrders } from "./purchase-orders.js";
 
 const money = (value) => Math.round(Number(value) * 100) / 100;
 
@@ -237,6 +238,7 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
 
   if (!orderId) return null;
   await ensureOrderOperations(orderId);
+  await ensureSupplierPurchaseOrders(orderId);
   await syncOrderLead(orderId);
   let order = await readOrderDetails(orderId);
   if (created) {

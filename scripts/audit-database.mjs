@@ -24,6 +24,7 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM orders WHERE tender_bid_id IS NOT NULL) AS tender_converted_orders,
     (SELECT count(*)::int FROM order_documents) AS order_documents,
     (SELECT count(*)::int FROM order_fulfillments) AS order_fulfillments,
+    (SELECT count(*)::int FROM supplier_purchase_orders) AS supplier_purchase_orders,
     (SELECT count(*)::int FROM inventory_reservations WHERE status = 'active') AS active_reservations,
     (SELECT count(*)::int FROM inventory_reservations WHERE status = 'shortage') AS shortage_reservations,
     (SELECT count(*)::int FROM crm_leads) AS crm_leads,
@@ -144,6 +145,46 @@ const [integrity] = await query(`
         WHERE decision.request_id = request.id AND decision.decision = 'approved'
       )) AS procurement_approval_count_mismatch,
     (SELECT count(*)::int FROM (
+      SELECT DISTINCT item.order_id, item.supplier_id
+      FROM order_items item
+      WHERE item.supplier_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM supplier_purchase_orders purchase_order
+          WHERE purchase_order.order_id = item.order_id
+            AND purchase_order.supplier_id = item.supplier_id
+        )
+    ) missing_purchase_orders) AS supplier_groups_without_purchase_order,
+    (SELECT count(*)::int FROM supplier_purchase_orders purchase_order
+      WHERE NOT EXISTS (
+        SELECT 1 FROM supplier_purchase_order_items purchase_item
+        WHERE purchase_item.purchase_order_id = purchase_order.id
+      )) AS purchase_orders_without_items,
+    (SELECT count(*)::int FROM supplier_purchase_order_items purchase_item
+      JOIN supplier_purchase_orders purchase_order ON purchase_order.id = purchase_item.purchase_order_id
+      JOIN order_items item ON item.id = purchase_item.order_item_id
+      WHERE purchase_order.order_id <> item.order_id
+         OR purchase_order.supplier_id <> item.supplier_id) AS purchase_order_item_scope_mismatch,
+    (SELECT count(*)::int FROM supplier_purchase_orders purchase_order
+      WHERE purchase_order.total_amount IS DISTINCT FROM (
+        CASE
+          WHEN purchase_order.subtotal IS NULL THEN NULL
+          ELSE purchase_order.subtotal + purchase_order.delivery_amount
+        END
+      )) AS purchase_order_total_mismatch,
+    (SELECT count(*)::int FROM orders orders
+      WHERE EXISTS (
+        SELECT 1 FROM supplier_purchase_orders purchase_order
+        WHERE purchase_order.order_id = orders.id
+      )
+        AND abs(
+          COALESCE(orders.delivery_amount, 0)
+          - COALESCE((
+            SELECT sum(purchase_order.delivery_amount)
+            FROM supplier_purchase_orders purchase_order
+            WHERE purchase_order.order_id = orders.id
+          ), 0)
+        ) > 0.01) AS purchase_order_delivery_mismatch,
+    (SELECT count(*)::int FROM (
       SELECT rfq_id FROM offers WHERE status = 'accepted'
       GROUP BY rfq_id HAVING count(*) > 1
     ) duplicate_acceptances) AS rfqs_with_multiple_accepted_offers,
@@ -189,6 +230,8 @@ const [schema] = await query(`
     to_regclass('public.order_status_history') IS NOT NULL AS order_history_ready,
     to_regclass('public.order_documents') IS NOT NULL AS order_documents_ready,
     to_regclass('public.order_fulfillments') IS NOT NULL AS order_fulfillments_ready,
+    to_regclass('public.supplier_purchase_orders') IS NOT NULL AS supplier_purchase_orders_ready,
+    to_regclass('public.supplier_purchase_order_items') IS NOT NULL AS supplier_purchase_order_items_ready,
     to_regclass('public.inventory_reservations') IS NOT NULL AS inventory_reservations_ready,
     to_regclass('public.inventory_levels') IS NOT NULL AS inventory_levels_ready,
     to_regclass('public.warehouses') IS NOT NULL AS warehouses_ready,
@@ -218,7 +261,8 @@ const [schema] = await query(`
     to_regclass('public.crm_leads_source_unique') IS NOT NULL AS crm_source_scope_ready,
     to_regclass('public.order_items_supplier_idx') IS NOT NULL AS order_supplier_scope_ready,
     to_regclass('public.product_offers_product_idx') IS NOT NULL AS product_offer_search_ready,
-    to_regclass('public.procurement_requests_company_idx') IS NOT NULL AS procurement_scope_ready
+    to_regclass('public.procurement_requests_company_idx') IS NOT NULL AS procurement_scope_ready,
+    to_regclass('public.supplier_purchase_orders_supplier_idx') IS NOT NULL AS purchase_order_scope_ready
 `);
 
 const minimums = {

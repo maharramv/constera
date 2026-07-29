@@ -17,6 +17,7 @@ import {
   syncOperationsForOrderStatus
 } from "../_lib/order-operations.js";
 import { chooseProductOffer, loadOffersForProducts } from "../_lib/product-offers.js";
+import { ensureSupplierPurchaseOrders } from "../_lib/purchase-orders.js";
 import { email, oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const orderStatuses = ["submitted", "confirmed", "processing", "shipped", "completed", "cancelled"];
@@ -69,6 +70,7 @@ export default withApiErrors(async (req, res) => {
         order.items = order.items.filter((item) => visibleIds.has(item.id));
         order.fulfillments = order.fulfillments.filter((item) => visibleSupplierIds.has(item.supplierId));
         order.reservations = order.reservations.filter((item) => visibleIds.has(item.orderItemId));
+        order.purchaseOrders = order.purchaseOrders.filter((item) => visibleSupplierIds.has(item.supplierId));
         order.documents = [];
         order.procurement = null;
       }
@@ -143,6 +145,7 @@ export default withApiErrors(async (req, res) => {
       }
       await query("UPDATE orders SET status = 'cancelled', updated_at = now() WHERE id = $1", [id]);
       await syncOperationsForOrderStatus(id, "cancelled");
+      await ensureSupplierPurchaseOrders(id);
       await syncOrderLead(id);
       await recordOrderHistory({
         order: current,
@@ -195,6 +198,7 @@ export default withApiErrors(async (req, res) => {
       [id, status, paymentStatus, deliveryAmount, totalAmount, trackingCode, deliveryProvider]
     );
     if (status !== current.status) await syncOperationsForOrderStatus(id, status);
+    await ensureSupplierPurchaseOrders(id);
     await syncOrderLead(id);
     if (status !== current.status || paymentStatus !== current.paymentStatus || historyNote) {
       await recordOrderHistory({
@@ -408,6 +412,7 @@ export default withApiErrors(async (req, res) => {
     );
   }
   await ensureOrderOperations(id);
+  await ensureSupplierPurchaseOrders(id);
   await syncOrderLead(id);
   await recordAudit({
     actorId: session?.id || null,

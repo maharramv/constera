@@ -7,6 +7,7 @@ import {
   recordOrderHistory
 } from "./order-lifecycle.js";
 import { ensureOrderOperations } from "./order-operations.js";
+import { ensureSupplierPurchaseOrders } from "./purchase-orders.js";
 
 const emailFromContact = (value) => {
   const match = String(value || "").match(/[^\s·,;<>]+@[^\s·,;<>]+\.[^\s·,;<>]+/);
@@ -165,6 +166,7 @@ export const ensureOrderForAcceptedTenderBid = async ({ bidId, actorId = null })
 
   if (!orderId) return null;
   await ensureOrderOperations(orderId);
+  await ensureSupplierPurchaseOrders(orderId);
   await syncOrderLead(orderId);
   let order = await readOrderDetails(orderId);
   if (created) {

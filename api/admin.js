@@ -21,6 +21,7 @@ const routeLoaders = Object.freeze({
   "price-monitor": () => import("./_admin/price-monitor.js"),
   procurement: () => import("./_admin/procurement.js"),
   "product-offers": () => import("./_admin/product-offers.js"),
+  "purchase-orders": () => import("./_admin/purchase-orders.js"),
   "rental-bookings": () => import("./_admin/rental-bookings.js"),
   "scheduled-backup": () => import("./_admin/scheduled-backup.js"),
   "tender-bids": () => import("./_admin/tender-bids.js"),

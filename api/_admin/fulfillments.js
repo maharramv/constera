@@ -5,6 +5,7 @@ import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiEr
 import { queueNotification } from "../_lib/notifications.js";
 import { mapFulfillment, consumeOrderReservations, releaseOrderReservations } from "../_lib/order-operations.js";
 import { readOrder, recordOrderHistory } from "../_lib/order-lifecycle.js";
+import { ensureSupplierPurchaseOrders } from "../_lib/purchase-orders.js";
 import { oneOf, parseLimit, text } from "../_lib/validation.js";
 
 const privilegedRoles = ["super_admin", "admin", "sales"];
@@ -195,6 +196,7 @@ export default withApiErrors(async (req, res) => {
       note: `${current.supplier_name} icra mərhələsini “${status}” olaraq yenilədi`
     });
   }
+  await ensureSupplierPurchaseOrders(current.order_id);
 
   await recordAudit({
     actorId: user.id,

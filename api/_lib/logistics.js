@@ -39,7 +39,7 @@ export const listLogisticsZones = async ({ includeInactive = false } = {}) => {
   return rows.map(mapLogisticsZone);
 };
 
-const findZone = (zones, city) => {
+export const findLogisticsZone = (zones, city) => {
   const cityKey = fold(city);
   return zones.find((zone) => zone.cities.some((candidate) => {
     const key = fold(candidate);
@@ -47,15 +47,15 @@ const findZone = (zones, city) => {
   })) || zones.find((zone) => zone.cities.length === 0) || null;
 };
 
-export const calculateDeliveryQuote = async ({
+export const calculateDeliveryQuoteFromZones = ({
+  zones,
   city,
   mode = "delivery",
   subtotal = null,
   itemQuantity = 0,
   supplierCount = 1
 }) => {
-  const zones = await listLogisticsZones();
-  const zone = findZone(zones, city);
+  const zone = findLogisticsZone(zones, city);
   const safeSubtotal = subtotal === null ? null : Math.max(0, Number(subtotal || 0));
   const safeQuantity = Math.max(0, Number(itemQuantity || 0));
   const safeSupplierCount = Math.max(0, Math.trunc(Number(supplierCount || 0)));
@@ -111,6 +111,9 @@ export const calculateDeliveryQuote = async ({
     }
   };
 };
+
+export const calculateDeliveryQuote = async (input) =>
+  calculateDeliveryQuoteFromZones({ ...input, zones: await listLogisticsZones() });
 
 export const saveDeliveryQuote = async ({
   orderId = null,

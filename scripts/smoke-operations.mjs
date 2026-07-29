@@ -115,10 +115,13 @@ try {
   orderId = orderResponse.payload?.data?.id || "";
   const fulfillment = orderResponse.payload?.data?.fulfillments?.[0];
   const reservation = orderResponse.payload?.data?.reservations?.[0];
+  const purchaseOrder = orderResponse.payload?.data?.purchaseOrders?.[0];
   if (
     orderResponse.statusCode !== 201
     || !orderId
     || !fulfillment?.id
+    || !purchaseOrder?.id
+    || purchaseOrder.status !== "draft"
     || reservation?.status !== "active"
     || orderResponse.payload?.data?.approvalStatus !== "pending"
     || !orderResponse.payload?.data?.procurement?.id
@@ -159,6 +162,13 @@ try {
   ) {
     throw new Error(`Satınalma təsdiqi uğursuz oldu: HTTP ${procurementResponse.statusCode}`);
   }
+  const [issuedPurchaseOrder] = await query(
+    "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
+    [orderId]
+  );
+  if (issuedPurchaseOrder?.status !== "issued") {
+    throw new Error("Satınalma təsdiqindən sonra təchizatçı alt-sifarişi göndərilmədi.");
+  }
 
   const confirmedOrder = createResponse();
   await ordersHandler({
@@ -186,6 +196,13 @@ try {
   if (acceptedResponse.statusCode !== 200 || acceptedResponse.payload?.data?.status !== "accepted") {
     throw new Error(`Fulfillment qəbulu uğursuz oldu: HTTP ${acceptedResponse.statusCode}`);
   }
+  const [acceptedPurchaseOrder] = await query(
+    "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
+    [orderId]
+  );
+  if (acceptedPurchaseOrder?.status !== "accepted") {
+    throw new Error("Təchizatçı qəbulu alt-sifariş statusuna ötürülmədi.");
+  }
 
   const cancelledResponse = createResponse();
   await fulfillmentHandler({
@@ -210,12 +227,17 @@ try {
     "SELECT stage FROM crm_leads WHERE source_type = 'order' AND source_id = $1",
     [orderId]
   );
+  const [cancelledPurchaseOrder] = await query(
+    "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
+    [orderId]
+  );
   if (
     cancelledResponse.statusCode !== 200
     || cancelledResponse.payload?.data?.status !== "cancelled"
     || releasedReservation?.status !== "released"
     || Number(levelAfter?.reserved_quantity || 0) !== reservedBefore
     || orderLead?.stage !== "lost"
+    || cancelledPurchaseOrder?.status !== "cancelled"
   ) {
     throw new Error("Fulfillment ləğvi rezervi buraxmadı və CRM mərhələsini yeniləmədi.");
   }
