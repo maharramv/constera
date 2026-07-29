@@ -55,3 +55,15 @@ test("Neon üçün qatlanmış trigram axtarış indeksi mövcuddur", () => {
   assert.match(migration, /gin_trgm_ops/);
   assert.match(audit, /folded_search_ready/);
 });
+
+test("statik build JS və CSS fayllarını məzmun hash-i ilə versiyalayır", () => {
+  const build = readFileSync("scripts/vercel-build.mjs", "utf8");
+  const buildAudit = readFileSync("scripts/audit-build.mjs", "utf8");
+  const serviceWorker = readFileSync("service-worker.js", "utf8");
+
+  assert.match(build, /createHash\("sha256"\)/);
+  assert.match(build, /\?v=\$\{revision\}/);
+  assert.match(build, /constera-shell-\$\{revision\}/);
+  assert.match(buildAudit, /asset versiyası yoxdur/);
+  assert.match(serviceWorker, /constera-shell-v5/);
+});

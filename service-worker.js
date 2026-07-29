@@ -1,4 +1,4 @@
-const CACHE_NAME = "constera-shell-v4";
+const CACHE_NAME = "constera-shell-v5";
 const APP_SHELL = [
   "/offline.html",
   "/assets/css/styles.css",

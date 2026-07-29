@@ -1,4 +1,5 @@
 import { accessSync, constants, cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { extname, join } from "node:path";
 import vm from "node:vm";
 import { transformSync } from "esbuild";
@@ -205,6 +206,36 @@ const optimizeTree = (entry) => {
 };
 
 optimizeTree("dist/assets");
+
+const revisionFiles = [
+  "dist/assets/css/styles.css",
+  ...readdirSync("dist/assets/js").filter((name) => name.endsWith(".js")).sort()
+    .map((name) => `dist/assets/js/${name}`)
+];
+const assetRevision = createHash("sha256");
+revisionFiles.forEach((file) => assetRevision.update(readFileSync(file)));
+const revision = assetRevision.digest("hex").slice(0, 12);
+
+staticEntries
+  .filter((entry) => entry.endsWith(".html"))
+  .forEach((entry) => {
+    const output = `dist/${entry}`;
+    const html = readFileSync(output, "utf8").replace(
+      /((?:href|src)=["'])(assets\/(?:css|js)\/[^"'?#]+\.(?:css|js))(?:\?v=[^"']*)?(["'])/g,
+      `$1$2?v=${revision}$3`
+    );
+    writeFileSync(output, html);
+  });
+
+const serviceWorker = readFileSync("dist/service-worker.js", "utf8")
+  .replace(/const CACHE_NAME = "[^"]+";/, `const CACHE_NAME = "constera-shell-${revision}";`)
+  .replace(
+    /"\/assets\/(css|js)\/([^"?]+)(?:\?v=[^"]*)?"/g,
+    `"/assets/$1/$2?v=${revision}"`
+  );
+writeFileSync("dist/service-worker.js", serviceWorker);
 optimizeFile("dist/service-worker.js");
 
-console.log(`ConstEra optimallaşdırılmış statik ixracı yaradıldı: ${sitemapUrls.size} sitemap URL-i.`);
+console.log(
+  `ConstEra optimallaşdırılmış statik ixracı yaradıldı: ${sitemapUrls.size} sitemap URL-i, asset ${revision}.`
+);

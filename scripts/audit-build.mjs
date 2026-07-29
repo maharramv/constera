@@ -41,8 +41,19 @@ files.forEach(({ file }) => {
     if (/fonts\.(?:googleapis|gstatic)\.com/i.test(html)) {
       errors.push(`${relative(root, file)}: xarici font bağlantısı qalıb.`);
     }
+    if (/(?:href|src)=(["'])assets\/(?:css|js)\/[^"'?#]+\.(?:css|js)\1/i.test(html)) {
+      errors.push(`${relative(root, file)}: JS/CSS asset versiyası yoxdur.`);
+    }
   }
 });
+
+const serviceWorker = readFileSync(join(root, "service-worker.js"), "utf8");
+if (!/constera-shell-[a-f0-9]{12}/i.test(serviceWorker)) {
+  errors.push("service-worker.js: cache adı build hash-i daşımır.");
+}
+if (/["']\/assets\/(?:css|js)\/[^"'?]+\.(?:css|js)["']/i.test(serviceWorker)) {
+  errors.push("service-worker.js: app shell asset versiyası yoxdur.");
+}
 
 if (totalBytes > 3_000_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
 if (javascriptBytes > 450_000) errors.push(`JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
