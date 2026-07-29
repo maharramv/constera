@@ -108,6 +108,34 @@
               <section class="admin-v2-section admin-v2-section-wide">
                 <div class="admin-v2-section-heading">
                   <div>
+                    <h3>Kommersiya nəticələri</h3>
+                    <p class="admin-v2-quality-summary">Sifariş dövriyyəsi, ödəniş, geri ödəniş və faktiki komissiya.</p>
+                  </div>
+                </div>
+                <div class="admin-v2-kpi-grid" data-admin-v2-commercial></div>
+              </section>
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <h3>Satış çevrilməsi</h3>
+                  <span class="data-badge">son 30 gün</span>
+                </div>
+                <div class="admin-v2-bars" data-admin-v2-conversion></div>
+              </section>
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <h3>Merchant uyğunluğu</h3>
+                  <a class="source-link" href="/api/merchant-feed" target="_blank" rel="noopener">XML feed</a>
+                </div>
+                <p class="admin-v2-quality-summary" data-admin-v2-merchant-summary>Uyğunluq hesablanır.</p>
+                <div class="admin-v2-bars" data-admin-v2-merchant></div>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Təchizatçı feed sağlamlığı</h3>
+                <div class="admin-v2-kpi-grid" data-admin-v2-feed-health></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading">
+                  <div>
                     <h3>Məhsul məlumatlarının keyfiyyəti</h3>
                     <p class="admin-v2-quality-summary" data-admin-v2-quality-summary>Keyfiyyət göstəriciləri hesablanır.</p>
                   </div>
@@ -346,6 +374,10 @@
                     <input name="sku" type="text" placeholder="CON-MAT-0001" required />
                   </label>
                   <label class="admin-field">
+                    <span>Barkod / GTIN</span>
+                    <input name="barcode" type="text" inputmode="numeric" maxlength="80" placeholder="8691234567890" />
+                  </label>
+                  <label class="admin-field">
                     <span>Məhsul adı</span>
                     <input name="name" type="text" placeholder="Knauf Rotband 30 kq" required />
                   </label>
@@ -416,7 +448,7 @@
                 <datalist id="admin-brand-list"></datalist>
                 <label class="admin-field">
                   <span>CSV idxalı</span>
-                  <textarea class="admin-textarea" data-admin-csv-input rows="12" placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,foto url,mənbə url"></textarea>
+                  <textarea class="admin-textarea" data-admin-csv-input rows="12" placeholder="sku,barkod,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,foto url,mənbə url"></textarea>
                 </label>
                 <div class="admin-actions">
                   <button class="button button-primary" type="button" data-admin-import-csv>CSV idxalı</button>
@@ -947,6 +979,10 @@
                   <label class="admin-field"><span>Bitmə</span><input name="endsOn" type="date" /></label>
                   <label class="admin-field"><span>Sənəd URL-i</span><input name="documentUrl" type="url" placeholder="https://..." /></label>
                   <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="2" maxlength="2000"></textarea></label>
+                  <label class="admin-field admin-checkbox-field">
+                    <input name="legalConfirmed" type="checkbox" />
+                    <span>Sənəd və kommersiya şərtləri səlahiyyətli şəxs tərəfindən təsdiqlənib</span>
+                  </label>
                   <div class="admin-actions"><button class="button button-primary" type="submit">Müqaviləni saxla</button><button class="button button-outline" type="button" data-contract-clear>Təmizlə</button></div>
                 </form>
               </section>

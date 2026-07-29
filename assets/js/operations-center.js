@@ -52,12 +52,13 @@
     qs("[data-operations-kpis]").innerHTML = [
       ["Aktiv müqavilə", summary.activeContracts],
       ["Qaralama müqavilə", summary.draftContracts],
+      ["Aktivləşməyə hazır", summary.activationReadyContracts],
       ["Gözləyən hesablaşma", summary.pendingSettlements],
       ["Brüt dövriyyə", money(summary.settlementGross)],
       ["Komissiya", money(summary.commissionTotal)],
       ["Açıq çatdırılma", summary.openShipments],
       ["Yüksək risk", summary.highRiskEvents],
-      ["Backup kanalı", summary.backupReady ? "Hazırdır" : "Qurulmayıb"]
+      ["Backup kanalı", summary.backupChannel || (summary.backupReady ? "Hazırdır" : "Qurulmayıb")]
     ].map(([label, value]) => `<article><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></article>`).join("");
     qs("[data-contract-supplier]").innerHTML = options(qs("[data-contract-supplier]").value);
     qs("[data-settlement-supplier]").innerHTML = options(qs("[data-settlement-supplier]").value);
@@ -71,7 +72,12 @@
       <td data-label="Müqavilə"><strong>${escapeHtml(item.contractNumber)}</strong>${item.documentUrl ? `<small><a class="table-action" href="${escapeHtml(item.documentUrl)}" target="_blank" rel="noopener">Sənəd</a></small>` : ""}</td>
       <td data-label="Komissiya">${item.commissionRate}%<small>${item.paymentTermsDays} gün</small></td>
       <td data-label="Müddət">${date(item.startsOn)}<small>${item.endsOn ? date(item.endsOn) : "Müddətsiz"}</small></td>
-      <td data-label="Vəziyyət"><span class="status-pill" data-status="${escapeHtml(item.status)}">${escapeHtml(statusLabels[item.status] || item.status)}</span></td>
+      <td data-label="Vəziyyət">
+        <span class="status-pill" data-status="${escapeHtml(item.status)}">${escapeHtml(statusLabels[item.status] || item.status)}</span>
+        ${item.status !== "active" && !item.activationReadiness?.ready
+          ? `<small>${escapeHtml((item.activationReadiness?.missing || []).join(" · "))}</small>`
+          : ""}
+      </td>
       <td data-label="Əməliyyat"><button class="table-action" type="button" data-contract-edit="${escapeHtml(item.id)}">Redaktə et</button></td>
     </tr>`).join("") || '<tr><td colspan="6">Müqavilə yoxdur.</td></tr>';
 
@@ -163,6 +169,7 @@
     if (!item) return;
     ["id", "supplierId", "contractNumber", "status", "commissionRate", "paymentTermsDays", "startsOn", "endsOn", "documentUrl", "note"]
       .forEach((name) => { contractForm.elements[name].value = item[name] || ""; });
+    contractForm.elements.legalConfirmed.checked = false;
     contractForm.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   settlementForm.addEventListener("submit", async (event) => {

@@ -148,10 +148,13 @@ export const upsertProducts = async (products) => {
       sourceUrl,
       sourceLabel: text(product.sourceLabel, { max: 160 }),
       specs: stringList(product.specs),
-      extraData: { syncedFrom: "static-catalog" }
+      extraData: {
+        syncedFrom: "static-catalog",
+        ...(text(product.barcode, { max: 80 }) ? { barcode: text(product.barcode, { max: 80 }) } : {})
+      }
     };
   });
-  await query(
+  const saved = await query(
     `WITH incoming AS (
        SELECT * FROM jsonb_to_recordset($1::jsonb) AS x(
          id text, sku text, name text, slug text, brand text, "categoryId" text,

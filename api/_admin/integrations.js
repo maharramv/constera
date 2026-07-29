@@ -11,6 +11,7 @@ import {
   createPaymentCheckout,
   generateProviderEstimate,
   issueElectronicInvoice,
+  providerConfigurationStatus,
   providerReadiness
 } from "../_lib/provider-adapters.js";
 import { email, oneOf, text } from "../_lib/validation.js";
@@ -74,7 +75,13 @@ export default withApiErrors(async (req, res) => {
   if (req.method === "GET") {
     const transactionId = text(req.query.transactionId, { max: 160 });
     if (!transactionId) {
-      return sendJson(res, 200, { ok: true, data: { readiness: providerReadiness() } });
+      return sendJson(res, 200, {
+        ok: true,
+        data: {
+          readiness: providerReadiness(),
+          configuration: providerConfigurationStatus()
+        }
+      });
     }
     const user = await requireRole(req);
     const transaction = await readTransaction(transactionId);

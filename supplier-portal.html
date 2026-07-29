@@ -91,6 +91,10 @@
                   <input name="sku" type="text" placeholder="PNG-PENPLUS-15L" required />
                 </label>
                 <label class="admin-field">
+                  <span>Barkod / GTIN</span>
+                  <input name="barcode" type="text" inputmode="numeric" maxlength="80" placeholder="8691234567890" />
+                </label>
+                <label class="admin-field">
                   <span>Brend</span>
                   <input name="brand" type="text" placeholder="Penguin, EPO, Zink..." />
                 </label>
@@ -175,7 +179,7 @@
               data-supplier-price-csv
               aria-label="Təchizatçı qiymət siyahısı CSV mətni"
               rows="12"
-              placeholder="sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər"
+              placeholder="sku,barkod,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər"
             ></textarea>
             <div class="admin-actions">
               <button class="button button-outline" type="button" data-supplier-validate-file>Faylı yoxla</button>
@@ -261,10 +265,12 @@
               <div class="admin-actions">
                 <button class="button button-primary" type="submit">Feed-i saxla</button>
                 <button class="button button-outline" type="button" data-supplier-feed-clear>Formu təmizlə</button>
+                <a class="button button-outline" href="docs/csv-templates/supplier-feed.csv" download>CSV şablonu</a>
+                <a class="button button-outline" href="docs/csv-templates/supplier-feed.json" download>JSON şablonu</a>
               </div>
             </form>
             <p class="admin-import-status" data-supplier-feed-status role="status" aria-live="polite">
-              Feed yalnız kataloqdakı uyğun SKU-ların təklif qiyməti və stokunu yeniləyir.
+              Feed yalnız kataloqdakı uyğun SKU-ların təklif qiyməti və stokunu yeniləyir. İlk canlı yeniləmədən əvvəl önbaxışla uyğun SKU, mənbə və tarix sahələrini yoxla.
             </p>
             <div class="admin-v2-compact-list supplier-feed-list" data-supplier-feed-list></div>
           </div>

@@ -230,6 +230,7 @@ const getProductSearchRelevance = (product, value) => {
   const name = normalizeSearchText(product.name);
   const brand = normalizeSearchText(product.brand);
   const sku = normalizeSearchText(product.sku);
+  const barcode = normalizeSearchText(product.barcode);
   const subcategory = normalizeSearchText(product.subcategory);
   const category = normalizeSearchText(product.category);
   const specs = normalizeSearchText((product.specs || []).join(" "));
@@ -241,6 +242,8 @@ const getProductSearchRelevance = (product, value) => {
 
   if (sku === query) score += 240;
   else if (sku.includes(query)) score += 160;
+  if (barcode === query) score += 360;
+  else if (barcode.includes(query)) score += 190;
   if (brand === query) score += 180;
   else if (brand.includes(query)) score += 120;
   if (subcategory.includes(query)) score += 90;
@@ -250,6 +253,7 @@ const getProductSearchRelevance = (product, value) => {
     if (name.includes(token)) score += 70;
     if (brand.includes(token)) score += 45;
     if (sku.includes(token)) score += 40;
+    if (barcode.includes(token)) score += 55;
     if (subcategory.includes(token)) score += 30;
     if (specs.includes(token)) score += 15;
   });
@@ -554,6 +558,7 @@ const ensureAdminProductShape = (product, index = 0) => {
   return {
     id,
     sku,
+    barcode: product.barcode || "",
     name: product.name || "Yeni məhsul",
     brand: product.brand || "Brendsiz",
     category,
@@ -795,6 +800,11 @@ const renderCatalog = () => {
   const filterPanel = document.querySelector("[data-catalog-filter-panel]");
   const categoryToggle = document.querySelector("[data-catalog-category-toggle]");
   const categoryPanel = document.querySelector("[data-catalog-category-panel]");
+  const scannerOpen = document.querySelector("[data-catalog-scanner-open]");
+  const scannerDialog = document.querySelector("[data-catalog-scanner]");
+  const scannerClose = document.querySelector("[data-catalog-scanner-close]");
+  const scannerVideo = document.querySelector("[data-catalog-scanner-video]");
+  const scannerStatus = document.querySelector("[data-catalog-scanner-status]");
 
   if (!productGrid || !categoryList || !brandSelect || !searchInput) return;
 
@@ -814,6 +824,89 @@ const renderCatalog = () => {
 
   setupResponsivePanel(filterToggle, filterPanel, "Filtrləri göstər", "Filtrləri gizlət");
   setupResponsivePanel(categoryToggle, categoryPanel, "Kateqoriyaları göstər", "Kateqoriyaları gizlət");
+
+  let scannerStream = null;
+  let scannerFrame = 0;
+  let scannerRunning = false;
+  const scannerSupported = Boolean(
+    window.isSecureContext
+    && navigator.mediaDevices?.getUserMedia
+    && window.BarcodeDetector
+    && scannerDialog
+    && scannerVideo
+  );
+  if (scannerOpen) scannerOpen.hidden = !scannerSupported;
+
+  const stopScanner = () => {
+    scannerRunning = false;
+    window.cancelAnimationFrame(scannerFrame);
+    scannerFrame = 0;
+    scannerStream?.getTracks().forEach((track) => track.stop());
+    scannerStream = null;
+    if (scannerVideo) scannerVideo.srcObject = null;
+  };
+
+  const closeScanner = () => {
+    stopScanner();
+    if (scannerDialog?.open) scannerDialog.close();
+  };
+
+  const startScanner = async () => {
+    if (!scannerSupported || scannerRunning) return;
+    scannerDialog.showModal();
+    scannerStatus.textContent = "Kamera açılır...";
+    try {
+      scannerStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: "environment" } }
+      });
+      scannerVideo.srcObject = scannerStream;
+      await scannerVideo.play();
+      const preferredFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"];
+      const supportedFormats = typeof window.BarcodeDetector.getSupportedFormats === "function"
+        ? await window.BarcodeDetector.getSupportedFormats()
+        : preferredFormats;
+      const formats = preferredFormats.filter((format) => supportedFormats.includes(format));
+      const detector = new window.BarcodeDetector(formats.length ? { formats } : {});
+      scannerRunning = true;
+      scannerStatus.textContent = "Barkodu çərçivənin daxilində saxla.";
+      const detect = async () => {
+        if (!scannerRunning) return;
+        try {
+          const [result] = await detector.detect(scannerVideo);
+          const value = String(result?.rawValue || "").trim();
+          if (value) {
+            searchInput.value = value;
+            searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+            window.ConstEraTrack?.("search", {
+              entityType: "catalog",
+              entityId: activeCategory,
+              payload: { query: value.slice(0, 120), source: "camera_barcode" }
+            });
+            closeScanner();
+            searchInput.focus();
+            return;
+          }
+        } catch {
+          scannerStatus.textContent = "Kamera işləyir. Barkodu sabit saxla.";
+        }
+        scannerFrame = window.requestAnimationFrame(detect);
+      };
+      scannerFrame = window.requestAnimationFrame(detect);
+    } catch {
+      stopScanner();
+      scannerStatus.textContent = "Kamera icazəsi verilmədi və ya bu cihazda kamera açılmadı.";
+    }
+  };
+
+  scannerOpen?.addEventListener("click", startScanner);
+  scannerClose?.addEventListener("click", closeScanner);
+  scannerDialog?.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeScanner();
+  });
+  scannerDialog?.addEventListener("close", stopScanner);
+  window.addEventListener("pagehide", stopScanner, { once: true });
 
   const progressiveGrid = createProgressiveGrid(
     productGrid,
@@ -863,6 +956,7 @@ const renderCatalog = () => {
         product.name,
         product.brand,
         product.sku,
+        product.barcode,
         product.subcategory,
         product.package,
         ...(product.specs || [])
@@ -1055,6 +1149,7 @@ const renderCatalog = () => {
         product.category,
         product.subcategory,
         product.sku,
+        product.barcode,
         product.package,
         product.origin,
         product.supplier,
@@ -1847,7 +1942,7 @@ const renderProductDetail = () => {
       <article class="detail-panel glass">
         <span class="price-label">SKU</span>
         <strong>${escapeHtml(item.sku)}</strong>
-        <p>${escapeHtml(item.package)} · ${escapeHtml(item.origin)}</p>
+        <p>${item.barcode ? `Barkod: ${escapeHtml(item.barcode)} · ` : ""}${escapeHtml(item.package)} · ${escapeHtml(item.origin)}</p>
       </article>
       <article class="detail-panel glass">
         <span class="price-label">Təchizatçı</span>
@@ -2071,21 +2166,38 @@ const renderProductDetail = () => {
       "@type": "Product",
       name: item.name,
       sku: item.sku,
+      ...(item.barcode && /^[0-9]{8,14}$/.test(item.barcode) ? { gtin: item.barcode } : {}),
       description: document.querySelector('meta[name="description"]')?.content || item.name,
       category: `${category?.title || item.category} > ${item.subcategory}`,
       brand: { "@type": "Brand", name: item.brand },
       image: safeImage ? [new URL(safeImage, window.location.href).toString()] : undefined,
-      offers: amount === null ? undefined : {
+      offers: item.priceStatus !== "confirmed" || amount === null || amount <= 0 ? undefined : {
         "@type": "Offer",
         url: window.location.href,
         priceCurrency: item.priceCurrency || "AZN",
         price: amount,
+        itemCondition: "https://schema.org/NewCondition",
         availability: normalize(item.availability).includes("anbar")
           ? "https://schema.org/InStock"
           : "https://schema.org/PreOrder",
         seller: { "@type": "Organization", name: item.supplier || "ConstEra təchizatçısı" }
       }
     }, item.imageUrl);
+    injectEntitySchema("constera-product-breadcrumb-schema", {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Ana səhifə", item: new URL("/", window.location.href).toString() },
+        { "@type": "ListItem", position: 2, name: "Kataloq", item: new URL("/catalog.html", window.location.href).toString() },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: category?.title || item.category,
+          item: new URL(`/category.html?type=material&category=${encodeURIComponent(item.category)}`, window.location.href).toString()
+        },
+        { "@type": "ListItem", position: 4, name: item.name, item: window.location.href }
+      ]
+    });
   };
 
   if (product) paintProduct(product);
@@ -2708,6 +2820,7 @@ const productFromCsvRow = (row, index) => {
 
   return ensureAdminProductShape({
     sku,
+    barcode: getCsvValue(row, ["barkod", "barcode", "gtin", "ean"]),
     name,
     brand: getCsvValue(row, ["brend", "brand", "marka"]),
     category,
@@ -2733,6 +2846,7 @@ const escapeCsvValue = (value) => {
 const productsToCsv = (products) => {
   const headers = [
     "sku",
+    "barkod",
     "ad",
     "brend",
     "kateqoriya",
@@ -2748,6 +2862,7 @@ const productsToCsv = (products) => {
   ];
   const rows = products.map((product) => [
     product.sku,
+    product.barcode,
     product.name,
     product.brand,
     getCategory(product.category)?.title || product.category,
@@ -3049,6 +3164,7 @@ const renderAdmin = () => {
     const shaped = product.id ? ensureAdminProductShape(product) : product;
     setFormField("id", shaped.id);
     setFormField("sku", shaped.sku);
+    setFormField("barcode", shaped.barcode);
     setFormField("name", shaped.name);
     setFormField("brand", shaped.brand);
     setFormField("category", shaped.category || marketplace.categories[0]?.id || "");
@@ -5681,6 +5797,7 @@ const initSupplierPortal = () => {
       : "Sorğu əsasında";
     return ensureAdminProductShape({
       sku: data.get("sku"),
+      barcode: data.get("barcode"),
       name: data.get("name"),
       brand: data.get("brand"),
       category: data.get("category"),
@@ -5744,9 +5861,9 @@ const initSupplierPortal = () => {
   templateButton?.addEventListener("click", () => {
     if (!csvInput) return;
     csvInput.value = [
-      "sku,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər",
-      "PNG-PENPLUS-15L,Penguin Penplus 15 L,Penguin,Boya və örtüklər,Daxili boya,15 L,72.90 AZN,Penguin,Anbarda var,,https://www.penguin.az/,daxili boya; mat; 15 L",
-      "EPO-EPOMIX-25KG,EPO EPOMIX 25 kg,EPO,Tikinti kimyası,Epoksi sistemlər,25 kg,7.30 AZN,EPO,Stok sorğu ilə,,https://www.epo.com.az/,sement əsaslı qarışıq; 25 kg"
+      "sku,barkod,ad,brend,kateqoriya,subkateqoriya,qablaşdırma,qiymət,təchizatçı,mövcudluq,foto url,mənbə url,xüsusiyyətlər",
+      "PNG-PENPLUS-15L,,Penguin Penplus 15 L,Penguin,Boya və örtüklər,Daxili boya,15 L,72.90 AZN,Penguin,Anbarda var,,https://www.penguin.az/,daxili boya; mat; 15 L",
+      "EPO-EPOMIX-25KG,,EPO EPOMIX 25 kg,EPO,Tikinti kimyası,Epoksi sistemlər,25 kg,7.30 AZN,EPO,Stok sorğu ilə,,https://www.epo.com.az/,sement əsaslı qarışıq; 25 kg"
     ].join("\n");
     setStatus("CSV şablonu dolduruldu. Sətirləri öz qiymət siyahına uyğun dəyişə bilərsən.");
   });

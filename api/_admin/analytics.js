@@ -1,5 +1,5 @@
 import { requireRole } from "../_lib/auth.js";
-import { backupReadiness } from "../_lib/cloud-backup.js";
+import { backupDeliveryReadiness } from "../_lib/cloud-backup.js";
 import { query } from "../_lib/db.js";
 import { assertMethod, sendJson, withApiErrors } from "../_lib/http.js";
 import { providerReadiness } from "../_lib/provider-adapters.js";
@@ -22,6 +22,9 @@ export default withApiErrors(async (req, res) => {
     funnelRows,
     dailyRows,
     trustRows,
+    commercialRows,
+    merchantRows,
+    feedHealthRows,
     supplierPerformance
   ] = await Promise.all([
     query(`SELECT
@@ -284,6 +287,86 @@ export default withApiErrors(async (req, res) => {
         (SELECT count(*) FROM marketplace_reviews WHERE status = 'pending')::int AS reviews_pending,
         (SELECT coalesce(round(avg(rating)::numeric, 1), 0) FROM marketplace_reviews WHERE status = 'published') AS review_average`
     ),
+    query(
+      `SELECT
+        (SELECT count(*) FROM orders)::int AS order_count,
+        (SELECT coalesce(sum(total_amount), 0) FROM orders WHERE status <> 'cancelled')::numeric AS order_gross,
+        (SELECT coalesce(sum(total_amount), 0) FROM orders WHERE payment_status = 'paid')::numeric AS paid_gross,
+        (SELECT coalesce(avg(total_amount), 0) FROM orders WHERE status <> 'cancelled')::numeric AS average_order,
+        (SELECT count(*) FROM orders WHERE payment_status = 'paid')::int AS paid_orders,
+        (SELECT count(*) FROM orders WHERE status = 'completed')::int AS completed_orders,
+        (SELECT coalesce(sum(amount), 0) FROM refund_transactions WHERE status = 'completed')::numeric AS refund_amount,
+        (SELECT coalesce(sum(gross_amount), 0) FROM supplier_settlements WHERE status <> 'cancelled')::numeric AS settlement_gross,
+        (SELECT coalesce(sum(commission_amount), 0) FROM supplier_settlements WHERE status <> 'cancelled')::numeric AS commission_revenue,
+        (SELECT coalesce(sum(net_amount), 0) FROM supplier_settlements WHERE status <> 'cancelled')::numeric AS supplier_net`
+    ),
+    query(
+      `WITH real_products AS (
+        SELECT product.*
+          FROM products product
+         WHERE product.status = 'active'
+           AND lower(trim(coalesce(product.brand, ''))) <> 'constera sorğu'
+           AND lower(product.name) NOT LIKE '%məhsul qrupu%'
+           AND upper(product.sku) NOT LIKE '%RFQ%'
+      )
+      SELECT
+        count(*)::int AS total,
+        count(*) FILTER (WHERE price_status = 'confirmed' AND price_amount > 0)::int AS confirmed_price,
+        count(*) FILTER (
+          WHERE price_status = 'confirmed' AND price_amount > 0
+            AND price_verified_at >= now() - interval '30 days'
+        )::int AS fresh_price,
+        count(*) FILTER (WHERE stock_quantity IS NOT NULL)::int AS known_stock,
+        count(*) FILTER (WHERE source_url ~ '^https://')::int AS https_source,
+        count(*) FILTER (
+          WHERE EXISTS (
+            SELECT 1 FROM media_assets media
+             WHERE media.entity_type = 'product'
+               AND media.entity_id = real_products.id
+               AND media.status = 'active'
+               AND media.content_type LIKE 'image/%'
+               AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+               AND media.url ~ '^https://'
+          )
+        )::int AS licensed_media,
+        count(*) FILTER (
+          WHERE price_status = 'confirmed'
+            AND price_amount > 0
+            AND price_verified_at >= now() - interval '30 days'
+            AND stock_quantity IS NOT NULL
+            AND source_url ~ '^https://'
+            AND EXISTS (
+              SELECT 1 FROM media_assets media
+               WHERE media.entity_type = 'product'
+                 AND media.entity_id = real_products.id
+                 AND media.status = 'active'
+                 AND media.content_type LIKE 'image/%'
+                 AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                 AND media.url ~ '^https://'
+            )
+        )::int AS eligible,
+        (
+          SELECT coalesce(jsonb_object_agg(rights.license_type, rights.count), '{}'::jsonb)
+            FROM (
+              SELECT license_type, count(*)::int AS count
+                FROM media_assets
+               WHERE status = 'active' AND content_type LIKE 'image/%'
+               GROUP BY license_type
+            ) rights
+        ) AS media_rights
+      FROM real_products`
+    ),
+    query(
+      `SELECT
+        count(*) FILTER (WHERE active = true)::int AS total,
+        count(*) FILTER (
+          WHERE active = true AND last_status = 'completed'
+            AND last_run_at >= now() - interval '48 hours'
+        )::int AS healthy,
+        count(*) FILTER (WHERE active = true AND last_status = 'failed')::int AS failed,
+        count(*) FILTER (WHERE active = true AND next_run_at <= now())::int AS due
+      FROM supplier_feeds`
+    ),
     loadSupplierPerformance()
   ]);
   const counts = countsRows[0] || {};
@@ -322,6 +405,16 @@ export default withApiErrors(async (req, res) => {
   const qualityScore = completenessMaximum
     ? Math.max(0, Math.round(((completenessMaximum - completenessMissing) / completenessMaximum) * 100))
     : 100;
+  const funnelByType = new Map(funnelRows.map((item) => [item.event_type, Number(item.sessions || 0)]));
+  const productViewSessions = funnelByType.get("product_view") || 0;
+  const cartSessions = funnelByType.get("add_to_cart") || 0;
+  const checkoutSessions = funnelByType.get("checkout_start") || 0;
+  const orderSessions = funnelByType.get("order_created") || 0;
+  const conversionRate = (value, base) => base ? Math.round(value / base * 10_000) / 100 : 0;
+  const commercial = commercialRows[0] || {};
+  const merchant = merchantRows[0] || {};
+  const feedHealth = feedHealthRows[0] || {};
+  const backup = backupDeliveryReadiness();
 
   return sendJson(res, 200, {
     ok: true,
@@ -377,7 +470,44 @@ export default withApiErrors(async (req, res) => {
           sessions: Number(item.sessions || 0),
           orders: Number(item.orders || 0),
           rfqs: Number(item.rfqs || 0)
-        }))
+        })),
+        conversion: {
+          productViewSessions,
+          cartSessions,
+          checkoutSessions,
+          orderSessions,
+          viewToCart: conversionRate(cartSessions, productViewSessions),
+          cartToCheckout: conversionRate(checkoutSessions, cartSessions),
+          checkoutToOrder: conversionRate(orderSessions, checkoutSessions)
+        }
+      },
+      commercial: {
+        orderCount: Number(commercial.order_count || 0),
+        orderGross: Number(commercial.order_gross || 0),
+        paidGross: Number(commercial.paid_gross || 0),
+        averageOrder: Number(commercial.average_order || 0),
+        paidOrders: Number(commercial.paid_orders || 0),
+        completedOrders: Number(commercial.completed_orders || 0),
+        refundAmount: Number(commercial.refund_amount || 0),
+        settlementGross: Number(commercial.settlement_gross || 0),
+        commissionRevenue: Number(commercial.commission_revenue || 0),
+        supplierNet: Number(commercial.supplier_net || 0)
+      },
+      merchant: {
+        total: Number(merchant.total || 0),
+        confirmedPrice: Number(merchant.confirmed_price || 0),
+        freshPrice: Number(merchant.fresh_price || 0),
+        knownStock: Number(merchant.known_stock || 0),
+        httpsSource: Number(merchant.https_source || 0),
+        licensedMedia: Number(merchant.licensed_media || 0),
+        eligible: Number(merchant.eligible || 0),
+        mediaRights: merchant.media_rights || {}
+      },
+      feedHealth: {
+        total: Number(feedHealth.total || 0),
+        healthy: Number(feedHealth.healthy || 0),
+        failed: Number(feedHealth.failed || 0),
+        due: Number(feedHealth.due || 0)
       },
       trust: {
         supportTotal: Number(trustRows[0]?.support_total || 0),
@@ -400,7 +530,12 @@ export default withApiErrors(async (req, res) => {
         payment: providerReadiness().payment,
         electronicInvoice: providerReadiness().electronicInvoice,
         aiEstimate: providerReadiness().aiEstimate,
-        scheduledBackup: backupReadiness()
+        scheduledBackup: backup.ready
+      },
+      backup: {
+        ready: backup.ready,
+        channel: backup.channel,
+        label: backup.label
       },
       generatedAt: new Date().toISOString()
     }

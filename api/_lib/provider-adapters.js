@@ -55,6 +55,34 @@ export const providerReadiness = () => ({
   whatsapp: configuredHttpsEndpoint(process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured")
 });
 
+export const providerConfigurationStatus = () => {
+  const readiness = providerReadiness();
+  const items = [
+    ["payment", "Kart ödənişi", process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET, true],
+    ["electronicInvoice", "Elektron qaimə", process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET, true],
+    ["aiEstimate", "AI smeta", process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET, true],
+    ["email", "E-poçt", process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false],
+    ["whatsapp", "WhatsApp", process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false]
+  ];
+  return items.map(([key, label, endpoint, secret, secretRequired]) => {
+    let endpointValid = false;
+    try {
+      endpointValid = new URL(endpoint || "").protocol === "https:";
+    } catch {
+      endpointValid = false;
+    }
+    return {
+      key,
+      label,
+      ready: Boolean(readiness[key]),
+      endpointConfigured: Boolean(endpoint),
+      endpointValid,
+      secretConfigured: Boolean(secret),
+      secretRequired
+    };
+  });
+};
+
 export const createPaymentCheckout = async ({ transaction, order, returnUrl }) => {
   const payload = await postProvider({
     endpoint: process.env.PAYMENT_WEBHOOK_URL,

@@ -310,6 +310,50 @@ const initServiceWorker = () => {
   }, { once: true });
 };
 
+const initPwaExperience = () => {
+  const controls = document.createElement("aside");
+  controls.className = "pwa-controls glass";
+  controls.hidden = true;
+  controls.setAttribute("aria-live", "polite");
+  controls.innerHTML = `
+    <span data-pwa-connectivity></span>
+    <button class="button button-secondary" type="button" data-pwa-install hidden>Tətbiqi quraşdır</button>
+  `;
+  document.body.appendChild(controls);
+  const connectivity = controls.querySelector("[data-pwa-connectivity]");
+  const installButton = controls.querySelector("[data-pwa-install]");
+  let installPrompt = null;
+
+  const render = () => {
+    const offline = navigator.onLine === false;
+    connectivity.hidden = !offline;
+    connectivity.textContent = offline ? "Oflayn rejim: saxlanmış kataloq istifadə olunur." : "";
+    installButton.hidden = !installPrompt;
+    controls.hidden = !offline && !installPrompt;
+    controls.classList.toggle("is-offline", offline);
+  };
+
+  window.addEventListener("online", render);
+  window.addEventListener("offline", render);
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    render();
+  });
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    render();
+  });
+  installButton.addEventListener("click", async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => null);
+    installPrompt = null;
+    render();
+  });
+  render();
+};
+
 const initOfflineRetry = () => {
   document.querySelector("[data-offline-retry]")?.addEventListener("click", () => window.location.reload());
 };
@@ -368,6 +412,7 @@ initCounters();
 initContactForm();
 initSeoEnhancements();
 initServiceWorker();
+initPwaExperience();
 initOfflineRetry();
 initAnalytics();
 

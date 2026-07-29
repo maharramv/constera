@@ -1,5 +1,12 @@
 const CACHE_NAME = "constera-shell-v6";
 const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/catalog.html",
+  "/services.html",
+  "/packages.html",
+  "/rental.html",
+  "/product-detail.html",
   "/offline.html",
   "/assets/css/styles.css",
   "/assets/js/script.js",

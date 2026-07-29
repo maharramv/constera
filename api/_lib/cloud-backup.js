@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { gzipSync } from "node:zlib";
+import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
 const backupQueries = Object.freeze({
@@ -79,7 +80,7 @@ const backupQueries = Object.freeze({
   auditLogs: "SELECT * FROM audit_logs ORDER BY created_at"
 });
 
-export const backupReadiness = () => {
+const webhookBackupReady = () => {
   try {
     return Boolean(
       process.env.BACKUP_WEBHOOK_SECRET
@@ -89,6 +90,34 @@ export const backupReadiness = () => {
     return false;
   }
 };
+
+const privateBlobBackupReady = () => Boolean(
+  String(process.env.BACKUP_BLOB_READ_WRITE_TOKEN || "").trim()
+);
+
+export const backupDeliveryReadiness = () => {
+  if (webhookBackupReady()) {
+    return {
+      ready: true,
+      channel: "webhook",
+      label: "Şifrəli webhook"
+    };
+  }
+  if (privateBlobBackupReady()) {
+    return {
+      ready: true,
+      channel: "private_blob",
+      label: "Özəl Vercel Blob"
+    };
+  }
+  return {
+    ready: false,
+    channel: "none",
+    label: "Qurulmayıb"
+  };
+};
+
+export const backupReadiness = () => backupDeliveryReadiness().ready;
 
 export const buildCloudBackup = async () => {
   const entries = await Promise.all(
@@ -155,39 +184,64 @@ export const verifyCloudBackup = async ({ actorId = null } = {}) => {
 };
 
 export const deliverScheduledBackup = async () => {
-  if (!backupReadiness()) {
-    return { status: "skipped", reason: "Təhlükəsiz backup webhook-u qurulmayıb." };
+  const delivery = backupDeliveryReadiness();
+  if (!delivery.ready) {
+    return { status: "skipped", reason: "Təhlükəsiz backup kanalı qurulmayıb." };
   }
   const backup = await buildCloudBackup();
   const compressed = gzipSync(Buffer.from(JSON.stringify(backup)), { level: 9 });
-  let response;
-  try {
-    response = await fetch(process.env.BACKUP_WEBHOOK_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.BACKUP_WEBHOOK_SECRET}`,
-        "Content-Type": "application/json",
-        "Content-Encoding": "gzip",
-        "X-Constera-Backup-Id": backup.backupId
-      },
-      body: compressed,
-      signal: AbortSignal.timeout(25_000)
-    });
-  } catch {
-    throw new Error("Backup yaddaş xidməti ilə əlaqə qurulmadı.");
+  let deliveryDetails;
+  if (delivery.channel === "webhook") {
+    let response;
+    try {
+      response = await fetch(process.env.BACKUP_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.BACKUP_WEBHOOK_SECRET}`,
+          "Content-Type": "application/json",
+          "Content-Encoding": "gzip",
+          "X-Constera-Backup-Id": backup.backupId
+        },
+        body: compressed,
+        signal: AbortSignal.timeout(25_000)
+      });
+    } catch {
+      throw new Error("Backup yaddaş xidməti ilə əlaqə qurulmadı.");
+    }
+    if (!response.ok) throw new Error(`Backup yaddaş xidməti HTTP ${response.status} qaytardı.`);
+    deliveryDetails = { channel: delivery.channel };
+  } else {
+    const exportedAt = new Date(backup.exportedAt);
+    const pathname = [
+      "constera-backups",
+      String(exportedAt.getUTCFullYear()),
+      String(exportedAt.getUTCMonth() + 1).padStart(2, "0"),
+      `${backup.backupId}.json.gz`
+    ].join("/");
+    try {
+      await put(pathname, compressed, {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/gzip",
+        token: process.env.BACKUP_BLOB_READ_WRITE_TOKEN
+      });
+    } catch {
+      throw new Error("Özəl backup yaddaşına yazmaq mümkün olmadı.");
+    }
+    deliveryDetails = { channel: delivery.channel, pathname };
   }
-  if (!response.ok) throw new Error(`Backup yaddaş xidməti HTTP ${response.status} qaytardı.`);
   const summary = backupSummary(backup);
   await recordAudit({
     action: "scheduled_export",
     entityType: "backup",
     entityId: backup.backupId,
-    details: { compressedBytes: compressed.byteLength, counts: summary }
+    details: { compressedBytes: compressed.byteLength, counts: summary, ...deliveryDetails }
   });
   return {
     status: "sent",
     backupId: backup.backupId,
     compressedBytes: compressed.byteLength,
-    counts: summary
+    counts: summary,
+    ...deliveryDetails
   };
 };

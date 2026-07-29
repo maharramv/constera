@@ -34,6 +34,7 @@ const requiredProductionFiles = [
   "api/_admin/imports.js",
   "api/_admin/inventory.js",
   "api/_admin/media.js",
+  "api/_admin/merchant-feed.js",
   "api/_admin/notifications.js",
   "api/_admin/orders.js",
   "api/_admin/price-monitor.js",
@@ -53,6 +54,7 @@ const requiredProductionFiles = [
   "api/_lib/order-lifecycle.js",
   "api/_lib/order-operations.js",
   "api/_lib/provider-adapters.js",
+  "api/_lib/merchant-feed.js",
   "api/_lib/catalog-quality.js",
   "api/_lib/estimate-import.js",
   "api/_lib/supplier-performance.js",
@@ -139,6 +141,7 @@ const getAttribute = (tag, name) => {
 
 const getLocalReference = (value) => {
   if (!value || value.startsWith("#")) return null;
+  if (value.startsWith("/api/")) return null;
   if (/^(?:[a-z]+:)?\/\//i.test(value) || /^(?:mailto|tel|data|javascript):/i.test(value)) return null;
   return value.split("#")[0].split("?")[0];
 };

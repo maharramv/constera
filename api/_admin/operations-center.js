@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { requireRole } from "../_lib/auth.js";
-import { backupReadiness, verifyCloudBackup } from "../_lib/cloud-backup.js";
+import { backupDeliveryReadiness, verifyCloudBackup } from "../_lib/cloud-backup.js";
 import { calculateSettlementAmounts, settlementTransitionAllowed } from "../_lib/commercial-operations.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -38,6 +38,19 @@ const optionalHttpsUrl = (value, field) => {
   }
 };
 
+export const contractActivationReadiness = ({ documentUrl, startsOn, endsOn } = {}) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const missing = [];
+  if (!documentUrl) missing.push("İmzalanmış müqavilə sənədi");
+  if (!startsOn) missing.push("Başlanğıc tarixi");
+  else if (startsOn > today) missing.push("Başlanğıc tarixi hələ çatmayıb");
+  if (endsOn && endsOn < today) missing.push("Müqavilənin müddəti bitib");
+  return {
+    ready: missing.length === 0,
+    missing
+  };
+};
+
 const mapContract = (row) => ({
   id: row.id,
   supplierId: row.supplier_id,
@@ -51,7 +64,12 @@ const mapContract = (row) => ({
   documentUrl: row.document_url || "",
   note: row.note || "",
   activatedAt: row.activated_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  activationReadiness: contractActivationReadiness({
+    documentUrl: row.document_url,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on
+  })
 });
 
 const mapSettlement = (row) => ({
@@ -165,19 +183,25 @@ const loadOperations = async () => {
   const commission = settlements
     .filter((item) => item.status !== "cancelled")
     .reduce((sum, item) => sum + Number(item.commission_amount || 0), 0);
+  const backup = backupDeliveryReadiness();
+  const contractItems = contracts.map(mapContract);
   return {
     summary: {
       activeContracts: contracts.filter((item) => item.status === "active").length,
       draftContracts: contracts.filter((item) => item.status === "draft").length,
+      activationReadyContracts: contractItems.filter((item) =>
+        item.status !== "active" && item.activationReadiness.ready
+      ).length,
       pendingSettlements: settlements.filter((item) => ["draft", "approved"].includes(item.status)).length,
       settlementGross: Math.round(gross * 100) / 100,
       commissionTotal: Math.round(commission * 100) / 100,
       openShipments: fulfillments.filter((item) => !["delivered", "cancelled"].includes(item.status)).length,
       highRiskEvents: security.filter((item) => ["high", "critical"].includes(item.risk_level)).length,
-      backupReady: backupReadiness()
+      backupReady: backup.ready,
+      backupChannel: backup.label
     },
     suppliers: suppliers.map((item) => ({ id: item.id, name: item.name })),
-    contracts: contracts.map(mapContract),
+    contracts: contractItems,
     settlements: settlements.map(mapSettlement),
     fulfillments: fulfillments.map((item) => ({
       id: item.id,
@@ -240,7 +264,21 @@ const saveContract = async (user, body) => {
   if (endsOn && endsOn < startsOn) {
     throw new ApiError(400, "validation_error", "Bitmə tarixi başlanğıc tarixindən əvvəl ola bilməz.");
   }
+  const documentUrl = optionalHttpsUrl(body.documentUrl, "Müqavilə sənədi");
   if (status === "active") {
+    const readiness = contractActivationReadiness({ documentUrl, startsOn, endsOn });
+    const legalConfirmed = body.legalConfirmed === true || ["true", "on", "1"].includes(String(body.legalConfirmed));
+    if (!readiness.ready || !legalConfirmed) {
+      const missing = [
+        ...readiness.missing,
+        ...(!legalConfirmed ? ["Səlahiyyətli şəxsin hüquqi təsdiqi"] : [])
+      ];
+      throw new ApiError(
+        409,
+        "contract_activation_requirements",
+        `Müqavilə aktivləşdirilə bilməz: ${missing.join(", ")}.`
+      );
+    }
     await query(
       `UPDATE supplier_contracts
           SET status = 'suspended', updated_at = now()
@@ -284,7 +322,7 @@ const saveContract = async (user, body) => {
       Math.round(numberBetween(body.paymentTermsDays, 14, 0, 365, "Ödəniş müddəti")),
       startsOn,
       endsOn,
-      optionalHttpsUrl(body.documentUrl, "Müqavilə sənədi"),
+      documentUrl,
       text(body.note, { max: 2_000 }) || null,
       user.id
     ]

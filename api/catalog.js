@@ -6,6 +6,7 @@ import { categoryPublicId, categoryStorageId, parseLimit, parsePriceAmount, text
 const mapProduct = (row) => ({
   id: row.id,
   sku: row.sku,
+  barcode: row.extra_data?.barcode || "",
   name: row.name,
   brand: row.brand,
   category: categoryPublicId(row.category_id),
@@ -59,6 +60,7 @@ export default withApiErrors(async (req, res) => {
     lower(
       coalesce(p.name, '') || ' ' ||
       coalesce(p.sku, '') || ' ' ||
+      coalesce(p.extra_data->>'barcode', '') || ' ' ||
       coalesce(p.brand, '') || ' ' ||
       coalesce(p.subcategory, '') || ' ' ||
       coalesce(p.package_text, '') || ' ' ||
@@ -72,6 +74,7 @@ export default withApiErrors(async (req, res) => {
   const nameSearchExpression = `translate(lower(coalesce(p.name, '')), 'əğıöşüç', 'egiosuc')`;
   const brandSearchExpression = `translate(lower(coalesce(p.brand, '')), 'əğıöşüç', 'egiosuc')`;
   const skuSearchExpression = "lower(coalesce(p.sku, ''))";
+  const barcodeSearchExpression = "lower(coalesce(p.extra_data->>'barcode', ''))";
   let relevanceIndex = 0;
   if (queryText) {
     const normalizedQuery = foldCatalogSearchText(queryText);
@@ -160,6 +163,11 @@ export default withApiErrors(async (req, res) => {
       CASE
         WHEN ${skuSearchExpression} = $${relevanceIndex} THEN 500
         WHEN ${skuSearchExpression} LIKE '%' || $${relevanceIndex} || '%' THEN 260
+        ELSE 0
+      END +
+      CASE
+        WHEN ${barcodeSearchExpression} = $${relevanceIndex} THEN 700
+        WHEN ${barcodeSearchExpression} LIKE '%' || $${relevanceIndex} || '%' THEN 320
         ELSE 0
       END +
       CASE

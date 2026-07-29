@@ -13,6 +13,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/admin-quality.css" />
   </head>
   <body data-page="catalog">
     <div class="ambient ambient-one"></div>
@@ -87,6 +88,12 @@
                   aria-expanded="false"
                 />
               </label>
+              <button
+                class="button button-outline catalog-scan-button"
+                type="button"
+                data-catalog-scanner-open
+                hidden
+              >Barkodu skan et</button>
               <div
                 class="catalog-search-suggestions"
                 id="catalog-search-suggestions"
@@ -193,6 +200,23 @@
         </section>
       </main>
     </div>
+
+    <dialog class="admin-quality-dialog catalog-scanner-dialog" data-catalog-scanner>
+      <div class="admin-quality-dialog-header">
+        <div>
+          <p class="eyebrow">Kamera axtarışı</p>
+          <h2>Məhsul barkodunu skan et</h2>
+        </div>
+        <button class="admin-quality-dialog-close" type="button" data-catalog-scanner-close aria-label="Skaneri bağla" title="Bağla">×</button>
+      </div>
+      <div class="catalog-scanner-viewport">
+        <video data-catalog-scanner-video muted playsinline aria-label="Barkod kamerası"></video>
+        <span aria-hidden="true"></span>
+      </div>
+      <p class="admin-import-status" data-catalog-scanner-status role="status" aria-live="polite">
+        Barkodu çərçivənin daxilində saxla.
+      </p>
+    </dialog>
 
     <script src="assets/js/catalog-data.js"></script>
     <script src="assets/js/taxonomy-expansion.js"></script>

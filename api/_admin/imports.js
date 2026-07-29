@@ -64,6 +64,7 @@ const productFromRow = (row, index, categories) => {
     item: {
       id: `product-${slugify(sku)}`,
       sku,
+      barcode: text(readAliased(row, "barcode"), { max: 80 }).replace(/\s+/g, ""),
       name,
       brand: text(readAliased(row, "brand"), { max: 160 }) || "Brendsiz",
       category,

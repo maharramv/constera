@@ -9,11 +9,12 @@ import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, parse
 const productFields = `id, sku, name, slug, brand, category_id, subcategory, package_text, origin,
   supplier_id, supplier_name, price_amount, price_currency, price_text, price_note, price_status, availability,
   stock_quantity, minimum_order, price_verified_at, image_url, source_url, source_label,
-  specs, status, created_at, updated_at`;
+  specs, extra_data, status, created_at, updated_at`;
 
 const mapProduct = (row) => ({
   id: row.id,
   sku: row.sku,
+  barcode: row.extra_data?.barcode || "",
   name: row.name,
   slug: row.slug,
   brand: row.brand,
@@ -138,6 +139,9 @@ const normalizeProduct = (body) => {
     sourceUrl,
     sourceLabel: text(body.sourceLabel, { field: "Mənbə adı", max: 160 }),
     specs: stringList(body.specs),
+    extraData: {
+      barcode: text(body.barcode, { field: "Barkod", max: 80 }).replace(/\s+/g, "")
+    },
     status: oneOf(body.status, ["active", "draft", "archived"], "active", "Məhsul statusu")
   };
 };
@@ -286,11 +290,11 @@ export default withApiErrors(async (req, res) => {
          id, sku, name, slug, brand, category_id, subcategory, package_text, origin, supplier_name, supplier_id,
          price_amount, price_currency, price_text, price_note, price_status, availability,
          stock_quantity, minimum_order, price_verified_at,
-         image_url, source_url, source_label, specs, status, updated_at
+         image_url, source_url, source_label, specs, extra_data, status, updated_at
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
          $12, $13, $14, $15, $16, $17, $18, $19, $20,
-         $21, $22, $23, $24::jsonb, $25, now()
+         $21, $22, $23, $24::jsonb, $25::jsonb, $26, now()
        )
        ON CONFLICT (id) DO UPDATE SET
          sku = EXCLUDED.sku, name = EXCLUDED.name, slug = EXCLUDED.slug, brand = EXCLUDED.brand,
@@ -302,14 +306,17 @@ export default withApiErrors(async (req, res) => {
          availability = EXCLUDED.availability, stock_quantity = EXCLUDED.stock_quantity,
          minimum_order = EXCLUDED.minimum_order, price_verified_at = EXCLUDED.price_verified_at,
          image_url = EXCLUDED.image_url, source_url = EXCLUDED.source_url,
-         source_label = EXCLUDED.source_label, specs = EXCLUDED.specs, status = EXCLUDED.status, updated_at = now()
+         source_label = EXCLUDED.source_label, specs = EXCLUDED.specs,
+         extra_data = products.extra_data || EXCLUDED.extra_data,
+         status = EXCLUDED.status, updated_at = now()
        RETURNING ${productFields}`,
       [
         item.id, item.sku, item.name, item.slug, item.brand, item.category, item.subcategory,
         item.packageText || null, item.origin || null, item.supplierName || null, supplier?.id || null, item.priceAmount,
         item.priceCurrency, item.priceText, item.priceNote || null, item.priceStatus, item.availability,
         item.stockQuantity, item.minimumOrder, item.priceVerifiedAt,
-        item.imageUrl || null, item.sourceUrl || null, item.sourceLabel || null, JSON.stringify(item.specs), item.status
+        item.imageUrl || null, item.sourceUrl || null, item.sourceLabel || null,
+        JSON.stringify(item.specs), JSON.stringify(item.extraData), item.status
       ]
     );
     const confirmedPriceChanged = item.priceStatus === "confirmed" && (

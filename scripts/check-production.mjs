@@ -8,6 +8,7 @@ const checks = [
   { path: "/api/support", status: 401, json: (body) => body.error?.code === "authentication_required" },
   { path: "/api/supplier-performance", status: 401, json: (body) => body.error?.code === "authentication_required" },
   { path: "/api/catalog-quality", status: 401, json: (body) => body.error?.code === "authentication_required" },
+  { path: "/api/merchant-feed", status: 200, includes: "<rss" },
   { path: "/", status: 200, includes: 'lang="az"' },
   { path: "/catalog.html", status: 200, includes: "ConstEra" },
   { path: "/services.html", status: 200, includes: "ConstEra" },

@@ -318,6 +318,62 @@
       <div><span>${escapeHtml(integrationLabels[key] || key)}</span><strong class="${active ? "is-ready" : "is-pending"}">${active ? "Hazır" : "Qurulmayıb"}</strong></div>
     `).join("");
 
+    const money = (value) => Number(value || 0).toLocaleString("az-AZ", {
+      style: "currency",
+      currency: "AZN",
+      maximumFractionDigits: 2
+    });
+    const commercial = data.commercial || {};
+    const commercialNode = qs("[data-admin-v2-commercial]");
+    if (commercialNode) commercialNode.innerHTML = [
+      [money(commercial.orderGross), "sifariş dövriyyəsi"],
+      [money(commercial.paidGross), "ödənilmiş dövriyyə"],
+      [money(commercial.averageOrder), "orta sifariş"],
+      [money(commercial.commissionRevenue), "hesablanmış komissiya"],
+      [money(commercial.supplierNet), "təchizatçıya xalis"],
+      [money(commercial.refundAmount), "geri ödəniş"],
+      [commercial.paidOrders, "ödənilmiş sifariş"],
+      [commercial.completedOrders, "tamamlanmış sifariş"]
+    ].map(([value, label]) => `<article><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></article>`).join("");
+
+    const conversion = data.funnel?.conversion || {};
+    const conversionNode = qs("[data-admin-v2-conversion]");
+    if (conversionNode) conversionNode.innerHTML = [
+      ["Məhsul baxışı → səbət", conversion.viewToCart, conversion.productViewSessions, conversion.cartSessions],
+      ["Səbət → checkout", conversion.cartToCheckout, conversion.cartSessions, conversion.checkoutSessions],
+      ["Checkout → sifariş", conversion.checkoutToOrder, conversion.checkoutSessions, conversion.orderSessions]
+    ].map(([label, percent, start, finish]) =>
+      `<div><span><strong>${escapeHtml(label)}</strong><small>${Number(finish || 0)} / ${Number(start || 0)} sessiya · ${Number(percent || 0)}%</small></span><progress max="100" value="${Math.min(100, Number(percent || 0))}" aria-label="${escapeHtml(label)}: ${Number(percent || 0)}%"></progress></div>`
+    ).join("");
+
+    const merchant = data.merchant || {};
+    const merchantTotal = Number(merchant.total || 0);
+    setText(
+      "[data-admin-v2-merchant-summary]",
+      `${Number(merchant.eligible || 0).toLocaleString("az-AZ")} / ${merchantTotal.toLocaleString("az-AZ")} məhsul feed üçün tam uyğundur.`
+    );
+    const merchantNode = qs("[data-admin-v2-merchant]");
+    if (merchantNode) merchantNode.innerHTML = [
+      ["Təsdiqli qiymət", merchant.confirmedPrice],
+      ["30 günlük qiymət", merchant.freshPrice],
+      ["Məlum stok", merchant.knownStock],
+      ["HTTPS mənbə", merchant.httpsSource],
+      ["Hüququ təsdiqli media", merchant.licensedMedia],
+      ["Tam uyğun", merchant.eligible]
+    ].map(([label, complete]) => {
+      const percent = merchantTotal ? Math.round(Number(complete || 0) / merchantTotal * 100) : 100;
+      return `<div><span><strong>${escapeHtml(label)}</strong><small>${Number(complete || 0).toLocaleString("az-AZ")} / ${merchantTotal.toLocaleString("az-AZ")} · ${percent}%</small></span><progress max="100" value="${percent}" aria-label="${escapeHtml(label)}: ${percent}%"></progress></div>`;
+    }).join("");
+
+    const feedHealth = data.feedHealth || {};
+    const feedHealthNode = qs("[data-admin-v2-feed-health]");
+    if (feedHealthNode) feedHealthNode.innerHTML = [
+      [feedHealth.total, "aktiv feed"],
+      [feedHealth.healthy, "sağlam"],
+      [feedHealth.due, "iş vaxtı çatıb"],
+      [feedHealth.failed, "xəta"]
+    ].map(([value, label]) => `<article><strong>${Number(value || 0).toLocaleString("az-AZ")}</strong><span>${escapeHtml(label)}</span></article>`).join("");
+
     const activity = qs("[data-admin-v2-activity]");
     if (activity) activity.innerHTML = (data.recentActivity || []).map((item) => `
       <article><span>${escapeHtml(item.actor_name || "Sistem")}</span><strong>${escapeHtml(actionLabels[item.action] || item.action)}</strong><small>${escapeHtml(item.entity_type)} · ${formatDate(item.created_at, true)}</small></article>

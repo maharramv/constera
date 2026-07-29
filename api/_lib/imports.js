@@ -96,6 +96,7 @@ export const firstWorksheetMatrix = (workbookResult) => {
 const aliases = {
   id: ["id", "kod", "code", "xidmetkodu", "xidmətkodu", "paketkodu", "icarekodu", "icarəkodu"],
   sku: ["sku", "kod", "mehsulkodu", "məhsulkodu"],
+  barcode: ["barkod", "barcode", "gtin", "ean", "eankodu", "eankodu"],
   supplierSku: ["techizatciskusu", "təchizatçıskusu", "suppliersku", "suppliercode"],
   name: ["ad", "name", "mehsul", "məhsul", "mehsuladi", "məhsuladı"],
   brand: ["brend", "brand"],
