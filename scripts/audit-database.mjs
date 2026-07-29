@@ -11,11 +11,15 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM categories WHERE kind = 'material' AND parent_id IS NULL AND active = true) AS material_categories,
     (SELECT count(*)::int FROM categories WHERE kind = 'material' AND parent_id IS NOT NULL AND active = true) AS material_subcategories,
     (SELECT count(*)::int FROM products WHERE status = 'active') AS products,
+    (SELECT count(*)::int FROM product_offers WHERE status = 'active') AS product_offers,
     (SELECT count(*)::int FROM suppliers WHERE status <> 'Arxiv') AS suppliers,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'service' AND status = 'active') AS services,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'package' AND status = 'active') AS packages,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
     (SELECT count(*)::int FROM orders) AS orders,
+    (SELECT count(*)::int FROM delivery_quotes WHERE status = 'accepted') AS accepted_delivery_quotes,
+    (SELECT count(*)::int FROM procurement_requests) AS procurement_requests,
+    (SELECT count(*)::int FROM procurement_requests WHERE status = 'pending') AS pending_procurement_requests,
     (SELECT count(*)::int FROM orders WHERE offer_id IS NOT NULL) AS rfq_converted_orders,
     (SELECT count(*)::int FROM orders WHERE tender_bid_id IS NOT NULL) AS tender_converted_orders,
     (SELECT count(*)::int FROM order_documents) AS order_documents,
@@ -113,6 +117,32 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM products p
       JOIN suppliers s ON s.id = p.supplier_id
       WHERE lower(coalesce(p.supplier_name, '')) <> lower(s.name)) AS supplier_product_scope_mismatch,
+    (SELECT count(*)::int FROM product_offers offer
+      WHERE offer.status = 'active' AND offer.price_status = 'confirmed'
+        AND (offer.unit_price IS NULL OR NULLIF(offer.source_url, '') IS NULL)) AS invalid_confirmed_product_offers,
+    (SELECT count(*)::int FROM order_items item
+      JOIN product_offers offer ON offer.id = item.product_offer_id
+      WHERE offer.product_id <> item.product_id
+         OR offer.supplier_id <> item.supplier_id) AS mismatched_order_product_offers,
+    (SELECT count(*)::int FROM delivery_quotes quote
+      JOIN orders orders ON orders.id = quote.order_id
+      WHERE quote.status = 'accepted'
+        AND orders.delivery_amount IS DISTINCT FROM quote.amount) AS delivery_quote_amount_mismatch,
+    (SELECT count(*)::int FROM orders orders
+      WHERE orders.approval_status = 'pending'
+        AND NOT EXISTS (
+          SELECT 1 FROM procurement_requests request
+          WHERE request.order_id = orders.id AND request.status = 'pending'
+        )) AS pending_orders_without_procurement,
+    (SELECT count(*)::int FROM procurement_requests request
+      JOIN orders orders ON orders.id = request.order_id
+      WHERE request.status <> orders.approval_status
+        AND NOT (request.status = 'cancelled' AND orders.approval_status = 'not_required')) AS procurement_order_status_mismatch,
+    (SELECT count(*)::int FROM procurement_requests request
+      WHERE request.approved_count <> (
+        SELECT count(*) FROM procurement_decisions decision
+        WHERE decision.request_id = request.id AND decision.decision = 'approved'
+      )) AS procurement_approval_count_mismatch,
     (SELECT count(*)::int FROM (
       SELECT rfq_id FROM offers WHERE status = 'accepted'
       GROUP BY rfq_id HAVING count(*) > 1
@@ -150,6 +180,11 @@ const [integrity] = await query(`
 const [schema] = await query(`
   SELECT
     to_regclass('public.orders') IS NOT NULL AS orders_ready,
+    to_regclass('public.product_offers') IS NOT NULL AS product_offers_ready,
+    to_regclass('public.logistics_zones') IS NOT NULL AS logistics_zones_ready,
+    to_regclass('public.delivery_quotes') IS NOT NULL AS delivery_quotes_ready,
+    to_regclass('public.procurement_requests') IS NOT NULL AS procurement_requests_ready,
+    to_regclass('public.procurement_decisions') IS NOT NULL AS procurement_decisions_ready,
     to_regclass('public.order_items') IS NOT NULL AS order_items_ready,
     to_regclass('public.order_status_history') IS NOT NULL AS order_history_ready,
     to_regclass('public.order_documents') IS NOT NULL AS order_documents_ready,
@@ -181,7 +216,9 @@ const [schema] = await query(`
       AND to_regclass('public.orders_tender_bid_unique') IS NOT NULL AS tender_order_scope_ready,
     to_regclass('public.tender_bids_one_accepted_per_tender_idx') IS NOT NULL AS tender_selection_ready,
     to_regclass('public.crm_leads_source_unique') IS NOT NULL AS crm_source_scope_ready,
-    to_regclass('public.order_items_supplier_idx') IS NOT NULL AS order_supplier_scope_ready
+    to_regclass('public.order_items_supplier_idx') IS NOT NULL AS order_supplier_scope_ready,
+    to_regclass('public.product_offers_product_idx') IS NOT NULL AS product_offer_search_ready,
+    to_regclass('public.procurement_requests_company_idx') IS NOT NULL AS procurement_scope_ready
 `);
 
 const minimums = {

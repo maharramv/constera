@@ -2,6 +2,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import { requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
+import { priceEstimateWithCatalog } from "../_lib/estimate-catalog.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { readOrderDetails, recordOrderHistory } from "../_lib/order-lifecycle.js";
 import {
@@ -172,6 +173,19 @@ export default withApiErrors(async (req, res) => {
   }
 
   assertSameOrigin(req);
+  if (action === "catalog-estimate") {
+    const rows = Array.isArray(body.rows) ? body.rows.slice(0, 30) : [];
+    if (!rows.length) throw new ApiError(400, "estimate_rows_required", "Smeta üçün material sətirləri tələb olunur.");
+    const encoded = JSON.stringify(rows);
+    if (Buffer.byteLength(encoded, "utf8") > 100_000) {
+      throw new ApiError(413, "estimate_too_large", "Kataloq qiymətləndirilməsi maksimum 100 KB ola bilər.");
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      data: await priceEstimateWithCatalog(rows)
+    });
+  }
+
   if (action === "create-payment") {
     const user = await requireRole(req);
     const orderId = text(body.orderId, { field: "Sifariş ID-si", required: true, max: 160 });
@@ -182,6 +196,9 @@ export default withApiErrors(async (req, res) => {
     }
     if (order.status === "cancelled" || order.paymentStatus === "paid") {
       throw new ApiError(409, "order_not_payable", "Bu sifariş üçün yeni ödəniş yaratmaq mümkün deyil.");
+    }
+    if (order.approvalStatus !== "not_required" && order.approvalStatus !== "approved") {
+      throw new ApiError(409, "procurement_approval_required", "Kart ödənişindən əvvəl satınalma təsdiqi tamamlanmalıdır.");
     }
     if (order.hasPendingPrice || order.totalAmount === null || order.totalAmount <= 0) {
       throw new ApiError(409, "order_price_pending", "Kart ödənişindən əvvəl sifarişin yekun məbləği təsdiqlənməlidir.");

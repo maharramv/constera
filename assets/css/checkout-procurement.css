@@ -1,0 +1,33 @@
+.procurement-fields {
+  display: grid;
+  gap: 12px;
+  border-block: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+.admin-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.admin-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--gold);
+}
+
+.procurement-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .procurement-field-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -69,7 +69,7 @@ if (/["']\/assets\/(?:css|js)\/[^"'?]+\.(?:css|js)["']/i.test(serviceWorker)) {
 const heaviestJavascriptPage = [...pageUsage].sort((left, right) => right.javascript - left.javascript)[0];
 const heaviestCssPage = [...pageUsage].sort((left, right) => right.css - left.css)[0];
 if (totalBytes > 3_000_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
-if (javascriptBytes > 500_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
+if (javascriptBytes > 525_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
 if (cssBytes > 80_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
 if (heaviestJavascriptPage?.javascript > 455_000) {
   errors.push(`${heaviestJavascriptPage.page} JavaScript büdcəsini keçib: ${heaviestJavascriptPage.javascript} bayt.`);

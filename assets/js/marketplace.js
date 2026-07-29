@@ -84,7 +84,11 @@ const adminBackupKeys = [
 ];
 
 const getCart = () => storage.read(cartStorageKey)
-  .map((item) => ({ id: String(item?.id || ""), quantity: Number(item?.quantity || 1) }))
+  .map((item) => ({
+    id: String(item?.id || ""),
+    quantity: Number(item?.quantity || 1),
+    offerId: String(item?.offerId || "")
+  }))
   .filter((item) => item.id && Number.isFinite(item.quantity) && item.quantity > 0);
 const saveCart = (items) => storage.write(cartStorageKey, items.slice(0, 100));
 const getCartCount = () => getCart().reduce((sum, item) => sum + item.quantity, 0);
@@ -1786,6 +1790,9 @@ const renderProductDetail = () => {
     const stockText = item.stockQuantity === null || item.stockQuantity === "" || item.stockQuantity === undefined
       ? item.availability
       : `${Number(item.stockQuantity).toLocaleString("az-AZ")} vahid`;
+    const productOffers = Array.isArray(item.offers) ? item.offers : [];
+    const preferredOffer = item.preferredOffer || productOffers[0] || null;
+    const cartEntry = getCart().find((entry) => entry.id === item.id);
 
     document.title = `${item.name} | ConstEra Kataloq`;
     updatePageDescription(`${item.name}: ${item.brand}, ${item.subcategory}, ${item.price}. ConstEra kataloqunda qiymət sorğusu göndər və təchizatçı məlumatını yoxla.`);
@@ -1809,7 +1816,7 @@ const renderProductDetail = () => {
         </div>
         <p class="hero-text">${escapeHtml(item.package || "Qablaşdırma sorğu ilə")} · ${escapeHtml(item.origin || "Mənşə dəqiqləşdirilir")} · ${escapeHtml(item.availability || "Stok sorğu ilə")}</p>
         <div class="detail-actions">
-          <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}">${getCart().some((entry) => entry.id === item.id) ? "Səbətdədir" : "Səbətə əlavə et"}</button>
+          <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}" data-offer-id="${escapeAttr(cartEntry?.offerId || preferredOffer?.id || "")}">${cartEntry ? "Səbətdədir" : "Səbətə əlavə et"}</button>
           <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(item.id)}">Sorğu göndər</a>
           <a class="button button-outline" href="catalog.html">Kataloqa qayıt</a>
           ${source}
@@ -1840,6 +1847,41 @@ const renderProductDetail = () => {
         <p>${escapeHtml(item.sourceLabel || (sourceUrl ? "Mənbəli məlumat" : "Mənbə gözlənilir"))}</p>
       </article>
     </div>
+
+    ${productOffers.length ? `
+      <section class="detail-data-section product-offer-section" aria-labelledby="product-offers-title">
+        <div class="market-section-heading">
+          <div>
+            <p class="eyebrow">Təchizatçı müqayisəsi</p>
+            <h2 id="product-offers-title">${productOffers.length} aktiv təklif</h2>
+          </div>
+          <span class="data-badge">Qiymət · stok · müddət</span>
+        </div>
+        <div class="product-offer-grid">
+          ${productOffers.map((offer, index) => {
+            const isSelected = (cartEntry?.offerId || preferredOffer?.id) === offer.id;
+            const offerPrice = offer.priceStatus === "confirmed" && offer.unitPrice !== null
+              ? Number(offer.unitPrice).toLocaleString("az-AZ", { style: "currency", currency: offer.currency || "AZN" })
+              : "Sorğu əsasında";
+            const offerStock = offer.stockQuantity === null ? "Stok sorğu ilə" : `${Number(offer.stockQuantity).toLocaleString("az-AZ")} vahid`;
+            return `<article class="product-offer-card ${isSelected ? "is-selected" : ""}" data-product-offer-card="${escapeAttr(offer.id)}">
+              <header>
+                <div><strong>${escapeHtml(offer.supplier || "Təchizatçı")}</strong><span>${escapeHtml(offer.supplierRegion || "Azərbaycan")}</span></div>
+                ${index === 0 ? '<span class="mini-badge">Uyğun təklif</span>' : ""}
+              </header>
+              <div class="product-offer-price"><strong>${escapeHtml(offerPrice)}</strong><small>${escapeHtml(offer.supplierSku || item.sku)}</small></div>
+              <dl>
+                <div><dt>Stok</dt><dd>${escapeHtml(offerStock)}</dd></div>
+                <div><dt>Minimum</dt><dd>${offer.minimumOrder === null ? "Sorğu ilə" : escapeHtml(Number(offer.minimumOrder).toLocaleString("az-AZ"))}</dd></div>
+                <div><dt>Təslimat</dt><dd>${offer.leadTimeDays === null ? "Dəqiqləşdirilir" : `${escapeHtml(offer.leadTimeDays)} gün`}</dd></div>
+              </dl>
+              <button class="button ${isSelected ? "button-primary" : "button-outline"}" type="button" data-offer-choice="${escapeAttr(offer.id)}">${isSelected ? "Seçilib" : "Bu təklifi seç"}</button>
+            </article>`;
+          }).join("")}
+        </div>
+        <p class="checkout-summary-note">Qiymət və stok sifariş göndərilərkən serverdə yenidən yoxlanılır.</p>
+      </section>
+    ` : ""}
 
     <div class="detail-two-column">
       <article class="detail-panel glass">
@@ -1897,6 +1939,28 @@ const renderProductDetail = () => {
         if (!mainImage) return;
         mainImage.src = button.dataset.galleryImage;
         container.querySelectorAll("[data-gallery-image]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+    container.querySelectorAll("[data-offer-choice]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const offerId = button.dataset.offerChoice;
+        container.querySelectorAll("[data-product-offer-card]").forEach((card) => {
+          const selected = card.dataset.productOfferCard === offerId;
+          card.classList.toggle("is-selected", selected);
+          const choice = card.querySelector("[data-offer-choice]");
+          choice.className = `button ${selected ? "button-primary" : "button-outline"}`;
+          choice.textContent = selected ? "Seçilib" : "Bu təklifi seç";
+        });
+        const cartButton = container.querySelector('[data-action="cart"]');
+        if (cartButton) {
+          cartButton.dataset.offerId = offerId;
+          const existing = getCart().some((entry) => entry.id === item.id);
+          if (existing) {
+            saveCart(getCart().map((entry) => entry.id === item.id ? { ...entry, offerId } : entry));
+            cartButton.textContent = "Səbətdə yeniləndi";
+            updateCartIndicators();
+          }
+        }
       });
     });
     const amount = parseProductPriceAmount(item);
@@ -4757,6 +4821,33 @@ const initAiSmeta = () => {
       createdAt: new Date().toISOString()
     };
   };
+  const applyCatalogPricing = (estimate, pricing) => {
+    const pricingByKey = new Map((pricing.rows || []).map((row) => [row.key, row]));
+    const rows = estimate.rows.map((row) => {
+      const catalog = pricingByKey.get(row.key) || null;
+      const selected = catalog?.selected || null;
+      const products = selected && !(row.products || []).some((product) => product.id === selected.id)
+        ? [selected, ...(row.products || [])].slice(0, 3)
+        : row.products || [];
+      return { ...row, products, catalog };
+    });
+    const materialSubtotal = Number(pricing.materialSubtotal || 0);
+    const laborAmount = Math.round(materialSubtotal * Number(estimate.laborPercent || 0)) / 100;
+    const deliveryAmount = Math.round(materialSubtotal * Number(estimate.deliveryPercent || 0)) / 100;
+    const riskAmount = Math.round(materialSubtotal * Number(estimate.riskReserve || 0)) / 100;
+    return {
+      ...estimate,
+      rows,
+      catalogPricing: {
+        ...pricing,
+        materialSubtotal,
+        laborAmount,
+        deliveryAmount,
+        riskAmount,
+        estimatedTotal: Math.round((materialSubtotal + laborAmount + deliveryAmount + riskAmount) * 100) / 100
+      }
+    };
+  };
   const estimateToRfq = (estimate) => {
     const summary = estimate.rows.map((row) => `${row.title}: ${formatQty(row.quantity)} ${row.unit}`).join("; ");
     const rfq = {
@@ -4785,7 +4876,7 @@ const initAiSmeta = () => {
   };
   const exportEstimate = (estimate) => {
     if (!estimate) return;
-    const headers = ["kateqoriya", "material", "baza miqdar", "ehtiyatli miqdar", "vahid", "etibar", "ehtiyat %", "tövsiyə olunan məhsullar"];
+    const headers = ["kateqoriya", "material", "baza miqdar", "ehtiyatli miqdar", "vahid", "etibar", "ehtiyat %", "seçilmiş kataloq məhsulu", "paket sayı", "məbləğ", "tövsiyə olunan məhsullar"];
     const rows = estimate.rows.map((row) => [
       row.category,
       row.title,
@@ -4794,6 +4885,9 @@ const initAiSmeta = () => {
       row.unit,
       row.confidence,
       row.wastePercent || estimate.wastePercent || 0,
+      row.catalog?.selected?.name || "",
+      row.catalog?.packageCount ?? "",
+      row.catalog?.lineTotal ?? "",
       row.products.map((product) => `${product.name} (${product.price || "Sorğu əsasında"})`).join("; ")
     ].map(escapeCsvValue).join(","));
     const csv = [headers.join(","), ...rows].join("\n");
@@ -4835,6 +4929,12 @@ const initAiSmeta = () => {
         <span class="data-badge">${escapeHtml(estimate.scopeLabel)}</span>
       </div>
       <div class="ai-smeta-summary">
+        ${estimate.catalogPricing ? `
+          <article><strong>${formatMoney(estimate.catalogPricing.materialSubtotal)}</strong><span>qiymətlənən material</span></article>
+          <article><strong>${escapeHtml(estimate.catalogPricing.coveragePercent)}%</strong><span>kataloq əhatəsi</span></article>
+          <article><strong>${formatMoney(estimate.catalogPricing.laborAmount)}</strong><span>işçilik ehtiyatı</span></article>
+          <article><strong>${formatMoney(estimate.catalogPricing.estimatedTotal)}</strong><span>ilkin yekun</span></article>
+        ` : ""}
         <article><strong>${escapeHtml(estimate.finishLabel)}</strong><span>səviyyə</span></article>
         <article><strong>${escapeHtml(estimate.floors)}</strong><span>mərtəbə</span></article>
         <article><strong>${escapeHtml(estimate.riskReserve)}%</strong><span>ehtiyat</span></article>
@@ -4851,7 +4951,9 @@ const initAiSmeta = () => {
             <div>
               <span class="status-pill">${escapeHtml(row.category)}</span>
               <h3>${escapeHtml(row.title)}</h3>
-              <p>Baza: ${formatQty(row.baseQuantity || row.quantity)} ${escapeHtml(row.unit)} · ehtiyatla: ${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)} · Qiymət sorğusu ilə dəqiqləşdirilməlidir</p>
+              <p>Baza: ${formatQty(row.baseQuantity || row.quantity)} ${escapeHtml(row.unit)} · ehtiyatla: ${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)}${row.catalog?.lineTotal !== null && row.catalog?.lineTotal !== undefined
+                ? ` · ${formatMoney(row.catalog.lineTotal)} · ${escapeHtml(row.catalog.packageCount)} paket`
+                : " · Qiymət sorğusu ilə dəqiqləşdirilməlidir"}</p>
             </div>
             <div class="ai-smeta-products">
               ${row.products.length ? row.products.map((product) => `
@@ -4887,6 +4989,26 @@ const initAiSmeta = () => {
     renderEstimate(currentEstimate);
     renderHistory();
     if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı. Sorğu qaralaması yarada bilərsən.`;
+    if (window.ConstEraAPI?.catalogEstimate) {
+      try {
+        if (status) status.textContent = "Material siyahısı hazırdır. Təsdiqli kataloq qiymətləri hesablanır...";
+        const result = await window.ConstEraAPI.catalogEstimate(currentEstimate.rows.map((row) => ({
+          key: row.key,
+          title: row.title,
+          quantity: row.quantity,
+          unit: row.unit,
+          keywords: row.keywords,
+          productIds: (row.products || []).map((product) => product.id)
+        })));
+        currentEstimate = applyCatalogPricing(currentEstimate, result.data || {});
+        writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+        renderEstimate(currentEstimate, false);
+        renderHistory();
+        if (status) status.textContent = `${currentEstimate.catalogPricing.pricedRows}/${currentEstimate.catalogPricing.totalRows} material qrupu təsdiqli kataloq qiyməti ilə hesablandı.`;
+      } catch (error) {
+        if (status) status.textContent = `Material miqdarları hazırdır. Kataloq qiymətləndirilməsi alınmadı: ${error.message}`;
+      }
+    }
     if (cloudUser && aiProviderReady && window.ConstEraAPI?.aiEstimate) {
       try {
         if (status) status.textContent = "Qayda əsaslı nəticə hazırdır. Xarici AI smetanı yoxlayır...";
@@ -6132,9 +6254,12 @@ const renderCheckout = () => {
   const status = document.querySelector("[data-checkout-status]");
   const history = document.querySelector("[data-customer-orders]");
   const cardOption = form?.querySelector("[data-payment-card]");
+  const approvalFields = form?.querySelector("[data-procurement-fields]");
   if (!itemsContainer || !summary || !form) return;
 
   const productById = new Map((marketplace.products || []).map((product) => [product.id, product]));
+  let latestDeliveryQuote = null;
+  let deliveryQuoteTimer = 0;
   const setStatus = (message, type = "info") => {
     if (!status) return;
     status.textContent = message;
@@ -6142,8 +6267,25 @@ const renderCheckout = () => {
   };
 
   const currentItems = () => getCart()
-    .map((entry) => ({ ...entry, product: productById.get(entry.id) }))
+    .map((entry) => {
+      const product = productById.get(entry.id);
+      const offers = Array.isArray(product?.offers) ? product.offers : [];
+      const offer = offers.find((item) => item.id === entry.offerId)
+        || product?.preferredOffer
+        || offers[0]
+        || null;
+      return { ...entry, offerId: entry.offerId || offer?.id || "", product, offer };
+    })
     .filter((entry) => entry.product);
+
+  const selectedUnitPrice = ({ product, offer }) => {
+    if (offer) {
+      return offer.priceStatus === "confirmed" && Number.isFinite(Number(offer.unitPrice))
+        ? Number(offer.unitPrice)
+        : null;
+    }
+    return parseProductPriceAmount(product);
+  };
 
   const paint = () => {
     const entries = currentItems();
@@ -6152,8 +6294,8 @@ const renderCheckout = () => {
     itemsContainer.hidden = entries.length === 0;
     if (clearButton) clearButton.disabled = entries.length === 0;
     form.querySelector('button[type="submit"]').disabled = entries.length === 0;
-    itemsContainer.innerHTML = entries.map(({ product, quantity }) => {
-      const amount = parseProductPriceAmount(product);
+    itemsContainer.innerHTML = entries.map(({ product, offer, quantity }) => {
+      const amount = selectedUnitPrice({ product, offer });
       const lineTotal = amount === null ? null : amount * quantity;
       const media = createProductMedia(product, product.brand.slice(0, 2).toUpperCase());
       return `<article class="checkout-item" data-checkout-product="${escapeAttr(product.id)}">
@@ -6161,32 +6303,73 @@ const renderCheckout = () => {
         <div class="checkout-item-copy">
           <strong>${escapeHtml(product.name)}</strong>
           <span>${escapeHtml(product.sku)} · ${escapeHtml(product.package || "Sorğu ilə")}</span>
-          <small>${escapeHtml(product.brand)} · ${escapeHtml(product.supplier || "Təchizatçı")}</small>
+          <small>${escapeHtml(product.brand)} · ${escapeHtml(offer?.supplier || product.supplier || "Təchizatçı")}</small>
         </div>
         <label class="checkout-quantity"><span>Miqdar</span><input data-cart-quantity="${escapeAttr(product.id)}" type="number" min="0.001" max="1000000" step="0.001" value="${escapeAttr(quantity)}" /></label>
-        <div class="checkout-item-price"><strong>${lineTotal === null ? "Sorğu əsasında" : formatMoney(lineTotal, product.priceCurrency || "AZN")}</strong><small>${escapeHtml(product.price)}</small></div>
+        <div class="checkout-item-price"><strong>${lineTotal === null ? "Sorğu əsasında" : formatMoney(lineTotal, offer?.currency || product.priceCurrency || "AZN")}</strong><small>${escapeHtml(offer?.price || product.price)}</small></div>
         <button class="table-action is-danger" type="button" data-checkout-remove="${escapeAttr(product.id)}">Sil</button>
       </article>`;
     }).join("");
 
-    const knownLines = entries.map(({ product, quantity }) => {
-      const amount = parseProductPriceAmount(product);
-      return amount === null ? null : amount * quantity;
+    const knownLines = entries.map((entry) => {
+      const amount = selectedUnitPrice(entry);
+      return amount === null ? null : amount * entry.quantity;
     });
     const pendingCount = knownLines.filter((value) => value === null).length;
     const subtotal = knownLines.reduce((sum, value) => sum + (value || 0), 0);
+    const deliveryAmount = Number(latestDeliveryQuote?.amount || 0);
+    const total = pendingCount ? null : subtotal + deliveryAmount;
     summary.innerHTML = `
       <p class="eyebrow">Sifariş yekunu</p>
       <h2>${entries.length} məhsul mövqeyi</h2>
       <dl class="checkout-totals">
         <div><dt>Təsdiqli məbləğ</dt><dd>${formatMoney(subtotal)}</dd></div>
         <div><dt>Sorğu qiymətli mövqe</dt><dd>${pendingCount}</dd></div>
-        <div><dt>Çatdırılma</dt><dd>Ünvan üzrə hesablanır</dd></div>
+        <div><dt>Çatdırılma</dt><dd>${latestDeliveryQuote
+          ? `${formatMoney(deliveryAmount, latestDeliveryQuote.currency || "AZN")} · ${latestDeliveryQuote.etaMinDays}-${latestDeliveryQuote.etaMaxDays} gün`
+          : "Şəhər üzrə hesablanır"}</dd></div>
+        <div><dt>Yekun</dt><dd>${total === null ? "Qiymət təsdiqi gözlənilir" : formatMoney(total)}</dd></div>
       </dl>
       <p class="checkout-summary-note">${pendingCount
         ? "Yekun hesab təchizatçı qiymətləri təsdiqləndikdən sonra hazırlanacaq."
         : "Məbləğ sifariş göndərilərkən serverdə yenidən yoxlanacaq."}</p>`;
     updateCartIndicators();
+  };
+
+  const refreshDeliveryQuote = async () => {
+    const entries = currentItems();
+    const city = String(form.elements.city.value || "").trim();
+    if (!entries.length || !city || !window.ConstEraAPI?.deliveryQuote) {
+      latestDeliveryQuote = null;
+      paint();
+      return;
+    }
+    const knownLines = entries.map((entry) => {
+      const amount = selectedUnitPrice(entry);
+      return amount === null ? null : amount * entry.quantity;
+    });
+    const pending = knownLines.some((value) => value === null);
+    const supplierIds = entries
+      .map((entry) => entry.offer?.supplierId || entry.product.supplierId)
+      .filter(Boolean);
+    try {
+      const result = await window.ConstEraAPI.deliveryQuote({
+        city,
+        mode: form.elements.deliveryMode.value,
+        subtotal: pending ? null : knownLines.reduce((sum, value) => sum + value, 0),
+        itemQuantity: entries.reduce((sum, entry) => sum + entry.quantity, 0),
+        supplierCount: new Set(supplierIds).size
+      });
+      latestDeliveryQuote = result.data;
+    } catch {
+      latestDeliveryQuote = null;
+    }
+    paint();
+  };
+
+  const scheduleDeliveryQuote = () => {
+    window.clearTimeout(deliveryQuoteTimer);
+    deliveryQuoteTimer = window.setTimeout(refreshDeliveryQuote, 350);
   };
 
   const orderStatusLabels = {
@@ -6209,6 +6392,7 @@ const renderCheckout = () => {
       if (!form.elements.contactName.value) form.elements.contactName.value = session.user.name || "";
       if (!form.elements.email.value) form.elements.email.value = session.user.email || "";
       if (!form.elements.companyName.value) form.elements.companyName.value = session.user.companyName || "";
+      if (approvalFields) approvalFields.hidden = session.user.role !== "customer";
       const result = await window.ConstEraAPI.orders();
       const orders = result.data || [];
       history.innerHTML = orders.length ? orders.slice(0, 20).map((order) => `
@@ -6237,17 +6421,14 @@ const renderCheckout = () => {
     }
   };
 
-  const hydrateMissingCartProducts = async () => {
-    if (!window.ConstEraAPI?.product) return;
-    const missingIds = getCart().map((item) => item.id).filter((id) => !productById.has(id));
-    if (!missingIds.length) return;
-    const results = await Promise.allSettled(missingIds.map((id) => window.ConstEraAPI.product(id)));
-    results.forEach((result) => {
-      if (result.status === "fulfilled" && result.value?.data?.id) {
-        productById.set(result.value.data.id, result.value.data);
-      }
-    });
+  const hydrateCartProducts = async () => {
+    if (!window.ConstEraAPI?.products) return;
+    const ids = [...new Set(getCart().map((item) => item.id))];
+    if (!ids.length) return;
+    const result = await window.ConstEraAPI.products(ids);
+    (result.data || []).forEach((product) => productById.set(product.id, product));
     paint();
+    scheduleDeliveryQuote();
   };
 
   itemsContainer.addEventListener("change", (event) => {
@@ -6256,15 +6437,18 @@ const renderCheckout = () => {
     const quantity = Math.max(0.001, Math.min(Number(input.value) || 1, 1_000_000));
     saveCart(getCart().map((item) => item.id === input.dataset.cartQuantity ? { ...item, quantity } : item));
     paint();
+    scheduleDeliveryQuote();
   });
   itemsContainer.addEventListener("click", (event) => {
     const button = event.target.closest("[data-checkout-remove]");
     if (!button) return;
     saveCart(getCart().filter((item) => item.id !== button.dataset.checkoutRemove));
     paint();
+    scheduleDeliveryQuote();
   });
   clearButton?.addEventListener("click", () => {
     saveCart([]);
+    latestDeliveryQuote = null;
     paint();
   });
 
@@ -6276,6 +6460,10 @@ const renderCheckout = () => {
       return;
     }
     const requestedPayment = form.elements.paymentMethod.value;
+    if (requestedPayment === "card" && form.elements.requiresApproval?.checked) {
+      setStatus("Korporativ təsdiq axını üçün elektron hesab və ya bank köçürməsi seç.", "warning");
+      return;
+    }
     if (requestedPayment === "card") {
       const session = await window.ConstEraAPI.session().catch(() => ({ user: null }));
       if (!session.user) {
@@ -6292,7 +6480,13 @@ const renderCheckout = () => {
       const fields = Object.fromEntries(new FormData(form).entries());
       const result = await window.ConstEraAPI.createOrder({
         ...fields,
-        items: entries.map((entry) => ({ productId: entry.product.id, quantity: entry.quantity, unit: entry.product.package || "ədəd" }))
+        requiresApproval: Boolean(form.elements.requiresApproval?.checked),
+        items: entries.map((entry) => ({
+          productId: entry.product.id,
+          offerId: entry.offerId,
+          quantity: entry.quantity,
+          unit: entry.product.package || "ədəd"
+        }))
       });
       createdOrder = result.data;
       saveCart([]);
@@ -6319,7 +6513,13 @@ const renderCheckout = () => {
   });
 
   paint();
-  hydrateMissingCartProducts();
+  form.elements.city.addEventListener("input", scheduleDeliveryQuote);
+  form.elements.deliveryMode.addEventListener("change", scheduleDeliveryQuote);
+  form.elements.requiresApproval?.addEventListener("change", () => {
+    const details = form.querySelector("[data-procurement-details]");
+    if (details) details.hidden = !form.elements.requiresApproval.checked;
+  });
+  hydrateCartProducts();
   loadPaymentReadiness();
   loadOrders();
 };
@@ -6331,8 +6531,13 @@ const initActions = () => {
 
     if (button.dataset.action === "cart") {
       const id = button.dataset.id;
+      const offerId = button.dataset.offerId || "";
       const cart = getCart();
-      if (!cart.some((item) => item.id === id)) saveCart([...cart, { id, quantity: 1 }]);
+      if (!cart.some((item) => item.id === id)) {
+        saveCart([...cart, { id, quantity: 1, offerId }]);
+      } else if (offerId) {
+        saveCart(cart.map((item) => item.id === id ? { ...item, offerId } : item));
+      }
       button.classList.add("is-active");
       button.textContent = "Səbətdədir";
       updateCartIndicators();

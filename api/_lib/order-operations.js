@@ -117,20 +117,46 @@ export const ensureOrderOperations = async (orderId) => {
   );
 
   await query(
+    `INSERT INTO warehouses (id, supplier_id, name, city, is_default)
+     SELECT
+       'wh-' || md5(supplier.id),
+       supplier.id,
+       supplier.name || ' əsas anbarı',
+       CASE WHEN supplier.region IS NULL OR btrim(supplier.region) = '' THEN 'Bakı' ELSE supplier.region END,
+       true
+     FROM suppliers supplier
+     WHERE supplier.id IN (
+       SELECT item.supplier_id
+       FROM order_items item
+       WHERE item.order_id = $1
+         AND item.supplier_id IS NOT NULL
+     )
+     ON CONFLICT (id) DO NOTHING`,
+    [orderId]
+  );
+
+  await query(
     `INSERT INTO inventory_levels (id, warehouse_id, product_id, stock_quantity)
      SELECT
        'ivl-' || md5(warehouse.id || ':' || product.id),
        warehouse.id,
        product.id,
-       product.stock_quantity
+       COALESCE(
+         offer.stock_quantity,
+         CASE WHEN item.supplier_id = product.supplier_id THEN product.stock_quantity ELSE NULL END
+       )
      FROM order_items item
      JOIN products product ON product.id = item.product_id
+     LEFT JOIN product_offers offer ON offer.id = item.product_offer_id
      JOIN warehouses warehouse
-       ON warehouse.supplier_id = product.supplier_id
+       ON warehouse.supplier_id = item.supplier_id
       AND warehouse.is_default = true
       AND warehouse.status = 'active'
      WHERE item.order_id = $1
-       AND product.stock_quantity IS NOT NULL
+       AND COALESCE(
+         offer.stock_quantity,
+         CASE WHEN item.supplier_id = product.supplier_id THEN product.stock_quantity ELSE NULL END
+       ) IS NOT NULL
      ON CONFLICT (warehouse_id, product_id) DO NOTHING`,
     [orderId]
   );
@@ -142,12 +168,28 @@ export const ensureOrderOperations = async (orderId) => {
          item.order_id,
          item.product_id,
          COALESCE(item.supplier_id, product.supplier_id) AS supplier_id,
-         item.quantity
+         item.quantity,
+         COALESCE(
+           offer.stock_quantity,
+           CASE
+             WHEN COALESCE(item.supplier_id, product.supplier_id) = product.supplier_id
+               THEN product.stock_quantity
+             ELSE NULL
+           END
+         ) AS available_stock
        FROM order_items item
        JOIN products product ON product.id = item.product_id
+       LEFT JOIN product_offers offer ON offer.id = item.product_offer_id
        WHERE item.order_id = $1
          AND item.product_id IS NOT NULL
-         AND product.stock_quantity IS NOT NULL
+         AND COALESCE(
+           offer.stock_quantity,
+           CASE
+             WHEN COALESCE(item.supplier_id, product.supplier_id) = product.supplier_id
+               THEN product.stock_quantity
+             ELSE NULL
+           END
+         ) IS NOT NULL
          AND NOT EXISTS (
            SELECT 1 FROM inventory_reservations existing
            WHERE existing.order_item_id = item.id
@@ -266,21 +308,28 @@ export const consumeOrderReservations = async (orderId, supplierId = null) => {
         WHERE order_id = $1
           AND status = 'active'
           ${supplierScope}
-       RETURNING product_id, quantity
+       RETURNING product_id, supplier_id, quantity
      ), totals AS (
-       SELECT product_id, sum(quantity) AS quantity
+       SELECT product_id, supplier_id, sum(quantity) AS quantity
        FROM claimed
-       GROUP BY product_id
+       GROUP BY product_id, supplier_id
+     ), canonical_totals AS (
+       SELECT totals.product_id, sum(totals.quantity) AS quantity
+       FROM totals
+       JOIN products product
+         ON product.id = totals.product_id
+        AND product.supplier_id = totals.supplier_id
+       GROUP BY totals.product_id
      ), products_updated AS (
        UPDATE products product
-          SET stock_quantity = greatest(0, product.stock_quantity - totals.quantity),
+          SET stock_quantity = greatest(0, product.stock_quantity - canonical_totals.quantity),
               availability = CASE
-                WHEN greatest(0, product.stock_quantity - totals.quantity) > 0 THEN product.availability
+                WHEN greatest(0, product.stock_quantity - canonical_totals.quantity) > 0 THEN product.availability
                 ELSE 'Stokda yoxdur'
               END,
               updated_at = now()
-         FROM totals
-        WHERE product.id = totals.product_id
+         FROM canonical_totals
+        WHERE product.id = canonical_totals.product_id
        RETURNING product.id
      ), levels_updated AS (
        UPDATE inventory_levels level
@@ -290,6 +339,7 @@ export const consumeOrderReservations = async (orderId, supplierId = null) => {
          FROM totals, warehouses warehouse
         WHERE level.product_id = totals.product_id
           AND warehouse.id = level.warehouse_id
+          AND warehouse.supplier_id = totals.supplier_id
           AND warehouse.is_default = true
        RETURNING level.product_id
      )

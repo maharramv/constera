@@ -2,6 +2,7 @@ import "./load-local-env.mjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import fulfillmentHandler from "../api/_admin/fulfillments.js";
 import ordersHandler from "../api/_admin/orders.js";
+import procurementHandler from "../api/_admin/procurement.js";
 import rentalBookingsHandler from "../api/_admin/rental-bookings.js";
 import tenderBidsHandler from "../api/_admin/tender-bids.js";
 import integrationsHandler from "../api/_admin/integrations.js";
@@ -104,6 +105,10 @@ try {
       address: "Avtomatik əməliyyat test ünvanı",
       deliveryMode: "supplier_delivery",
       paymentMethod: "invoice",
+      requiresApproval: true,
+      requiredApprovals: 1,
+      budgetAmount: 10_000,
+      costCenter: "SMOKE-B2B",
       items: [{ productId: stockProduct.id, quantity: 1, unit: stockProduct.package_text || "ədəd" }]
     })
   }, orderResponse);
@@ -115,9 +120,61 @@ try {
     || !orderId
     || !fulfillment?.id
     || reservation?.status !== "active"
+    || orderResponse.payload?.data?.approvalStatus !== "pending"
+    || !orderResponse.payload?.data?.procurement?.id
+    || orderResponse.payload?.data?.deliveryQuote?.status !== "accepted"
   ) {
     throw new Error(`Rezervli sifariş yaradılmadı: HTTP ${orderResponse.statusCode}`);
   }
+
+  const blockedConfirmation = createResponse();
+  await ordersHandler({
+    method: "PATCH",
+    headers: requestHeaders(sessionToken),
+    query: {},
+    body: jsonBody({ id: orderId, status: "confirmed" })
+  }, blockedConfirmation);
+  if (
+    blockedConfirmation.statusCode !== 409
+    || blockedConfirmation.payload?.error?.code !== "procurement_approval_required"
+  ) {
+    throw new Error("Təsdiq gözləyən sifariş bloklanmadı.");
+  }
+
+  const procurementResponse = createResponse();
+  await procurementHandler({
+    method: "PATCH",
+    headers: requestHeaders(sessionToken),
+    query: {},
+    body: jsonBody({
+      id: orderResponse.payload.data.procurement.id,
+      action: "decide",
+      decision: "approved",
+      note: "Smoke-test satınalma təsdiqi"
+    })
+  }, procurementResponse);
+  if (
+    procurementResponse.statusCode !== 200
+    || procurementResponse.payload?.data?.status !== "approved"
+  ) {
+    throw new Error(`Satınalma təsdiqi uğursuz oldu: HTTP ${procurementResponse.statusCode}`);
+  }
+
+  const confirmedOrder = createResponse();
+  await ordersHandler({
+    method: "PATCH",
+    headers: requestHeaders(sessionToken),
+    query: {},
+    body: jsonBody({ id: orderId, status: "confirmed", historyNote: "Smoke-test təsdiqi" })
+  }, confirmedOrder);
+  if (
+    confirmedOrder.statusCode !== 200
+    || confirmedOrder.payload?.data?.status !== "confirmed"
+    || confirmedOrder.payload?.data?.approvalStatus !== "approved"
+  ) {
+    throw new Error(`Təsdiqdən sonrakı sifariş keçidi uğursuz oldu: HTTP ${confirmedOrder.statusCode}`);
+  }
+  console.log("B2B: logistika təklifi, satınalma bloku və təsdiqdən sonrakı sifariş keçidi yoxlanıldı.");
 
   const acceptedResponse = createResponse();
   await fulfillmentHandler({

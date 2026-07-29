@@ -21,7 +21,12 @@
     supplierApplications: [],
     priceMonitor: null,
     account: null,
-    qualityProduct: null
+    qualityProduct: null,
+    managedProducts: [],
+    managedSuppliers: [],
+    productOffers: [],
+    logisticsZones: [],
+    procurementRequests: []
   };
 
   const qs = (selector, root = document) => root.querySelector(selector);
@@ -199,12 +204,15 @@
       [counts.categories, "əsas kateqoriya"],
       [counts.subcategories, "subkateqoriya"],
       [counts.suppliers, "təchizatçı"],
+      [counts.product_offers, "məhsul təklifi"],
       [counts.rfqs, "qiymət sorğusu"],
       [counts.orders, "sifariş"],
       [counts.tenders, "tender"],
       [counts.crm_leads, "CRM lead"],
       [counts.active_rental_bookings, "aktiv icarə"],
       [counts.pending_payments, "gözləyən ödəniş"],
+      [counts.pending_procurement, "satınalma təsdiqi"],
+      [counts.logistics_zones, "logistika zonası"],
       [counts.users, "aktiv istifadəçi"],
       [counts.pending_supplier_applications, "gözləyən tərəfdaş"],
       [counts.pending_price_reviews, "qiymət yoxlaması"],
@@ -234,21 +242,24 @@
     }
     setText(
       "[data-admin-v2-quality-summary]",
-      `${qualityTotal.toLocaleString("az-AZ")} real satış qeydi · ${Number(qualitySummary.requestGroups || 0).toLocaleString("az-AZ")} RFQ məhsul qrupu · ${Number(qualitySummary.unknownStock || 0).toLocaleString("az-AZ")} dəqiqləşdirilməmiş stok`
+      `${qualityTotal.toLocaleString("az-AZ")} real satış qeydi · ${Number(qualitySummary.offerTotal || 0).toLocaleString("az-AZ")} təchizatçı təklifi · ${Number(qualitySummary.productsWithoutOffers || 0).toLocaleString("az-AZ")} təklifsiz məhsul`
     );
     const qualityMetrics = [
-      ["Real foto", "missingImage"],
-      ["Mənbə URL-i", "missingSource"],
-      ["Texniki məlumat", "missingSpecs"],
-      ["Dəqiq brend", "missingBrand"],
-      ["Düzgün kateqoriya", "missingCategory"]
+      ["Real foto", "missingImage", qualityTotal],
+      ["Məhsul mənbəyi", "missingSource", qualityTotal],
+      ["Texniki məlumat", "missingSpecs", qualityTotal],
+      ["Dəqiq brend", "missingBrand", qualityTotal],
+      ["Düzgün kateqoriya", "missingCategory", qualityTotal],
+      ["Təklif mənbəyi", "offerMissingSource", Number(qualitySummary.offerTotal || 0)],
+      ["Aktual təklif qiyməti", "offerStalePrice", Number(qualitySummary.offerTotal || 0)],
+      ["Təklif stoku", "offerUnknownStock", Number(qualitySummary.offerTotal || 0)]
     ];
     const qualityBars = qs("[data-admin-v2-quality-bars]");
-    if (qualityBars) qualityBars.innerHTML = qualityMetrics.map(([label, key]) => {
+    if (qualityBars) qualityBars.innerHTML = qualityMetrics.map(([label, key, metricTotal]) => {
       const missing = Number(qualitySummary[key] || 0);
-      const complete = Math.max(0, qualityTotal - missing);
-      const percent = qualityTotal ? Math.round((complete / qualityTotal) * 100) : 100;
-      return `<div><span><strong>${escapeHtml(label)}</strong><small>${complete.toLocaleString("az-AZ")} / ${qualityTotal.toLocaleString("az-AZ")} · ${percent}%</small></span><progress max="100" value="${percent}" aria-label="${escapeHtml(label)}: ${percent}%"></progress></div>`;
+      const complete = Math.max(0, metricTotal - missing);
+      const percent = metricTotal ? Math.round((complete / metricTotal) * 100) : 100;
+      return `<div><span><strong>${escapeHtml(label)}</strong><small>${complete.toLocaleString("az-AZ")} / ${metricTotal.toLocaleString("az-AZ")} · ${percent}%</small></span><progress max="100" value="${percent}" aria-label="${escapeHtml(label)}: ${percent}%"></progress></div>`;
     }).join("");
 
     const qualityItems = quality.items || [];
@@ -283,6 +294,78 @@
     if (activity) activity.innerHTML = (data.recentActivity || []).map((item) => `
       <article><span>${escapeHtml(item.actor_name || "Sistem")}</span><strong>${escapeHtml(actionLabels[item.action] || item.action)}</strong><small>${escapeHtml(item.entity_type)} · ${formatDate(item.created_at, true)}</small></article>
     `).join("") || "<p>Son fəaliyyət yoxdur.</p>";
+  };
+
+  const renderB2b = () => {
+    const b2bKpis = qs("[data-admin-b2b-kpis]");
+    if (b2bKpis) {
+      const confirmedOffers = state.productOffers.filter((offer) => offer.status === "active" && offer.priceStatus === "confirmed").length;
+      const incompleteOffers = state.productOffers.filter((offer) => offer.status === "active" && (!offer.sourceUrl || offer.stockQuantity === null)).length;
+      const pendingApprovals = state.procurementRequests.filter((request) => request.status === "pending").length;
+      b2bKpis.innerHTML = [
+        [state.productOffers.length, "məhsul təklifi"],
+        [confirmedOffers, "təsdiqli qiymət"],
+        [incompleteOffers, "yoxlama tələb edir"],
+        [state.logisticsZones.filter((zone) => zone.active).length, "aktiv logistika zonası"],
+        [pendingApprovals, "gözləyən təsdiq"]
+      ].map(([value, label]) => `<article><strong>${Number(value).toLocaleString("az-AZ")}</strong><span>${escapeHtml(label)}</span></article>`).join("");
+    }
+    const offerForm = qs("[data-admin-product-offer-form]");
+    const productSelect = qs("[data-admin-offer-product]");
+    const supplierSelect = qs("[data-admin-offer-supplier]");
+    if (productSelect) {
+      const selected = productSelect.value;
+      productSelect.innerHTML = state.managedProducts.map((product) => (
+        `<option value="${escapeHtml(product.id)}">${escapeHtml(product.name)} · ${escapeHtml(product.sku)}</option>`
+      )).join("");
+      if (state.managedProducts.some((product) => product.id === selected)) productSelect.value = selected;
+    }
+    if (supplierSelect) {
+      const selected = supplierSelect.value;
+      supplierSelect.innerHTML = state.managedSuppliers.map((supplier) => (
+        `<option value="${escapeHtml(supplier.id)}">${escapeHtml(supplier.name)}</option>`
+      )).join("");
+      if (state.managedSuppliers.some((supplier) => supplier.id === selected)) supplierSelect.value = selected;
+    }
+    setText("[data-admin-offer-count]", `${state.productOffers.length.toLocaleString("az-AZ")} təklif`);
+    const offerBody = qs("[data-admin-product-offers]");
+    if (offerBody) offerBody.innerHTML = state.productOffers.slice(0, 250).map((offer) => {
+      const issues = [
+        !offer.sourceUrl ? "mənbəsiz" : "",
+        offer.priceStatus === "confirmed" && (!offer.priceVerifiedAt || Date.now() - Date.parse(offer.priceVerifiedAt) > 30 * 86_400_000) ? "köhnə qiymət" : "",
+        offer.stockQuantity === null ? "stok açıqdır" : ""
+      ].filter(Boolean);
+      return `<tr>
+        <td data-label="Məhsul"><strong>${escapeHtml(offer.productName)}</strong><small>${escapeHtml(offer.productSku)}</small></td>
+        <td data-label="Təchizatçı">${escapeHtml(offer.supplier)}</td>
+        <td data-label="Qiymət"><strong>${offer.unitPrice === null ? "Sorğu əsasında" : Number(offer.unitPrice).toLocaleString("az-AZ", { style: "currency", currency: offer.currency || "AZN" })}</strong><small>${issues.join(" · ") || "məlumat tamdır"}</small></td>
+        <td data-label="Stok">${offer.stockQuantity === null ? "Sorğu ilə" : Number(offer.stockQuantity).toLocaleString("az-AZ")}</td>
+        <td data-label="Müddət">${offer.leadTimeDays === null ? "Sorğu ilə" : `${offer.leadTimeDays} gün`}</td>
+        <td data-label="Əməliyyat"><div class="admin-actions"><button class="table-action" type="button" data-admin-offer-edit="${escapeHtml(offer.id)}">Düzəlt</button><button class="table-action is-danger" type="button" data-admin-offer-delete="${escapeHtml(offer.id)}">Arxivlə</button></div></td>
+      </tr>`;
+    }).join("") || '<tr><td colspan="6">Məhsul təklifi yoxdur.</td></tr>';
+
+    setText("[data-admin-logistics-count]", `${state.logisticsZones.filter((zone) => zone.active).length} zona`);
+    const zoneList = qs("[data-admin-logistics-zones]");
+    if (zoneList) zoneList.innerHTML = state.logisticsZones.map((zone) => `<article class="cabinet-item">
+      <header><strong>${escapeHtml(zone.name)}</strong><span class="mini-badge">${zone.active ? "Aktiv" : "Arxiv"}</span></header>
+      <span>${escapeHtml(zone.cities.join(", ") || "Bütün Azərbaycan")} · ${zone.etaMinDays}-${zone.etaMaxDays} gün</span>
+      <p>${Number(zone.baseFee).toLocaleString("az-AZ", { style: "currency", currency: "AZN" })} baza · ${zone.freeAbove === null ? "pulsuz hədd yoxdur" : `${Number(zone.freeAbove).toLocaleString("az-AZ")} AZN-dən pulsuz`}</p>
+      <div class="cabinet-item-actions"><button class="table-action" type="button" data-admin-logistics-edit="${escapeHtml(zone.id)}">Düzəlt</button></div>
+    </article>`).join("") || "<p>Logistika zonası yoxdur.</p>";
+
+    setText("[data-admin-procurement-count]", `${state.procurementRequests.filter((request) => request.status === "pending").length} gözləyir`);
+    const requestList = qs("[data-admin-procurement-list]");
+    if (requestList) requestList.innerHTML = state.procurementRequests.map((request) => `<article class="cabinet-item">
+      <header><strong>Sifariş #${escapeHtml(request.orderNumber)} · ${escapeHtml(request.companyName || "Şirkət")}</strong><span class="mini-badge">${escapeHtml(request.status)}</span></header>
+      <span>${request.approvedCount}/${request.requiredApprovals} təsdiq · ${escapeHtml(request.costCenter || "Xərc mərkəzi yoxdur")}</span>
+      <p>${request.budgetAmount === null ? "Büdcə limiti yoxdur" : Number(request.budgetAmount).toLocaleString("az-AZ", { style: "currency", currency: "AZN" })}</p>
+      ${request.status === "pending" ? `<div class="cabinet-item-actions"><button class="table-action" type="button" data-admin-procurement-decision="${escapeHtml(request.id)}" data-decision="approved">Təsdiqlə</button><button class="table-action is-danger" type="button" data-admin-procurement-decision="${escapeHtml(request.id)}" data-decision="rejected">Rədd et</button></div>` : ""}
+    </article>`).join("") || "<p>Satınalma təsdiqi yoxdur.</p>";
+
+    if (offerForm && !offerForm.elements.productId.value && state.managedProducts[0]) {
+      offerForm.elements.productId.value = state.managedProducts[0].id;
+    }
   };
 
   const renderPriceMonitor = () => {
@@ -435,11 +518,18 @@
 
     const orderBody = qs("[data-admin-v2-orders]");
     if (orderBody) orderBody.innerHTML = state.orders.map((item) => {
-      const statusOptions = [item.status, ...(allowedOrderTransitions[item.status] || [])];
+      const statusOptions = [item.status, ...(allowedOrderTransitions[item.status] || [])]
+        .filter((value) => value !== "confirmed" || ["not_required", "approved"].includes(item.approvalStatus));
+      const approvalLabel = {
+        not_required: "Təsdiq tələb olunmur",
+        pending: "Satınalma təsdiqi gözləyir",
+        approved: "Satınalma təsdiqlənib",
+        rejected: "Satınalma rədd edilib"
+      }[item.approvalStatus] || item.approvalStatus;
       return `<tr>
       <td data-label="Sifariş"><strong>#${escapeHtml(item.orderNumber)}</strong><small>${formatDate(item.createdAt, true)}${item.rfqId ? " · RFQ-dən yaradılıb" : item.tenderId ? " · Tenderdən yaradılıb" : ""}</small></td>
       <td data-label="Şirkət və əlaqə"><strong>${escapeHtml(item.companyName)}</strong><small>${escapeHtml(item.contactName)} · ${escapeHtml(item.phone)}</small></td>
-      <td data-label="Məhsul">${item.items.length}<small>${item.hasPendingPrice ? "Qiymət təsdiqi var" : "Qiymətlər təsdiqlidir"}</small></td>
+      <td data-label="Məhsul">${item.items.length}<small>${item.hasPendingPrice ? "Qiymət təsdiqi var" : "Qiymətlər təsdiqlidir"} · ${escapeHtml(approvalLabel)}</small></td>
       <td data-label="Məbləğ"><strong>${item.totalAmount === null ? "Sorğu əsasında" : Number(item.totalAmount).toLocaleString("az-AZ", { style: "currency", currency: item.currency })}</strong></td>
       <td data-label="Status"><select class="table-select" data-order-status="${escapeHtml(item.id)}">${statusOptions.map((value) => `<option value="${value}" ${value === item.status ? "selected" : ""}>${escapeHtml(orderStatusLabels[value] || value)}</option>`).join("")}</select></td>
       <td data-label="Ödəniş"><select class="table-select" data-order-payment="${escapeHtml(item.id)}">${Object.entries(paymentStatusLabels).map(([value, label]) => `<option value="${value}" ${value === item.paymentStatus ? "selected" : ""}>${label}</option>`).join("")}</select></td>
@@ -621,6 +711,21 @@
     state.orders = orders.data || [];
     renderRequests();
   };
+  const loadB2b = async () => {
+    const [products, suppliers, offers, zones, procurement] = await Promise.all([
+      api.myProducts(),
+      api.suppliers(),
+      api.managedProductOffers(),
+      api.logisticsZones(true),
+      api.procurement()
+    ]);
+    state.managedProducts = (products.data || []).filter((product) => product.status !== "archived");
+    state.managedSuppliers = suppliers.data || [];
+    state.productOffers = offers.data || [];
+    state.logisticsZones = zones.data || [];
+    state.procurementRequests = procurement.data || [];
+    renderB2b();
+  };
   const loadCommercial = async () => {
     const [crm, bookings] = await Promise.all([api.crm(), api.rentalBookings()]);
     state.crm = crm.data;
@@ -789,6 +894,136 @@
     } finally {
       setButtonBusy(button, false);
     }
+  });
+
+  const offerForm = qs("[data-admin-product-offer-form]");
+  const clearOfferForm = () => {
+    offerForm?.reset();
+    if (offerForm) offerForm.elements.id.value = "";
+    renderB2b();
+  };
+  qs("[data-admin-offer-clear]")?.addEventListener("click", clearOfferForm);
+  offerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(offerForm).entries());
+    const button = offerForm.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Saxlanır...");
+    try {
+      await api.saveProductOffer({
+        ...fields,
+        featured: offerForm.elements.featured.checked,
+        sourceLabel: "Admin tərəfindən yoxlanmış mənbə",
+        deliveryModes: ["delivery", "pickup", "supplier_delivery"]
+      }, Boolean(fields.id));
+      clearOfferForm();
+      await Promise.all([loadB2b(), loadDashboard()]);
+      setStatus("[data-admin-b2b-status]", "Təchizatçı təklifi və kataloq qiyməti yeniləndi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-b2b-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-product-offers]")?.addEventListener("click", async (event) => {
+    const edit = event.target.closest("[data-admin-offer-edit]");
+    const remove = event.target.closest("[data-admin-offer-delete]");
+    const id = edit?.dataset.adminOfferEdit || remove?.dataset.adminOfferDelete;
+    const offer = state.productOffers.find((item) => item.id === id);
+    if (!offer) return;
+    if (remove) {
+      if (!window.confirm(`${offer.supplier} təklifi arxivlənsin?`)) return;
+      try {
+        await api.deleteProductOffer(id);
+        await Promise.all([loadB2b(), loadDashboard()]);
+      } catch (error) {
+        setStatus("[data-admin-b2b-status]", error.message, "error");
+      }
+      return;
+    }
+    offerForm.elements.id.value = offer.id;
+    offerForm.elements.productId.value = offer.productId;
+    offerForm.elements.supplierId.value = offer.supplierId;
+    offerForm.elements.supplierSku.value = offer.supplierSku || "";
+    offerForm.elements.unitPrice.value = offer.unitPrice ?? "";
+    offerForm.elements.priceStatus.value = offer.priceStatus;
+    offerForm.elements.stockQuantity.value = offer.stockQuantity ?? "";
+    offerForm.elements.minimumOrder.value = offer.minimumOrder ?? "";
+    offerForm.elements.leadTimeDays.value = offer.leadTimeDays ?? "";
+    offerForm.elements.sourceUrl.value = offer.sourceUrl || "";
+    offerForm.elements.featured.checked = offer.featured;
+    offerForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  const logisticsForm = qs("[data-admin-logistics-form]");
+  const clearLogisticsForm = () => {
+    logisticsForm?.reset();
+    if (logisticsForm) {
+      logisticsForm.elements.id.value = "";
+      logisticsForm.elements.priority.value = "100";
+      logisticsForm.elements.etaMinDays.value = "1";
+      logisticsForm.elements.etaMaxDays.value = "3";
+    }
+  };
+  qs("[data-admin-logistics-clear]")?.addEventListener("click", clearLogisticsForm);
+  logisticsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(logisticsForm).entries());
+    const button = logisticsForm.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Saxlanır...");
+    try {
+      await api.saveLogisticsZone({ ...fields, active: true }, Boolean(fields.id));
+      clearLogisticsForm();
+      await loadB2b();
+      setStatus("[data-admin-b2b-status]", "Logistika zonası yadda saxlanıldı.", "success");
+    } catch (error) {
+      setStatus("[data-admin-b2b-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-logistics-zones]")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-admin-logistics-edit]");
+    if (!button || !logisticsForm) return;
+    const zone = state.logisticsZones.find((item) => item.id === button.dataset.adminLogisticsEdit);
+    if (!zone) return;
+    Object.entries({
+      id: zone.id,
+      name: zone.name,
+      cities: zone.cities.join(", "),
+      baseFee: zone.baseFee,
+      minimumFee: zone.minimumFee,
+      perSupplierFee: zone.perSupplierFee,
+      perUnitFee: zone.perUnitFee,
+      freeAbove: zone.freeAbove ?? "",
+      priority: zone.priority,
+      etaMinDays: zone.etaMinDays,
+      etaMaxDays: zone.etaMaxDays
+    }).forEach(([name, value]) => {
+      if (logisticsForm.elements[name]) logisticsForm.elements[name].value = value;
+    });
+    logisticsForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  qs("[data-admin-procurement-list]")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-admin-procurement-decision]");
+    if (!button) return;
+    const decision = button.dataset.decision;
+    const note = window.prompt("Qərar qeydi", "") ?? "";
+    setButtonBusy(button, true, decision === "approved" ? "Təsdiqlənir..." : "Rədd edilir...");
+    try {
+      await api.decideProcurement(button.dataset.adminProcurementDecision, decision, note);
+      await Promise.all([loadB2b(), loadRequests(), loadDashboard()]);
+      setStatus("[data-admin-b2b-status]", "Satınalma qərarı yadda saxlanıldı.", "success");
+    } catch (error) {
+      setStatus("[data-admin-b2b-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-b2b-refresh]")?.addEventListener("click", (event) => {
+    setButtonBusy(event.currentTarget, true, "Yenilənir...");
+    loadB2b()
+      .catch((error) => setStatus("[data-admin-b2b-status]", error.message, "error"))
+      .finally(() => setButtonBusy(event.currentTarget, false));
   });
 
   const categoryForm = qs("[data-admin-v2-category-form]");
@@ -1303,7 +1538,7 @@
         setStatus("[data-admin-v2-status]", "Canlı idarəetmə üçün administrator hesabına daxil ol. Lokal panel işləməyə davam edir.", "warning");
         return;
       }
-      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadRequests(), loadCommercial(), loadMedia(), loadSystem()];
+      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadRequests(), loadB2b(), loadCommercial(), loadMedia(), loadSystem()];
       const results = await Promise.allSettled(tasks);
       const failed = results.filter((item) => item.status === "rejected");
       if (failed.length) {

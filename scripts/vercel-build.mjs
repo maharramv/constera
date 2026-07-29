@@ -32,6 +32,8 @@ const requiredFiles = [
   "login.html",
   "offline.html",
   "assets/css/styles.css",
+  "assets/css/b2b-marketplace.css",
+  "assets/css/checkout-procurement.css",
   "assets/css/admin-quality.css",
   "assets/css/product-workflow.css",
   "assets/css/order-document.css",

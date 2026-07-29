@@ -6,6 +6,7 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 
 - 70 material kateqoriyası və Neon-da 702 subkateqoriya
 - production kataloqunda 849 məhsul kartı
+- 77 ilkin mənbəli təchizatçı təklifi və hər məhsul üçün çox təchizatçılı qiymət, stok, minimum sifariş müqayisəsi
 - 12 xidmət kateqoriyası, 116 subkateqoriya və 125 xidmət
 - 7 paket kateqoriyası və 80 hazır paket
 - 15 icarə kateqoriyası və 115 avadanlıq mövqeyi
@@ -25,11 +26,11 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `brands.html`, `suppliers.html` - brend və təchizatçı mərkəzləri
 - `rfq.html`, `rfq-dashboard.html` - qiymət sorğusu və təklif axını
 - `tender.html` - rol əsaslı canlı tender, lot, dəvət və təchizatçı təklifi axını
-- `ai-smeta.html` - qayda əsaslı ilkin material smetası
+- `ai-smeta.html` - qayda əsaslı ilkin material smetası və təsdiqli kataloq qiymətləri üzrə paket hesablaması
 - `supplier-portal.html`, `price-import.html` - hesaba bağlı məhsul idarəetməsi və təhlükəsiz CSV/XLSX idxalı
 - `customer-cabinet.html` - sorğu, smeta, seçilmiş və müqayisə məlumatları
-- `checkout.html` - server qiymət yoxlaması ilə səbət, sifariş və sifariş tarixçəsi
-- `admin.html` - məhsul, sifariş, tender, istifadəçi və platforma məlumatlarının canlı idarəetməsi
+- `checkout.html` - server qiymət yoxlaması, logistika tarifi və şirkətdaxili satınalma təsdiqi ilə səbət
+- `admin.html` - məhsul, təchizatçı təklifi, logistika zonası, satınalma təsdiqi, sifariş və tender idarəetməsi
 - `login.html` - HTTP-only sessiya ilə təhlükəsiz giriş və ilk administrator quraşdırması
 
 ## Server imkanları
@@ -38,6 +39,9 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `api/auth.js` - ilk administrator, giriş, sessiya, təhlükəsiz şifrə bərpası və çıxış
 - `api/catalog.js` - server axtarışı, facetlər və səhifələmə ilə ictimai kataloq API-si
 - `api/admin.js?__route=orders` - müştəri və təchizatçı sərhədləri ilə sifariş axını
+- `api/admin.js?__route=product-offers` - məhsul üzrə çox təchizatçılı qiymət, stok və təslimat təklifləri
+- `api/admin.js?__route=logistics` - şəhər və zona üzrə serverdə hesablanan idarə olunan logistika tarifləri
+- `api/admin.js?__route=procurement` - bir və ya çox qərarlı şirkətdaxili satınalma təsdiqi
 - `api/products.js`, `api/suppliers.js` - təchizatçı mülkiyyəti ilə rolla qorunan CRUD əməliyyatları
 - `api/rfqs.js`, `api/offers.js` - real qiymət sorğusu və təklif axını
 - `api/admin.js?__route=tenders`, `api/admin.js?__route=tender-bids` - dəvətli və açıq tenderlər, lotlar və təkliflər
@@ -46,12 +50,12 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `api/admin.js?__route=inventory` - təchizatçı qiymət, stok və mənbə idarəetmə mərkəzi
 - `api/admin.js?__route=fulfillments` - təchizatçı icrası, stok rezervi və çatdırılma mərhələləri
 - `api/admin.js?__route=crm`, `api/admin.js?__route=rental-bookings` - CRM pipeline və tarix əsaslı icarə rezervasiyası
-- `api/admin.js?__route=integrations` - kart ödənişi, elektron qaimə və xarici AI smeta adapterləri
+- `api/admin.js?__route=integrations` - kataloq qiymətli smeta, kart ödənişi, elektron qaimə və xarici AI adapterləri
 - `api/admin.js?__route=backup` - şifrələri və həssas provider payload-larını daxil etməyən tam əməliyyat backup-u
 - `api/sync.js` - statik kataloqun PostgreSQL bazasına kütləvi sinxronizasiyası
 - `api/cron-price-freshness.js` - köhnə qiymətləri gündəlik işarələyən və sessiyaları təmizləyən cron
 - `api/admin.js?__route=scheduled-backup` - gzip backup-ını qorunan HTTPS yaddaşa ötürən gündəlik cron
-- `db/migrations/` - istifadəçi, şirkət, kataloq, qiymət tarixçəsi, RFQ və audit sxemi
+- `db/migrations/` - istifadəçi, şirkət, kataloq, qiymət tarixçəsi, RFQ, çox təchizatçılı təklif, logistika, satınalma və audit sxemi
 - `service-worker.js` - API və şəxsi kabinetləri keşləməyən PWA tətbiq qabığı
 
 Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçatan olduqda dəyişikliklər Neon-a yazılır və rollara uyğun server məlumatı göstərilir.

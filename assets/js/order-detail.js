@@ -32,6 +32,12 @@
     failed: "Uğursuz",
     refunded: "Geri qaytarılıb"
   };
+  const approvalLabels = {
+    not_required: "Tələb olunmur",
+    pending: "Təsdiq gözləyir",
+    approved: "Təsdiqlənib",
+    rejected: "Rədd edilib"
+  };
   const transitions = {
     submitted: ["confirmed", "cancelled"],
     confirmed: ["processing", "cancelled"],
@@ -106,6 +112,57 @@
     }).join("") || "<p>Təchizatçı icra qeydi yoxdur.</p>";
   };
 
+  const renderProcurement = () => {
+    const request = order?.procurement;
+    const quote = order?.deliveryQuote;
+    const approvalStatus = order?.approvalStatus || "not_required";
+    qs("[data-order-approval-status]").textContent = approvalLabels[approvalStatus];
+    const details = [];
+    if (quote) {
+      details.push(`<article>
+        <strong>${escapeHtml(quote.zoneName || quote.city)} · ${formatMoney(quote.amount, quote.currency)}</strong>
+        <span>${quote.etaMinDays}-${quote.etaMaxDays} gün · ${quote.supplierCount} təchizatçı · ${Number(quote.itemQuantity).toLocaleString("az-AZ")} vahid</span>
+        <small>ConstEra platforma logistika tarifi üzrə sifariş zamanı hesablanıb.</small>
+      </article>`);
+    }
+    if (request) {
+      details.push(`<article>
+        <strong>${escapeHtml(request.companyName || order.companyName)} · ${approvalLabels[request.status] || request.status}</strong>
+        <span>${request.approvedCount}/${request.requiredApprovals} təsdiq · ${escapeHtml(request.costCenter || "Xərc mərkəzi göstərilməyib")}</span>
+        <small>${request.budgetAmount === null ? "Büdcə limiti yoxdur" : `Büdcə limiti: ${formatMoney(request.budgetAmount)}`}${request.note ? ` · ${escapeHtml(request.note)}` : ""}</small>
+      </article>`);
+      (request.decisions || []).forEach((decision) => {
+        details.push(`<article>
+          <strong>${escapeHtml(decision.actorName)} · ${decision.decision === "approved" ? "Təsdiqlədi" : "Rədd etdi"}</strong>
+          <span>${formatDate(decision.createdAt)}</span>
+          ${decision.note ? `<small>${escapeHtml(decision.note)}</small>` : ""}
+        </article>`);
+      });
+    }
+    qs("[data-order-procurement-details]").innerHTML = details.join("")
+      || "<p>Bu sifariş üçün ayrıca logistika və təsdiq qeydi yoxdur.</p>";
+    const privileged = ["super_admin", "admin", "sales"].includes(sessionUser?.role);
+    const sameCompanyApprover = sessionUser?.role === "customer"
+      && request?.companyId
+      && request.companyId === sessionUser.companyId
+      && request.requestedBy !== sessionUser.id;
+    const canDecide = request?.status === "pending"
+      && (sessionUser?.role === "super_admin"
+        || ((privileged || sameCompanyApprover) && request.requestedBy !== sessionUser?.id));
+    const canCancel = request?.status === "pending"
+      && (privileged || request.requestedBy === sessionUser?.id);
+    const canRequest = !request
+      && sessionUser?.role === "customer"
+      && order.customerId === sessionUser.id
+      && ["submitted", "confirmed"].includes(order.status);
+    qs("[data-order-procurement-actions]").innerHTML = [
+      canRequest ? '<button class="button button-secondary" type="button" data-procurement-request>Təsdiqə göndər</button>' : "",
+      canDecide ? '<button class="button button-primary" type="button" data-procurement-decision="approved">Təsdiqlə</button>' : "",
+      canDecide ? '<button class="button button-outline" type="button" data-procurement-decision="rejected">Rədd et</button>' : "",
+      canCancel ? '<button class="button button-outline" type="button" data-procurement-cancel>Sorğunu ləğv et</button>' : ""
+    ].join("");
+  };
+
   const renderDocument = () => {
     const document = currentDocument();
     const snapshot = document?.payload?.order || order;
@@ -119,7 +176,7 @@
     qs("[data-order-contact]").textContent = `${snapshot.contactName || "-"} · ${snapshot.email || "-"} · ${snapshot.phone || "-"}`;
     qs("[data-order-city]").textContent = snapshot.city || "-";
     qs("[data-order-address]").textContent = snapshot.address || "-";
-    qs("[data-order-status-label]").textContent = `${statusLabels[snapshot.status] || snapshot.status} · ${paymentLabels[snapshot.paymentStatus] || snapshot.paymentStatus}`;
+    qs("[data-order-status-label]").textContent = `${statusLabels[snapshot.status] || snapshot.status} · ${paymentLabels[snapshot.paymentStatus] || snapshot.paymentStatus} · ${approvalLabels[snapshot.approvalStatus || order.approvalStatus] || "Tələb olunmur"}`;
     qs("[data-order-tracking]").textContent = snapshot.trackingCode
       ? `${snapshot.deliveryProvider || "Daşıyıcı"} · ${snapshot.trackingCode}`
       : "İzləmə kodu hələ təyin edilməyib";
@@ -154,7 +211,8 @@
     const privileged = ["super_admin", "admin", "sales"].includes(sessionUser?.role);
     adminPanel.hidden = !privileged;
     if (!privileged) return;
-    const statusValues = [order.status, ...(transitions[order.status] || [])];
+    const statusValues = [order.status, ...(transitions[order.status] || [])]
+      .filter((value) => value !== "confirmed" || ["not_required", "approved"].includes(order.approvalStatus));
     adminForm.elements.status.innerHTML = statusValues.map((value) => `<option value="${value}">${escapeHtml(statusLabels[value] || value)}</option>`).join("");
     adminForm.elements.status.value = order.status;
     adminForm.elements.paymentStatus.innerHTML = Object.entries(paymentLabels).map(([value, label]) => `<option value="${value}">${escapeHtml(label)}</option>`).join("");
@@ -177,6 +235,7 @@
     renderDocument();
     renderHistory();
     renderFulfillments();
+    renderProcurement();
     renderAdmin();
     const customerCanCancel = sessionUser?.role === "customer"
       && ["submitted", "confirmed"].includes(order.status);
@@ -185,6 +244,7 @@
       && order.paymentStatus !== "paid"
       && order.status !== "cancelled"
       && !order.hasPendingPrice
+      && ["not_required", "approved"].includes(order.approvalStatus)
       && Number(order.totalAmount) > 0;
     qs("[data-order-customer-actions]").hidden = !customerCanCancel && !customerCanPay;
     qs("[data-order-cancel]").hidden = !customerCanCancel;
@@ -236,6 +296,42 @@
     renderDocument();
   });
   qs("[data-order-print]")?.addEventListener("click", () => window.print());
+  qs("[data-order-procurement-actions]")?.addEventListener("click", async (event) => {
+    const requestButton = event.target.closest("[data-procurement-request]");
+    const decisionButton = event.target.closest("[data-procurement-decision]");
+    const cancelButton = event.target.closest("[data-procurement-cancel]");
+    if (!requestButton && !decisionButton && !cancelButton) return;
+    const button = requestButton || decisionButton || cancelButton;
+    button.disabled = true;
+    const actionStatus = qs("[data-order-procurement-status]");
+    try {
+      if (requestButton) {
+        await window.ConstEraAPI.requestProcurementApproval({
+          orderId,
+          requiredApprovals: 1,
+          note: "Sifariş detalından təsdiqə göndərildi"
+        });
+      } else if (decisionButton) {
+        const decision = decisionButton.dataset.procurementDecision;
+        const note = window.prompt("Qərar qeydi", "") ?? "";
+        await window.ConstEraAPI.decideProcurement(order.procurement.id, decision, note);
+      } else if (cancelButton) {
+        if (!window.confirm("Satınalma təsdiqi sorğusu ləğv edilsin?")) {
+          button.disabled = false;
+          return;
+        }
+        await window.ConstEraAPI.cancelProcurement(order.procurement.id);
+      }
+      order = (await window.ConstEraAPI.order(orderId)).data;
+      render();
+      actionStatus.textContent = "Satınalma təsdiqi yeniləndi.";
+      actionStatus.dataset.type = "success";
+    } catch (error) {
+      actionStatus.textContent = error.message || "Satınalma təsdiqi yenilənmədi.";
+      actionStatus.dataset.type = "error";
+      button.disabled = false;
+    }
+  });
   adminForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const button = adminForm.querySelector('button[type="submit"]');

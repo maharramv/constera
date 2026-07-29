@@ -81,6 +81,17 @@
       return request(`/api/catalog?${params}`);
     },
     product: (id) => request(`/api/products?id=${encodeURIComponent(id)}&limit=1`),
+    products: (ids) => request(`/api/products?ids=${encodeURIComponent(ids.join(","))}`),
+    productOffers: (productId, scope = "") => request(`/api/product-offers?productId=${encodeURIComponent(productId)}${scope ? `&scope=${encodeURIComponent(scope)}` : ""}`),
+    managedProductOffers: () => request("/api/product-offers?scope=manage&limit=1000"),
+    saveProductOffer: (data, update = false) => request("/api/product-offers", {
+      method: update ? "PATCH" : "POST",
+      body: JSON.stringify(data)
+    }),
+    deleteProductOffer: (id) => request("/api/product-offers", {
+      method: "DELETE",
+      body: JSON.stringify({ id })
+    }),
     sync: (data) => request("/api/sync", { method: "POST", body: JSON.stringify(data) }),
     createRfq: (data) => request("/api/rfqs", { method: "POST", body: JSON.stringify(data) }),
     saveProduct: (data, update = false) => request("/api/products", {
@@ -104,6 +115,7 @@
       method: update ? "PATCH" : "POST",
       body: JSON.stringify(data)
     }),
+    suppliers: () => request("/api/suppliers"),
     applyAsSupplier: (data) => request("/api/suppliers?action=apply", {
       method: "POST",
       body: JSON.stringify({ action: "apply", ...data })
@@ -162,6 +174,28 @@
     order: (id) => request(`/api/orders?id=${encodeURIComponent(id)}`),
     createOrder: (data) => request("/api/orders", { method: "POST", body: JSON.stringify(data) }),
     updateOrder: (id, data) => request("/api/orders", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
+    deliveryQuote: (data) => request("/api/logistics", {
+      method: "POST",
+      body: JSON.stringify({ action: "quote", ...data })
+    }),
+    logisticsZones: (manage = false) => request(`/api/logistics${manage ? "?scope=manage" : ""}`),
+    saveLogisticsZone: (data, update = false) => request("/api/logistics", {
+      method: update ? "PATCH" : "POST",
+      body: JSON.stringify(data)
+    }),
+    procurement: (orderId = "") => request(`/api/procurement${orderId ? `?orderId=${encodeURIComponent(orderId)}` : "?limit=500"}`),
+    requestProcurementApproval: (data) => request("/api/procurement", {
+      method: "POST",
+      body: JSON.stringify({ action: "request", ...data })
+    }),
+    decideProcurement: (id, decision, note = "") => request("/api/procurement", {
+      method: "PATCH",
+      body: JSON.stringify({ id, action: "decide", decision, note })
+    }),
+    cancelProcurement: (id) => request("/api/procurement", {
+      method: "PATCH",
+      body: JSON.stringify({ id, action: "cancel" })
+    }),
     fulfillments: (orderId = "") => request(`/api/fulfillments?limit=500${orderId ? `&orderId=${encodeURIComponent(orderId)}` : ""}`),
     updateFulfillment: (id, data) => request("/api/fulfillments", {
       method: "PATCH",
@@ -189,6 +223,10 @@
     aiEstimate: (input, deterministicEstimate) => request("/api/integrations", {
       method: "POST",
       body: JSON.stringify({ action: "ai-estimate", input, deterministicEstimate })
+    }),
+    catalogEstimate: (rows) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "catalog-estimate", rows })
     }),
     priceMonitor: () => request("/api/price-monitor"),
     scanPriceMonitor: () => request("/api/price-monitor", { method: "POST", body: "{}" }),

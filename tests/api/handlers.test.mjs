@@ -8,6 +8,7 @@ import productsHandler from "../../api/products.js";
 import rfqsHandler from "../../api/rfqs.js";
 import offersHandler from "../../api/offers.js";
 import { parseRfqQuantity } from "../../api/_lib/rfq-order.js";
+import { chooseProductOffer } from "../../api/_lib/product-offers.js";
 
 const createResponse = () => ({
   headers: {},
@@ -81,6 +82,8 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
     "crm",
     "fulfillments",
     "inventory",
+    "procurement",
+    "product-offers",
     "price-monitor",
     "rental-bookings"
   ]) {
@@ -160,4 +163,14 @@ test("RFQ miqdarı Azərbaycan yazılışından təhlükəsiz rəqəmə çevrili
   assert.equal(parseRfqQuantity("1 250,5 kq"), 1250.5);
   assert.equal(parseRfqQuantity("dəqiqləşdiriləcək"), 1);
   assert.equal(parseRfqQuantity("0 ədəd"), 1);
+});
+
+test("məhsul təklifi seçimi açıq ID-ni qoruyur və uyğunsuz ID-ni qəbul etmir", () => {
+  const offers = [
+    { id: "offer-cheap", unitPrice: 10 },
+    { id: "offer-fast", unitPrice: 12 }
+  ];
+  assert.equal(chooseProductOffer(offers).id, "offer-cheap");
+  assert.equal(chooseProductOffer(offers, "offer-fast").id, "offer-fast");
+  assert.equal(chooseProductOffer(offers, "offer-unknown"), null);
 });

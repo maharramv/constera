@@ -13,6 +13,7 @@ const backupQueries = Object.freeze({
                     price_status, availability, stock_quantity, minimum_order, price_verified_at,
                     image_url, source_url, source_label, specs, extra_data, status, created_at, updated_at
                FROM products ORDER BY updated_at`,
+  productOffers: "SELECT * FROM product_offers ORDER BY product_id, supplier_id",
   priceHistory: "SELECT * FROM price_history ORDER BY captured_at",
   marketplaceEntities: "SELECT * FROM marketplace_entities ORDER BY entity_kind, title",
   mediaAssets: "SELECT * FROM media_assets ORDER BY created_at",
@@ -30,6 +31,10 @@ const backupQueries = Object.freeze({
   inventoryLevels: "SELECT * FROM inventory_levels ORDER BY warehouse_id, product_id",
   orderFulfillments: "SELECT * FROM order_fulfillments ORDER BY order_id, supplier_id",
   inventoryReservations: "SELECT * FROM inventory_reservations ORDER BY order_id, created_at",
+  logisticsZones: "SELECT * FROM logistics_zones ORDER BY priority, name",
+  deliveryQuotes: "SELECT * FROM delivery_quotes ORDER BY created_at",
+  procurementRequests: "SELECT * FROM procurement_requests ORDER BY created_at",
+  procurementDecisions: "SELECT * FROM procurement_decisions ORDER BY request_id, created_at",
   crmLeads: "SELECT * FROM crm_leads ORDER BY created_at",
   crmActivities: "SELECT * FROM crm_activities ORDER BY lead_id, created_at",
   rentalBookings: "SELECT * FROM rental_bookings ORDER BY created_at",
@@ -64,11 +69,11 @@ export const buildCloudBackup = async () => {
   );
   const data = Object.fromEntries(entries);
   return {
-    version: "constera-cloud-backup-v3",
+    version: "constera-cloud-backup-v4",
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: 18,
+    schemaMigrations: 19,
     data
   };
 };

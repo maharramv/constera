@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { query, recordAudit } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { syncProductInventoryLevels } from "./_lib/order-operations.js";
+import { listProductOffers, loadOffersForProducts, syncCanonicalProductOffer } from "./_lib/product-offers.js";
 import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stringList, text } from "./_lib/validation.js";
 
 const productFields = `id, sku, name, slug, brand, category_id, subcategory, package_text, origin,
@@ -39,7 +41,7 @@ const mapProduct = (row) => ({
 });
 
 const loadProductDetails = async (row) => {
-  const [historyRows, mediaRows, relatedRows] = await Promise.all([
+  const [historyRows, mediaRows, relatedRows, offers] = await Promise.all([
     query(
       `SELECT price_amount, price_currency, price_text, source_url, captured_at
          FROM price_history
@@ -71,7 +73,8 @@ const loadProductDetails = async (row) => {
           updated_at DESC
         LIMIT 6`,
       [row.id, row.category_id]
-    )
+    ),
+    listProductOffers(row.id)
   ]);
   const gallery = [
     ...(row.image_url ? [{ url: row.image_url, alt: row.name, primary: true }] : []),
@@ -91,6 +94,8 @@ const loadProductDetails = async (row) => {
       capturedAt: item.captured_at
     })),
     gallery,
+    offers,
+    preferredOffer: offers[0] || null,
     relatedProducts: relatedRows.map(mapProduct)
   };
 };
@@ -147,6 +152,33 @@ export default withApiErrors(async (req, res) => {
   if (req.method === "GET") {
     const limit = parseLimit(req.query.limit, 100, 1_000);
     const id = text(req.query.id, { max: 160 });
+    const idsInput = text(req.query.ids, { max: 12_000 });
+    const requestedIds = idsInput
+      ? [...new Set(idsInput.split(",").map((value) => value.trim()).filter(Boolean))]
+      : [];
+    if (requestedIds.length > 100 || requestedIds.some((value) => !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,159}$/.test(value))) {
+      throw new ApiError(400, "invalid_product_ids", "Toplu məhsul sorğusunda maksimum 100 düzgün ID göndərilə bilər.");
+    }
+    if (requestedIds.length) {
+      const rows = await query(
+        `SELECT ${productFields}
+           FROM products
+          WHERE id = ANY($1::text[]) AND status = 'active'`,
+        [requestedIds]
+      );
+      const rowsById = new Map(rows.map((row) => [row.id, row]));
+      const offersByProduct = await loadOffersForProducts(rows.map((row) => row.id));
+      return sendJson(res, 200, {
+        ok: true,
+        data: requestedIds
+          .map((productId) => rowsById.get(productId))
+          .filter(Boolean)
+          .map((row) => {
+            const offers = offersByProduct.get(row.id) || [];
+            return { ...mapProduct(row), offers, preferredOffer: offers[0] || null };
+          })
+      });
+    }
     const ownScope = req.query.scope === "mine";
     const values = [];
     const where = [];
@@ -196,6 +228,7 @@ export default withApiErrors(async (req, res) => {
       ownSupplier ? [id, ownSupplier.id] : [id]
     );
     if (!rows[0]) throw new ApiError(404, "product_not_found", "Məhsul tapılmadı.");
+    await query("UPDATE product_offers SET status = 'archived', updated_at = now() WHERE product_id = $1", [id]);
     await recordAudit({ actorId: user.id, action: "archive", entityType: "product", entityId: id });
     return sendJson(res, 200, { ok: true, data: { id, status: "archived" } });
   }
@@ -300,6 +333,38 @@ export default withApiErrors(async (req, res) => {
           WHERE product_id = $1 AND status = 'pending'`,
         [item.id]
       );
+    }
+    if (supplier) {
+      await query(
+        `INSERT INTO product_offers (
+           id, product_id, supplier_id, supplier_sku, unit_price, currency,
+           price_text, price_status, stock_quantity, minimum_order,
+           source_url, source_label, price_verified_at, is_featured, status, updated_at
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+           $11, $12, $13, true, $14, now()
+         )
+         ON CONFLICT (product_id, supplier_id) DO UPDATE SET
+           supplier_sku = EXCLUDED.supplier_sku,
+           unit_price = EXCLUDED.unit_price,
+           currency = EXCLUDED.currency,
+           price_text = EXCLUDED.price_text,
+           price_status = EXCLUDED.price_status,
+           stock_quantity = EXCLUDED.stock_quantity,
+           minimum_order = EXCLUDED.minimum_order,
+           source_url = EXCLUDED.source_url,
+           source_label = EXCLUDED.source_label,
+           price_verified_at = EXCLUDED.price_verified_at,
+           status = EXCLUDED.status,
+           updated_at = now()`,
+        [
+          `pof-${randomUUID()}`, item.id, supplier.id, item.sku, item.priceAmount,
+          item.priceCurrency, item.priceText, item.priceStatus, item.stockQuantity,
+          item.minimumOrder, item.sourceUrl || null, item.sourceLabel || null,
+          item.priceVerifiedAt, item.status
+        ]
+      );
+      await syncCanonicalProductOffer(item.id);
     }
     await syncProductInventoryLevels([item.id]);
     await recordAudit({ actorId: user.id, action: req.method === "POST" ? "create" : "update", entityType: "product", entityId: item.id, details: { sku: item.sku } });

@@ -4,6 +4,7 @@ import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
+import { calculateDeliveryQuote, saveDeliveryQuote } from "../_lib/logistics.js";
 import {
   issueOrderDocument,
   mapOrder,
@@ -15,6 +16,7 @@ import {
   ensureOrderOperations,
   syncOperationsForOrderStatus
 } from "../_lib/order-operations.js";
+import { chooseProductOffer, loadOffersForProducts } from "../_lib/product-offers.js";
 import { email, oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const orderStatuses = ["submitted", "confirmed", "processing", "shipped", "completed", "cancelled"];
@@ -68,6 +70,7 @@ export default withApiErrors(async (req, res) => {
         order.fulfillments = order.fulfillments.filter((item) => visibleSupplierIds.has(item.supplierId));
         order.reservations = order.reservations.filter((item) => visibleIds.has(item.orderItemId));
         order.documents = [];
+        order.procurement = null;
       }
       return sendJson(res, 200, { ok: true, data: order });
     }
@@ -100,6 +103,7 @@ export default withApiErrors(async (req, res) => {
       `SELECT o.*,
               COALESCE(json_agg(json_build_object(
                 'id', i.id, 'productId', i.product_id, 'supplierId', i.supplier_id,
+                'productOfferId', i.product_offer_id,
                 'sku', i.sku, 'title', i.title,
                 'quantity', i.quantity, 'unit', i.unit, 'unitPrice', i.unit_price,
                 'priceText', i.price_text, 'lineTotal', i.line_total, 'snapshot', i.snapshot
@@ -162,6 +166,15 @@ export default withApiErrors(async (req, res) => {
         allowed: allowedOrderTransitions[current.status] || []
       });
     }
+    if (status === "confirmed" && current.approvalStatus !== "not_required" && current.approvalStatus !== "approved") {
+      throw new ApiError(
+        409,
+        "procurement_approval_required",
+        current.approvalStatus === "rejected"
+          ? "Satınalma sorğusu rədd edilib. Sifariş təsdiqlənə bilməz."
+          : "Sifariş təsdiqlənməzdən əvvəl satınalma təsdiqləri tamamlanmalıdır."
+      );
+    }
     const deliveryAmount = Object.prototype.hasOwnProperty.call(body, "deliveryAmount")
       ? parsePriceAmount(body.deliveryAmount)
       : current.deliveryAmount;
@@ -222,45 +235,78 @@ export default withApiErrors(async (req, res) => {
     throw new ApiError(429, "order_rate_limited", "Bir saat ərzində sifariş limiti dolub. Bir qədər sonra yenidən yoxla.");
   }
 
-  const productIds = [...new Set(sourceItems.map((item) => text(item.productId, { max: 160 })).filter(Boolean))];
-  if (productIds.length !== sourceItems.length) throw new ApiError(400, "invalid_order_items", "Səbətdə təkrarlanan və ya yanlış məhsul var.");
+  const normalizedSourceItems = sourceItems.map((item) => ({
+    ...item,
+    productId: text(item.productId, { max: 160 }),
+    offerId: text(item.offerId, { max: 160 })
+  }));
+  const productIds = [...new Set(normalizedSourceItems.map((item) => item.productId).filter(Boolean))];
+  if (productIds.length !== normalizedSourceItems.length) throw new ApiError(400, "invalid_order_items", "Səbətdə təkrarlanan və ya yanlış məhsul var.");
   const products = await query(
     `SELECT id, sku, name, brand, package_text, price_amount, price_currency, price_text,
-            price_status, image_url, supplier_id, supplier_name
+            price_status, price_verified_at, image_url, source_url, supplier_id, supplier_name
        FROM products WHERE id = ANY($1::text[]) AND status = 'active'`,
     [productIds]
   );
   if (products.length !== productIds.length) throw new ApiError(400, "product_not_found", "Səbətdəki məhsullardan biri artıq aktiv deyil.");
 
   const productsById = new Map(products.map((product) => [product.id, product]));
+  const offersByProduct = await loadOffersForProducts(productIds);
   let subtotal = 0;
   let hasPendingPrice = false;
-  const items = sourceItems.map((source) => {
+  const items = normalizedSourceItems.map((source) => {
     const product = productsById.get(source.productId);
     const quantity = parseOrderQuantity(source.quantity);
-    const confirmed = product.price_status === "confirmed" && product.price_amount !== null;
-    const unitPrice = confirmed ? Number(product.price_amount) : null;
+    const offers = offersByProduct.get(product.id) || [];
+    const selectedOffer = chooseProductOffer(offers, source.offerId);
+    if (source.offerId && !selectedOffer) {
+      throw new ApiError(400, "product_offer_not_found", `${product.name} üçün seçilmiş təchizatçı təklifi aktiv deyil.`);
+    }
+    if (selectedOffer?.minimumOrder !== null && quantity < selectedOffer.minimumOrder) {
+      throw new ApiError(
+        400,
+        "minimum_order_not_met",
+        `${product.name} üçün minimum sifariş ${selectedOffer.minimumOrder} vahiddir.`
+      );
+    }
+    if (selectedOffer?.stockQuantity !== null && quantity > selectedOffer.stockQuantity) {
+      throw new ApiError(
+        409,
+        "insufficient_offer_stock",
+        `${product.name} üçün seçilmiş təchizatçıda maksimum ${selectedOffer.stockQuantity} vahid mövcuddur.`
+      );
+    }
+    const offerCurrency = selectedOffer?.currency || product.price_currency || "AZN";
+    const priceStatus = selectedOffer?.priceStatus || product.price_status;
+    const priceAmount = selectedOffer ? selectedOffer.unitPrice : product.price_amount;
+    const confirmed = priceStatus === "confirmed" && priceAmount !== null && offerCurrency === "AZN";
+    const unitPrice = confirmed ? Number(priceAmount) : null;
     const lineTotal = unitPrice === null ? null : Math.round(unitPrice * quantity * 100) / 100;
     if (lineTotal === null) hasPendingPrice = true;
     else subtotal += lineTotal;
     return {
       id: `ori-${randomUUID()}`,
       productId: product.id,
-      supplierId: product.supplier_id,
-      sku: product.sku,
+      productOfferId: selectedOffer?.id || null,
+      supplierId: selectedOffer?.supplierId || product.supplier_id,
+      sku: selectedOffer?.supplierSku || product.sku,
       title: product.name,
       quantity,
       unit: text(source.unit, { max: 80 }) || product.package_text || "ədəd",
       unitPrice,
-      priceText: confirmed ? product.price_text : "Sorğu əsasında",
+      priceText: confirmed ? (selectedOffer?.price || product.price_text) : "Sorğu əsasında",
       lineTotal,
       snapshot: {
         brand: product.brand,
         package: product.package_text || "",
         imageUrl: product.image_url || "",
-        supplierId: product.supplier_id,
-        supplierName: product.supplier_name || "",
-        priceStatus: product.price_status
+        productOfferId: selectedOffer?.id || null,
+        supplierId: selectedOffer?.supplierId || product.supplier_id,
+        supplierName: selectedOffer?.supplier || product.supplier_name || "",
+        priceStatus,
+        leadTimeDays: selectedOffer?.leadTimeDays ?? null,
+        priceVerifiedAt: selectedOffer?.priceVerifiedAt || product.price_verified_at || null,
+        sourceUrl: selectedOffer?.sourceUrl || product.source_url || ""
       }
     };
   });
@@ -275,40 +321,108 @@ export default withApiErrors(async (req, res) => {
   const address = text(body.address, { field: "Ünvan", required: true, max: 500 });
   const deliveryMode = oneOf(body.deliveryMode, deliveryModes, "delivery", "Çatdırılma üsulu");
   const paymentMethod = oneOf(body.paymentMethod, paymentMethods, "invoice", "Ödəniş üsulu");
+  const requiresApproval = body.requiresApproval === true || String(body.requiresApproval) === "true";
+  if (requiresApproval && !session) {
+    throw new ApiError(401, "authentication_required", "Satınalma təsdiqi üçün müştəri hesabına daxil olmaq lazımdır.");
+  }
+  const requiredApprovals = Math.max(1, Math.min(Number.parseInt(String(body.requiredApprovals || 1), 10) || 1, 5));
+  const budgetAmount = body.budgetAmount === "" || body.budgetAmount === null || body.budgetAmount === undefined
+    ? null
+    : parsePriceAmount(body.budgetAmount);
+  if (body.budgetAmount !== "" && body.budgetAmount !== null && body.budgetAmount !== undefined && budgetAmount === null) {
+    throw new ApiError(400, "validation_error", "Büdcə məbləği düzgün deyil.");
+  }
+  const costCenter = text(body.costCenter, { max: 160 }) || null;
+  const approvalNote = text(body.approvalNote, { max: 1_000 }) || null;
+  const approvalStatus = requiresApproval ? "pending" : "not_required";
   const finalSubtotal = hasPendingPrice ? null : subtotal;
+  const supplierCount = new Set(items.map((item) => item.supplierId).filter(Boolean)).size;
+  const itemQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const deliveryQuote = await calculateDeliveryQuote({
+    city,
+    mode: deliveryMode,
+    subtotal: finalSubtotal,
+    itemQuantity,
+    supplierCount
+  });
+  const deliveryAmount = deliveryQuote.amount;
+  const totalAmount = finalSubtotal === null
+    ? null
+    : Math.round((finalSubtotal + deliveryAmount) * 100) / 100;
 
   const rows = await query(
     `WITH new_order AS (
        INSERT INTO orders (
          id, customer_id, company_name, contact_name, email, phone, city, address,
-         delivery_mode, payment_method, subtotal, total_amount, has_pending_price,
-         note, submission_hash
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12, $13, $14)
+         delivery_mode, payment_method, subtotal, delivery_amount, total_amount,
+         has_pending_price, approval_status, note, submission_hash
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+         $14, $15, $16, $17
+       )
        RETURNING id, order_number
      ), incoming AS (
-       SELECT * FROM jsonb_to_recordset($15::jsonb) AS x(
-         id text, "productId" text, "supplierId" text, sku text, title text, quantity numeric,
+       SELECT * FROM jsonb_to_recordset($18::jsonb) AS x(
+         id text, "productId" text, "productOfferId" text, "supplierId" text,
+         sku text, title text, quantity numeric,
          unit text, "unitPrice" numeric, "priceText" text, "lineTotal" numeric, snapshot jsonb
        )
      )
      INSERT INTO order_items (
-       id, order_id, product_id, supplier_id, sku, title, quantity, unit,
+       id, order_id, product_id, product_offer_id, supplier_id, sku, title, quantity, unit,
        unit_price, price_text, line_total, snapshot
      )
-     SELECT i.id, n.id, i."productId", i."supplierId", i.sku, i.title, i.quantity, i.unit,
+     SELECT i.id, n.id, i."productId", i."productOfferId", i."supplierId", i.sku, i.title, i.quantity, i.unit,
             i."unitPrice", i."priceText", i."lineTotal", i.snapshot
        FROM incoming i CROSS JOIN new_order n
      RETURNING (SELECT order_number FROM new_order) AS order_number`,
     [
       id, session?.id || null, companyName, contactName, orderEmail, phone, city, address,
-      deliveryMode, paymentMethod, finalSubtotal, hasPendingPrice,
-      text(body.note, { max: 3_000 }) || null, submissionHash, JSON.stringify(items)
+      deliveryMode, paymentMethod, finalSubtotal, deliveryAmount, totalAmount,
+      hasPendingPrice, approvalStatus, text(body.note, { max: 3_000 }) || null,
+      submissionHash, JSON.stringify(items)
     ]
   );
   const orderNumber = Number(rows[0]?.order_number || 0);
+  await saveDeliveryQuote({
+    orderId: id,
+    customerId: session?.id || null,
+    city,
+    mode: deliveryMode,
+    supplierCount,
+    itemQuantity,
+    subtotal: finalSubtotal,
+    quote: deliveryQuote,
+    status: "accepted"
+  });
+  if (requiresApproval) {
+    await query(
+      `INSERT INTO procurement_requests (
+         id, order_id, requested_by, company_id, required_approvals,
+         budget_amount, cost_center, note
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        `pcr-${randomUUID()}`, id, session.id, session.companyId || null,
+        requiredApprovals, budgetAmount, costCenter, approvalNote
+      ]
+    );
+  }
   await ensureOrderOperations(id);
   await syncOrderLead(id);
-  await recordAudit({ actorId: session?.id || null, action: "create", entityType: "order", entityId: id, details: { orderNumber, itemCount: items.length, hasPendingPrice } });
+  await recordAudit({
+    actorId: session?.id || null,
+    action: "create",
+    entityType: "order",
+    entityId: id,
+    details: {
+      orderNumber,
+      itemCount: items.length,
+      supplierCount,
+      hasPendingPrice,
+      approvalStatus,
+      deliveryAmount
+    }
+  });
   const createdOrder = await readOrderDetails(id);
   await recordOrderHistory({
     order: { ...createdOrder, status: null, paymentStatus: null },

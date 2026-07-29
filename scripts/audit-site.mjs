@@ -83,6 +83,7 @@ const requiredProductionFiles = [
   "db/migrations/016_fulfillment_inventory.sql",
   "db/migrations/017_crm_rental_bookings.sql",
   "db/migrations/018_provider_integrations.sql",
+  "db/migrations/019_b2b_procurement_logistics.sql",
   "assets/js/order-detail.js",
   "assets/css/order-document.css",
   "tools/catalog-scraper/src/main.py",

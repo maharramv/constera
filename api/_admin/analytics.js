@@ -16,7 +16,8 @@ export default withApiErrors(async (req, res) => {
     categoryRows,
     auditRows,
     qualityRows,
-    qualityItemRows
+    qualityItemRows,
+    offerQualityRows
   ] = await Promise.all([
     query(`SELECT
       (SELECT count(*) FROM users WHERE status = 'active')::int AS users,
@@ -26,7 +27,10 @@ export default withApiErrors(async (req, res) => {
       (SELECT count(*) FROM categories WHERE active = true AND parent_id IS NOT NULL)::int AS subcategories,
       (SELECT count(*) FROM rfqs)::int AS rfqs,
       (SELECT count(*) FROM offers)::int AS offers,
+      (SELECT count(*) FROM product_offers WHERE status = 'active')::int AS product_offers,
       (SELECT count(*) FROM orders)::int AS orders,
+      (SELECT count(*) FROM procurement_requests WHERE status = 'pending')::int AS pending_procurement,
+      (SELECT count(*) FROM logistics_zones WHERE active = true)::int AS logistics_zones,
       (SELECT count(*) FROM tenders)::int AS tenders,
       (SELECT count(*) FROM tender_bids)::int AS tender_bids,
       (SELECT count(*) FROM crm_leads)::int AS crm_leads,
@@ -188,10 +192,41 @@ export default withApiErrors(async (req, res) => {
     WHERE missing_image OR missing_source OR missing_specs OR missing_brand OR missing_category
        OR stale_price OR expired_price OR unknown_stock OR duplicate_name
     ORDER BY issue_score DESC, updated_at ASC
-    LIMIT 32`)
+    LIMIT 32`),
+    query(`SELECT
+      count(*) FILTER (WHERE offer.status = 'active')::int AS total,
+      count(*) FILTER (
+        WHERE offer.status = 'active'
+          AND NULLIF(trim(coalesce(offer.source_url, '')), '') IS NULL
+      )::int AS missing_source,
+      count(*) FILTER (
+        WHERE offer.status = 'active'
+          AND offer.price_status = 'confirmed'
+          AND (offer.price_verified_at IS NULL OR offer.price_verified_at < now() - interval '30 days')
+      )::int AS stale_price,
+      count(*) FILTER (
+        WHERE offer.status = 'active' AND offer.stock_quantity IS NULL
+      )::int AS unknown_stock,
+      count(*) FILTER (
+        WHERE offer.status = 'active'
+          AND offer.price_status = 'confirmed'
+          AND (offer.unit_price IS NULL OR offer.unit_price < 0)
+      )::int AS invalid_price,
+      (
+        SELECT count(*)::int
+        FROM products product
+        WHERE product.status = 'active'
+          AND NOT EXISTS (
+            SELECT 1 FROM product_offers active_offer
+            WHERE active_offer.product_id = product.id
+              AND active_offer.status = 'active'
+          )
+      ) AS products_without_offers
+    FROM product_offers offer`)
   ]);
   const counts = countsRows[0] || {};
   const qualityRow = qualityRows[0] || {};
+  const offerQualityRow = offerQualityRows[0] || {};
   const qualitySummary = {
     allTotal: Number(qualityRow.all_total || 0),
     total: Number(qualityRow.total || 0),
@@ -205,14 +240,23 @@ export default withApiErrors(async (req, res) => {
     stalePrice: Number(qualityRow.stale_price || 0),
     expiredPrice: Number(qualityRow.expired_price || 0),
     unknownStock: Number(qualityRow.unknown_stock || 0),
-    duplicateNames: Number(qualityRow.duplicate_names || 0)
+    duplicateNames: Number(qualityRow.duplicate_names || 0),
+    offerTotal: Number(offerQualityRow.total || 0),
+    offerMissingSource: Number(offerQualityRow.missing_source || 0),
+    offerStalePrice: Number(offerQualityRow.stale_price || 0),
+    offerUnknownStock: Number(offerQualityRow.unknown_stock || 0),
+    offerInvalidPrice: Number(offerQualityRow.invalid_price || 0),
+    productsWithoutOffers: Number(offerQualityRow.products_without_offers || 0)
   };
-  const completenessMaximum = qualitySummary.total * 5;
+  const completenessMaximum = qualitySummary.total * 5 + qualitySummary.offerTotal * 3;
   const completenessMissing = qualitySummary.missingImage
     + qualitySummary.missingSource
     + qualitySummary.missingSpecs
     + qualitySummary.missingBrand
-    + qualitySummary.missingCategory;
+    + qualitySummary.missingCategory
+    + qualitySummary.offerMissingSource
+    + qualitySummary.offerStalePrice
+    + qualitySummary.offerUnknownStock;
   const qualityScore = completenessMaximum
     ? Math.max(0, Math.round(((completenessMaximum - completenessMissing) / completenessMaximum) * 100))
     : 100;

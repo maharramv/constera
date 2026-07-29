@@ -117,6 +117,65 @@ test("ağıllı smeta Neon kabinetinə və canlı RFQ axınına qoşulur", () =>
   assert.match(marketplace, /cloudSyncedAt/);
 });
 
+test("məhsul təklifləri təchizatçı müqayisəsi və seçilmiş snapshot ilə sifarişə bağlanır", () => {
+  const migration = read("db/migrations/019_b2b_procurement_logistics.sql");
+  const products = read("api/products.js");
+  const offers = read("api/_admin/product-offers.js");
+  const offerHelper = read("api/_lib/product-offers.js");
+  const orders = read("api/_admin/orders.js");
+  const marketplace = read("assets/js/marketplace.js");
+  const production = read("assets/js/production.js");
+  const admin = read("admin.html");
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS product_offers/);
+  assert.match(migration, /UNIQUE \(product_id, supplier_id\)/);
+  assert.match(products, /preferredOffer/);
+  assert.match(products, /invalid_product_ids/);
+  assert.match(production, /products: \(ids\)/);
+  assert.match(marketplace, /ConstEraAPI\.products\(ids\)/);
+  assert.match(offers, /syncCanonicalProductOffer/);
+  assert.match(offers, /let id = ""/);
+  assert.match(offers, /\.\.\.body,\s*productId: existing\.product_id,\s*supplierId: existing\.supplier_id/);
+  assert.doesNotMatch(offerHelper, /SET supplier_id =/);
+  assert.match(orders, /productOfferId/);
+  assert.match(orders, /minimum_order_not_met/);
+  assert.match(orders, /insufficient_offer_stock/);
+  assert.match(marketplace, /data-offer-choice/);
+  assert.match(admin, /data-admin-product-offer-form/);
+});
+
+test("logistika tarifi və şirkətdaxili satınalma təsdiqi sifariş mərhələsini qoruyur", () => {
+  const migration = read("db/migrations/019_b2b_procurement_logistics.sql");
+  const logistics = read("api/_lib/logistics.js");
+  const procurement = read("api/_admin/procurement.js");
+  const orders = read("api/_admin/orders.js");
+  const checkout = read("checkout.html");
+  const orderClient = read("assets/js/order-detail.js");
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS logistics_zones/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS procurement_requests/);
+  assert.match(logistics, /tariffType: "platform_estimate"/);
+  assert.match(procurement, /self_approval_forbidden/);
+  assert.match(procurement, /user\.role !== "super_admin"/);
+  assert.match(procurement, /required_approvals/);
+  assert.match(orders, /procurement_approval_required/);
+  assert.match(checkout, /data-procurement-fields/);
+  assert.match(orderClient, /data-procurement-decision/);
+});
+
+test("ağıllı smeta təsdiqli kataloq təklifləri və qablaşdırma ilə qiymətləndirilir", () => {
+  const helper = read("api/_lib/estimate-catalog.js");
+  const integrations = read("api/_admin/integrations.js");
+  const marketplace = read("assets/js/marketplace.js");
+
+  assert.match(helper, /priceEstimateWithCatalog/);
+  assert.match(helper, /packageCount/);
+  assert.match(helper, /coveragePercent/);
+  assert.match(integrations, /catalog-estimate/);
+  assert.match(marketplace, /ConstEraAPI\.catalogEstimate/);
+  assert.match(marketplace, /catalogPricing/);
+});
+
 test("sifariş mərhələləri tarixçə və dəyişməz proforma sənədi yaradır", () => {
   const ordersApi = read("api/_admin/orders.js");
   const migration = read("db/migrations/013_commerce_lifecycle.sql");
@@ -258,7 +317,7 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
-  assert.match(backup, /constera-cloud-backup-v3/);
+  assert.match(backup, /constera-cloud-backup-v4/);
   assert.doesNotMatch(backup, /password_hash/);
   assert.doesNotMatch(backup, /SELECT \* FROM users/);
   assert.match(backup, /Content-Encoding/);

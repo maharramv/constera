@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { query } from "./db.js";
 import { readOrderOperations } from "./order-operations.js";
+import { readProcurementRequest } from "./procurement.js";
 import { text } from "./validation.js";
 
 const mapDocument = (row) => ({
@@ -29,6 +30,7 @@ export const mapOrder = (row) => ({
   paymentMethod: row.payment_method,
   paymentStatus: row.payment_status,
   status: row.status,
+  approvalStatus: row.approval_status || "not_required",
   subtotal: row.subtotal === null ? null : Number(row.subtotal),
   deliveryAmount: row.delivery_amount === null ? null : Number(row.delivery_amount),
   totalAmount: row.total_amount === null ? null : Number(row.total_amount),
@@ -42,6 +44,8 @@ export const mapOrder = (row) => ({
   history: row.history || [],
   fulfillments: row.fulfillments || [],
   reservations: row.reservations || [],
+  deliveryQuote: row.deliveryQuote || null,
+  procurement: row.procurement || null,
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -51,6 +55,7 @@ export const readOrder = async (id) => {
     `SELECT o.*,
             COALESCE(json_agg(json_build_object(
               'id', i.id, 'productId', i.product_id, 'supplierId', i.supplier_id,
+              'productOfferId', i.product_offer_id,
               'sku', i.sku, 'title', i.title, 'quantity', i.quantity, 'unit', i.unit,
               'unitPrice', i.unit_price, 'priceText', i.price_text,
               'lineTotal', i.line_total, 'snapshot', i.snapshot
@@ -75,7 +80,7 @@ export const readOrder = async (id) => {
 export const readOrderDetails = async (id) => {
   const order = await readOrder(id);
   if (!order) return null;
-  const [historyRows, documentRows, operations] = await Promise.all([
+  const [historyRows, documentRows, operations, quoteRows, procurement] = await Promise.all([
     query(
       `SELECT history.*, actor.name AS actor_name
          FROM order_status_history history
@@ -91,13 +96,40 @@ export const readOrderDetails = async (id) => {
         ORDER BY issued_at DESC`,
       [id]
     ),
-    readOrderOperations(id)
+    readOrderOperations(id),
+    query(
+      `SELECT quote.*, zone.name AS zone_name
+         FROM delivery_quotes quote
+         LEFT JOIN logistics_zones zone ON zone.id = quote.zone_id
+        WHERE quote.order_id = $1
+        LIMIT 1`,
+      [id]
+    ),
+    readProcurementRequest(id)
   ]);
   return {
     ...order,
     documents: documentRows.map(mapDocument),
     fulfillments: operations.fulfillments,
     reservations: operations.reservations,
+    deliveryQuote: quoteRows[0] ? {
+      id: quoteRows[0].id,
+      zoneId: quoteRows[0].zone_id,
+      zoneName: quoteRows[0].zone_name || "",
+      city: quoteRows[0].city,
+      mode: quoteRows[0].mode,
+      supplierCount: Number(quoteRows[0].supplier_count || 0),
+      itemQuantity: Number(quoteRows[0].item_quantity || 0),
+      subtotal: quoteRows[0].subtotal === null ? null : Number(quoteRows[0].subtotal),
+      amount: Number(quoteRows[0].amount || 0),
+      currency: quoteRows[0].currency,
+      etaMinDays: Number(quoteRows[0].eta_min_days || 0),
+      etaMaxDays: Number(quoteRows[0].eta_max_days || 0),
+      breakdown: quoteRows[0].breakdown || {},
+      status: quoteRows[0].status,
+      expiresAt: quoteRows[0].expires_at
+    } : null,
+    procurement,
     history: historyRows.map((item) => ({
       id: item.id,
       actorName: item.actor_name || "Sistem",
@@ -173,11 +205,14 @@ export const issueOrderDocument = async (order, documentType, actorId = null) =>
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
       status: order.status,
+      approvalStatus: order.approvalStatus,
       trackingCode: order.trackingCode,
       deliveryProvider: order.deliveryProvider,
       subtotal: order.subtotal,
       deliveryAmount: order.deliveryAmount,
       totalAmount: order.totalAmount,
+      deliveryQuote: order.deliveryQuote,
+      procurement: order.procurement,
       currency: order.currency,
       note: order.note,
       items: order.items
