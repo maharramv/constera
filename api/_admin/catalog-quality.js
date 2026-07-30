@@ -1,6 +1,8 @@
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import {
+  normalizeCatalogAttributes,
   previewCatalogRemediation,
+  previewCatalogAttributeNormalization,
   remediateCatalogIssues,
   runCatalogQualityScan
 } from "../_lib/catalog-quality.js";
@@ -94,10 +96,28 @@ export default withApiErrors(async (req, res) => {
       const issueIds = Array.isArray(body.issueIds) ? body.issueIds.map((id) => text(id, { max: 160 })).filter(Boolean) : [];
       return sendJson(res, 200, { ok: true, data: await previewCatalogRemediation(issueIds) });
     }
+    if (action === "preview-attributes") {
+      return sendJson(res, 200, { ok: true, data: await previewCatalogAttributeNormalization() });
+    }
+    if (action === "normalize-attributes") {
+      if (!["super_admin", "admin"].includes(user.role)) {
+        throw new ApiError(403, "permission_denied", "Atributları yalnız administrator standartlaşdıra bilər.");
+      }
+      assertCriticalTwoFactor(user);
+      const result = await normalizeCatalogAttributes({ actorId: user.id });
+      await recordAudit({
+        actorId: user.id,
+        action: "normalize_attributes",
+        entityType: "catalog_quality",
+        details: result
+      });
+      return sendJson(res, 200, { ok: true, data: result });
+    }
     if (action === "remediate") {
       if (!["super_admin", "admin"].includes(user.role)) {
         throw new ApiError(403, "permission_denied", "Avtomatik düzəlişi yalnız administrator icra edə bilər.");
       }
+      assertCriticalTwoFactor(user);
       const issueIds = Array.isArray(body.issueIds) ? body.issueIds.map((id) => text(id, { max: 160 })).filter(Boolean) : [];
       const result = await remediateCatalogIssues({ issueIds, actorId: user.id });
       await recordAudit({

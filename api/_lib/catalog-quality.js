@@ -2,6 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { query } from "./db.js";
+import {
+  countTechnicalAttributes,
+  normalizeProductAttributes
+} from "./product-attributes.js";
 
 const structuralIssueTypes = [
   "missing_image", "missing_licensed_media", "invalid_image_url", "missing_source", "invalid_source_url",
@@ -272,6 +276,79 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
 };
 
 export const qualityIssueTypes = Object.freeze([...structuralIssueTypes, ...linkIssueTypes]);
+
+const loadAttributeCandidates = async () => {
+  const rows = await query(
+    `SELECT id, name, package_text, origin, specs, extra_data
+       FROM products
+      WHERE status = 'active'
+        AND lower(trim(coalesce(brand, ''))) <> 'constera sorğu'
+        AND lower(name) NOT LIKE '%məhsul qrupu%'
+        AND upper(sku) NOT LIKE '%RFQ%'
+      ORDER BY id`
+  );
+  return rows.map((row) => {
+    const current = Array.isArray(row.extra_data?.attributes) ? row.extra_data.attributes : [];
+    const attributes = normalizeProductAttributes({
+      specs: row.specs,
+      packageText: row.package_text,
+      origin: row.origin,
+      storedAttributes: current
+    }).map(({ label, value }) => ({ label, value }));
+    return {
+      id: row.id,
+      name: row.name,
+      currentCount: current.length,
+      attributeCount: attributes.length,
+      technicalCount: countTechnicalAttributes(attributes),
+      attributes,
+      changed: JSON.stringify(current) !== JSON.stringify(attributes)
+    };
+  }).filter((item) => item.changed && item.technicalCount > 0);
+};
+
+export const previewCatalogAttributeNormalization = async () => {
+  const candidates = await loadAttributeCandidates();
+  return {
+    candidateProducts: candidates.length,
+    technicalAttributes: candidates.reduce((sum, item) => sum + item.technicalCount, 0),
+    sample: candidates.slice(0, 20).map(({ id, name, attributeCount, technicalCount, attributes }) => ({
+      id,
+      name,
+      attributeCount,
+      technicalCount,
+      attributes
+    }))
+  };
+};
+
+export const normalizeCatalogAttributes = async ({ actorId = null } = {}) => {
+  const candidates = await loadAttributeCandidates();
+  if (!candidates.length) return { updatedProducts: 0, technicalAttributes: 0 };
+  const rows = await query(
+    `WITH incoming AS (
+       SELECT *
+         FROM jsonb_to_recordset($1::jsonb) AS item(id text, attributes jsonb)
+     )
+     UPDATE products product
+        SET extra_data = jsonb_set(
+              coalesce(product.extra_data, '{}'::jsonb),
+              '{attributes}',
+              incoming.attributes,
+              true
+            ),
+            updated_at = now()
+       FROM incoming
+      WHERE product.id = incoming.id
+      RETURNING product.id`,
+    [JSON.stringify(candidates.map((item) => ({ id: item.id, attributes: item.attributes })))]
+  );
+  return {
+    updatedProducts: rows.length,
+    technicalAttributes: candidates.reduce((sum, item) => sum + item.technicalCount, 0),
+    actorId
+  };
+};
 
 const remediationRows = async (issueIds = []) => {
   const values = [];

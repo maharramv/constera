@@ -1,5 +1,5 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { priceEstimateWithCatalog } from "../_lib/estimate-catalog.js";
@@ -353,6 +353,7 @@ export default withApiErrors(async (req, res) => {
 
   if (action === "create-shipment") {
     const user = await requireRole(req, privilegedRoles);
+    assertCriticalTwoFactor(user);
     if (!providerReadiness().logistics) {
       throw new ApiError(503, "logistics_not_configured", "Logistika provayderi hələ qoşulmayıb.");
     }
@@ -586,6 +587,7 @@ export default withApiErrors(async (req, res) => {
 
   if (action === "review-bank-transfer") {
     const user = await requireRole(req, privilegedRoles);
+    assertCriticalTwoFactor(user);
     const transactionId = text(body.transactionId, { field: "Ödəniş ID-si", required: true, max: 160 });
     const decision = oneOf(body.decision, ["approve", "reject"], "reject", "Qərar");
     const note = text(body.note, { max: 500 });
@@ -651,6 +653,7 @@ export default withApiErrors(async (req, res) => {
 
   if (action === "register-invoice") {
     const user = await requireRole(req, privilegedRoles);
+    assertCriticalTwoFactor(user);
     const orderId = text(body.orderId, { field: "Sifariş ID-si", required: true, max: 160 });
     const order = await readOrderDetails(orderId);
     if (!order) throw new ApiError(404, "order_not_found", "Sifariş tapılmadı.");

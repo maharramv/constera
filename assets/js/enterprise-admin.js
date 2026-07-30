@@ -51,7 +51,7 @@
       order_created: "Sifariş", rfq_created: "Qiymət sorğusu", estimate_created: "Smeta"
     };
     root.innerHTML = `
-      <div class="market-section-heading"><div><p class="eyebrow">Əməliyyat nəzarəti</p><h2>Etibar, keyfiyyət və satış hunisi</h2></div><div class="admin-actions"><button class="button button-outline" type="button" data-quality-remediate>Təhlükəsiz düzəliş</button><button class="button button-secondary" type="button" data-quality-scan>Keyfiyyəti yoxla</button></div></div>
+      <div class="market-section-heading"><div><p class="eyebrow">Əməliyyat nəzarəti</p><h2>Etibar, keyfiyyət və satış hunisi</h2></div><div class="admin-actions"><button class="button button-outline" type="button" data-quality-attributes>Atributları standartlaşdır</button><button class="button button-outline" type="button" data-quality-remediate>Təhlükəsiz düzəliş</button><button class="button button-secondary" type="button" data-quality-scan>Keyfiyyəti yoxla</button></div></div>
       <div class="admin-v2-kpi-grid">
         <article><span>Açıq müraciət</span><strong>${Number(trust.supportOpen || 0)}</strong><small>${Number(trust.supportTotal || 0)} ümumi</small></article>
         <article><span>Geri ödəniş</span><strong>${money(trust.refundedAmount)}</strong><small>${Number(trust.refundsCompleted || 0)} əməliyyat</small></article>
@@ -91,14 +91,26 @@
   root.addEventListener("click", async (event) => {
     const scan = event.target.closest("[data-quality-scan]");
     const remediate = event.target.closest("[data-quality-remediate]");
+    const attributes = event.target.closest("[data-quality-attributes]");
     const review = event.target.closest("[data-review-moderate]");
     const support = event.target.closest("[data-case-action]");
     const quality = event.target.closest("[data-quality-action]");
-    if (!scan && !remediate && !review && !support && !quality) return;
+    if (!scan && !remediate && !attributes && !review && !support && !quality) return;
     let completedMessage = "";
     try {
       setStatus("Əməliyyat icra olunur...");
       if (scan) await api.scanCatalogQuality();
+      if (attributes) {
+        const preview = (await api.previewCatalogAttributes()).data;
+        if (!preview.candidateProducts) {
+          completedMessage = "Standartlaşdırılacaq yeni texniki atribut tapılmadı.";
+        } else {
+          const summary = `${preview.candidateProducts} məhsulda ${preview.technicalAttributes} yüksək etibarlı texniki atribut saxlanacaq. Məhsul adı, qiymət, stok və mənbə dəyişməyəcək.`;
+          if (!window.confirm(`${summary}\n\nDavam etmək üçün administrator 2FA qoruması aktiv olmalıdır.`)) return;
+          const result = (await api.normalizeCatalogAttributes()).data;
+          completedMessage = `${result.updatedProducts} məhsulun texniki atributları standartlaşdırıldı.`;
+        }
+      }
       if (remediate) {
         const preview = (await api.previewCatalogRemediation()).data;
         const summary = `${preview.quarantineProducts} mənbəsiz demo karantinə keçiriləcək, ${preview.duplicateProducts} dublikat yoxlanacaq və ${preview.safeFieldFixes} təhlükəli sahə normallaşdırılacaq.`;

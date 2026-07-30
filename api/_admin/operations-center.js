@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { backupDeliveryReadiness, verifyCloudBackup } from "../_lib/cloud-backup.js";
 import { calculateSettlementAmounts, settlementTransitionAllowed } from "../_lib/commercial-operations.js";
 import { query, recordAudit } from "../_lib/db.js";
@@ -564,6 +564,7 @@ export default withApiErrors(async (req, res) => {
   }
   assertMethod(req, ["POST"]);
   assertSameOrigin(req);
+  assertCriticalTwoFactor(user);
   const body = await readJson(req, 100_000);
   const action = oneOf(
     body.action,

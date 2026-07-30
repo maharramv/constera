@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -376,6 +376,7 @@ export default withApiErrors(async (req, res) => {
     );
   } else {
     if (!adminRoles.includes(user.role)) throw new ApiError(403, "permission_denied", "Geri ödənişi yalnız administrator idarə edə bilər.");
+    assertCriticalTwoFactor(user);
     if (!current.orderId) throw new ApiError(409, "refund_order_required", "Geri ödəniş üçün sifariş tələb olunur.");
     const amount = action === "approve-refund"
       ? parsePriceAmount(body.amount ?? current.requestedAmount)

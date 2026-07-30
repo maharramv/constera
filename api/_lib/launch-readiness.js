@@ -65,6 +65,26 @@ export const buildLaunchReadiness = ({
       ready: count(metrics.licensedMediaProducts) > 0,
       target: "media",
       action: "Media əlavə et"
+    }),
+    check({
+      key: "catalog_quality",
+      label: "Yüksək riskli kataloq problemləri",
+      detail: count(metrics.highQualityIssues)
+        ? `${count(metrics.highQualityIssues)} yüksək və ya kritik problem açıqdır`
+        : "Yüksək və kritik kataloq problemi yoxdur",
+      ready: count(metrics.highQualityIssues) === 0,
+      target: "trust",
+      action: "Keyfiyyəti aç"
+    }),
+    check({
+      key: "structured_attributes",
+      label: "Standart texniki atributlar",
+      detail: `${count(metrics.structuredAttributeProducts)} / ${count(metrics.realProducts)} məhsulda ən azı 2 strukturlaşdırılmış texniki atribut var`,
+      ready: count(metrics.realProducts) > 0
+        && count(metrics.structuredAttributeProducts) === count(metrics.realProducts),
+      required: false,
+      target: "trust",
+      action: "Atributları tamamla"
     })
   ];
 
@@ -162,11 +182,22 @@ export const buildLaunchReadiness = ({
       action: "Backup-a bax"
     }),
     check({
+      key: "backup_restore",
+      label: "Son bərpa yoxlaması",
+      detail: backup.recentVerified
+        ? "Son 7 gündə backup bütövlüyü və bərpa metadatası təsdiqlənib"
+        : "Son 7 gün üçün uğurlu backup yoxlaması yoxdur",
+      ready: Boolean(backup.recentVerified),
+      target: "backup",
+      action: "Backup-ı yoxla"
+    }),
+    check({
       key: "admin_2fa",
       label: "Administrator 2FA qoruması",
-      detail: `${count(metrics.adminsWithTwoFactor)} / ${count(metrics.privilegedUsers)} səlahiyyətli hesab qorunur`,
+      detail: `${count(metrics.adminsWithTwoFactor)} / ${count(metrics.privilegedUsers)} səlahiyyətli hesab qorunur · kritik siyasət ${metrics.criticalTwoFactorEnforced ? "aktivdir" : "aktiv deyil"}`,
       ready: count(metrics.privilegedUsers) > 0
-        && count(metrics.adminsWithTwoFactor) === count(metrics.privilegedUsers),
+        && count(metrics.adminsWithTwoFactor) === count(metrics.privilegedUsers)
+        && Boolean(metrics.criticalTwoFactorEnforced),
       target: "system",
       action: "Təhlükəsizliyi aç"
     }),

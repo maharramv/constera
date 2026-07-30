@@ -76,6 +76,26 @@ export const requireRole = async (req, roles = allowedRoles, options = {}) => {
   return user;
 };
 
+export const criticalAdminTwoFactorRequired = () => {
+  const configured = String(process.env.ADMIN_CRITICAL_2FA_REQUIRED || "").trim().toLowerCase();
+  if (["false", "0", "no", "off"].includes(configured)) return false;
+  if (["true", "1", "yes", "on"].includes(configured)) return true;
+  return true;
+};
+
+export const assertCriticalTwoFactor = (user) => {
+  if (!user || !["super_admin", "admin"].includes(user.role)) return user;
+  if (!criticalAdminTwoFactorRequired() || user.twoFactorEnabled) return user;
+  throw new ApiError(
+    403,
+    "critical_two_factor_required",
+    "Bu kritik əməliyyat üçün administrator hesabında 2FA aktiv olmalıdır."
+  );
+};
+
+export const requireCriticalRole = async (req, roles = allowedRoles, options = {}) =>
+  assertCriticalTwoFactor(await requireRole(req, roles, options));
+
 export const createSession = async (req, res, userId) => {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + sessionDays * 86_400_000);

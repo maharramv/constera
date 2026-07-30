@@ -1,4 +1,4 @@
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { remindPriceReview, runPriceFreshnessScan } from "../_lib/price-monitor.js";
@@ -73,6 +73,10 @@ export default withApiErrors(async (req, res) => {
   assertSameOrigin(req);
   const body = await readJson(req, 20_000);
   if (req.method === "POST") {
+    if (!["super_admin", "admin"].includes(user.role)) {
+      throw new ApiError(403, "permission_denied", "Qiymət statuslarını yalnız administrator yeniləyə bilər.");
+    }
+    assertCriticalTwoFactor(user);
     const result = await runPriceFreshnessScan({ actorId: user.id, notify: true });
     await recordAudit({ actorId: user.id, action: "scan", entityType: "price_monitor", details: result });
     return sendJson(res, 200, { ok: true, data: { scan: result, monitor: await loadMonitor() } });
@@ -84,6 +88,7 @@ export default withApiErrors(async (req, res) => {
     if (!["super_admin", "admin"].includes(user.role)) {
       throw new ApiError(403, "permission_denied", "Qiymət yoxlamasını yalnız administrator ləğv edə bilər.");
     }
+    assertCriticalTwoFactor(user);
     const rows = await query(
       `UPDATE price_review_requests
           SET status = 'cancelled', note = $2, updated_at = now()

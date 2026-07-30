@@ -1,4 +1,4 @@
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { validatePublicUrl } from "../_lib/catalog-quality.js";
 import {
@@ -193,6 +193,9 @@ export default withApiErrors(async (req, res) => {
   assertMethod(req, ["POST", "PATCH", "DELETE"]);
   assertSameOrigin(req);
   const body = await readJson(req, 50_000);
+  if (!(req.method === "POST" && body.action === "preview")) {
+    assertCriticalTwoFactor(user);
+  }
 
   if (req.method === "POST" && ["run", "preview"].includes(body.action)) {
     const id = text(body.id, { field: "Feed ID-si", required: true, max: 160 });

@@ -1,34 +1,47 @@
 import { query } from "./_lib/db.js";
 import { expandCatalogSearchGroups, foldCatalogSearchText } from "./_lib/catalog-search.js";
 import { assertMethod, sendJson, withApiErrors } from "./_lib/http.js";
+import { normalizeProductAttributes } from "./_lib/product-attributes.js";
 import { categoryPublicId, categoryStorageId, parseLimit, parsePriceAmount, text } from "./_lib/validation.js";
 
-const mapProduct = (row) => ({
-  id: row.id,
-  sku: row.sku,
-  barcode: row.extra_data?.barcode || "",
-  name: row.name,
-  brand: row.brand,
-  category: categoryPublicId(row.category_id),
-  subcategory: row.subcategory,
-  package: row.package_text || "Sorğu ilə",
-  origin: row.origin || "Azərbaycan/İdxal",
-  supplier: row.supplier_name || "Təchizatçı",
-  price: row.price_text,
-  priceAmount: row.price_amount === null ? null : Number(row.price_amount),
-  priceCurrency: row.price_currency,
-  priceNote: row.price_note || "",
-  priceStatus: row.price_status,
-  availability: row.availability,
-  stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
-  minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
-  priceVerifiedAt: row.price_verified_at,
-  imageUrl: row.image_url || "",
-  sourceUrl: row.source_url || "",
-  sourceLabel: row.source_label || "",
-  specs: row.specs || [],
-  updatedAt: row.updated_at
-});
+const mapProduct = (row) => {
+  const specs = row.specs || [];
+  const packageText = row.package_text || "Sorğu ilə";
+  const origin = row.origin || "Azərbaycan/İdxal";
+  return {
+    id: row.id,
+    sku: row.sku,
+    barcode: row.extra_data?.barcode || "",
+    warranty: row.extra_data?.warranty || "",
+    name: row.name,
+    brand: row.brand,
+    category: categoryPublicId(row.category_id),
+    subcategory: row.subcategory,
+    package: packageText,
+    origin,
+    supplier: row.supplier_name || "Təchizatçı",
+    price: row.price_text,
+    priceAmount: row.price_amount === null ? null : Number(row.price_amount),
+    priceCurrency: row.price_currency,
+    priceNote: row.price_note || "",
+    priceStatus: row.price_status,
+    availability: row.availability,
+    stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
+    minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+    priceVerifiedAt: row.price_verified_at,
+    imageUrl: row.image_url || "",
+    sourceUrl: row.source_url || "",
+    sourceLabel: row.source_label || "",
+    specs,
+    attributes: normalizeProductAttributes({
+      specs,
+      packageText,
+      origin,
+      storedAttributes: row.extra_data?.attributes
+    }),
+    updatedAt: row.updated_at
+  };
+};
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET"]);

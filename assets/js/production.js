@@ -295,6 +295,14 @@
       method: "POST",
       body: JSON.stringify({ action: "preview-remediation", issueIds })
     }),
+    previewCatalogAttributes: () => request("/api/catalog-quality", {
+      method: "POST",
+      body: JSON.stringify({ action: "preview-attributes" })
+    }),
+    normalizeCatalogAttributes: () => request("/api/catalog-quality", {
+      method: "POST",
+      body: JSON.stringify({ action: "normalize-attributes" })
+    }),
     remediateCatalogQuality: (issueIds = []) => request("/api/catalog-quality", {
       method: "POST",
       body: JSON.stringify({ action: "remediate", issueIds })

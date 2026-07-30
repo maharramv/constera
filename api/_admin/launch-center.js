@@ -1,10 +1,11 @@
-import { requireRole } from "../_lib/auth.js";
+import { criticalAdminTwoFactorRequired, requireRole } from "../_lib/auth.js";
 import { backupDeliveryReadiness } from "../_lib/cloud-backup.js";
 import { query } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { buildLaunchReadiness, buildSupplierOnboarding } from "../_lib/launch-readiness.js";
 import { calculateDeliveryQuote } from "../_lib/logistics.js";
 import { providerConfigurationStatus, providerReadiness } from "../_lib/provider-adapters.js";
+import { backupVerificationState, buildReleaseQueue } from "../_lib/release-queue.js";
 import { oneOf, text } from "../_lib/validation.js";
 
 const roles = ["super_admin", "admin"];
@@ -40,7 +41,11 @@ export const loadLaunchCenter = async () => {
     salesDailyRows,
     topProductRows,
     topSupplierRows,
-    orderStatusRows
+    orderStatusRows,
+    qualityIssueRows,
+    stagingRows,
+    searchInsightRows,
+    backupVerificationRows
   ] = await Promise.all([
     query(
       `WITH real_products AS (
@@ -119,7 +124,31 @@ export const loadLaunchCenter = async () => {
          (SELECT count(*) FROM order_fulfillments WHERE status = 'shipped')::int AS shipped_fulfillments,
          (SELECT count(*) FROM payment_transactions
            WHERE provider = 'bank_transfer' AND status = 'pending')::int AS pending_bank_transfers,
-         (SELECT count(*) FROM price_review_requests WHERE status = 'pending')::int AS pending_price_reviews`
+         (SELECT count(*) FROM price_review_requests WHERE status = 'pending')::int AS pending_price_reviews,
+         (SELECT count(*) FROM real_products product
+           WHERE (
+             SELECT count(*)
+               FROM jsonb_array_elements(
+                 CASE
+                   WHEN jsonb_typeof(product.extra_data->'attributes') = 'array'
+                   THEN product.extra_data->'attributes'
+                   ELSE '[]'::jsonb
+                 END
+               ) attribute
+              WHERE coalesce(attribute->>'label', '') NOT IN ('Qablaşdırma', 'Mənşə')
+           ) >= 2 OR (
+             SELECT count(*)
+               FROM jsonb_array_elements_text(coalesce(product.specs, '[]'::jsonb)) spec
+              WHERE spec ~ '^[^:]{2,60}:[[:space:]]*.+'
+           ) >= 2)::int AS structured_attribute_products,
+         (SELECT count(*) FROM real_products product
+           WHERE product.source_url ~ '^https://')::int AS sourced_products,
+         (SELECT count(*) FROM supplier_contracts contract
+           WHERE contract.status = 'active'
+             AND contract.starts_on <= current_date
+             AND (contract.ends_on IS NULL OR contract.ends_on >= current_date))::int AS active_contracts,
+         (SELECT count(*) FROM supplier_feeds WHERE active = true)::int AS configured_feeds,
+         (SELECT count(*) FROM marketplace_reviews WHERE status = 'published')::int AS published_reviews`
     ),
     query(
       `SELECT supplier.id, supplier.name, supplier.website, supplier.contact,
@@ -264,6 +293,67 @@ export const loadLaunchCenter = async () => {
          FROM orders
         GROUP BY status, payment_status
         ORDER BY count(*) DESC, status, payment_status`
+    ),
+    query(
+      `SELECT issue_type, severity, count(*)::int AS count
+         FROM catalog_quality_issues
+        WHERE status = 'open'
+        GROUP BY issue_type, severity
+        ORDER BY
+          CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+          count(*) DESC`
+    ),
+    query(
+      `SELECT item_kind, count(*)::int AS count,
+              count(*) FILTER (
+                WHERE jsonb_array_length(validation_errors) > 0
+              )::int AS invalid_count,
+              min(created_at) AS oldest_created_at
+         FROM catalog_import_items
+        WHERE review_status = 'pending'
+        GROUP BY item_kind
+        ORDER BY count(*) DESC, item_kind`
+    ),
+    query(
+      `WITH searches AS (
+         SELECT lower(trim(payload->>'query')) AS search_query,
+                CASE
+                  WHEN payload->>'resultCount' ~ '^[0-9]+$'
+                  THEN (payload->>'resultCount')::int
+                  ELSE NULL
+                END AS result_count,
+                session_hash,
+                created_at
+           FROM analytics_events
+          WHERE event_type = 'search'
+            AND created_at >= now() - interval '30 days'
+            AND NULLIF(trim(payload->>'query'), '') IS NOT NULL
+       )
+       SELECT search.search_query,
+              count(*)::int AS searches,
+              count(*) FILTER (WHERE search.result_count = 0)::int AS zero_results,
+              round(avg(search.result_count), 1) AS average_results,
+              count(*) FILTER (
+                WHERE EXISTS (
+                  SELECT 1
+                    FROM analytics_events followup
+                   WHERE followup.session_hash = search.session_hash
+                     AND followup.created_at >= search.created_at
+                     AND followup.created_at <= search.created_at + interval '30 minutes'
+                     AND followup.event_type IN ('product_view', 'add_to_cart', 'checkout_start')
+                )
+              )::int AS converted_searches,
+              max(search.created_at) AS last_searched_at
+         FROM searches search
+        GROUP BY search.search_query
+        ORDER BY zero_results DESC, searches DESC, search.search_query
+        LIMIT 30`
+    ),
+    query(
+      `SELECT status, created_at, table_count, record_count, checksum_sha256
+         FROM backup_verifications
+        ORDER BY created_at DESC
+        LIMIT 1`
     )
   ]);
 
@@ -289,14 +379,61 @@ export const loadLaunchCenter = async () => {
     readyFulfillments: number(metricsRow.ready_fulfillments),
     shippedFulfillments: number(metricsRow.shipped_fulfillments),
     pendingBankTransfers: number(metricsRow.pending_bank_transfers),
-    pendingPriceReviews: number(metricsRow.pending_price_reviews)
+    pendingPriceReviews: number(metricsRow.pending_price_reviews),
+    structuredAttributeProducts: number(metricsRow.structured_attribute_products),
+    sourcedProducts: number(metricsRow.sourced_products),
+    activeContracts: number(metricsRow.active_contracts),
+    configuredFeeds: number(metricsRow.configured_feeds),
+    publishedReviews: number(metricsRow.published_reviews),
+    openQualityIssues: qualityIssueRows.reduce((sum, item) => sum + number(item.count), 0),
+    highQualityIssues: qualityIssueRows
+      .filter((item) => ["critical", "high"].includes(item.severity))
+      .reduce((sum, item) => sum + number(item.count), 0),
+    pendingStagingItems: stagingRows.reduce((sum, item) => sum + number(item.count), 0),
+    criticalTwoFactorEnforced: criticalAdminTwoFactorRequired()
   };
   const pilotCandidates = pilotRows.map(mapPilotCandidate);
+  const latestBackup = backupVerificationRows[0] ? {
+    status: backupVerificationRows[0].status,
+    createdAt: backupVerificationRows[0].created_at,
+    tableCount: number(backupVerificationRows[0].table_count),
+    recordCount: number(backupVerificationRows[0].record_count),
+    checksumSha256: backupVerificationRows[0].checksum_sha256 || ""
+  } : null;
+  const backupVerification = backupVerificationState(latestBackup);
+  const searches = searchInsightRows.map((row) => ({
+    query: row.search_query,
+    searches: number(row.searches),
+    zeroResults: number(row.zero_results),
+    averageResults: row.average_results === null ? null : Number(row.average_results),
+    convertedSearches: number(row.converted_searches),
+    lastSearchedAt: row.last_searched_at
+  }));
   const readiness = buildLaunchReadiness({
     metrics,
     providers,
-    backup,
+    backup: { ...backup, recentVerified: backupVerification.ready },
     pilotCandidate: pilotCandidates[0] || null
+  });
+  const qualityIssues = qualityIssueRows.map((row) => ({
+    type: row.issue_type,
+    severity: row.severity,
+    count: number(row.count)
+  }));
+  const staging = stagingRows.map((row) => ({
+    kind: row.item_kind,
+    count: number(row.count),
+    invalidCount: number(row.invalid_count),
+    oldestCreatedAt: row.oldest_created_at
+  }));
+  const releaseQueue = buildReleaseQueue({
+    metrics,
+    qualityIssues,
+    staging,
+    searches,
+    providers,
+    backup: latestBackup,
+    criticalTwoFactorEnforced: metrics.criticalTwoFactorEnforced
   });
 
   return {
@@ -307,7 +444,15 @@ export const loadLaunchCenter = async () => {
     backup: {
       ready: backup.ready,
       channel: backup.channel,
-      label: backup.label
+      label: backup.label,
+      verification: backupVerification,
+      latest: latestBackup
+    },
+    releaseQueue,
+    catalogControl: {
+      qualityIssues,
+      staging,
+      searches
     },
     suppliers: supplierRows.map((row) => ({
       id: row.id,

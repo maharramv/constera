@@ -16,6 +16,12 @@
       currency,
       maximumFractionDigits: 2
     });
+  const formatDate = (value) => {
+    const date = new Date(value || "");
+    return Number.isFinite(date.getTime())
+      ? new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short" }).format(date)
+      : "Yoxlanmayıb";
+  };
   const setStatus = (selector, message, type = "info") => {
     const element = qs(selector);
     if (!element) return;
@@ -42,7 +48,8 @@
     launch: null,
     pilotResult: null,
     products: [],
-    mediaRows: []
+    mediaRows: [],
+    selectedSupplierId: ""
   };
 
   const readinessLabels = {
@@ -58,6 +65,35 @@
     aiEstimate: "AI smeta",
     email: "E-poçt",
     whatsapp: "WhatsApp"
+  };
+  const supplierStepTargets = {
+    profile: "suppliers",
+    account: "users",
+    contract: "operations",
+    offer: "b2b",
+    media: "media",
+    feed: "system"
+  };
+
+  const renderSupplierWizard = () => {
+    const suppliers = state.launch?.suppliers || [];
+    const select = qs("[data-launch-supplier-select]");
+    const steps = qs("[data-launch-supplier-steps]");
+    if (!select || !steps) return;
+    if (!suppliers.some((item) => item.id === state.selectedSupplierId)) {
+      state.selectedSupplierId = suppliers[0]?.id || "";
+    }
+    select.innerHTML = suppliers.map((supplier) => `
+      <option value="${escapeHtml(supplier.id)}"${supplier.id === state.selectedSupplierId ? " selected" : ""}>${escapeHtml(supplier.name)} · ${Number(supplier.onboarding?.score || 0)}%</option>
+    `).join("") || '<option value="">Təchizatçı yoxdur</option>';
+    select.disabled = suppliers.length === 0;
+    const supplier = suppliers.find((item) => item.id === state.selectedSupplierId);
+    steps.innerHTML = (supplier?.onboarding?.checks || []).map((item, index) => `
+      <article class="${item.ready ? "is-ready" : ""}">
+        <div><strong>${index + 1}. ${escapeHtml(item.label)}</strong><small>${item.ready ? "Tamamlanıb" : item.required ? "Pilot üçün tələb olunur" : "Tövsiyə olunur"}</small></div>
+        <button class="table-action" type="button" data-launch-target="${escapeHtml(supplierStepTargets[item.key] || "launch")}">${item.ready ? "Bax" : "Tamamla"}</button>
+      </article>
+    `).join("") || "<p>Qoşulma mərhələsi tapılmadı.</p>";
   };
 
   const renderLaunch = () => {
@@ -125,6 +161,24 @@
     const priorityCount = qs("[data-launch-priority-count]");
     if (priorityCount) priorityCount.textContent = `${priorities.length} addım`;
 
+    const releaseQueue = data.releaseQueue || { items: [], summary: {} };
+    const queue = qs("[data-launch-queue]");
+    if (queue) queue.innerHTML = (releaseQueue.items || []).map((item) => `
+      <article data-severity="${escapeHtml(item.severity || "medium")}">
+        <span>${Number(item.value || 0).toLocaleString("az-AZ")}</span>
+        <div>
+          <strong>${escapeHtml(item.label)}</strong>
+          <small>${escapeHtml(item.detail)}${item.external ? " · Xarici məlumat tələb olunur." : ""}</small>
+        </div>
+        <button class="table-action" type="button" data-launch-target="${escapeHtml(item.target || "launch")}">${escapeHtml(item.action || "Aç")}</button>
+      </article>
+    `).join("") || "<p>Açıq buraxılış addımı yoxdur.</p>";
+    const queueCount = qs("[data-launch-queue-count]");
+    if (queueCount) {
+      const summary = releaseQueue.summary || {};
+      queueCount.textContent = `${Number(summary.total || 0)} addım · ${Number(summary.critical || 0)} kritik · ${Number(summary.external || 0)} xarici`;
+    }
+
     const operationCards = qs("[data-launch-operations]");
     if (operationCards) operationCards.innerHTML = [
       [metrics.pendingPriceReviews, "qiymət yoxlaması"],
@@ -174,8 +228,57 @@
       <article><div><strong>${escapeHtml(item.name)}</strong><small>${Number(item.orderCount || 0)} sifariş · ${Number(item.quantity || 0).toLocaleString("az-AZ")} vahid</small></div><span>${escapeHtml(formatMoney(item.revenue))}</span></article>
     `).join("") || "<p>Satış məlumatı hələ yoxdur.</p>";
 
+    const searches = data.catalogControl?.searches || [];
+    const totalSearches = searches.reduce((sum, item) => sum + Number(item.searches || 0), 0);
+    const zeroSearches = searches.reduce((sum, item) => sum + Number(item.zeroResults || 0), 0);
+    const convertedSearches = searches.reduce((sum, item) => sum + Number(item.convertedSearches || 0), 0);
+    const searchKpis = qs("[data-launch-search-kpis]");
+    if (searchKpis) searchKpis.innerHTML = [
+      [totalSearches, "axtarış"],
+      [searches.length, "fərqli sorğu"],
+      [zeroSearches, "nəticəsiz"],
+      [totalSearches ? `${Math.round(convertedSearches / totalSearches * 100)}%` : "0%", "məhsula keçid"]
+    ].map(([value, label]) => `<article><strong>${escapeHtml(typeof value === "number" ? value.toLocaleString("az-AZ") : value)}</strong><span>${escapeHtml(label)}</span></article>`).join("");
+    const topSearches = qs("[data-launch-top-searches]");
+    if (topSearches) topSearches.innerHTML = [...searches]
+      .sort((left, right) => Number(right.searches || 0) - Number(left.searches || 0))
+      .slice(0, 6)
+      .map((item) => `
+        <article><div><strong>${escapeHtml(item.query)}</strong><small>${Number(item.convertedSearches || 0)} məhsula keçid · orta ${item.averageResults ?? "—"} nəticə</small></div><span>${Number(item.searches || 0)}</span></article>
+      `).join("") || "<p>Axtarış məlumatı hələ toplanmayıb.</p>";
+    const zeroResultList = qs("[data-launch-zero-searches]");
+    if (zeroResultList) zeroResultList.innerHTML = searches
+      .filter((item) => Number(item.zeroResults || 0) > 0)
+      .sort((left, right) => Number(right.zeroResults || 0) - Number(left.zeroResults || 0))
+      .slice(0, 6)
+      .map((item) => `
+        <article><div><strong>${escapeHtml(item.query)}</strong><small>Son axtarış: ${escapeHtml(formatDate(item.lastSearchedAt))}</small></div><span>${Number(item.zeroResults || 0)}</span></article>
+      `).join("") || "<p>Nəticəsiz axtarış qeydə alınmayıb.</p>";
+
+    const dataKpis = qs("[data-launch-data-kpis]");
+    if (dataKpis) dataKpis.innerHTML = [
+      [metrics.structuredAttributeProducts, "standart atributlu"],
+      [metrics.sourcedProducts, "mənbəli məhsul"],
+      [metrics.licensedMediaProducts, "lisenziyalı media"],
+      [metrics.publishedReviews, "yayımlanmış rəy"]
+    ].map(([value, label]) => `
+      <article><strong>${Number(value || 0).toLocaleString("az-AZ")}</strong><span>${escapeHtml(label)}</span></article>
+    `).join("");
+    const backupState = qs("[data-launch-backup-state]");
+    if (backupState) {
+      const verification = data.backup?.verification || {};
+      const latest = data.backup?.latest || {};
+      backupState.innerHTML = `
+        <div><span>Backup kanalı</span><strong class="${data.backup?.ready ? "is-ready" : "is-pending"}">${escapeHtml(data.backup?.label || "Qurulmayıb")}</strong></div>
+        <div><span>Son bütövlük yoxlaması</span><strong class="${verification.ready ? "is-ready" : "is-pending"}">${escapeHtml(formatDate(verification.createdAt))}</strong></div>
+        <div><span>Yoxlanmış həcm</span><strong>${Number(latest.tableCount || 0)} cədvəl · ${Number(latest.recordCount || 0).toLocaleString("az-AZ")} qeyd</strong></div>
+        <div><span>Kritik 2FA siyasəti</span><strong class="${metrics.criticalTwoFactorEnforced ? "is-ready" : "is-pending"}">${metrics.criticalTwoFactorEnforced ? "Aktiv" : "Aktiv deyil"}</strong></div>
+      `;
+    }
+
     const supplierRows = qs("[data-launch-suppliers]");
     const suppliers = data.suppliers || [];
+    renderSupplierWizard();
     if (supplierRows) supplierRows.innerHTML = suppliers.map((supplier) => {
       const missing = (supplier.onboarding?.checks || []).filter((item) => !item.ready);
       return `<tr>
@@ -264,6 +367,10 @@
     } finally {
       setBusy(button, false);
     }
+  });
+  qs("[data-launch-supplier-select]")?.addEventListener("change", (event) => {
+    state.selectedSupplierId = event.target.value;
+    renderSupplierWizard();
   });
 
   qs("[data-admin-panel='launch']")?.addEventListener("click", async (event) => {

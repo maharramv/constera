@@ -67,3 +67,21 @@ test("production kataloqu sıxılmış və versiyalanmış data resursundan yük
   assert.match(marketplace, /await window\.ConstEraCatalogReady/);
   assert.match(serviceWorker, /assets\/data\/marketplace\.data/);
 });
+
+test("GitHub Actions production monitorinqi və əsas branch keyfiyyət yoxlamasını işlədir", () => {
+  const monitor = read(".github/workflows/production-monitor.yml");
+  const quality = read(".github/workflows/quality.yml");
+  assert.match(monitor, /schedule:/);
+  assert.match(monitor, /node scripts\/check-production\.mjs/);
+  assert.match(monitor, /https:\/\/constera\.az/);
+  assert.match(quality, /npm run check/);
+  assert.match(quality, /branches:\s*\n\s*- main/);
+});
+
+test("kritik kataloq, müqavilə, ödəniş və logistika yazmaları administrator 2FA qorumasındadır", () => {
+  assert.match(read("api/_admin/catalog-quality.js"), /assertCriticalTwoFactor\(user\)/);
+  assert.match(read("api/_admin/catalog-staging.js"), /assertCriticalTwoFactor\(user\)/);
+  assert.match(read("api/_admin/operations-center.js"), /assertCriticalTwoFactor\(user\)/);
+  assert.match(read("api/_admin/integrations.js"), /create-shipment[\s\S]+assertCriticalTwoFactor\(user\)/);
+  assert.match(read("api/_admin/support.js"), /approve-refund[\s\S]+assertCriticalTwoFactor\(user\)/);
+});

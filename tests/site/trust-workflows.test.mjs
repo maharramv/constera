@@ -68,3 +68,20 @@ test("admin etibar mərkəzi keyfiyyət robotu və təchizatçı scorecard-ını
   assert.match(vercel, /\/api\/catalog-quality/);
   assert.match(vercel, /\/api\/supplier-performance/);
 });
+
+test("buraxılış növbəsi axtarış boşluğunu, atributları, backup-ı və SEO məhsul siyahısını birləşdirir", () => {
+  const admin = read("admin.html");
+  const launch = read("assets/js/launch-center.js");
+  const marketplace = read("assets/js/marketplace.js");
+  const launchApi = read("api/_admin/launch-center.js");
+
+  assert.match(admin, /data-launch-queue/);
+  assert.match(admin, /data-launch-zero-searches/);
+  assert.match(admin, /data-launch-supplier-steps/);
+  assert.match(launch, /releaseQueue/);
+  assert.match(launchApi, /backup_verifications/);
+  assert.match(launchApi, /resultCount/);
+  assert.match(marketplace, /constera-catalog-item-list-schema/);
+  assert.match(marketplace, /"@type": "ItemList"/);
+  assert.match(marketplace, /additionalProperty/);
+});

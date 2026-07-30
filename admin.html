@@ -210,6 +210,17 @@
               <div class="launch-priority-list" data-launch-priorities></div>
             </section>
 
+            <section class="admin-v2-section launch-release-section">
+              <div class="admin-v2-section-heading">
+                <div>
+                  <h3>Vahid buraxılış növbəsi</h3>
+                  <p class="admin-v2-quality-summary">Kataloq, idxal, qiymət, media, təchizatçı, təhlükəsizlik və provayder addımları bir yerdə sıralanır.</p>
+                </div>
+                <span class="data-badge" data-launch-queue-count>0 açıq addım</span>
+              </div>
+              <div class="launch-release-queue admin-v2-compact-list" data-launch-queue></div>
+            </section>
+
             <div class="admin-v2-dashboard-grid">
               <section class="admin-v2-section">
                 <div class="admin-v2-section-heading">
@@ -265,6 +276,31 @@
                 </div>
               </section>
 
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Kataloq axtarış siqnalları</h3>
+                    <p class="admin-v2-quality-summary">Son 30 gündə istifadəçi sorğuları, nəticəsiz axtarışlar və məhsula keçid.</p>
+                  </div>
+                </div>
+                <div class="admin-v2-kpi-grid" data-launch-search-kpis></div>
+                <div class="launch-sales-leaders">
+                  <div><strong>Ən çox axtarılan</strong><div class="admin-v2-compact-list" data-launch-top-searches></div></div>
+                  <div><strong>Nəticəsiz sorğular</strong><div class="admin-v2-compact-list" data-launch-zero-searches></div></div>
+                </div>
+              </section>
+
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Məlumat və bərpa nəzarəti</h3>
+                    <p class="admin-v2-quality-summary">Atribut, mənbə, media, review və son backup yoxlaması.</p>
+                  </div>
+                </div>
+                <div class="admin-v2-kpi-grid" data-launch-data-kpis></div>
+                <div class="admin-v2-integration-list" data-launch-backup-state></div>
+              </section>
+
               <section class="admin-v2-section admin-v2-section-wide">
                 <div class="admin-v2-section-heading">
                   <div>
@@ -272,6 +308,13 @@
                     <p class="admin-v2-quality-summary">Profil, hesab, müqavilə, real təklif, media və məlumat axını birlikdə ölçülür.</p>
                   </div>
                   <span class="data-badge" data-launch-supplier-count>0 təchizatçı</span>
+                </div>
+                <div class="launch-supplier-wizard admin-form-grid">
+                  <label class="admin-field">
+                    <span>Qoşulma planı</span>
+                    <select data-launch-supplier-select aria-label="Qoşulma planı üçün təchizatçı seç"></select>
+                  </label>
+                  <div class="launch-supplier-steps admin-v2-compact-list" data-launch-supplier-steps></div>
                 </div>
                 <div class="table-wrap">
                   <table class="admin-table">
@@ -537,6 +580,10 @@
                   <label class="admin-field">
                     <span>Minimum sifariş</span>
                     <input name="minimumOrder" type="number" min="0" step="0.01" placeholder="1" />
+                  </label>
+                  <label class="admin-field">
+                    <span>Zəmanət</span>
+                    <input name="warranty" type="text" maxlength="240" placeholder="12 ay istehsalçı zəmanəti" />
                   </label>
                   <label class="admin-field">
                     <span>Foto URL</span>

@@ -401,6 +401,41 @@ const getPriceFreshness = (product) => {
   };
 };
 
+const getProductAttributes = (product) => {
+  const existing = Array.isArray(product?.attributes)
+    ? product.attributes.filter((item) => item?.label && item?.value)
+    : [];
+  if (existing.length) return existing.slice(0, 24);
+
+  const attributes = [];
+  const seen = new Set();
+  const add = (label, value) => {
+    const cleanLabel = String(label || "").trim();
+    const cleanValue = String(value || "").trim();
+    const key = `${normalize(cleanLabel)}:${normalize(cleanValue)}`;
+    if (!cleanLabel || !cleanValue || seen.has(key)) return;
+    seen.add(key);
+    attributes.push({ label: cleanLabel, value: cleanValue });
+  };
+  add("Qablaşdırma", product?.package);
+  add("Mənşə", product?.origin);
+  (product?.specs || []).forEach((spec) => {
+    const value = String(spec || "").trim();
+    const pair = value.match(/^([^:：=]{2,60})\s*[:：=]\s*(.+)$/);
+    if (pair) {
+      add(pair[1], pair[2]);
+      return;
+    }
+    const thickness = value.match(/(\d+(?:[.,]\d+)?\s*(?:mm|sm|cm|m))\s+qalınlıq/i);
+    if (thickness) add("Qalınlıq", thickness[1]);
+    const dimensions = value.match(/(\d+(?:[.,]\d+)?\s*(?:mm|sm|cm|m)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?\s*(?:mm|sm|cm|m))/i);
+    if (dimensions) add("Ölçü", dimensions[1]);
+    const color = value.match(/^(.{2,40})\s+r[əe]ng(?:i)?$/i);
+    if (color) add("Rəng", color[1]);
+  });
+  return attributes.slice(0, 24);
+};
+
 const injectEntitySchema = (id, data, imageUrl = "") => {
   let script = document.getElementById(id);
   if (!script) {
@@ -579,12 +614,14 @@ const ensureAdminProductShape = (product, index = 0) => {
     reservedQuantity: product.reservedQuantity ?? 0,
     availableQuantity: product.availableQuantity ?? product.stockQuantity ?? "",
     minimumOrder: product.minimumOrder ?? "",
+    warranty: product.warranty || "",
     priceVerifiedAt: product.priceVerifiedAt || "",
     priceHistory: Array.isArray(product.priceHistory) ? product.priceHistory : [],
     supplierId: product.supplierId || null,
     status: product.status || "active",
     updatedAt: product.updatedAt || "",
-    specs: normalizeSpecs(product.specs)
+    specs: normalizeSpecs(product.specs),
+    attributes: Array.isArray(product.attributes) ? product.attributes : []
   };
 };
 const syncAdminProductOverlay = () => {
@@ -879,13 +916,9 @@ const renderCatalog = () => {
           const [result] = await detector.detect(scannerVideo);
           const value = String(result?.rawValue || "").trim();
           if (value) {
+            searchEntry = "camera_barcode";
             searchInput.value = value;
             searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-            window.ConstEraTrack?.("search", {
-              entityType: "catalog",
-              entityId: activeCategory,
-              payload: { query: value.slice(0, 120), source: "camera_barcode" }
-            });
             closeScanner();
             searchInput.focus();
             return;
@@ -922,7 +955,77 @@ const renderCatalog = () => {
   let serverRequest = 0;
   let serverTimer = 0;
   let searchTrackTimer = 0;
+  let lastSearchSignature = "";
+  let searchEntry = "keyboard";
   let activeSuggestionIndex = -1;
+
+  const catalogFilterSnapshot = () => ({
+    category: activeCategory,
+    group: groupSelect?.value || "all",
+    subcategory: subcategorySelect?.value || "all",
+    brand: brandSelect.value || "all",
+    availability: availabilitySelect?.value || "all",
+    priceStatus: priceSelect?.value || "all",
+    sourceStatus: sourceSelect?.value || "all",
+    origin: originSelect?.value || "all"
+  });
+
+  const trackCatalogSearch = (total, dataSource, delay = 250) => {
+    window.clearTimeout(searchTrackTimer);
+    const query = searchInput.value.trim();
+    if (query.length < 2) return;
+    const payload = {
+      query: query.slice(0, 120),
+      resultCount: Math.max(0, Number(total || 0)),
+      dataSource,
+      entry: searchEntry,
+      ...catalogFilterSnapshot()
+    };
+    const signature = JSON.stringify(payload);
+    searchTrackTimer = window.setTimeout(() => {
+      if (signature === lastSearchSignature) return;
+      lastSearchSignature = signature;
+      window.ConstEraTrack?.("search", {
+        entityType: "catalog",
+        entityId: activeCategory,
+        payload
+      });
+    }, delay);
+  };
+
+  const updateCatalogItemListSchema = (items, total) => {
+    injectEntitySchema("constera-catalog-item-list-schema", {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "ConstEra tikinti materialları kataloqu",
+      numberOfItems: Math.max(0, Number(total || 0)),
+      itemListElement: (items || []).slice(0, 24).map((product, index) => {
+        const price = parseProductPriceAmount(product);
+        const image = getSafeImageUrl(product.imageUrl);
+        return {
+          "@type": "ListItem",
+          position: index + 1,
+          url: new URL(`/product-detail.html?product=${encodeURIComponent(product.id)}`, window.location.href).toString(),
+          item: {
+            "@type": "Product",
+            name: product.name,
+            sku: product.sku,
+            category: `${getCategory(product.category)?.title || product.category} > ${product.subcategory}`,
+            brand: { "@type": "Brand", name: product.brand },
+            image: image ? new URL(image, window.location.href).toString() : undefined,
+            offers: price === null || price <= 0 ? undefined : {
+              "@type": "Offer",
+              price,
+              priceCurrency: product.priceCurrency || "AZN",
+              availability: normalize(product.availability).includes("anbar")
+                ? "https://schema.org/InStock"
+                : "https://schema.org/PreOrder"
+            }
+          }
+        };
+      })
+    });
+  };
 
   const hideSearchSuggestions = () => {
     if (!searchSuggestions) return;
@@ -1197,6 +1300,8 @@ const renderCatalog = () => {
     progressiveGrid.setItems(filtered);
     if (resultCount) resultCount.textContent = `${filtered.length} məhsul`;
     if (emptyState) emptyState.hidden = filtered.length > 0;
+    updateCatalogItemListSchema(filtered, filtered.length);
+    trackCatalogSearch(filtered.length, "lokal_kataloq", 1_200);
     if (activeFilterList) {
       const chips = [
         activeCategory !== "all" ? getCategory(activeCategory)?.title : "",
@@ -1254,6 +1359,8 @@ const renderCatalog = () => {
       });
       if (resultCount) resultCount.textContent = `${total.toLocaleString("az-AZ")} məhsul`;
       if (emptyState) emptyState.hidden = total > 0;
+      updateCatalogItemListSchema(serverProducts, total);
+      trackCatalogSearch(total, "canlı_baza");
     } catch {
       if (!append) {
         serverPage = 0;
@@ -1281,6 +1388,7 @@ const renderCatalog = () => {
   applyCatalogFilters();
 
   const applyAssistantSearch = (query, sourceFilter = "all") => {
+    searchEntry = "kataloq_köməkçisi";
     activeCategory = "all";
     categoryList.querySelectorAll(".category-filter").forEach((item) => {
       item.classList.toggle("is-active", item.dataset.category === "all");
@@ -1333,14 +1441,6 @@ const renderCatalog = () => {
     } else if (assistantStatus) {
       assistantStatus.textContent = "Uyğun xidmət və icarə bölmələri hazırlandı.";
     }
-    window.ConstEraTrack?.("catalog_assistant", {
-      entityType: "catalog",
-      payload: {
-        prompt: prompt.slice(0, 120),
-        resultCount: analysis.searches?.length || 0,
-        area: analysis.area || ""
-      }
-    });
   });
   assistantResult?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-assistant-search]");
@@ -1361,14 +1461,10 @@ const renderCatalog = () => {
     applyCatalogFilters();
   });
 
-  searchInput.addEventListener("input", () => {
+  searchInput.addEventListener("input", (event) => {
+    if (event.isTrusted) searchEntry = "klaviatura";
     renderSearchSuggestions();
     applyCatalogFilters(250);
-    window.clearTimeout(searchTrackTimer);
-    searchTrackTimer = window.setTimeout(() => {
-      const query = searchInput.value.trim();
-      if (query.length >= 2) window.ConstEraTrack?.("search", { entityType: "catalog", entityId: activeCategory, payload: { query: query.slice(0, 120) } });
-    }, 900);
   });
   searchInput.addEventListener("focus", renderSearchSuggestions);
   searchInput.addEventListener("keydown", (event) => {
@@ -1391,6 +1487,7 @@ const renderCatalog = () => {
   searchSuggestions?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-search-suggestion]");
     if (!button) return;
+    searchEntry = "təklif";
     searchInput.value = button.dataset.value || "";
     hideSearchSuggestions();
     applyCatalogFilters();
@@ -1953,6 +2050,9 @@ const renderProductDetail = () => {
       ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>`
       : "";
     const priceHistory = Array.isArray(item.priceHistory) ? item.priceHistory : [];
+    const documents = (Array.isArray(item.documents) ? item.documents : [])
+      .map((document) => ({ ...document, url: getSafeHttpsUrl(document.url) }))
+      .filter((document) => document.url);
     const pricedHistory = priceHistory.filter((entry) => Number.isFinite(Number(entry.amount)));
     const newestPrice = pricedHistory[0];
     const previousPrice = pricedHistory[1];
@@ -1968,6 +2068,7 @@ const renderProductDetail = () => {
       : `${Number(item.stockQuantity).toLocaleString("az-AZ")} vahid`;
     const productOffers = Array.isArray(item.offers) ? item.offers : [];
     const preferredOffer = item.preferredOffer || productOffers[0] || null;
+    const productAttributes = getProductAttributes(item);
     const cartEntry = getCart().find((entry) => entry.id === item.id);
     const defaultComparisonQuantity = Math.max(
       1,
@@ -2095,6 +2196,13 @@ const renderProductDetail = () => {
     <div class="detail-two-column">
       <article class="detail-panel glass">
         <p class="eyebrow">Texniki xüsusiyyətlər</p>
+        ${productAttributes.length ? `
+          <dl class="detail-procurement-list product-attribute-list">
+            ${productAttributes.map((attribute) => `
+              <div><dt>${escapeHtml(attribute.label)}</dt><dd>${escapeHtml(attribute.value)}</dd></div>
+            `).join("")}
+          </dl>
+        ` : ""}
         <ul class="spec-list detail-list">
           ${(item.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
         </ul>
@@ -2105,10 +2213,32 @@ const renderProductDetail = () => {
           <div><dt>Minimum sifariş</dt><dd>${item.minimumOrder === null || item.minimumOrder === "" || item.minimumOrder === undefined ? "Sorğu ilə" : escapeHtml(Number(item.minimumOrder).toLocaleString("az-AZ"))}</dd></div>
           <div><dt>Stok</dt><dd>${escapeHtml(stockText || "Sorğu ilə")}</dd></div>
           <div><dt>Qiymət statusu</dt><dd>${item.priceStatus === "confirmed" ? "Təsdiqli" : item.priceStatus === "expired" ? "Vaxtı keçib" : "Sorğu əsasında"}</dd></div>
+          <div><dt>Zəmanət</dt><dd>${escapeHtml(item.warranty || "Təchizatçı ilə dəqiqləşdirilir")}</dd></div>
           <div><dt>Mənbə</dt><dd>${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.sourceLabel || "Mənbəni aç")}</a>` : "Mənbə əlavə edilməyib"}</dd></div>
         </dl>
       </article>
     </div>
+
+    ${documents.length ? `
+      <section class="detail-data-section" aria-labelledby="product-documents-title">
+        <div class="market-section-heading">
+          <div>
+            <p class="eyebrow">Rəsmi sənədlər</p>
+            <h2 id="product-documents-title">Sertifikat, texniki pasport və təlimatlar</h2>
+          </div>
+          <span class="data-badge">${documents.length} sənəd</span>
+        </div>
+        <div class="price-history-list">
+          ${documents.map((document) => `
+            <article class="price-history-item">
+              <strong>${escapeHtml(document.title || document.filename || "Məhsul sənədi")}</strong>
+              <span>${escapeHtml(document.contentType || "Sənəd")} · istifadə hüququ təsdiqlidir</span>
+              <a class="source-link" href="${escapeAttr(document.url)}" target="_blank" rel="noopener noreferrer">Sənədi aç</a>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    ` : ""}
 
     <section class="detail-data-section" aria-labelledby="price-history-title">
       <div class="market-section-heading">
@@ -2243,6 +2373,11 @@ const renderProductDetail = () => {
       category: `${category?.title || item.category} > ${item.subcategory}`,
       brand: { "@type": "Brand", name: item.brand },
       image: safeImage ? [new URL(safeImage, window.location.href).toString()] : undefined,
+      additionalProperty: productAttributes.map((attribute) => ({
+        "@type": "PropertyValue",
+        name: attribute.label,
+        value: attribute.value
+      })),
       offers: item.priceStatus !== "confirmed" || amount === null || amount <= 0 ? undefined : {
         "@type": "Offer",
         url: window.location.href,
@@ -3249,6 +3384,7 @@ const renderAdmin = () => {
     setFormField("availability", shaped.availability);
     setFormField("stockQuantity", shaped.stockQuantity);
     setFormField("minimumOrder", shaped.minimumOrder);
+    setFormField("warranty", shaped.warranty);
     setFormField("imageUrl", shaped.imageUrl);
     setFormField("sourceUrl", shaped.sourceUrl);
     setFormField("specs", normalizeSpecs(shaped.specs).join("; "));

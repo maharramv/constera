@@ -98,10 +98,14 @@ test("məhsul səhifəsi qalereya, qiymət tarixçəsi və əlaqəli məhsullar 
   assert.match(productsApi, /FROM price_history/);
   assert.match(productsApi, /FROM media_assets/);
   assert.match(productsApi, /relatedProducts/);
+  assert.match(productsApi, /documents:/);
+  assert.match(productsApi, /license_type IN \('own', 'supplier', 'official', 'licensed'\)/);
   assert.match(productsApi, /confirmedPriceChanged/);
   assert.match(marketplace, /detail-gallery-thumbs/);
   assert.match(marketplace, /Qiymət tarixçəsi/);
   assert.match(marketplace, /relatedProducts/);
+  assert.match(marketplace, /product-documents-title/);
+  assert.match(marketplace, /Təchizatçı ilə dəqiqləşdirilir/);
   assert.match(read("db/migrations/012_price_history_baseline.sql"), /NOT EXISTS[\s\S]*price_history/);
 });
 

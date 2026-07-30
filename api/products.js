@@ -3,6 +3,7 @@ import { query, recordAudit } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { syncProductInventoryLevels } from "./_lib/order-operations.js";
+import { normalizeProductAttributes } from "./_lib/product-attributes.js";
 import { listProductOffers, loadOffersForProducts, syncCanonicalProductOffer } from "./_lib/product-offers.js";
 import { categoryPublicId, categoryStorageId, entityId, oneOf, parseLimit, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stringList, text } from "./_lib/validation.js";
 
@@ -11,38 +12,48 @@ const productFields = `id, sku, name, slug, brand, category_id, subcategory, pac
   stock_quantity, minimum_order, price_verified_at, image_url, source_url, source_label,
   specs, extra_data, status, created_at, updated_at`;
 
-const mapProduct = (row) => ({
-  id: row.id,
-  sku: row.sku,
-  barcode: row.extra_data?.barcode || "",
-  name: row.name,
-  slug: row.slug,
-  brand: row.brand,
-  category: categoryPublicId(row.category_id),
-  subcategory: row.subcategory,
-  package: row.package_text || "",
-  origin: row.origin || "",
-  supplier: row.supplier_name || "",
-  supplierId: row.supplier_id || null,
-  priceAmount: row.price_amount === null ? null : Number(row.price_amount),
-  priceCurrency: row.price_currency,
-  price: row.price_text,
-  priceNote: row.price_note || "",
-  priceStatus: row.price_status,
-  availability: row.availability,
-  stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
-  minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
-  priceVerifiedAt: row.price_verified_at,
-  imageUrl: row.image_url || "",
-  sourceUrl: row.source_url || "",
-  sourceLabel: row.source_label || "",
-  specs: row.specs || [],
-  status: row.status,
-  updatedAt: row.updated_at
-});
+const mapProduct = (row) => {
+  const specs = row.specs || [];
+  return {
+    id: row.id,
+    sku: row.sku,
+    barcode: row.extra_data?.barcode || "",
+    warranty: row.extra_data?.warranty || "",
+    name: row.name,
+    slug: row.slug,
+    brand: row.brand,
+    category: categoryPublicId(row.category_id),
+    subcategory: row.subcategory,
+    package: row.package_text || "",
+    origin: row.origin || "",
+    supplier: row.supplier_name || "",
+    supplierId: row.supplier_id || null,
+    priceAmount: row.price_amount === null ? null : Number(row.price_amount),
+    priceCurrency: row.price_currency,
+    price: row.price_text,
+    priceNote: row.price_note || "",
+    priceStatus: row.price_status,
+    availability: row.availability,
+    stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
+    minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+    priceVerifiedAt: row.price_verified_at,
+    imageUrl: row.image_url || "",
+    sourceUrl: row.source_url || "",
+    sourceLabel: row.source_label || "",
+    specs,
+    attributes: normalizeProductAttributes({
+      specs,
+      packageText: row.package_text,
+      origin: row.origin,
+      storedAttributes: row.extra_data?.attributes
+    }),
+    status: row.status,
+    updatedAt: row.updated_at
+  };
+};
 
 const loadProductDetails = async (row) => {
-  const [historyRows, mediaRows, relatedRows, offers] = await Promise.all([
+  const [historyRows, mediaRows, documentRows, relatedRows, offers] = await Promise.all([
     query(
       `SELECT price_amount, price_currency, price_text, source_url, captured_at
          FROM price_history
@@ -58,6 +69,18 @@ const loadProductDetails = async (row) => {
           AND status = 'active' AND content_type LIKE 'image/%'
         ORDER BY created_at DESC
         LIMIT 10`,
+      [row.id]
+    ),
+    query(
+      `SELECT url, alt_text, filename, content_type, source_url, license_type, created_at
+         FROM media_assets
+        WHERE entity_type = 'product' AND entity_id = $1
+          AND status = 'active'
+          AND content_type NOT LIKE 'image/%'
+          AND license_type IN ('own', 'supplier', 'official', 'licensed')
+          AND url ~ '^https://'
+        ORDER BY created_at DESC
+        LIMIT 20`,
       [row.id]
     ),
     query(
@@ -95,6 +118,15 @@ const loadProductDetails = async (row) => {
       capturedAt: item.captured_at
     })),
     gallery,
+    documents: documentRows.map((document) => ({
+      url: document.url,
+      title: document.alt_text || document.filename || "Məhsul sənədi",
+      filename: document.filename,
+      contentType: document.content_type,
+      sourceUrl: document.source_url || "",
+      licenseType: document.license_type,
+      createdAt: document.created_at
+    })),
     offers,
     preferredOffer: offers[0] || null,
     relatedProducts: relatedRows.map(mapProduct)
@@ -113,6 +145,15 @@ const normalizeProduct = (body) => {
   }
 
   const name = text(body.name, { field: "Məhsul adı", required: true, max: 240 });
+  const packageText = text(body.package, { field: "Qablaşdırma", max: 160 });
+  const origin = text(body.origin, { field: "Mənşə", max: 160 });
+  const specs = stringList(body.specs);
+  const attributes = normalizeProductAttributes({
+    specs,
+    packageText,
+    origin,
+    storedAttributes: body.attributes
+  }).map(({ label, value }) => ({ label, value }));
   return {
     id: entityId(body.id, "product"),
     sku: text(body.sku, { field: "SKU", required: true, max: 120 }),
@@ -121,8 +162,8 @@ const normalizeProduct = (body) => {
     brand: text(body.brand, { field: "Brend", max: 160 }) || "Brendsiz",
     category: categoryStorageId("material", text(body.category, { field: "Kateqoriya", required: true, max: 160 })),
     subcategory: text(body.subcategory, { field: "Subkateqoriya", required: true, max: 200 }),
-    packageText: text(body.package, { field: "Qablaşdırma", max: 160 }),
-    origin: text(body.origin, { field: "Mənşə", max: 160 }),
+    packageText,
+    origin,
     supplierName: text(body.supplier, { field: "Təchizatçı", max: 200 }),
     priceAmount,
     priceCurrency: oneOf(body.priceCurrency, ["AZN", "USD", "EUR"], "AZN", "Valyuta"),
@@ -138,9 +179,11 @@ const normalizeProduct = (body) => {
     imageUrl: safeMediaUrl(body.imageUrl),
     sourceUrl,
     sourceLabel: text(body.sourceLabel, { field: "Mənbə adı", max: 160 }),
-    specs: stringList(body.specs),
+    specs,
     extraData: {
-      barcode: text(body.barcode, { field: "Barkod", max: 80 }).replace(/\s+/g, "")
+      barcode: text(body.barcode, { field: "Barkod", max: 80 }).replace(/\s+/g, ""),
+      warranty: text(body.warranty, { field: "Zəmanət", max: 240 }),
+      attributes
     },
     status: oneOf(body.status, ["active", "draft", "archived"], "active", "Məhsul statusu")
   };

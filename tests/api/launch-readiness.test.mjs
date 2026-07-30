@@ -30,6 +30,7 @@ test("məcburi hazırlıq tamamlandıqda yalnız könüllü inteqrasiyalar xəb�
       logisticsZones: 1,
       privilegedUsers: 1,
       adminsWithTwoFactor: 1,
+      criticalTwoFactorEnforced: true,
       criticalSecurityEvents: 0
     },
     providers: {
@@ -40,7 +41,7 @@ test("məcburi hazırlıq tamamlandıqda yalnız könüllü inteqrasiyalar xəb�
       email: false,
       whatsapp: false
     },
-    backup: { ready: true, label: "Özəl backup" },
+    backup: { ready: true, recentVerified: true, label: "Özəl backup" },
     pilotCandidate: { name: "Real məhsul" }
   });
   assert.equal(readiness.status, "attention");

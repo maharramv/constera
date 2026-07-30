@@ -1,4 +1,4 @@
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import {
   ApiError,
@@ -154,6 +154,7 @@ export default withApiErrors(async (req, res) => {
   assertMethod(req, ["PATCH"]);
   assertSameOrigin(req);
   const body = await readJson(req, 30_000);
+  assertCriticalTwoFactor(user);
   const id = text(body.id, { field: "Staging qeyd ID-si", required: true, max: 180 });
   const action = oneOf(body.action, ["approve", "reject"], "approve", "Yoxlama əməliyyatı");
   const rows = await query(
