@@ -111,6 +111,11 @@
       const params = new URLSearchParams({ limit: "1000", ...filters });
       return request(`/api/inventory?${params}`);
     },
+    launchCenter: () => request("/api/launch-center"),
+    validatePilotOrder: (data) => request("/api/launch-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "validate-pilot", ...data })
+    }),
     updateInventory: (items, supplierId = "") => request("/api/inventory", {
       method: "PATCH",
       body: JSON.stringify({ items, supplierId })
@@ -255,6 +260,10 @@
     registerInvoice: (orderId, documentUrl, reference, note = "") => request("/api/integrations", {
       method: "POST",
       body: JSON.stringify({ action: "register-invoice", orderId, documentUrl, reference, note })
+    }),
+    createProviderShipment: (fulfillmentId) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "create-shipment", fulfillmentId })
     }),
     aiEstimate: (input, deterministicEstimate) => request("/api/integrations", {
       method: "POST",

@@ -312,6 +312,7 @@
       payment: "Kart ödənişi",
       bankTransfer: "Bank köçürməsi",
       electronicInvoice: "Elektron qaimə",
+      logistics: "Logistika provayderi",
       aiEstimate: "Xarici AI smeta",
       scheduledBackup: "Gündəlik bulud backup-ı"
     };
@@ -1779,6 +1780,10 @@
   qs("[data-admin-v2-system-refresh]")?.addEventListener("click", (event) => {
     setButtonBusy(event.currentTarget, true, "Yenilənir...");
     loadSystem().finally(() => setButtonBusy(event.currentTarget, false));
+  });
+  window.addEventListener("constera:media-updated", () => {
+    Promise.all([loadMedia(), loadDashboard()])
+      .catch((error) => setStatus("[data-admin-v2-media-status]", error.message, "error"));
   });
 
   const init = async () => {

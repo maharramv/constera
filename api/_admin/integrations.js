@@ -9,6 +9,7 @@ import { deliverNotificationNow, queueNotification } from "../_lib/notifications
 import { readOrderDetails, recordOrderHistory } from "../_lib/order-lifecycle.js";
 import {
   bankTransferInstructions,
+  createLogisticsShipment,
   createPaymentCheckout,
   generateProviderEstimate,
   issueElectronicInvoice,
@@ -39,6 +40,41 @@ const readTransaction = async (id) => {
        FROM payment_transactions transaction
        JOIN orders ON orders.id = transaction.order_id
       WHERE transaction.id = $1
+      LIMIT 1`,
+    [id]
+  );
+  return rows[0] || null;
+};
+
+const readFulfillmentForShipment = async (id) => {
+  const rows = await query(
+    `SELECT fulfillment.id, fulfillment.order_id, fulfillment.supplier_id,
+            fulfillment.status, fulfillment.tracking_code, fulfillment.delivery_provider,
+            supplier.name AS supplier_name,
+            orders.order_number, orders.status AS order_status,
+            orders.payment_status, orders.payment_method,
+            orders.company_name, orders.contact_name, orders.email, orders.phone,
+            orders.city, orders.address, orders.delivery_mode,
+            orders.total_amount, orders.currency,
+            item_summary.items
+       FROM order_fulfillments fulfillment
+       JOIN suppliers supplier ON supplier.id = fulfillment.supplier_id
+       JOIN orders ON orders.id = fulfillment.order_id
+       LEFT JOIN LATERAL (
+         SELECT coalesce(json_agg(json_build_object(
+           'id', item.id,
+           'productId', item.product_id,
+           'sku', item.sku,
+           'title', item.title,
+           'quantity', item.quantity,
+           'unit', item.unit,
+           'lineTotal', item.line_total
+         ) ORDER BY item.created_at), '[]'::json) AS items
+           FROM order_items item
+          WHERE item.order_id = fulfillment.order_id
+            AND item.supplier_id = fulfillment.supplier_id
+       ) item_summary ON true
+      WHERE fulfillment.id = $1
       LIMIT 1`,
     [id]
   );
@@ -312,6 +348,147 @@ export default withApiErrors(async (req, res) => {
     return sendJson(res, 200, {
       ok: true,
       data: await priceEstimateWithCatalog(rows)
+    });
+  }
+
+  if (action === "create-shipment") {
+    const user = await requireRole(req, privilegedRoles);
+    if (!providerReadiness().logistics) {
+      throw new ApiError(503, "logistics_not_configured", "Logistika provayderi hələ qoşulmayıb.");
+    }
+    const fulfillmentId = text(body.fulfillmentId, {
+      field: "Sifariş icrası",
+      required: true,
+      max: 160
+    });
+    const fulfillment = await readFulfillmentForShipment(fulfillmentId);
+    if (!fulfillment) throw new ApiError(404, "fulfillment_not_found", "Sifariş icrası tapılmadı.");
+    if (fulfillment.status === "shipped" && fulfillment.tracking_code) {
+      return sendJson(res, 200, {
+        ok: true,
+        duplicate: true,
+        data: {
+          fulfillmentId,
+          trackingCode: fulfillment.tracking_code,
+          provider: fulfillment.delivery_provider || ""
+        }
+      });
+    }
+    if (fulfillment.status !== "ready") {
+      throw new ApiError(409, "fulfillment_not_ready", "Yalnız “hazır” mərhələsində olan sifariş icrası provayderə göndərilə bilər.");
+    }
+    if (fulfillment.delivery_mode === "pickup") {
+      throw new ApiError(409, "pickup_shipment_not_allowed", "Özün götür sifarişi logistika provayderinə göndərilmir.");
+    }
+    if (fulfillment.payment_status !== "paid" && fulfillment.payment_method !== "invoice") {
+      throw new ApiError(409, "shipment_payment_required", "Göndərişdən əvvəl ödəniş təsdiqlənməlidir.");
+    }
+    const result = await createLogisticsShipment({
+      shipmentId: `shipment-${fulfillment.id}`,
+      fulfillment: {
+        id: fulfillment.id,
+        supplierId: fulfillment.supplier_id,
+        supplierName: fulfillment.supplier_name
+      },
+      order: {
+        id: fulfillment.order_id,
+        orderNumber: Number(fulfillment.order_number),
+        companyName: fulfillment.company_name,
+        contactName: fulfillment.contact_name,
+        email: fulfillment.email,
+        phone: fulfillment.phone,
+        city: fulfillment.city,
+        address: fulfillment.address,
+        deliveryMode: fulfillment.delivery_mode,
+        totalAmount: fulfillment.total_amount === null ? null : Number(fulfillment.total_amount),
+        currency: fulfillment.currency
+      },
+      items: fulfillment.items || []
+    });
+    const updated = await query(
+      `UPDATE order_fulfillments
+          SET status = 'shipped', tracking_code = $2, delivery_provider = $3,
+              note = concat_ws(E'\\n', NULLIF(note, ''), $4),
+              shipped_at = COALESCE(shipped_at, now()), updated_at = now()
+        WHERE id = $1 AND status = 'ready'
+        RETURNING id`,
+      [
+        fulfillment.id,
+        result.trackingCode,
+        result.provider,
+        `Logistika provayderi: ${result.externalId}`
+      ]
+    );
+    if (!updated[0]) {
+      throw new ApiError(409, "fulfillment_already_processed", "Sifariş icrası artıq başqa əməkdaş tərəfindən yenilənib.");
+    }
+    await query(
+      `INSERT INTO delivery_tracking_events (
+         id, fulfillment_id, order_id, purchase_order_id, status,
+         note, source, actor_id
+       )
+       SELECT $1, fulfillment.id, fulfillment.order_id, purchase_order.id, 'shipped',
+              $3, 'provider', $4
+         FROM order_fulfillments fulfillment
+         LEFT JOIN supplier_purchase_orders purchase_order
+           ON purchase_order.fulfillment_id = fulfillment.id
+        WHERE fulfillment.id = $2
+        LIMIT 1`,
+      [
+        `trk-${randomUUID()}`,
+        fulfillment.id,
+        [result.provider, result.trackingCode].filter(Boolean).join(" · "),
+        user.id
+      ]
+    );
+    const order = await readOrderDetails(fulfillment.order_id);
+    if (["confirmed", "processing"].includes(order.status)) {
+      await query("UPDATE orders SET status = 'shipped', updated_at = now() WHERE id = $1", [order.id]);
+      await recordOrderHistory({
+        order,
+        actorId: user.id,
+        status: "shipped",
+        paymentStatus: order.paymentStatus,
+        note: `${fulfillment.supplier_name} göndərişi logistika provayderinə ötürüldü.`
+      });
+    }
+    await syncOrderLead(order.id);
+    await recordAudit({
+      actorId: user.id,
+      action: "create_shipment",
+      entityType: "order_fulfillment",
+      entityId: fulfillment.id,
+      details: {
+        orderId: order.id,
+        provider: result.provider,
+        trackingCode: result.trackingCode,
+        externalId: result.externalId
+      }
+    });
+    if (order.customerId) {
+      await queueNotification({
+        userId: order.customerId,
+        channel: "in_app",
+        subject: `Sifariş #${order.orderNumber}: göndəriş`,
+        body: `${fulfillment.supplier_name} üzrə göndəriş ${result.provider} vasitəsilə yola salındı. İzləmə kodu: ${result.trackingCode}.`,
+        templateKey: "shipment_created",
+        payload: {
+          orderId: order.id,
+          fulfillmentId: fulfillment.id,
+          trackingCode: result.trackingCode,
+          provider: result.provider
+        }
+      });
+    }
+    return sendJson(res, 201, {
+      ok: true,
+      data: {
+        fulfillmentId: fulfillment.id,
+        orderId: order.id,
+        trackingCode: result.trackingCode,
+        provider: result.provider,
+        labelUrl: result.labelUrl
+      }
     });
   }
 

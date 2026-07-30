@@ -555,6 +555,7 @@ export default withApiErrors(async (req, res) => {
         payment: providerReadiness().payment,
         bankTransfer: providerReadiness().bankTransfer,
         electronicInvoice: providerReadiness().electronicInvoice,
+        logistics: providerReadiness().logistics,
         aiEstimate: providerReadiness().aiEstimate,
         scheduledBackup: backup.ready
       },

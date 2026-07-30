@@ -82,6 +82,7 @@ export const providerReadiness = () => ({
   payment: configuredHttpsEndpoint(process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET),
   bankTransfer: bankTransferReadiness(),
   electronicInvoice: configuredHttpsEndpoint(process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET),
+  logistics: configuredHttpsEndpoint(process.env.LOGISTICS_WEBHOOK_URL, process.env.LOGISTICS_WEBHOOK_SECRET),
   aiEstimate: configuredHttpsEndpoint(process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET),
   email: configuredHttpsEndpoint(process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured"),
   whatsapp: configuredHttpsEndpoint(process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured")
@@ -92,6 +93,7 @@ export const providerConfigurationStatus = () => {
   const items = [
     ["payment", "Kart ödənişi", process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET, true],
     ["electronicInvoice", "Elektron qaimə", process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET, true],
+    ["logistics", "Logistika provayderi", process.env.LOGISTICS_WEBHOOK_URL, process.env.LOGISTICS_WEBHOOK_SECRET, true],
     ["aiEstimate", "AI smeta", process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET, true],
     ["email", "E-poçt", process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false],
     ["whatsapp", "WhatsApp", process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false]
@@ -205,6 +207,58 @@ export const issueElectronicInvoice = async ({ invoiceId, order }) => {
   return {
     externalId: String(payload.externalId || payload.invoiceId || invoiceId),
     documentUrl,
+    payload
+  };
+};
+
+export const createLogisticsShipment = async ({ shipmentId, fulfillment, order, items }) => {
+  const payload = await postProvider({
+    endpoint: process.env.LOGISTICS_WEBHOOK_URL,
+    secret: process.env.LOGISTICS_WEBHOOK_SECRET,
+    name: "Logistika",
+    body: {
+      action: "create_shipment",
+      source: "ConstEra",
+      shipmentId,
+      fulfillment: {
+        id: fulfillment.id,
+        supplierId: fulfillment.supplierId,
+        supplierName: fulfillment.supplierName
+      },
+      order: {
+        id: order.id,
+        number: order.orderNumber,
+        companyName: order.companyName,
+        contactName: order.contactName,
+        email: order.email,
+        phone: order.phone,
+        city: order.city,
+        address: order.address,
+        deliveryMode: order.deliveryMode,
+        totalAmount: order.totalAmount,
+        currency: order.currency
+      },
+      items
+    }
+  });
+  const trackingCode = String(payload.trackingCode || payload.trackingNumber || "").trim().slice(0, 160);
+  const provider = String(payload.provider || payload.carrier || "Logistika provayderi").trim().slice(0, 200);
+  const labelUrl = String(payload.labelUrl || payload.documentUrl || "").trim();
+  if (!trackingCode) {
+    throw new ApiError(502, "invalid_provider_response", "Logistika provayderi izləmə kodu qaytarmadı.");
+  }
+  if (labelUrl) {
+    try {
+      if (new URL(labelUrl).protocol !== "https:") throw new Error();
+    } catch {
+      throw new ApiError(502, "invalid_provider_response", "Logistika provayderi təhlükəsiz etiket URL-i qaytarmadı.");
+    }
+  }
+  return {
+    externalId: String(payload.externalId || payload.shipmentId || shipmentId).slice(0, 200),
+    trackingCode,
+    provider,
+    labelUrl,
     payload
   };
 };

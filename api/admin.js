@@ -16,6 +16,7 @@ const routeLoaders = Object.freeze({
   imports: () => import("./_admin/imports.js"),
   integrations: () => import("./_admin/integrations.js"),
   inventory: () => import("./_admin/inventory.js"),
+  "launch-center": () => import("./_admin/launch-center.js"),
   logistics: () => import("./_admin/logistics.js"),
   media: () => import("./_admin/media.js"),
   "merchant-feed": () => import("./_admin/merchant-feed.js"),

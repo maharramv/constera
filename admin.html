@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/launch-center.css" />
     <link rel="stylesheet" href="assets/css/admin-quality.css" />
     <link rel="stylesheet" href="assets/css/enterprise.css" />
   </head>
@@ -72,6 +73,7 @@
 
           <div class="admin-tabs glass" data-admin-tabs>
             <button class="admin-tab-button is-active" type="button" data-admin-tab="overview">Ümumi</button>
+            <button class="admin-tab-button" type="button" data-admin-tab="launch">Buraxılış</button>
             <button class="admin-tab-button" type="button" data-admin-tab="products">Məhsullar</button>
             <button class="admin-tab-button" type="button" data-admin-tab="categories">Kateqoriyalar</button>
             <button class="admin-tab-button" type="button" data-admin-tab="suppliers">Təchizatçılar</button>
@@ -178,6 +180,118 @@
               </section>
             </div>
             <p class="admin-import-status" data-admin-v2-status role="status" aria-live="polite">Canlı məlumatlar üçün administrator sessiyası yoxlanılır.</p>
+          </div>
+
+          <div class="admin-panel glass" data-admin-panel="launch" hidden>
+            <div class="market-section-heading">
+              <div>
+                <p class="eyebrow">İstehsala hazırlıq</p>
+                <h2>ConstEra Buraxılış Mərkəzi</h2>
+              </div>
+              <div class="admin-actions">
+                <strong class="launch-score" data-launch-score data-tone="warning">—</strong>
+                <button class="table-action" type="button" data-launch-refresh>Yenilə</button>
+              </div>
+            </div>
+            <p class="admin-import-status" data-launch-status role="status" aria-live="polite">
+              Kataloq, təchizatçı, satış və əməliyyat hazırlığı yoxlanılır.
+            </p>
+            <div class="admin-v2-kpi-grid" data-launch-kpis></div>
+            <div class="launch-section-grid" data-launch-sections></div>
+
+            <section class="admin-v2-section launch-priority-section">
+              <div class="admin-v2-section-heading">
+                <div>
+                  <h3>Növbəti prioritetlər</h3>
+                  <p class="admin-v2-quality-summary">Bloklayıcılar və tövsiyə olunan inteqrasiyalar vacibliyə görə sıralanır.</p>
+                </div>
+                <span class="data-badge" data-launch-priority-count>0 addım</span>
+              </div>
+              <div class="launch-priority-list" data-launch-priorities></div>
+            </section>
+
+            <div class="admin-v2-dashboard-grid">
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Təhlükəsiz pilot sifariş yoxlaması</h3>
+                    <p class="admin-v2-quality-summary">Hesablama aparır, istehsal bazasına sifariş yazmır.</p>
+                  </div>
+                  <span class="status-pill">Yazmadan yoxlama</span>
+                </div>
+                <form class="admin-form" data-launch-pilot-form>
+                  <label class="admin-field"><span>Məhsul və təklif</span><select name="candidate" required data-launch-pilot-candidate></select></label>
+                  <label class="admin-field"><span>Miqdar</span><input name="quantity" type="number" min="0.001" step="0.001" value="1" required /></label>
+                  <label class="admin-field"><span>Şəhər</span><input name="city" value="Bakı" maxlength="160" required /></label>
+                  <label class="admin-field"><span>Çatdırılma</span><select name="deliveryMode"><option value="delivery">Ünvana çatdırılma</option><option value="pickup">Özün götür</option><option value="supplier_delivery">Təchizatçı çatdırması</option></select></label>
+                  <label class="admin-field"><span>Ödəniş</span><select name="paymentMethod"><option value="invoice">Hesab-faktura</option><option value="bank_transfer">Bank köçürməsi</option><option value="card">Kart</option></select></label>
+                  <button class="button button-primary" type="submit">Pilot axınını yoxla</button>
+                </form>
+                <div class="launch-pilot-result" data-launch-pilot-result></div>
+              </section>
+
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Əməliyyat hazırlığı</h3>
+                    <p class="admin-v2-quality-summary">Ödəniş, qaimə və çatdırılma növbələri.</p>
+                  </div>
+                </div>
+                <div class="admin-v2-kpi-grid" data-launch-operations></div>
+                <div class="admin-v2-integration-list" data-launch-providers></div>
+              </section>
+
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>30 günlük satış</h3>
+                    <p class="admin-v2-quality-summary">Sifariş və ödənilmiş dövriyyə.</p>
+                  </div>
+                </div>
+                <div class="admin-v2-kpi-grid" data-launch-sales-kpis></div>
+                <div class="launch-sales-chart" data-launch-sales-chart></div>
+              </section>
+
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Satış liderləri</h3>
+                    <p class="admin-v2-quality-summary">Real sifariş sətirlərinə görə məhsul və təchizatçı.</p>
+                  </div>
+                </div>
+                <div class="launch-sales-leaders">
+                  <div><strong>Məhsullar</strong><div class="admin-v2-compact-list" data-launch-top-products></div></div>
+                  <div><strong>Təchizatçılar</strong><div class="admin-v2-compact-list" data-launch-top-suppliers></div></div>
+                </div>
+              </section>
+
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Təchizatçı qoşulma nəzarəti</h3>
+                    <p class="admin-v2-quality-summary">Profil, hesab, müqavilə, real təklif, media və məlumat axını birlikdə ölçülür.</p>
+                  </div>
+                  <span class="data-badge" data-launch-supplier-count>0 təchizatçı</span>
+                </div>
+                <div class="table-wrap">
+                  <table class="admin-table">
+                    <thead><tr><th>Təchizatçı</th><th>Hazırlıq</th><th>Məhsul / təklif</th><th>Çatışmayan mərhələlər</th><th>Əməliyyat</th></tr></thead>
+                    <tbody data-launch-suppliers></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Provayderə hazır göndərişlər</h3>
+                    <p class="admin-v2-quality-summary">Yalnız “hazır” mərhələsində olan real sifariş icraları göstərilir.</p>
+                  </div>
+                  <span class="data-badge" data-launch-fulfillment-count>0 göndəriş</span>
+                </div>
+                <div class="admin-v2-compact-list" data-launch-fulfillments></div>
+              </section>
+            </div>
           </div>
 
           <div class="admin-panel glass" data-admin-panel="overview">
@@ -966,6 +1080,36 @@
               </div>
               <div class="admin-actions"><button class="button button-secondary" type="submit">URL-i yoxla və qeyd et</button></div>
             </form>
+            <section class="admin-v2-section admin-v2-section-wide media-bulk-section">
+              <div class="admin-v2-section-heading">
+                <div>
+                  <h3>Toplu rəsmi media qeydiyyatı</h3>
+                  <p class="admin-v2-quality-summary">CSV və JSON sətirləri SKU ilə məhsula bağlanır; hər şəkil təhlükəsizlik və format yoxlamasından ayrıca keçir.</p>
+                </div>
+                <a class="table-action" href="docs/csv-templates/media-urls.csv">CSV şablonu</a>
+              </div>
+              <form class="admin-form" data-media-bulk-form>
+                <label class="admin-field">
+                  <span>CSV və ya JSON faylı</span>
+                  <input name="file" type="file" accept=".csv,.json,text/csv,application/json" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Media siyahısı</span>
+                  <textarea name="source" rows="8" placeholder="sku,image_url,source_url,alt_text,license_type,license_note,is_primary"></textarea>
+                </label>
+                <div class="admin-actions">
+                  <button class="button button-secondary" type="button" data-media-bulk-preview>Ön baxış</button>
+                  <button class="button button-primary" type="submit" disabled data-media-bulk-commit>Uyğun sətirləri qeyd et</button>
+                </div>
+                <p class="admin-import-status" data-media-bulk-status role="status" aria-live="polite">Bir dəfəyə maksimum 200 sətir yoxlanılır.</p>
+              </form>
+              <div class="table-wrap" data-media-bulk-preview-wrap hidden>
+                <table class="admin-table">
+                  <thead><tr><th>Sətir</th><th>Məhsul</th><th>Şəkil</th><th>Hüquq</th><th>Nəticə</th></tr></thead>
+                  <tbody data-media-bulk-preview-rows></tbody>
+                </table>
+              </div>
+            </section>
             <div class="admin-v2-media-grid" data-admin-v2-media></div>
           </div>
 
@@ -1228,6 +1372,7 @@
     <script src="assets/js/script.js"></script>
     <script src="assets/js/production.js"></script>
     <script src="assets/js/admin-v2.js"></script>
+    <script src="assets/js/launch-center.js"></script>
     <script src="assets/js/enterprise-admin.js"></script>
     <script src="assets/js/operations-center.js"></script>
   </body>

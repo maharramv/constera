@@ -13,6 +13,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/catalog-assistant.css" />
     <link rel="stylesheet" href="assets/css/admin-quality.css" />
   </head>
   <body data-page="catalog">
@@ -163,6 +164,24 @@
           </div>
         </section>
 
+        <section class="section catalog-assistant-section" aria-labelledby="catalog-assistant-title">
+          <div class="catalog-assistant-layout">
+            <div>
+              <p class="eyebrow">Ağıllı seçim</p>
+              <h2 id="catalog-assistant-title">Kataloq köməkçisi</h2>
+            </div>
+            <form class="catalog-assistant-form" data-catalog-assistant-form>
+              <label for="catalog-assistant-input">
+                <span>Layihə və ya ehtiyac</span>
+                <input id="catalog-assistant-input" name="prompt" type="search" maxlength="500" placeholder="məsələn: 120 m² ev tikintisi və ya hamam təmiri" required />
+              </label>
+              <button class="button button-primary" type="submit">Uyğun seçimləri tap</button>
+            </form>
+            <div class="catalog-assistant-result" data-catalog-assistant-result hidden></div>
+            <p class="admin-import-status" data-catalog-assistant-status role="status" aria-live="polite"></p>
+          </div>
+        </section>
+
         <section class="section catalog-workspace">
           <button
             class="button button-secondary catalog-mobile-toggle catalog-category-toggle"
@@ -223,6 +242,7 @@
     <script src="assets/js/azerbaijan-real-products.js"></script>
     <script src="assets/js/script.js"></script>
     <script src="assets/js/production.js"></script>
+    <script src="assets/js/catalog-assistant.js"></script>
     <script src="assets/js/marketplace.js"></script>
   </body>
 </html>

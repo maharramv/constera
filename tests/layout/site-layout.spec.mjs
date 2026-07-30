@@ -234,6 +234,24 @@ test("mobil kataloq axtarış təklifləri klaviatura ilə seçilir", async ({ p
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+test("kataloq köməkçisi mobil və desktop görünüşdə işləyir", async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
+    await page.locator("[data-catalog-assistant-form] input").fill("120 m² ev tikintisi, real foto və qiymət");
+    await page.locator("[data-catalog-assistant-form]").getByRole("button", { name: "Uyğun seçimləri tap" }).click();
+    await expect(page.locator("[data-catalog-assistant-result]")).toBeVisible();
+    await expect(page.locator("[data-catalog-assistant-result]")).toContainText("Tikinti materialları");
+    await expect.poll(() => page.locator("[data-assistant-search]").count()).toBeGreaterThanOrEqual(4);
+
+    await page.locator("[data-assistant-search]").first().click();
+    await expect(page.locator("[data-source-filter]")).toHaveValue("sourced-image");
+    const overflow = await page.evaluate(() =>
+      Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+});
+
 test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async ({ page }, testInfo) => {
   await page.goto("/index.html", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => {
@@ -282,6 +300,9 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
     });
     expect(dialogFits).toBe(true);
     await page.locator("[data-admin-quality-dialog]").evaluate((dialog) => dialog.close());
+    await page.locator('[data-admin-tab="launch"]').click();
+    await expect(page.locator('[data-admin-panel="launch"]')).toBeVisible();
+    await expect(page.locator("[data-launch-pilot-form]")).toBeVisible();
     await page.locator('[data-admin-tab="crm"]').click();
     await expect(page.locator('[data-admin-panel="crm"]')).toBeVisible();
     await expect(page.locator("[data-admin-v2-crm-form]")).toBeVisible();

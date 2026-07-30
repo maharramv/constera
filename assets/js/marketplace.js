@@ -805,6 +805,9 @@ const renderCatalog = () => {
   const scannerClose = document.querySelector("[data-catalog-scanner-close]");
   const scannerVideo = document.querySelector("[data-catalog-scanner-video]");
   const scannerStatus = document.querySelector("[data-catalog-scanner-status]");
+  const assistantForm = document.querySelector("[data-catalog-assistant-form]");
+  const assistantResult = document.querySelector("[data-catalog-assistant-result]");
+  const assistantStatus = document.querySelector("[data-catalog-assistant-status]");
 
   if (!productGrid || !categoryList || !brandSelect || !searchInput) return;
 
@@ -1276,6 +1279,75 @@ const renderCatalog = () => {
   applyParamDefaults();
   renderSubcategoryOptions();
   applyCatalogFilters();
+
+  const applyAssistantSearch = (query, sourceFilter = "all") => {
+    activeCategory = "all";
+    categoryList.querySelectorAll(".category-filter").forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.category === "all");
+    });
+    if (groupSelect) groupSelect.value = "all";
+    brandSelect.value = "all";
+    if (availabilitySelect) availabilitySelect.value = "all";
+    if (priceSelect) priceSelect.value = "all";
+    if (originSelect) originSelect.value = "all";
+    if (sourceSelect) sourceSelect.value = [...sourceSelect.options].some((option) => option.value === sourceFilter)
+      ? sourceFilter
+      : "all";
+    renderSubcategoryOptions();
+    if (subcategorySelect) subcategorySelect.value = "all";
+    searchInput.value = query;
+    hideSearchSuggestions();
+    applyCatalogFilters();
+    searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const renderAssistantAnalysis = (analysis) => {
+    if (!assistantResult) return;
+    assistantResult.hidden = false;
+    assistantResult.innerHTML = `
+      <div>
+        <strong>${escapeHtml(analysis.title)}</strong>
+        <small>${escapeHtml(analysis.summary)}</small>
+      </div>
+      <div class="catalog-assistant-options">
+        ${(analysis.searches || []).map((item) => `<button class="table-action" type="button" data-assistant-search="${escapeAttr(item.query)}" data-assistant-source="${escapeAttr(analysis.sourceFilter)}">${escapeHtml(item.label)}</button>`).join("")}
+        ${(analysis.links || []).map((item) => `<a class="table-action" href="${escapeAttr(item.href)}">${escapeHtml(item.label)}</a>`).join("")}
+        ${analysis.rfqRecommended ? '<a class="table-action" href="rfq.html">Qiymət sorğusu yarat</a>' : ""}
+      </div>
+    `;
+  };
+
+  assistantForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const prompt = assistantForm.elements.prompt.value.trim();
+    const analysis = window.ConstEraCatalogAssistant?.analyze(prompt);
+    if (!analysis) {
+      if (assistantStatus) assistantStatus.textContent = "Kataloq köməkçisi yüklənmədi.";
+      return;
+    }
+    renderAssistantAnalysis(analysis);
+    const first = analysis.searches?.[0];
+    if (first) {
+      applyAssistantSearch(first.query, analysis.sourceFilter);
+      if (assistantStatus) assistantStatus.textContent = `İlk seçim tətbiq edildi: ${first.label}. Digər istiqamətləri də seçə bilərsən.`;
+    } else if (assistantStatus) {
+      assistantStatus.textContent = "Uyğun xidmət və icarə bölmələri hazırlandı.";
+    }
+    window.ConstEraTrack?.("catalog_assistant", {
+      entityType: "catalog",
+      payload: {
+        prompt: prompt.slice(0, 120),
+        resultCount: analysis.searches?.length || 0,
+        area: analysis.area || ""
+      }
+    });
+  });
+  assistantResult?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-assistant-search]");
+    if (!button) return;
+    applyAssistantSearch(button.dataset.assistantSearch || "", button.dataset.assistantSource || "all");
+    if (assistantStatus) assistantStatus.textContent = `Kataloq filtri tətbiq edildi: ${button.dataset.assistantSearch}.`;
+  });
 
   categoryList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-category]");

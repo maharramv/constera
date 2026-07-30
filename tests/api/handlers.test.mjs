@@ -139,6 +139,7 @@ test("provider hazırlığı açarsız rejimdə açıq və təhlükəsiz cavab v
       payment: false,
       bankTransfer: false,
       electronicInvoice: false,
+      logistics: false,
       aiEstimate: false,
       email: false,
       whatsapp: false

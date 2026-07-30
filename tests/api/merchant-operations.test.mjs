@@ -5,6 +5,7 @@ import { buildMerchantFeedXml } from "../../api/_lib/merchant-feed.js";
 import {
   bankTransferInstructions,
   bankTransferReadiness,
+  createLogisticsShipment,
   providerConfigurationStatus
 } from "../../api/_lib/provider-adapters.js";
 import { contractActivationReadiness } from "../../api/_admin/operations-center.js";
@@ -134,5 +135,60 @@ test("bank köçürməsi yalnız tam Azərbaycan rekvizitləri ilə aktiv olur",
       if (previous[key] === undefined) delete process.env[key];
       else process.env[key] = previous[key];
     });
+  }
+});
+
+test("logistika provayderi izləmə kodu qaytarır və sirri statusda göstərmir", async () => {
+  const previousUrl = process.env.LOGISTICS_WEBHOOK_URL;
+  const previousSecret = process.env.LOGISTICS_WEBHOOK_SECRET;
+  const previousFetch = globalThis.fetch;
+  process.env.LOGISTICS_WEBHOOK_URL = "https://logistics.example.test/shipment";
+  process.env.LOGISTICS_WEBHOOK_SECRET = "private-logistics-secret";
+  globalThis.fetch = async (_url, options) => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      const request = JSON.parse(options.body);
+      assert.equal(request.action, "create_shipment");
+      assert.equal(request.shipmentId, "shipment-1");
+      return {
+        shipmentId: "provider-1",
+        trackingCode: "AZ-TRACK-001",
+        carrier: "Test Logistics",
+        labelUrl: "https://logistics.example.test/label.pdf"
+      };
+    }
+  });
+  try {
+    const result = await createLogisticsShipment({
+      shipmentId: "shipment-1",
+      fulfillment: { id: "ful-1", supplierId: "sup-1", supplierName: "Təchizatçı" },
+      order: {
+        id: "ord-1",
+        orderNumber: 1,
+        companyName: "Şirkət",
+        contactName: "Əlaqə",
+        email: "order@example.test",
+        phone: "+994501234567",
+        city: "Bakı",
+        address: "Test ünvanı",
+        deliveryMode: "delivery",
+        totalAmount: 100,
+        currency: "AZN"
+      },
+      items: []
+    });
+    assert.equal(result.trackingCode, "AZ-TRACK-001");
+    assert.equal(result.provider, "Test Logistics");
+    const status = providerConfigurationStatus().find((item) => item.key === "logistics");
+    assert.equal(status.ready, true);
+    assert.equal(JSON.stringify(status).includes("private-logistics-secret"), false);
+    assert.equal(JSON.stringify(status).includes("logistics.example.test"), false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousUrl === undefined) delete process.env.LOGISTICS_WEBHOOK_URL;
+    else process.env.LOGISTICS_WEBHOOK_URL = previousUrl;
+    if (previousSecret === undefined) delete process.env.LOGISTICS_WEBHOOK_SECRET;
+    else process.env.LOGISTICS_WEBHOOK_SECRET = previousSecret;
   }
 });

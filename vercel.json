@@ -20,6 +20,7 @@
     { "source": "/api/imports", "destination": "/api/admin?__route=imports" },
     { "source": "/api/integrations", "destination": "/api/admin?__route=integrations" },
     { "source": "/api/inventory", "destination": "/api/admin?__route=inventory" },
+    { "source": "/api/launch-center", "destination": "/api/admin?__route=launch-center" },
     { "source": "/api/logistics", "destination": "/api/admin?__route=logistics" },
     { "source": "/api/media", "destination": "/api/admin?__route=media" },
     { "source": "/api/merchant-feed", "destination": "/api/admin?__route=merchant-feed" },
