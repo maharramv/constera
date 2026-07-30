@@ -31,6 +31,7 @@ export const buildLaunchReadiness = ({
   metrics = {},
   providers = {},
   backup = {},
+  monitoring = {},
   pilotCandidate = null
 } = {}) => {
   const catalog = [
@@ -211,6 +212,17 @@ export const buildLaunchReadiness = ({
       required: false,
       target: "system",
       action: "Bildirişlərə bax"
+    }),
+    check({
+      key: "monitor_alert",
+      label: "İstehsal monitoru xəbərdarlığı",
+      detail: monitoring.externalAlert
+        ? "Gündəlik monitor nasazlığı xarici kanala göndərilir"
+        : "Monitor nasazlığı yalnız Vercel loqlarında görünür",
+      ready: Boolean(monitoring.externalAlert),
+      required: false,
+      target: "system",
+      action: "Monitor bildirişini qur"
     }),
     check({
       key: "critical_security",

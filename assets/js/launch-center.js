@@ -22,6 +22,14 @@
       ? new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short" }).format(date)
       : "Yoxlanmayıb";
   };
+  const safeHttpsUrl = (value) => {
+    try {
+      const url = new URL(String(value || "").trim());
+      return url.protocol === "https:" && !url.username && !url.password ? url.toString() : "";
+    } catch {
+      return "";
+    }
+  };
   const setStatus = (selector, message, type = "info") => {
     const element = qs(selector);
     if (!element) return;
@@ -74,6 +82,32 @@
     media: "media",
     feed: "system"
   };
+  const pilotCheckTargets = {
+    offer: "b2b",
+    price: "b2b",
+    freshness: "b2b",
+    stock: "b2b",
+    minimum_order: "b2b",
+    source: "products",
+    media: "media",
+    contract: "operations",
+    logistics: "b2b",
+    payment: "overview",
+    invoice: "operations"
+  };
+  const csvCell = (value) => `"${String(value ?? "").replace(/"/g, "\"\"")}"`;
+  const downloadCsv = (filename, rows) => {
+    const source = `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
+    const url = URL.createObjectURL(new Blob([source], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+  const datedFilename = (prefix) => `${prefix}-${new Date().toISOString().slice(0, 10)}.csv`;
 
   const renderSupplierWizard = () => {
     const suppliers = state.launch?.suppliers || [];
@@ -88,12 +122,20 @@
     `).join("") || '<option value="">Təchizatçı yoxdur</option>';
     select.disabled = suppliers.length === 0;
     const supplier = suppliers.find((item) => item.id === state.selectedSupplierId);
-    steps.innerHTML = (supplier?.onboarding?.checks || []).map((item, index) => `
+    const website = safeHttpsUrl(supplier?.website);
+    const contact = supplier?.contact || "Rəsmi əlaqə məlumatı tamamlanmayıb";
+    steps.innerHTML = supplier ? `
+      <div class="admin-v2-section-heading">
+        <div><strong>${escapeHtml(supplier.name)}</strong><small>${escapeHtml(contact)}</small></div>
+        ${website ? `<a class="table-action" href="${escapeHtml(website)}" target="_blank" rel="noopener noreferrer">Rəsmi saytı aç</a>` : ""}
+      </div>
+      ${(supplier.onboarding?.checks || []).map((item, index) => `
       <article class="${item.ready ? "is-ready" : ""}">
         <div><strong>${index + 1}. ${escapeHtml(item.label)}</strong><small>${item.ready ? "Tamamlanıb" : item.required ? "Pilot üçün tələb olunur" : "Tövsiyə olunur"}</small></div>
         <button class="table-action" type="button" data-launch-target="${escapeHtml(supplierStepTargets[item.key] || "launch")}">${item.ready ? "Bax" : "Tamamla"}</button>
       </article>
-    `).join("") || "<p>Qoşulma mərhələsi tapılmadı.</p>";
+      `).join("") || "<p>Qoşulma mərhələsi tapılmadı.</p>"}
+    ` : "<p>Qoşulma mərhələsi tapılmadı.</p>";
   };
 
   const renderLaunch = () => {
@@ -273,6 +315,7 @@
         <div><span>Son bütövlük yoxlaması</span><strong class="${verification.ready ? "is-ready" : "is-pending"}">${escapeHtml(formatDate(verification.createdAt))}</strong></div>
         <div><span>Yoxlanmış həcm</span><strong>${Number(latest.tableCount || 0)} cədvəl · ${Number(latest.recordCount || 0).toLocaleString("az-AZ")} qeyd</strong></div>
         <div><span>Kritik 2FA siyasəti</span><strong class="${metrics.criticalTwoFactorEnforced ? "is-ready" : "is-pending"}">${metrics.criticalTwoFactorEnforced ? "Aktiv" : "Aktiv deyil"}</strong></div>
+        <div><span>Monitor nasazlıq xəbərdarlığı</span><strong class="${data.monitoring?.externalAlert ? "is-ready" : "is-pending"}">${data.monitoring?.externalAlert ? "Xarici kanal hazırdır" : "Yalnız Vercel loqu"}</strong></div>
       `;
     }
 
@@ -281,8 +324,9 @@
     renderSupplierWizard();
     if (supplierRows) supplierRows.innerHTML = suppliers.map((supplier) => {
       const missing = (supplier.onboarding?.checks || []).filter((item) => !item.ready);
+      const website = safeHttpsUrl(supplier.website);
       return `<tr>
-        <td data-label="Təchizatçı"><strong>${escapeHtml(supplier.name)}</strong><small>${escapeHtml([supplier.region, supplier.contact].filter(Boolean).join(" · ") || "Əlaqə tamamlanmayıb")}</small></td>
+        <td data-label="Təchizatçı"><strong>${website ? `<a class="source-link" href="${escapeHtml(website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(supplier.name)}</a>` : escapeHtml(supplier.name)}</strong><small>${escapeHtml([supplier.region, supplier.contact].filter(Boolean).join(" · ") || "Əlaqə tamamlanmayıb")}</small></td>
         <td data-label="Hazırlıq"><strong>${Number(supplier.onboarding?.score || 0)}%</strong><small>${supplier.onboarding?.readyForPilot ? "Pilot üçün hazırdır" : "Tamamlanmalıdır"}</small></td>
         <td data-label="Məhsul / təklif">${Number(supplier.productCount || 0)} / ${Number(supplier.offerCount || 0)}<small>${Number(supplier.eligibleOfferCount || 0)} aktual təklif · ${Number(supplier.licensedMediaCount || 0)} media</small></td>
         <td data-label="Çatışmayan mərhələlər"><div class="admin-v2-quality-issues">${missing.map((item) => `<span>${escapeHtml(item.label)}</span>`).join("") || "<span>Tamdır</span>"}</div></td>
@@ -293,16 +337,24 @@
     if (supplierCount) supplierCount.textContent = `${suppliers.length} təchizatçı`;
 
     const candidateSelect = qs("[data-launch-pilot-candidate]");
-    const candidates = data.pilotCandidates || [];
+    const candidates = data.pilotSelections || data.pilotCandidates || [];
     if (candidateSelect) {
       const current = candidateSelect.value;
       candidateSelect.innerHTML = candidates.map((item, index) => `
-        <option value="${index}">${escapeHtml(item.name)} · ${escapeHtml(item.supplierName)} · ${escapeHtml(formatMoney(item.unitPrice, item.currency))}</option>
-      `).join("") || '<option value="">Tam hazır namizəd yoxdur</option>';
+        <option value="${index}">${item.ready ? "Hazır" : `${Number(item.missing?.length || 0)} blok`} · ${escapeHtml(item.name)} · ${escapeHtml(item.supplierName)} · ${escapeHtml(formatMoney(item.unitPrice, item.currency))}</option>
+      `).join("") || '<option value="">Yoxlanacaq aktual təklif yoxdur</option>';
       candidateSelect.disabled = candidates.length === 0;
       if (candidates[Number(current)]) candidateSelect.value = current;
       const submit = qs("[data-launch-pilot-form] button[type='submit']");
       if (submit) submit.disabled = candidates.length === 0;
+    }
+    const selectionStatus = qs("[data-launch-pilot-selection-status]");
+    if (selectionStatus) {
+      const readyCount = candidates.filter((item) => item.ready).length;
+      selectionStatus.textContent = candidates.length
+        ? `${candidates.length} stoklu və aktual real təklif yoxlanıla bilər · ${readyCount} təklif bütün blokları keçib.`
+        : "Stoklu və son 30 gündə təsdiqlənmiş real təklif tapılmadı.";
+      selectionStatus.dataset.type = readyCount ? "success" : candidates.length ? "warning" : "error";
     }
 
     const fulfillments = data.readyFulfillments || [];
@@ -330,6 +382,7 @@
       container.innerHTML = "";
       return;
     }
+    const blockers = (result.checks || []).filter((item) => item.required && !item.ready);
     container.innerHTML = `
       <header>
         <div>
@@ -346,6 +399,9 @@
       <div class="launch-pilot-checks">
         ${(result.checks || []).map((item) => `<span class="${item.ready ? "is-ready" : item.required ? "is-blocked" : "is-warning"}">${escapeHtml(item.label)}</span>`).join("")}
       </div>
+      ${blockers.length ? `<div class="launch-pilot-actions">
+        ${blockers.map((item) => `<button class="table-action" type="button" data-launch-target="${escapeHtml(pilotCheckTargets[item.key] || "launch")}">${escapeHtml(item.label)} düzəlt</button>`).join("")}
+      </div>` : ""}
       ${result.nextUrl ? `<a class="button button-secondary" href="${escapeHtml(result.nextUrl)}">Məhsul axınını aç</a>` : ""}
     `;
   };
@@ -355,6 +411,68 @@
     state.launch = result.data;
     renderLaunch();
     renderPilotResult();
+  };
+
+  const exportLaunchReport = () => {
+    const data = state.launch;
+    if (!data) {
+      setStatus("[data-launch-status]", "Əvvəlcə buraxılış məlumatlarını yüklə.", "warning");
+      return;
+    }
+    const rows = [[
+      "supplier_id", "supplier_name", "website", "contact", "onboarding_score",
+      "profile_ready", "account_ready", "contract_ready", "offer_ready",
+      "media_ready", "feed_ready", "next_required_step"
+    ]];
+    for (const supplier of data.suppliers || []) {
+      const checks = new Map((supplier.onboarding?.checks || []).map((item) => [item.key, item]));
+      const next = (supplier.onboarding?.checks || []).find((item) => item.required && !item.ready);
+      rows.push([
+        supplier.id,
+        supplier.name,
+        supplier.website,
+        supplier.contact,
+        Number(supplier.onboarding?.score || 0),
+        checks.get("profile")?.ready ? "ready" : "missing",
+        checks.get("account")?.ready ? "ready" : "missing",
+        checks.get("contract")?.ready ? "ready" : "missing",
+        checks.get("offer")?.ready ? "ready" : "missing",
+        checks.get("media")?.ready ? "ready" : "missing",
+        checks.get("feed")?.ready ? "ready" : "optional",
+        next?.label || "Pilot üçün hazır"
+      ]);
+    }
+    downloadCsv(datedFilename("constera-supplier-launch-report"), rows);
+    setStatus("[data-launch-status]", "Təchizatçı buraxılış hesabatı endirildi.", "success");
+  };
+
+  const exportPilotMediaTemplate = () => {
+    const candidates = state.launch?.pilotSelections || state.launch?.pilotCandidates || [];
+    const rows = [[
+      "sku", "image_url", "source_url", "alt_text", "license_type", "license_note", "is_primary"
+    ]];
+    for (const item of candidates) {
+      if (!item.sourceImageUrl || item.hasLicensedMedia) continue;
+      rows.push([
+        item.sku,
+        item.sourceImageUrl,
+        item.sourceUrl,
+        item.name,
+        "",
+        "",
+        "true"
+      ]);
+    }
+    if (rows.length === 1) {
+      setStatus("[data-launch-status]", "Pilot təkliflərində media təsdiqi gözləyən şəkil tapılmadı.", "warning");
+      return;
+    }
+    downloadCsv(datedFilename("constera-pilot-media-rights"), rows);
+    setStatus(
+      "[data-launch-status]",
+      `${rows.length - 1} media sətri endirildi. İstifadə hüququ və icazə qeydi təsdiqdən sonra doldurulmalıdır.`,
+      "success"
+    );
   };
 
   qs("[data-launch-refresh]")?.addEventListener("click", async (event) => {
@@ -368,6 +486,8 @@
       setBusy(button, false);
     }
   });
+  qs("[data-launch-export-report]")?.addEventListener("click", exportLaunchReport);
+  qs("[data-launch-export-media]")?.addEventListener("click", exportPilotMediaTemplate);
   qs("[data-launch-supplier-select]")?.addEventListener("change", (event) => {
     state.selectedSupplierId = event.target.value;
     renderSupplierWizard();
@@ -403,9 +523,10 @@
   qs("[data-launch-pilot-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const candidate = state.launch?.pilotCandidates?.[Number(form.elements.candidate.value)];
+    const candidates = state.launch?.pilotSelections || state.launch?.pilotCandidates || [];
+    const candidate = candidates[Number(form.elements.candidate.value)];
     if (!candidate) {
-      setStatus("[data-launch-status]", "Pilot üçün tam hazır məhsul tapılmadı.", "warning");
+      setStatus("[data-launch-status]", "Pilot üçün yoxlanacaq aktual real təklif tapılmadı.", "warning");
       return;
     }
     const button = form.querySelector('button[type="submit"]');
@@ -535,14 +656,7 @@
     if (["own", "constera", "oz"].includes(key)) return "own";
     return "";
   };
-  const safeHttps = (value) => {
-    try {
-      const url = new URL(String(value || "").trim());
-      return url.protocol === "https:" && !url.username && !url.password ? url.toString() : "";
-    } catch {
-      return "";
-    }
-  };
+  const safeHttps = safeHttpsUrl;
 
   const validateMediaRows = async (source) => {
     if (!state.products.length) {

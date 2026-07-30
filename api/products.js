@@ -42,6 +42,7 @@ const mapProduct = (row) => {
     sourceLabel: row.source_label || "",
     specs,
     attributes: normalizeProductAttributes({
+      name: row.name,
       specs,
       packageText: row.package_text,
       origin: row.origin,

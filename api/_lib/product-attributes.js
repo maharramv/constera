@@ -23,6 +23,12 @@ const canonicalLabels = new Map([
   ["gerginlik", "Gərginlik"],
   ["gərginlik", "Gərginlik"],
   ["voltage", "Gərginlik"],
+  ["diametr", "Diametr"],
+  ["diameter", "Diametr"],
+  ["cap", "Diametr"],
+  ["çap", "Diametr"],
+  ["bucaq", "Bucaq"],
+  ["angle", "Bucaq"],
   ["material", "Material"],
   ["model", "Model"],
   ["qablasdirma", "Qablaşdırma"],
@@ -66,6 +72,34 @@ const inferredPatterns = [
   { label: "Rəng", pattern: /^(.{2,40})\s+r[əe]ng(?:i)?$/i }
 ];
 
+const colorValues = new Map([
+  ["ag", "Ağ"],
+  ["qara", "Qara"],
+  ["boz", "Boz"],
+  ["bej", "Bej"],
+  ["mavi", "Mavi"],
+  ["sari", "Sarı"],
+  ["qirmizi", "Qırmızı"],
+  ["yasil", "Yaşıl"],
+  ["narinci", "Narıncı"],
+  ["seffaf", "Şəffaf"]
+]);
+
+const materialPatterns = [
+  [/(?:^|[^a-z0-9])poliuretan(?=$|[^a-z0-9])/, "Poliuretan"],
+  [/(?:^|[^a-z0-9])silikon(?=$|[^a-z0-9])/, "Silikon"],
+  [/(?:^|[^a-z0-9])epoksi(?=$|[^a-z0-9])/, "Epoksi"],
+  [/(?:^|[^a-z0-9])akrilik(?=$|[^a-z0-9])/, "Akrilik"],
+  [/(?:^|[^a-z0-9])mineral yun(?=$|[^a-z0-9])/, "Mineral yun"],
+  [/(?:^|[^a-z0-9])gips(?=$|[^a-z0-9])/, "Gips"],
+  [/(?:^|[^a-z0-9])alcipan(?=$|[^a-z0-9])/, "Gips"],
+  [/(?:^|[^a-z0-9])sement(?=$|[^a-z0-9])/, "Sement"],
+  [/(?:^|[^a-z0-9])pprc?(?=$|[^a-z0-9])/, "PPRC"],
+  [/(?:^|[^a-z0-9])pvc(?=$|[^a-z0-9])/, "PVC"],
+  [/(?:^|[^a-z0-9])pp(?=$|[^a-z0-9])/, "PP"],
+  [/(?:^|[^a-z0-9])bitum(?=$|[^a-z0-9])/, "Bitum"]
+];
+
 const normalizeValue = (value) => compact(value)
   .replace(/\bkg\b/gi, "kq")
   .replace(/\bcm\b/gi, "sm")
@@ -80,7 +114,52 @@ const inferAttribute = (spec) => {
   return null;
 };
 
+const inferTextAttributes = (value, { packageText = false } = {}) => {
+  const source = compact(value);
+  const folded = fold(source);
+  if (!source) return [];
+  const attributes = [];
+  const packageEvidence = /kisə|qutu|qab|balon|şüşə|vedrə|paket/i.test(source);
+  const add = (label, inferredValue) => {
+    if (inferredValue) attributes.push({ label, value: normalizeValue(inferredValue) });
+  };
+  const dimensionMatch = source.match(new RegExp(`(${dimensions})`, "i"));
+  if (dimensionMatch?.[1]) add("Ölçü", dimensionMatch[1]);
+  const volumeMatch = source.match(/(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)(\s*)(ml|l)(?=$|[\s,;)/])/i);
+  if (volumeMatch && (!packageText || volumeMatch[2] || packageEvidence)) {
+    add("Həcm", `${volumeMatch[1]} ${volumeMatch[3]}`);
+  }
+  const weightMatch = source.match(/(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)(\s*)(kq|kg|qr|q|g)(?=$|[\s,;)/])/i);
+  if (weightMatch && (!packageText || weightMatch[2] || packageEvidence)) {
+    add("Çəki", `${weightMatch[1]} ${weightMatch[3]}`);
+  }
+  const powerMatch = source.match(/(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)(\s*)(kw|w)(?=$|[\s,;)/-])/i);
+  if (powerMatch && (!packageText || powerMatch[2] || packageEvidence)) {
+    add("Güc", `${powerMatch[1]} ${powerMatch[3]}`);
+  }
+  const voltageMatch = source.match(/(?<![A-Za-z0-9])(\d+(?:[.,]\d+)?)(\s*)v(?=$|[\s,;)/-])/i);
+  if (voltageMatch && (!packageText || voltageMatch[2] || packageEvidence)) {
+    add("Gərginlik", `${voltageMatch[1]} V`);
+  }
+  const diameterMatch = source.match(/[Øø]\s*(\d+(?:[.,]\d+)?(?:\s*(?:mm|sm|cm))?)/i);
+  if (diameterMatch) add("Diametr", `Ø${diameterMatch[1]}`);
+  const angleMatch = source.match(/(\d+(?:[.,]\d+)?)\s*°/);
+  if (angleMatch) add("Bucaq", `${angleMatch[1]}°`);
+  const colorMatch = folded.match(
+    /(?:^|[^a-z0-9])(ag|qara|boz|bej|mavi|sari|qirmizi|yasil|narinci|seffaf)(?=$|[^a-z0-9])/
+  );
+  if (colorMatch) add("Rəng", colorValues.get(colorMatch[1]));
+  for (const [pattern, material] of materialPatterns) {
+    if (pattern.test(folded)) {
+      add("Material", material);
+      break;
+    }
+  }
+  return attributes;
+};
+
 export const normalizeProductAttributes = ({
+  name = "",
   specs = [],
   packageText = "",
   origin = "",
@@ -104,6 +183,8 @@ export const normalizeProductAttributes = ({
   }
   add("Qablaşdırma", packageText, "product");
   add("Mənşə", origin, "product");
+  for (const item of inferTextAttributes(packageText, { packageText: true })) add(item.label, item.value, "package");
+  for (const item of inferTextAttributes(name)) add(item.label, item.value, "name");
 
   for (const spec of Array.isArray(specs) ? specs : []) {
     const source = compact(spec);

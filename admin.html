@@ -190,6 +190,7 @@
               </div>
               <div class="admin-actions">
                 <strong class="launch-score" data-launch-score data-tone="warning">—</strong>
+                <button class="table-action" type="button" data-launch-export-report>Hesabatı endir</button>
                 <button class="table-action" type="button" data-launch-refresh>Yenilə</button>
               </div>
             </div>
@@ -228,7 +229,10 @@
                     <h3>Təhlükəsiz pilot sifariş yoxlaması</h3>
                     <p class="admin-v2-quality-summary">Hesablama aparır, istehsal bazasına sifariş yazmır.</p>
                   </div>
-                  <span class="status-pill">Yazmadan yoxlama</span>
+                  <div class="admin-actions">
+                    <button class="table-action" type="button" data-launch-export-media>Media siyahısını endir</button>
+                    <span class="status-pill">Yazmadan yoxlama</span>
+                  </div>
                 </div>
                 <form class="admin-form" data-launch-pilot-form>
                   <label class="admin-field"><span>Məhsul və təklif</span><select name="candidate" required data-launch-pilot-candidate></select></label>
@@ -238,6 +242,9 @@
                   <label class="admin-field"><span>Ödəniş</span><select name="paymentMethod"><option value="invoice">Hesab-faktura</option><option value="bank_transfer">Bank köçürməsi</option><option value="card">Kart</option></select></label>
                   <button class="button button-primary" type="submit">Pilot axınını yoxla</button>
                 </form>
+                <p class="admin-import-status" data-launch-pilot-selection-status role="status" aria-live="polite">
+                  Stoklu və aktual real təkliflər yüklənir.
+                </p>
                 <div class="launch-pilot-result" data-launch-pilot-result></div>
               </section>
 

@@ -255,27 +255,30 @@ window.CONSTERA_MARKETPLACE = {
       name: "Penguin Paints",
       type: "İstehsalçı",
       focus: "Daxili və fasad boya sistemləri",
-      website: "www.penguin.az",
-      status: "Rəsmi kataloq qoşulub",
-      region: "Azərbaycan"
+      website: "https://www.penguin.az/",
+      status: "Rəsmi sayt məlumatı yoxlanılıb",
+      region: "Azərbaycan",
+      contact: "+994 12 502 45 50 · +994 50 285 94 21"
     },
     {
       id: "epo-az",
       name: "EPO",
       type: "İstehsalçı",
       focus: "Quru qarışıqlar və tikinti kimyası",
-      website: "www.epo.com.az",
-      status: "Rəsmi kataloq qoşulub",
-      region: "Azərbaycan"
+      website: "https://www.epo.com.az/",
+      status: "Rəsmi sayt məlumatı yoxlanılıb",
+      region: "Azərbaycan",
+      contact: "+994 12 502 45 50 · +994 50 285 94 21"
     },
     {
       id: "knarr-paints",
       name: "Knarr Paints",
       type: "Boya təchizatçısı",
       focus: "Boya, lak və dekorativ örtüklər",
-      website: "www.knarrpaints.com",
-      status: "Təchizatçı profili hazırdır",
-      region: "Azərbaycan"
+      website: "https://www.knarrpaints.com/",
+      status: "Rəsmi sayt məlumatı yoxlanılıb",
+      region: "Azərbaycan",
+      contact: "+994 12 502 45 50 · +994 50 285 94 21"
     },
     {
       id: "general-import",
@@ -283,7 +286,7 @@ window.CONSTERA_MARKETPLACE = {
       type: "İdxalçı",
       focus: "Elektrik, santexnika, alətlər və HVAC",
       website: "Daxili təchizatçı",
-      status: "Canlı kataloq lazımdır",
+      status: "Hüquqi profil və canlı kataloq tələb olunur",
       region: "Azərbaycan"
     }
   ],

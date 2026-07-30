@@ -126,7 +126,7 @@ const resolveMissingIssues = async (runId, issueTypes, activeKeys) => {
   return rows.length;
 };
 
-const buildStructuralIssues = (products, offers) => {
+export const buildCatalogStructuralIssues = (products, offers) => {
   const issues = [];
   const duplicateCounts = new Map();
   products.forEach((product) => {
@@ -136,14 +136,15 @@ const buildStructuralIssues = (products, offers) => {
   products.forEach((product) => {
     const specsCount = Array.isArray(product.specs) ? product.specs.length : 0;
     const duplicateKey = `${String(product.name || "").trim().toLowerCase()}::${String(product.brand || "").trim().toLowerCase()}`;
-    if (!product.image_url) issues.push(issue("product", product.id, "missing_image", "high", "Real məhsul fotosu yoxdur."));
+    const mediaSeverity = product.has_eligible_offer ? "high" : "medium";
+    if (!product.image_url) issues.push(issue("product", product.id, "missing_image", mediaSeverity, "Real məhsul fotosu yoxdur."));
     else if (!/^(?:\/|assets\/|https:\/\/)/i.test(product.image_url)) issues.push(issue("product", product.id, "invalid_image_url", "high", "Şəkil URL-i düzgün deyil."));
     if (!product.has_licensed_media) {
       issues.push(issue(
         "product",
         product.id,
         "missing_licensed_media",
-        "high",
+        mediaSeverity,
         "Şəkil üçün sahiblik, təchizatçı icazəsi və ya rəsmi/lisenziyalı media qeydi yoxdur."
       ));
     }
@@ -190,6 +191,17 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
                 product.updated_at,
                 EXISTS (
                   SELECT 1
+                    FROM product_offers eligible_offer
+                   WHERE eligible_offer.product_id = product.id
+                     AND eligible_offer.status = 'active'
+                     AND eligible_offer.price_status = 'confirmed'
+                     AND eligible_offer.unit_price > 0
+                     AND eligible_offer.price_verified_at >= now() - interval '30 days'
+                     AND eligible_offer.stock_quantity > 0
+                     AND eligible_offer.source_url ~ '^https://'
+                ) AS has_eligible_offer,
+                EXISTS (
+                  SELECT 1
                     FROM media_assets media
                    WHERE media.entity_type = 'product'
                      AND media.entity_id = product.id
@@ -209,7 +221,7 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
            FROM product_offers WHERE status = 'active'`
       )
     ]);
-    const structural = buildStructuralIssues(products, offers);
+    const structural = buildCatalogStructuralIssues(products, offers);
     await upsertIssues(runId, structural);
     let resolved = await resolveMissingIssues(runId, structuralIssueTypes, structural.map((item) => item.issueKey));
     const linkIssues = [];
@@ -290,6 +302,7 @@ const loadAttributeCandidates = async () => {
   return rows.map((row) => {
     const current = Array.isArray(row.extra_data?.attributes) ? row.extra_data.attributes : [];
     const attributes = normalizeProductAttributes({
+      name: row.name,
       specs: row.specs,
       packageText: row.package_text,
       origin: row.origin,

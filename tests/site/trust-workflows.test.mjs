@@ -78,8 +78,13 @@ test("buraxılış növbəsi axtarış boşluğunu, atributları, backup-ı və 
   assert.match(admin, /data-launch-queue/);
   assert.match(admin, /data-launch-zero-searches/);
   assert.match(admin, /data-launch-supplier-steps/);
+  assert.match(admin, /data-launch-export-report/);
+  assert.match(admin, /data-launch-export-media/);
   assert.match(launch, /releaseQueue/);
+  assert.match(launch, /pilotSelections/);
+  assert.match(launch, /constera-supplier-launch-report/);
   assert.match(launchApi, /backup_verifications/);
+  assert.match(launchApi, /pilotSelections/);
   assert.match(launchApi, /resultCount/);
   assert.match(marketplace, /constera-catalog-item-list-schema/);
   assert.match(marketplace, /"@type": "ItemList"/);

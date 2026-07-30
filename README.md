@@ -5,8 +5,8 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 ## Hazırkı məlumat bazası
 
 - 70 material kateqoriyası və Neon-da 702 subkateqoriya
-- production kataloqunda 849 məhsul kartı
-- 77 ilkin mənbəli təchizatçı təklifi və hər məhsul üçün çox təchizatçılı qiymət, stok, minimum sifariş müqayisəsi
+- statik kataloqda 845, Neon production kataloqunda 827 aktiv məhsul kartı
+- production bazasında 65 ilkin mənbəli təchizatçı təklifi və hər məhsul üçün çox təchizatçılı qiymət, stok, minimum sifariş müqayisəsi
 - 12 xidmət kateqoriyası, 116 subkateqoriya və 125 xidmət
 - 7 paket kateqoriyası və 80 hazır paket
 - 15 icarə kateqoriyası və 115 avadanlıq mövqeyi
@@ -77,6 +77,7 @@ Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçat
 - `npm run verify:deploy` - hər Vercel deploy-unda bir dəfə işləyən məcburi audit, API və sayt quality gate-i
 - `docs/quality-workflow.yml` - token-da `workflow` icazəsi aktivləşəndə GitHub Actions üçün responsiv test şablonu
 - `docs/production-monitor-workflow.yml` - `constera.az` üçün altı saatlıq smoke monitorinqi şablonu
+- `docs/launch-runbook.md` - ilk real təchizatçı və sifariş pilotunun təhlükəsiz buraxılış ardıcıllığı
 
 ## Lokal yoxlama
 
@@ -134,7 +135,7 @@ npm run db:smoke
 
 Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır.
 
-Gündəlik bulud backup-ı üçün `BACKUP_WEBHOOK_URL` və `BACKUP_WEBHOOK_SECRET` birlikdə qurulmalıdır. Endpoint gzip edilmiş JSON qəbul etməli və faylı özəl yaddaşda saxlamalıdır. Kart ödənişi, elektron qaimə və xarici AI smeta yalnız müvafiq HTTPS webhook və gizli açar cütü olduqda interfeysdə aktivləşir.
+Gündəlik bulud backup-ı üçün `BACKUP_WEBHOOK_URL` və `BACKUP_WEBHOOK_SECRET` birlikdə qurulmalıdır. Endpoint gzip edilmiş JSON qəbul etməli və faylı özəl yaddaşda saxlamalıdır. `MONITOR_ALERT_WEBHOOK_URL` və ən azı 24 simvolluq `MONITOR_ALERT_WEBHOOK_SECRET` qurulduqda gündəlik production monitor xətanı həmin kanala `production_monitor_failed` JSON hadisəsi kimi göndərir və yenə HTTP 500 qaytararaq Vercel cron-u uğursuz işarələyir. Kart ödənişi, elektron qaimə və xarici AI smeta yalnız müvafiq HTTPS webhook və gizli açar cütü olduqda interfeysdə aktivləşir.
 
 Alternativ olaraq lokal terminaldan administrator yaratmaq olar:
 

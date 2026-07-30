@@ -5,6 +5,7 @@ import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiEr
 import { buildLaunchReadiness, buildSupplierOnboarding } from "../_lib/launch-readiness.js";
 import { calculateDeliveryQuote } from "../_lib/logistics.js";
 import { providerConfigurationStatus, providerReadiness } from "../_lib/provider-adapters.js";
+import { productionMonitorAlertReadiness } from "../_lib/production-monitor.js";
 import { backupVerificationState, buildReleaseQueue } from "../_lib/release-queue.js";
 import { oneOf, text } from "../_lib/validation.js";
 
@@ -13,24 +14,36 @@ const freshnessWindowMs = 30 * 86_400_000;
 
 const number = (value) => Math.max(0, Number(value || 0));
 
-const mapPilotCandidate = (row) => row ? ({
-  productId: row.product_id,
-  offerId: row.offer_id,
-  sku: row.sku,
-  name: row.name,
-  brand: row.brand,
-  package: row.package_text || "",
-  imageUrl: row.media_url || row.image_url || "",
-  supplierId: row.supplier_id,
-  supplierName: row.supplier_name,
-  unitPrice: Number(row.unit_price),
-  currency: row.currency || "AZN",
-  stockQuantity: Number(row.stock_quantity),
-  minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
-  leadTimeDays: row.lead_time_days === null ? null : Number(row.lead_time_days),
-  priceVerifiedAt: row.price_verified_at,
-  sourceUrl: row.source_url
-}) : null;
+const mapPilotCandidate = (row) => {
+  if (!row) return null;
+  const missing = [
+    ...(!row.has_active_contract ? [{ key: "contract", label: "Aktiv müqavilə" }] : []),
+    ...(!row.has_licensed_media ? [{ key: "media", label: "Media istifadə hüququ" }] : [])
+  ];
+  return {
+    productId: row.product_id,
+    offerId: row.offer_id,
+    sku: row.sku,
+    name: row.name,
+    brand: row.brand,
+    package: row.package_text || "",
+    imageUrl: row.media_url || row.image_url || "",
+    sourceImageUrl: row.image_url || "",
+    supplierId: row.supplier_id,
+    supplierName: row.supplier_name,
+    unitPrice: Number(row.unit_price),
+    currency: row.currency || "AZN",
+    stockQuantity: Number(row.stock_quantity),
+    minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+    leadTimeDays: row.lead_time_days === null ? null : Number(row.lead_time_days),
+    priceVerifiedAt: row.price_verified_at,
+    sourceUrl: row.source_url,
+    hasActiveContract: Boolean(row.has_active_contract),
+    hasLicensedMedia: Boolean(row.has_licensed_media),
+    ready: missing.length === 0,
+    missing
+  };
+};
 
 export const loadLaunchCenter = async () => {
   const [
@@ -201,16 +214,19 @@ export const loadLaunchCenter = async () => {
               offer.id AS offer_id, offer.supplier_id, supplier.name AS supplier_name,
               offer.unit_price, offer.currency, offer.stock_quantity,
               offer.minimum_order, offer.lead_time_days, offer.price_verified_at,
-              offer.source_url, media.url AS media_url
+              offer.source_url, media.url AS media_url,
+              EXISTS (
+                SELECT 1 FROM supplier_contracts contract
+                 WHERE contract.supplier_id = supplier.id
+                   AND contract.status = 'active'
+                   AND contract.starts_on <= current_date
+                   AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+              ) AS has_active_contract,
+              media.url IS NOT NULL AS has_licensed_media
          FROM product_offers offer
          JOIN products product ON product.id = offer.product_id AND product.status = 'active'
          JOIN suppliers supplier ON supplier.id = offer.supplier_id AND supplier.status <> 'Arxiv'
-         JOIN supplier_contracts contract
-           ON contract.supplier_id = supplier.id
-          AND contract.status = 'active'
-          AND contract.starts_on <= current_date
-          AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
-         JOIN LATERAL (
+         LEFT JOIN LATERAL (
            SELECT asset.url
              FROM media_assets asset
             WHERE asset.entity_type = 'product'
@@ -358,6 +374,7 @@ export const loadLaunchCenter = async () => {
   ]);
 
   const providers = providerReadiness();
+  const monitoring = { externalAlert: productionMonitorAlertReadiness() };
   const backup = backupDeliveryReadiness();
   const metricsRow = metricRows[0] || {};
   const metrics = {
@@ -392,7 +409,8 @@ export const loadLaunchCenter = async () => {
     pendingStagingItems: stagingRows.reduce((sum, item) => sum + number(item.count), 0),
     criticalTwoFactorEnforced: criticalAdminTwoFactorRequired()
   };
-  const pilotCandidates = pilotRows.map(mapPilotCandidate);
+  const pilotSelections = pilotRows.map(mapPilotCandidate);
+  const pilotCandidates = pilotSelections.filter((item) => item.ready);
   const latestBackup = backupVerificationRows[0] ? {
     status: backupVerificationRows[0].status,
     createdAt: backupVerificationRows[0].created_at,
@@ -413,6 +431,7 @@ export const loadLaunchCenter = async () => {
     metrics,
     providers,
     backup: { ...backup, recentVerified: backupVerification.ready },
+    monitoring,
     pilotCandidate: pilotCandidates[0] || null
   });
   const qualityIssues = qualityIssueRows.map((row) => ({
@@ -440,6 +459,7 @@ export const loadLaunchCenter = async () => {
     readiness,
     metrics,
     providers,
+    monitoring,
     providerConfiguration: providerConfigurationStatus(),
     backup: {
       ready: backup.ready,
@@ -473,6 +493,7 @@ export const loadLaunchCenter = async () => {
       || left.name.localeCompare(right.name, "az")
     ),
     pilotCandidates,
+    pilotSelections,
     readyFulfillments: readyFulfillmentRows.map((row) => ({
       id: row.id,
       orderId: row.order_id,

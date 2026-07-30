@@ -41,12 +41,18 @@ test("məcburi hazırlıq tamamlandıqda yalnız könüllü inteqrasiyalar xəb�
       email: false,
       whatsapp: false
     },
+    monitoring: { externalAlert: true },
     backup: { ready: true, recentVerified: true, label: "Özəl backup" },
     pilotCandidate: { name: "Real məhsul" }
   });
   assert.equal(readiness.status, "attention");
   assert.equal(readiness.blockerCount, 0);
   assert.ok(readiness.warningCount > 0);
+  assert.equal(
+    readiness.sections.flatMap((section) => section.items)
+      .find((item) => item.key === "monitor_alert").ready,
+    true
+  );
 });
 
 test("təchizatçı pilot hazırlığı profil, hesab, müqavilə, təklif və media tələb edir", () => {

@@ -1933,7 +1933,8 @@
       focus: "Boya, tikinti kimyası və montaj materialları",
       website: "https://omid.az/",
       status: "Rəsmi məhsul səhifələri yoxlanılıb",
-      region: "Azərbaycan"
+      region: "Azərbaycan",
+      contact: "890 · +994 55 515 19 94 · help@omid.az"
     },
     {
       id: "elem-az",
@@ -1951,7 +1952,8 @@
       focus: "Alçıpan, izolyasiya, sement, germetik və tamamlama materialları",
       website: "https://tvim.az/",
       status: "Məhsul səhifələri yoxlanılıb",
-      region: "Azərbaycan"
+      region: "Azərbaycan",
+      contact: "+994 50 594 08 88 · +994 10 228 54 60"
     }
   ];
   appendUnique("brands", masterCatalogBrands);

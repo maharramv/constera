@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 test("kataloq standart olaraq yüngül məhsul cavabı və açıq tam sinxronizasiya rejimi istifadə edir", () => {
   const catalogApi = readFileSync("api/catalog.js", "utf8");
+  const productsApi = readFileSync("api/products.js", "utf8");
   const production = readFileSync("assets/js/production.js", "utf8");
 
   assert.match(catalogApi, /req\.query\.scope \|\| "products"/);
@@ -11,6 +12,8 @@ test("kataloq standart olaraq yüngül məhsul cavabı və açıq tam sinxroniza
   assert.match(catalogApi, /scope === "full"/);
   assert.match(catalogApi, /requestGroupExpression/);
   assert.match(catalogApi, /requestGroupExpression\} ASC/);
+  assert.match(catalogApi, /normalizeProductAttributes\(\{\s*name: row\.name/);
+  assert.match(productsApi, /normalizeProductAttributes\(\{\s*name: row\.name/);
   assert.match(production, /scope:\s*"products"/);
   assert.match(production, /api\.catalog\(\{ limit: "1000", scope: "full" \}\)/);
 });

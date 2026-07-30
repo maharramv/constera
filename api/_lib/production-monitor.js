@@ -1,4 +1,5 @@
 const defaultOrigin = "https://constera.az";
+const minimumAlertSecretLength = 24;
 
 export const productionChecks = Object.freeze([
   { path: "/api/health", status: 200, json: (body) => body.ok === true && body.database === "ready" },
@@ -18,6 +19,57 @@ export const productionChecks = Object.freeze([
 ]);
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const alertConfiguration = () => {
+  const endpoint = String(process.env.MONITOR_ALERT_WEBHOOK_URL || "").trim();
+  const secret = String(process.env.MONITOR_ALERT_WEBHOOK_SECRET || "").trim();
+  let endpointValid = false;
+  try {
+    const url = new URL(endpoint);
+    endpointValid = url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    endpointValid = false;
+  }
+  return {
+    endpoint,
+    secret,
+    endpointValid,
+    ready: endpointValid && secret.length >= minimumAlertSecretLength
+  };
+};
+
+export const productionMonitorAlertReadiness = () => alertConfiguration().ready;
+
+export const sendProductionMonitorAlert = async ({
+  origin = process.env.APP_ORIGIN || defaultOrigin,
+  error
+} = {}) => {
+  const configuration = alertConfiguration();
+  if (!configuration.ready) return { sent: false, reason: "not_configured" };
+  const payload = {
+    event: "production_monitor_failed",
+    source: "ConstEra",
+    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "production",
+    origin: String(origin || defaultOrigin).replace(/\/+$/, ""),
+    message: String(error?.message || error || "Naməlum monitor xətası").slice(0, 1_000),
+    occurredAt: new Date().toISOString()
+  };
+  const response = await fetch(configuration.endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${configuration.secret}`,
+      "Content-Type": "application/json",
+      "User-Agent": "ConstEra production monitor/1.0"
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(8_000)
+  });
+  await response.body?.cancel().catch(() => null);
+  if (!response.ok) {
+    throw new Error(`Monitor bildiriş kanalı HTTP ${response.status} qaytardı.`);
+  }
+  return { sent: true };
+};
 
 const requestWithRetry = async (url, attempts = 2) => {
   let lastError;
