@@ -286,13 +286,17 @@ const getSafeImageUrl = (value) => {
   if (/^(?:\/|assets\/)[^\\]*$/i.test(path) && !path.startsWith("//")) return path;
   return getSafeHttpsUrl(path);
 };
+const getPublicImageUrl = (item, value = item?.imageUrl) => {
+  const imageUrl = getSafeImageUrl(value);
+  if (!imageUrl) return "";
+  if (!getSafeHttpsUrl(imageUrl)) return imageUrl;
+  return item?.mediaLicensed === true ? imageUrl : "";
+};
 const marketplaceRanking = window.CONSTERA_MARKETPLACE_RANKING || {};
 const hasSourcedData = (item) => marketplaceRanking.hasHttpsSource
   ? marketplaceRanking.hasHttpsSource(item)
   : Boolean(getSafeHttpsUrl(item?.sourceUrl));
-const hasRealMedia = (item) => marketplaceRanking.hasUsableImage
-  ? marketplaceRanking.hasUsableImage(item)
-  : Boolean(getSafeImageUrl(item?.imageUrl));
+const hasRealMedia = (item) => Boolean(getPublicImageUrl(item));
 const getSourceQualityScore = (item, kind = "product") => marketplaceRanking.getSourceQualityScore
   ? marketplaceRanking.getSourceQualityScore(item, kind)
   : (hasSourcedData(item) ? 500 : 0) + (hasRealMedia(item) ? 180 : 0);
@@ -304,7 +308,7 @@ const sortBySourceQuality = (items, kind = "product") => marketplaceRanking.sort
   ? marketplaceRanking.sortBySourceQuality(items, kind)
   : [...(items || [])].sort((left, right) => compareSourceQuality(left, right, kind));
 const createProductMedia = (product, fallbackText) => {
-  const imageUrl = getSafeImageUrl(product.imageUrl);
+  const imageUrl = getPublicImageUrl(product);
   return imageUrl
     ? `<img data-product-image data-product-fallback="${escapeAttr(fallbackText)}" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(product.name)}" width="640" height="480" loading="lazy" decoding="async" fetchpriority="low" referrerpolicy="no-referrer">`
     : `<span class="product-image-fallback" role="img" aria-label="${escapeAttr(product.name)} üçün şəkil mövcud deyil">${escapeHtml(fallbackText)}</span>`;
@@ -763,14 +767,17 @@ const createProductCard = (product) => {
   const sourced = Boolean(sourceUrl);
   const realMedia = hasRealMedia(product);
   const sourceBadge = sourced
-    ? product.priceStatus === "confirmed" && realMedia ? "Mənbəli qiymət + foto"
+    ? product.priceStatus === "confirmed" && realMedia ? "Mənbəli qiymət + hüquqlu foto"
       : product.priceStatus === "confirmed" ? "Mənbəli qiymət"
-        : realMedia ? "Mənbə + foto" : "Mənbəli məlumat"
+        : realMedia ? "Mənbə + hüquqlu foto" : "Mənbəli məlumat"
     : "";
   const source = sourceUrl
     ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(product.sourceLabel || "Mənbə")}</a>`
     : "";
   const detailLink = `<a class="source-link" href="product-detail.html?product=${encodeURIComponent(product.id)}">Detallı bax</a>`;
+  const cartLabel = isInCart
+    ? product.commerceReady ? "Səbətdədir" : "Sorğu siyahısındadır"
+    : product.commerceReady ? "Səbətə əlavə et" : "Sorğu siyahısına əlavə et";
 
   return `
     <article class="market-card product-card${sourced ? " is-sourced-card" : ""}${sourced && realMedia ? " has-real-media" : ""}" data-product-id="${escapeAttr(product.id)}" data-source-priority="${getSourceQualityScore(product, "product")}">
@@ -809,7 +816,7 @@ const createProductCard = (product) => {
         </div>
       </div>
       <div class="product-primary-actions">
-        <button class="button button-secondary product-cart ${isInCart ? "is-active" : ""}" type="button" data-action="cart" data-id="${escapeAttr(product.id)}">${isInCart ? "Səbətdədir" : "Səbətə əlavə et"}</button>
+        <button class="button button-secondary product-cart ${isInCart ? "is-active" : ""}" type="button" data-action="cart" data-id="${escapeAttr(product.id)}">${cartLabel}</button>
         <a class="button button-outline product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
       </div>
     </article>
@@ -1001,7 +1008,7 @@ const renderCatalog = () => {
       numberOfItems: Math.max(0, Number(total || 0)),
       itemListElement: (items || []).slice(0, 24).map((product, index) => {
         const price = parseProductPriceAmount(product);
-        const image = getSafeImageUrl(product.imageUrl);
+        const image = getPublicImageUrl(product);
         return {
           "@type": "ListItem",
           position: index + 1,
@@ -1013,7 +1020,7 @@ const renderCatalog = () => {
             category: `${getCategory(product.category)?.title || product.category} > ${product.subcategory}`,
             brand: { "@type": "Brand", name: product.brand },
             image: image ? new URL(image, window.location.href).toString() : undefined,
-            offers: price === null || price <= 0 ? undefined : {
+            offers: product.commerceReady !== true || price === null || price <= 0 ? undefined : {
               "@type": "Offer",
               price,
               priceCurrency: product.priceCurrency || "AZN",
@@ -1310,7 +1317,7 @@ const renderCatalog = () => {
         brand !== "all" ? brand : "",
         availability !== "all" ? availability : "",
         priceStatus === "request" ? "Sorğu qiyməti" : priceStatus === "confirmed" ? "Təsdiqli qiymət" : "",
-        sourceStatus === "sourced" ? "Mənbəli məlumat" : sourceStatus === "sourced-image" ? "Mənbə + real foto" : sourceStatus === "unsourced" ? "Mənbəsiz struktur" : "",
+        sourceStatus === "sourced" ? "Mənbəli məlumat" : sourceStatus === "sourced-image" ? "Mənbə + hüquqlu foto" : sourceStatus === "unsourced" ? "Mənbəsiz struktur" : "",
         origin === "local" ? "Azərbaycan" : origin === "import" ? "İdxal" : origin === "mixed" ? "Qarışıq mənşə" : ""
       ].filter(Boolean);
       activeFilterList.innerHTML = chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("");
@@ -1602,6 +1609,8 @@ const initSupplierApplication = () => {
     button.textContent = "Yoxlanılır...";
     try {
       const fields = Object.fromEntries(new FormData(form).entries());
+      fields.legalAccepted = fields.legalAccepted === "true";
+      fields.sourcePath = `${window.location.pathname}${window.location.search}`;
       const result = await window.ConstEraAPI.applyAsSupplier(fields);
       form.reset();
       form.elements.region.value = "Azərbaycan";
@@ -1788,7 +1797,7 @@ const renderHomeSourcedShowcase = () => {
   if (!productGrid || !packageGrid || !rentalGrid) return;
 
   const sourcedProducts = sortBySourceQuality(
-    (marketplace.products || []).filter((item) => hasSourcedData(item) && hasRealMedia(item)),
+    (marketplace.products || []).filter(hasSourcedData),
     "product"
   );
   const sourcedPackages = sortBySourceQuality(
@@ -2038,9 +2047,9 @@ const renderProductDetail = () => {
     const brand = getBrand(item.brand);
     const brandMark = item.brand.split(" ").map((word) => word[0]).join("").slice(0, 3);
     const gallery = (item.gallery || [])
-      .map((entry) => ({ ...entry, url: getSafeImageUrl(entry.url) }))
+      .map((entry) => ({ ...entry, url: getPublicImageUrl(item, entry.url) }))
       .filter((entry) => entry.url);
-    const primaryImage = gallery[0]?.url || getSafeImageUrl(item.imageUrl);
+    const primaryImage = gallery[0]?.url || getPublicImageUrl(item);
     const media = primaryImage
       ? `<img data-product-image data-detail-main-image src="${escapeAttr(primaryImage)}" alt="${escapeAttr(item.name)}" width="760" height="570" decoding="async" referrerpolicy="no-referrer">`
       : createProductMedia(item, brandMark);
@@ -2068,6 +2077,7 @@ const renderProductDetail = () => {
       : `${Number(item.stockQuantity).toLocaleString("az-AZ")} vahid`;
     const productOffers = Array.isArray(item.offers) ? item.offers : [];
     const preferredOffer = item.preferredOffer || productOffers[0] || null;
+    const selectedCommercialReady = preferredOffer?.commercialReady === true || item.commerceReady === true;
     const productAttributes = getProductAttributes(item);
     const cartEntry = getCart().find((entry) => entry.id === item.id);
     const defaultComparisonQuantity = Math.max(
@@ -2097,7 +2107,7 @@ const renderProductDetail = () => {
         </div>
         <p class="hero-text">${escapeHtml(item.package || "Qablaşdırma sorğu ilə")} · ${escapeHtml(item.origin || "Mənşə dəqiqləşdirilir")} · ${escapeHtml(item.availability || "Stok sorğu ilə")}</p>
         <div class="detail-actions">
-          <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}" data-offer-id="${escapeAttr(cartEntry?.offerId || preferredOffer?.id || "")}">${cartEntry ? "Səbətdədir" : "Səbətə əlavə et"}</button>
+          <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}" data-offer-id="${escapeAttr(cartEntry?.offerId || preferredOffer?.id || "")}">${cartEntry ? selectedCommercialReady ? "Səbətdədir" : "Sorğu siyahısındadır" : selectedCommercialReady ? "Səbətə əlavə et" : "Sorğu siyahısına əlavə et"}</button>
           <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(item.id)}">Sorğu göndər</a>
           <a class="button button-outline" href="catalog.html">Kataloqa qayıt</a>
           ${source}
@@ -2156,6 +2166,7 @@ const renderProductDetail = () => {
                 <div><dt>Minimum</dt><dd>${offer.minimumOrder === null ? "Sorğu ilə" : escapeHtml(Number(offer.minimumOrder).toLocaleString("az-AZ"))}</dd></div>
                 <div><dt>Təslimat</dt><dd>${offer.leadTimeDays === null ? "Dəqiqləşdirilir" : `${escapeHtml(offer.leadTimeDays)} gün`}</dd></div>
               </dl>
+              <small>${offer.commercialReady ? "Satış üçün kommersiya yoxlaması tamamlanıb" : escapeHtml((offer.commercialIssues || ["Qiymət sorğusu tələb olunur"]).join(" · "))}</small>
               <button class="button ${isSelected ? "button-primary" : "button-outline"}" type="button" data-offer-choice="${escapeAttr(offer.id)}">${isSelected ? "Seçilib" : "Bu təklifi seç"}</button>
             </article>`;
           }).join("")}
@@ -2362,7 +2373,7 @@ const renderProductDetail = () => {
     });
     if (productOffers.length) runLandedCostComparison();
     const amount = parseProductPriceAmount(item);
-    const safeImage = getSafeImageUrl(item.imageUrl);
+    const safeImage = getPublicImageUrl(item);
     injectEntitySchema("constera-product-schema", {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -2378,7 +2389,7 @@ const renderProductDetail = () => {
         name: attribute.label,
         value: attribute.value
       })),
-      offers: item.priceStatus !== "confirmed" || amount === null || amount <= 0 ? undefined : {
+      offers: item.commerceReady !== true || item.priceStatus !== "confirmed" || amount === null || amount <= 0 ? undefined : {
         "@type": "Offer",
         url: window.location.href,
         priceCurrency: item.priceCurrency || "AZN",
@@ -2389,7 +2400,7 @@ const renderProductDetail = () => {
           : "https://schema.org/PreOrder",
         seller: { "@type": "Organization", name: item.supplier || "ConstEra təchizatçısı" }
       }
-    }, item.imageUrl);
+    }, safeImage);
     injectEntitySchema("constera-product-breadcrumb-schema", {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
@@ -2636,7 +2647,7 @@ const renderRentalDetail = () => {
 
   const category = getRentalCategory(rental.category);
   const sourceUrl = getSafeHttpsUrl(rental.sourceUrl);
-  const imageUrl = getSafeImageUrl(rental.imageUrl);
+  const imageUrl = getPublicImageUrl(rental);
   const rentalMedia = imageUrl
     ? `<div class="detail-media"><img data-product-image data-product-fallback="İC" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(rental.name)}" width="1280" height="960" decoding="async" referrerpolicy="no-referrer"></div>`
     : `<div class="detail-symbol"><span>İC</span></div>`;
@@ -2730,6 +2741,10 @@ const renderRentalDetail = () => {
           <label class="admin-field"><span>Çatdırılma</span><select name="deliveryRequired"><option value="true">Obyektə çatdırılma</option><option value="false">Özüm götürəcəyəm</option></select></label>
         </div>
         <label class="admin-field admin-field-wide"><span>Qeyd</span><textarea name="note" rows="3" maxlength="2000" placeholder="İş rejimi, sahə şərti və xüsusi tələblər"></textarea></label>
+        <label class="supplier-application-consent">
+          <input name="legalAccepted" type="checkbox" value="true" required />
+          <span><a href="terms.html">İstifadə şərtləri</a> və <a href="privacy.html">məxfilik siyasəti</a> ilə razıyam.</span>
+        </label>
         <div class="admin-actions">
           <button class="button button-primary" type="submit">Rezervasiya göndər</button>
           <a class="button button-outline" href="rfq.html?rental=${encodeURIComponent(rental.id)}">Qiymət sorğusu yarat</a>
@@ -2777,6 +2792,8 @@ const renderRentalDetail = () => {
       const payload = Object.fromEntries(new FormData(bookingForm).entries());
       payload.deliveryRequired = payload.deliveryRequired === "true";
       payload.quantity = Number(payload.quantity);
+      payload.legalAccepted = payload.legalAccepted === "true";
+      payload.sourcePath = `${window.location.pathname}${window.location.search}`;
       const result = await window.ConstEraAPI.createRentalBooking(payload);
       bookingStatus.textContent = `Rezervasiya müraciəti qəbul edildi: ${result.data.id}. Menecer qiymət və mövcudluğu təsdiqləyəcək.`;
       bookingStatus.dataset.type = "success";
@@ -2801,7 +2818,7 @@ const renderRentalDetail = () => {
     areaServed: { "@type": "Country", name: "Azərbaycan" },
     provider: { "@type": "Organization", name: "ConstEra", url: "https://constera.az/" },
     url: window.location.href
-  }, rental.imageUrl);
+  }, imageUrl);
 };
 
 const getTaxonomyConfig = (type) => {
@@ -4008,6 +4025,8 @@ const initRfq = () => {
       rentalDuration,
       operatorPreference,
       note: [String(data.get("note") || "").trim(), rentalNote].filter(Boolean).join("\n"),
+      legalAccepted: data.get("legalAccepted") === "true",
+      sourcePath: `${window.location.pathname}${window.location.search}`,
       createdAt: new Date().toISOString()
     };
 
@@ -6947,11 +6966,13 @@ const renderCheckout = () => {
 
   const selectedUnitPrice = ({ product, offer }) => {
     if (offer) {
-      return offer.priceStatus === "confirmed" && Number.isFinite(Number(offer.unitPrice))
+      return offer.commercialReady === true
+        && offer.priceStatus === "confirmed"
+        && Number.isFinite(Number(offer.unitPrice))
         ? Number(offer.unitPrice)
         : null;
     }
-    return parseProductPriceAmount(product);
+    return product.commerceReady === true ? parseProductPriceAmount(product) : null;
   };
 
   const paint = () => {
@@ -7170,6 +7191,8 @@ const renderCheckout = () => {
       const fields = Object.fromEntries(new FormData(form).entries());
       const result = await window.ConstEraAPI.createOrder({
         ...fields,
+        legalAccepted: fields.legalAccepted === "true",
+        sourcePath: `${window.location.pathname}${window.location.search}`,
         requiresApproval: Boolean(form.elements.requiresApproval?.checked),
         items: entries.map((entry) => ({
           productId: entry.product.id,

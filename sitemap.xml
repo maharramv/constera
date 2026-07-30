@@ -66,6 +66,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://constera.az/contact.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.55</priority>
+  </url>
+  <url>
+    <loc>https://constera.az/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://constera.az/terms.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://constera.az/delivery-returns.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.35</priority>
+  </url>
+  <url>
     <loc>https://constera.az/rfq.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

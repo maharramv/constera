@@ -4,6 +4,7 @@ import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
+import { assertPolicyConsent, recordPolicyConsent } from "../_lib/policy-consent.js";
 import { calculateDeliveryQuote, saveDeliveryQuote } from "../_lib/logistics.js";
 import {
   issueOrderDocument,
@@ -228,6 +229,7 @@ export default withApiErrors(async (req, res) => {
   }
 
   if (text(body.website, { max: 200 })) return sendJson(res, 201, { ok: true, data: { accepted: true } });
+  assertPolicyConsent(body);
   const sourceItems = Array.isArray(body.items) ? body.items.slice(0, 100) : [];
   if (!sourceItems.length) throw new ApiError(400, "empty_order", "Səbətdə ən azı bir məhsul olmalıdır.");
 
@@ -250,7 +252,18 @@ export default withApiErrors(async (req, res) => {
   if (productIds.length !== normalizedSourceItems.length) throw new ApiError(400, "invalid_order_items", "Səbətdə təkrarlanan və ya yanlış məhsul var.");
   const products = await query(
     `SELECT id, sku, name, brand, package_text, price_amount, price_currency, price_text,
-            price_status, price_verified_at, image_url, source_url, supplier_id, supplier_name
+            price_status, price_verified_at, source_url, supplier_id, supplier_name,
+            (
+              SELECT media.url FROM media_assets media
+               WHERE media.entity_type = 'product'
+                 AND media.entity_id = products.id
+                 AND media.status = 'active'
+                 AND media.content_type LIKE 'image/%'
+                 AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                 AND media.url ~ '^https://'
+               ORDER BY media.is_primary DESC, media.created_at DESC
+               LIMIT 1
+            ) AS licensed_image_url
        FROM products WHERE id = ANY($1::text[]) AND status = 'active'`,
     [productIds]
   );
@@ -285,7 +298,11 @@ export default withApiErrors(async (req, res) => {
     const offerCurrency = selectedOffer?.currency || product.price_currency || "AZN";
     const priceStatus = selectedOffer?.priceStatus || product.price_status;
     const priceAmount = selectedOffer ? selectedOffer.unitPrice : product.price_amount;
-    const confirmed = priceStatus === "confirmed" && priceAmount !== null && offerCurrency === "AZN";
+    const commercialReady = selectedOffer?.commercialReady === true;
+    const confirmed = commercialReady
+      && priceStatus === "confirmed"
+      && priceAmount !== null
+      && offerCurrency === "AZN";
     const unitPrice = confirmed ? Number(priceAmount) : null;
     const lineTotal = unitPrice === null ? null : Math.round(unitPrice * quantity * 100) / 100;
     if (lineTotal === null) hasPendingPrice = true;
@@ -305,10 +322,12 @@ export default withApiErrors(async (req, res) => {
       snapshot: {
         brand: product.brand,
         package: product.package_text || "",
-        imageUrl: product.image_url || "",
+        imageUrl: product.licensed_image_url || "",
         productOfferId: selectedOffer?.id || null,
         supplierId: selectedOffer?.supplierId || product.supplier_id,
         supplierName: selectedOffer?.supplier || product.supplier_name || "",
+        commercialReady,
+        commercialIssues: selectedOffer?.commercialIssues || ["Təchizatçı təklifi kommersiya yoxlamasından keçməyib"],
         priceStatus,
         leadTimeDays: selectedOffer?.leadTimeDays ?? null,
         priceVerifiedAt: selectedOffer?.priceVerifiedAt || product.price_verified_at || null,
@@ -390,6 +409,13 @@ export default withApiErrors(async (req, res) => {
     ]
   );
   const orderNumber = Number(rows[0]?.order_number || 0);
+  await recordPolicyConsent({
+    entityType: "order",
+    entityId: id,
+    userId: session?.id || null,
+    submissionHash,
+    sourcePath: text(body.sourcePath, { max: 500 })
+  });
   await saveDeliveryQuote({
     orderId: id,
     customerId: session?.id || null,

@@ -257,6 +257,9 @@ const initContactForm = () => {
 
   const validate = (field) => {
     const value = field.value.trim();
+    if (field.type === "checkbox" && field.required && !field.checked) {
+      return setFieldError(field, "Razılıq təsdiqlənməlidir.");
+    }
     if (field.required && !value) return setFieldError(field, "Bu sahə məcburidir.");
     if (field.name === "name" && value.length < 2) return setFieldError(field, "Ad ən azı 2 simvol olmalıdır.");
     if (field.name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return setFieldError(field, "Düzgün e-poçt ünvanı yazın.");
@@ -271,7 +274,7 @@ const initContactForm = () => {
     });
   });
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const isValid = fields.map(validate).every(Boolean);
     if (!isValid) {
@@ -280,24 +283,109 @@ const initContactForm = () => {
       return;
     }
 
+    const formData = new FormData(form);
+    const inquiry = {
+      name: formData.get("name"),
+      company: formData.get("company"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      message: formData.get("message"),
+      website: formData.get("website"),
+      legalAccepted: formData.get("legalAccepted") === "true",
+      sourcePath: `${window.location.pathname}${window.location.search}`,
+      createdAt: new Date().toISOString()
+    };
+    const button = form.querySelector('button[type="submit"]');
+    const originalLabel = button?.textContent || "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Göndərilir...";
+    }
     try {
-      const formData = new FormData(form);
-      const inquiry = {
-        name: formData.get("name"),
-        company: formData.get("company"),
-        email: formData.get("email"),
-        message: formData.get("message"),
-        createdAt: new Date().toISOString()
-      };
-      const existing = JSON.parse(localStorage.getItem("constera-contact-drafts") || "[]");
-      existing.unshift(inquiry);
-      localStorage.setItem("constera-contact-drafts", JSON.stringify(existing.slice(0, 20)));
+      if (!window.ConstEraAPI?.contact) throw new Error("Əlaqə xidməti əlçatan deyil.");
+      const result = await window.ConstEraAPI.contact(inquiry);
       form.reset();
-      setStatus("Sorğu qaralama kimi yadda saxlandı.", "success");
-    } catch {
-      setStatus("Sorğunu yadda saxlamaq mümkün olmadı.", "error");
+      setStatus(result.message || "Müraciət qəbul edildi.", "success");
+    } catch (error) {
+      let draftSaved = false;
+      try {
+        const existing = JSON.parse(localStorage.getItem("constera-contact-drafts") || "[]");
+        existing.unshift(inquiry);
+        localStorage.setItem("constera-contact-drafts", JSON.stringify(existing.slice(0, 20)));
+        draftSaved = true;
+      } catch {
+        // Brauzer yaddaşı bağlıdırsa şəxsi məlumatı başqa yerə yazmırıq.
+      }
+      setStatus(
+        `${error.message || "Müraciət serverə göndərilmədi."}${draftSaved ? " Qaralama bu brauzerdə saxlanıldı." : ""}`,
+        "error"
+      );
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
     }
   });
+};
+
+const privacyChoiceKey = "constera-privacy-choice-v1";
+
+const readPrivacyChoice = () => {
+  try {
+    const choice = localStorage.getItem(privacyChoiceKey);
+    return ["essential", "analytics"].includes(choice) ? choice : "";
+  } catch {
+    return "";
+  }
+};
+
+const initPrivacyConsent = () => {
+  const renderStatus = (choice) => {
+    document.querySelectorAll("[data-consent-status]").forEach((node) => {
+      node.textContent = choice === "analytics"
+        ? "Analitik kukilərə icazə verilib."
+        : choice === "essential"
+          ? "Yalnız zəruri yaddaş aktivdir."
+          : "Seçim edilməyib.";
+    });
+    document.querySelectorAll("[data-consent-choice]").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.consentChoice === choice));
+    });
+  };
+  const setChoice = (choice) => {
+    if (!["essential", "analytics"].includes(choice)) return;
+    try {
+      localStorage.setItem(privacyChoiceKey, choice);
+    } catch {
+      // Məxfilik seçimi yaddaşa yazılmasa belə cari səhifədə tətbiq edilir.
+    }
+    document.querySelector("[data-privacy-consent]")?.remove();
+    renderStatus(choice);
+    window.dispatchEvent(new CustomEvent("constera:privacy-choice", { detail: { choice } }));
+  };
+  window.ConstEraPrivacy = Object.freeze({
+    getChoice: readPrivacyChoice,
+    setChoice
+  });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-consent-choice]");
+    if (button) setChoice(button.dataset.consentChoice);
+  });
+
+  const choice = readPrivacyChoice();
+  renderStatus(choice);
+  if (choice) return;
+  const notice = document.createElement("aside");
+  notice.className = "pwa-controls glass";
+  notice.dataset.privacyConsent = "";
+  notice.setAttribute("aria-label", "Məxfilik seçimi");
+  notice.innerHTML = `
+    <span>Analitika yalnız icazənizlə işləyir. <a href="privacy.html">Məxfilik siyasəti</a></span>
+    <button class="button button-outline" type="button" data-consent-choice="essential" title="Yalnız zəruri yaddaş">Zəruri</button>
+    <button class="button button-secondary" type="button" data-consent-choice="analytics">İcazə ver</button>
+  `;
+  document.body.appendChild(notice);
 };
 
 const initServiceWorker = () => {
@@ -329,7 +417,7 @@ const initPwaExperience = () => {
     connectivity.hidden = !offline;
     connectivity.textContent = offline ? "Oflayn rejim: saxlanmış kataloq istifadə olunur." : "";
     installButton.hidden = !installPrompt;
-    controls.hidden = !offline && !installPrompt;
+    controls.hidden = (!offline && !installPrompt) || !readPrivacyChoice();
     controls.classList.toggle("is-offline", offline);
   };
 
@@ -340,6 +428,7 @@ const initPwaExperience = () => {
     installPrompt = event;
     render();
   });
+  window.addEventListener("constera:privacy-choice", render);
   window.addEventListener("appinstalled", () => {
     installPrompt = null;
     render();
@@ -374,34 +463,58 @@ const initAnalytics = () => {
       return `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}`;
     }
   };
-  const visitorId = identity(localStorage, "constera-visitor-id");
-  const sessionId = identity(sessionStorage, "constera-session-id");
-  window.ConstEraTrack = (eventType, options = {}) => {
-    const eventId = safeId(options.eventId || `${eventType}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 9)}`);
-    fetch("/api/events", {
-      method: "POST",
-      credentials: "same-origin",
-      keepalive: true,
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        eventType,
-        eventId,
-        visitorId,
-        sessionId,
-        path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
-        entityType: options.entityType || "",
-        entityId: options.entityId || "",
-        payload: options.payload || {}
-      })
-    }).catch(() => null);
+  let enabled = false;
+  const disable = () => {
+    enabled = false;
+    window.ConstEraTrack = () => {};
+    try {
+      localStorage.removeItem("constera-visitor-id");
+      sessionStorage.removeItem("constera-session-id");
+    } catch {
+      // Məhdud yaddaş rejimində əlavə təmizləmə tələb olunmur.
+    }
   };
-  const page = document.body?.dataset.page || "home";
-  const query = new URLSearchParams(window.location.search);
-  const productId = page === "product-detail" ? query.get("product") || "" : "";
-  window.ConstEraTrack(productId ? "product_view" : "page_view", {
-    entityType: productId ? "product" : "page",
-    entityId: productId || page,
-    eventId: safeId(`view.${sessionId}.${page}.${productId || page}`)
+  const enable = () => {
+    if (enabled) return;
+    enabled = true;
+    const visitorId = identity(localStorage, "constera-visitor-id");
+    const sessionId = identity(sessionStorage, "constera-session-id");
+    window.ConstEraTrack = (eventType, options = {}) => {
+      if (!enabled) return;
+      const eventId = safeId(options.eventId || `${eventType}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 9)}`);
+      fetch("/api/events", {
+        method: "POST",
+        credentials: "same-origin",
+        keepalive: true,
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          eventType,
+          eventId,
+          visitorId,
+          sessionId,
+          path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
+          entityType: options.entityType || "",
+          entityId: options.entityId || "",
+          payload: options.payload || {}
+        })
+      }).catch(() => null);
+    };
+    const page = document.body?.dataset.page || "home";
+    const query = new URLSearchParams(window.location.search);
+    const productId = page === "product-detail" ? query.get("product") || "" : "";
+    window.ConstEraTrack(productId ? "product_view" : "page_view", {
+      entityType: productId ? "product" : "page",
+      entityId: productId || page,
+      eventId: safeId(`view.${sessionId}.${page}.${productId || page}`)
+    });
+  };
+  const applyChoice = (choice) => {
+    if (choice === "analytics") enable();
+    else disable();
+  };
+  applyChoice(readPrivacyChoice());
+  window.addEventListener("constera:privacy-choice", (event) => {
+    applyChoice(event.detail?.choice || readPrivacyChoice());
   });
 };
 
@@ -412,6 +525,7 @@ initCounters();
 initContactForm();
 initSeoEnhancements();
 initServiceWorker();
+initPrivacyConsent();
 initPwaExperience();
 initOfflineRetry();
 initAnalytics();

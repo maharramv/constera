@@ -6,7 +6,11 @@ addımlarını bir ardıcıllıqda saxlayır. Heç bir müqavilə, media hüququ
 
 ## 1. Buraxılış sərhədi
 
-İlk mərhələdə yalnız aşağıdakı axın açılır:
+İctimai sayt dərhal **kataloq + RFQ** rejimində açıla bilər. Kommersiya yoxlamasından
+keçməyən məhsul qiymət sorğusuna düşür və stok rezervi, təchizatçı alt-sifarişi
+və ödəniş yaratmır.
+
+İlk real ödənişli əməliyyatda yalnız aşağıdakı axın açılır:
 
 - Azərbaycan daxilində bir təchizatçı;
 - 5-10 stoklu və son 30 gündə qiyməti yoxlanmış məhsul;
@@ -123,3 +127,8 @@ olanlar:
 - ödəniş, e-qaimə, e-poçt/WhatsApp və logistika provider müqavilələri;
 - xarici monitor və özəl backup webhook ünvanları;
 - ilk real sifariş üçün tərəflərin faktiki təsdiqi.
+
+Hüquqi şirkət adı, VÖEN, ünvan və satıcı əlaqəsi ödəniş qəbulundan əvvəl
+istifadəçiyə verilən müqavilə, proforma və ya hesab-fakturada görünməlidir.
+Bu rekvizitlər daxil edilməyənədək public checkout yalnız sifariş sorğusu kimi
+işlədilməlidir.

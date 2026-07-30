@@ -4,6 +4,7 @@ import { syncRfqLead } from "./_lib/crm.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { queueNotification } from "./_lib/notifications.js";
+import { assertPolicyConsent, recordPolicyConsent } from "./_lib/policy-consent.js";
 import { email, oneOf, parseLimit, stringList, text } from "./_lib/validation.js";
 
 const statuses = ["Yeni", "Baxılır", "Təklif gözləyir", "Təklif alındı", "Bağlandı", "Ləğv edildi"];
@@ -102,6 +103,7 @@ export default withApiErrors(async (req, res) => {
   }
 
   if (text(body.website, { max: 200 })) return sendJson(res, 201, { ok: true, data: { accepted: true } });
+  assertPolicyConsent(body);
   const session = await getSessionUser(req);
   const submissionHash = hashOpaque(getClientIp(req));
   const recentSubmissions = await query(
@@ -174,6 +176,13 @@ export default withApiErrors(async (req, res) => {
       submissionHash
     ]
   );
+  await recordPolicyConsent({
+    entityType: "rfq",
+    entityId: id,
+    userId: session?.id || null,
+    submissionHash,
+    sourcePath: text(body.sourcePath, { max: 500 })
+  });
   await syncRfqLead(id);
   await recordAudit({ actorId: session?.id || null, action: "create", entityType: "rfq", entityId: id, details: { type, supplierId } });
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";

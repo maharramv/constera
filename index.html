@@ -18,6 +18,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="assets/icons/site.webmanifest" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/supplier-workflow.css" />
   </head>
   <body data-page="home">
     <div class="site-shell">
@@ -349,7 +350,7 @@
               <p>Mövcud qaralamaları <a class="source-link" href="customer-cabinet.html">müştəri kabinetində aç</a>.</p>
               <p>Kataloq məlumatını <a class="source-link" href="admin.html">idarəetmə panelində yenilə</a>.</p>
             </div>
-            <form class="contact-form glass" novalidate>
+            <form class="contact-form glass" data-contact-form>
               <div class="form-status" hidden aria-live="polite"></div>
               <label class="form-field">
                 <span class="field-label">Ad <span class="required-mark" aria-hidden="true">*</span></span>
@@ -367,11 +368,21 @@
                 <small class="field-error" data-error-for="email" aria-live="polite"></small>
               </label>
               <label class="form-field">
+                <span class="field-label">Telefon</span>
+                <input type="tel" name="phone" placeholder="+994 50 000 00 00" autocomplete="tel" maxlength="80" />
+                <small class="field-error" data-error-for="phone" aria-live="polite"></small>
+              </label>
+              <label class="form-field">
                 <span class="field-label">Sorğu <span class="required-mark" aria-hidden="true">*</span></span>
                 <textarea name="message" rows="5" placeholder="Material, xidmət və ya layihə ehtiyacınızı yazın" minlength="10" maxlength="1200" required></textarea>
                 <small class="field-error" data-error-for="message" aria-live="polite"></small>
               </label>
-              <button class="button button-primary" type="submit">Qaralamanı yadda saxla</button>
+              <input class="form-honeypot" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+              <label class="supplier-application-consent">
+                <input name="legalAccepted" type="checkbox" value="true" required />
+                <span><a href="terms.html">İstifadə şərtləri</a> və <a href="privacy.html">məxfilik siyasəti</a> ilə razıyam.</span>
+              </label>
+              <button class="button button-primary" type="submit">Müraciəti göndər</button>
             </form>
           </div>
         </section>

@@ -133,6 +133,7 @@ export const ensureOrderOperations = async (orderId) => {
      FROM order_items item
      WHERE item.order_id = $1
        AND item.supplier_id IS NOT NULL
+       AND COALESCE((item.snapshot->>'commercialReady')::boolean, false) = true
      GROUP BY item.order_id, item.supplier_id
      ON CONFLICT (order_id, supplier_id) DO NOTHING`,
     [orderId]
@@ -152,6 +153,7 @@ export const ensureOrderOperations = async (orderId) => {
        FROM order_items item
        WHERE item.order_id = $1
          AND item.supplier_id IS NOT NULL
+         AND COALESCE((item.snapshot->>'commercialReady')::boolean, false) = true
      )
      ON CONFLICT (id) DO NOTHING`,
     [orderId]
@@ -175,6 +177,7 @@ export const ensureOrderOperations = async (orderId) => {
       AND warehouse.is_default = true
       AND warehouse.status = 'active'
      WHERE item.order_id = $1
+       AND COALESCE((item.snapshot->>'commercialReady')::boolean, false) = true
        AND COALESCE(
          offer.stock_quantity,
          CASE WHEN item.supplier_id = product.supplier_id THEN product.stock_quantity ELSE NULL END
@@ -204,6 +207,7 @@ export const ensureOrderOperations = async (orderId) => {
        LEFT JOIN product_offers offer ON offer.id = item.product_offer_id
        WHERE item.order_id = $1
          AND item.product_id IS NOT NULL
+         AND COALESCE((item.snapshot->>'commercialReady')::boolean, false) = true
          AND COALESCE(
            offer.stock_quantity,
            CASE

@@ -166,6 +166,7 @@ export const ensureSupplierPurchaseOrders = async (orderId) => {
         AND fulfillment.supplier_id = item.supplier_id
       WHERE item.order_id = $1
         AND item.supplier_id IS NOT NULL
+        AND COALESCE((item.snapshot->>'commercialReady')::boolean, false) = true
       ORDER BY supplier.name, item.created_at, item.id`,
     [orderId]
   );

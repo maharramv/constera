@@ -2,6 +2,8 @@
 
 ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, hazır paketləri, avadanlıq icarəsini, qiymət sorğularını və ilkin smetanı birləşdirən B2B platformadır. İctimai hissə sürətli statik sayt kimi `dist` qovluğuna ixrac olunur; istehsal məlumatları və giriş sistemi Vercel Functions + Neon PostgreSQL üzərində işləyir.
 
+İctimai buraxılış rejimi **kataloq + RFQ** modelidir. Aktiv təchizatçı müqaviləsi, son 30 gündə təsdiqlənmiş AZN qiyməti, stok, HTTPS mənbə və hüquqlu media yoxlamasından keçməyən mövqe sorğu siyahısına əlavə edilir, lakin avtomatik rezerv, təchizatçı alt-sifarişi və satış `Offer` sxemi yaratmır.
+
 ## Hazırkı məlumat bazası
 
 - 70 material kateqoriyası və Neon-da 702 subkateqoriya
@@ -32,6 +34,8 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `checkout.html` - server qiymət yoxlaması, logistika tarifi və şirkətdaxili satınalma təsdiqi ilə səbət
 - `admin.html` - məhsul, təchizatçı təklifi, logistika zonası, satınalma təsdiqi, sifariş və tender idarəetməsi
 - `login.html` - HTTP-only sessiya ilə təhlükəsiz giriş və ilk administrator quraşdırması
+- `contact.html` - CRM-də qeydə alınan açıq əlaqə və dəstək müraciəti
+- `privacy.html`, `terms.html`, `delivery-returns.html` - məxfilik, istifadə və çatdırılma/qaytarma qaydaları
 
 ## Server imkanları
 
@@ -52,6 +56,7 @@ ConstEra Azərbaycan tikinti bazarı üçün material kataloqunu, xidmətləri, 
 - `api/admin.js?__route=crm`, `api/admin.js?__route=rental-bookings` - CRM pipeline və tarix əsaslı icarə rezervasiyası
 - `api/admin.js?__route=integrations` - kataloq qiymətli smeta, kart ödənişi, elektron qaimə və xarici AI adapterləri
 - `api/admin.js?__route=backup` - şifrələri və həssas provider payload-larını daxil etməyən tam əməliyyat backup-u
+- `api/admin.js?__route=contact` - spam limiti və versiyalanan hüquqi razılıqla CRM əlaqə müraciəti
 - `api/sync.js` - statik kataloqun PostgreSQL bazasına kütləvi sinxronizasiyası
 - `api/cron-price-freshness.js` - köhnə qiymətləri gündəlik işarələyən və sessiyaları təmizləyən cron
 - `api/admin.js?__route=scheduled-backup` - gzip backup-ını qorunan HTTPS yaddaşa ötürən gündəlik cron
@@ -128,6 +133,7 @@ npm run check:production -- https://constera.az
 npm run db:migrate
 npm run db:seed
 npm run db:audit
+npm run db:scan-quality
 npm run db:smoke
 ```
 
@@ -154,10 +160,12 @@ ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="cox-guclu-sifre-2026" npm run db
 
 Bu ayarlar `vercel.json` daxilində də saxlanılır. `routes-manifest.json` tələb olunmur, çünki layihə Next.js deyil. Statik fayllar `dist` qovluğundan, server endpoint-ləri isə kök `api/` qovluğundan yerləşdirilir.
 
-## Məlumat siyasəti
+## Məlumat və məxfilik siyasəti
 
-Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstərilir. Mənbə, real foto, təsdiqli qiymət, yoxlama tarixi və rəsmi provayder statusu birlikdə məlumat keyfiyyəti balını yaradır; daha yüksək balı olan məhsul, paket və icarə mövqeləri standart olaraq əvvəl göstərilir. İstifadəçi kataloq filtrləri ilə yalnız mənbəli və ya mənbə + foto olan nəticələri ayrıca aça bilər.
+Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstərilir. Mənbə, hüquqlu foto, təsdiqli qiymət, yoxlama tarixi və rəsmi provayder statusu birlikdə məlumat keyfiyyəti balını yaradır; daha yüksək balı olan məhsul, paket və icarə mövqeləri standart olaraq əvvəl göstərilir. Xarici məhsul şəkli yalnız media kitabxanasında `own`, `supplier`, `official` və ya `licensed` hüququ ilə qeydə alındıqda ictimai API-yə çıxır.
 
 Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir. Mənbəsiz mövqelər silinmir: gələcək təchizatçı məlumatı üçün taksonomiya strukturu kimi mənbəli nəticələrdən sonra saxlanılır.
+
+Birinci tərəf istifadə analitikası yalnız ziyarətçi `Analitikaya icazə ver` seçdikdən sonra visitor/session identifikatoru yaradır. `Yalnız zəruri` rejimində giriş, səbət, təhlükəsizlik və məxfilik seçimi işləyir, analitika sorğusu göndərilmir.
 
 Onlayn kart ödənişi provayder müqaviləsi və açarları olmadan imitasiya edilmir. Adapter hazırdır, lakin kart seçimi yalnız `PAYMENT_WEBHOOK_URL` və `PAYMENT_WEBHOOK_SECRET` production mühitində düzgün qurulduqda aktiv olur.

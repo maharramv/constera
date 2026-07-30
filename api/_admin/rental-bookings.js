@@ -4,6 +4,7 @@ import { syncRentalLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { queueNotification } from "../_lib/notifications.js";
+import { assertPolicyConsent, recordPolicyConsent } from "../_lib/policy-consent.js";
 import { email, oneOf, parseLimit, parsePriceAmount, text } from "../_lib/validation.js";
 
 const privilegedRoles = ["super_admin", "admin", "sales"];
@@ -106,6 +107,7 @@ export default withApiErrors(async (req, res) => {
   const body = await readJson(req, 50_000);
   if (req.method === "POST") {
     if (text(body.website, { max: 200 })) return sendJson(res, 201, { ok: true, data: { accepted: true } });
+    assertPolicyConsent(body);
     const session = await getSessionUser(req);
     const submissionHash = hashOpaque(getClientIp(req));
     const recent = await query(
@@ -182,6 +184,13 @@ export default withApiErrors(async (req, res) => {
         submissionHash
       ]
     );
+    await recordPolicyConsent({
+      entityType: "rental_booking",
+      entityId: id,
+      userId: session?.id || null,
+      submissionHash,
+      sourcePath: text(body.sourcePath, { max: 500 })
+    });
     await syncRentalLead(id);
     await recordAudit({ actorId: session?.id || null, action: "create", entityType: "rental_booking", entityId: id, details: { rentalId, startDate, endDate, quantity } });
     const admins = await query("SELECT id FROM users WHERE role IN ('super_admin', 'admin', 'sales') AND status = 'active'");

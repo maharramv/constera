@@ -147,6 +147,7 @@
     crm: () => request("/api/crm?limit=1000"),
     createCrmLead: (data) => request("/api/crm", { method: "POST", body: JSON.stringify({ action: "lead", ...data }) }),
     createCrmActivity: (data) => request("/api/crm", { method: "POST", body: JSON.stringify({ action: "activity", ...data }) }),
+    contact: (data) => request("/api/contact", { method: "POST", body: JSON.stringify(data) }),
     updateCrmLead: (id, data) => request("/api/crm", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
     saveCategory: (data, update = false) => request("/api/categories", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteCategory: (data) => request("/api/categories", { method: "DELETE", body: JSON.stringify(data) }),
@@ -423,11 +424,15 @@
       }
       const session = await api.session();
       showSession(session.user);
+      const adminNeedsTwoFactor = ["super_admin", "admin"].includes(session.user?.role)
+        && !session.user?.twoFactorEnabled;
       setStatus(session.user
-        ? "Aktiv sessiya tapıldı."
+        ? adminNeedsTwoFactor
+          ? "Aktiv sessiya tapıldı. Kritik əməliyyatlar üçün Sistem bölməsində 2FA-nı aktivləşdir."
+          : "Aktiv sessiya tapıldı."
         : resetToken
           ? "Yeni güclü şifrəni iki dəfə yaz."
-          : "İdarəetmə hesabına daxil ol.", "success");
+          : "İdarəetmə hesabına daxil ol.", adminNeedsTwoFactor ? "warning" : "success");
     } catch (error) {
       setStatus(error.message || "API hazırda əlçatan deyil.", "warning");
     }
@@ -448,8 +453,15 @@
           return;
         }
         showSession(result.user);
-        setStatus("Giriş uğurludur. Yönləndirilirsən...", "success");
-        if (result.user?.mustChangePassword) {
+        const adminNeedsTwoFactor = ["super_admin", "admin"].includes(result.user?.role)
+          && !result.user?.twoFactorEnabled;
+        setStatus(
+          adminNeedsTwoFactor
+            ? "Giriş uğurludur. Sistem bölməsində 2FA aktivləşdirilməlidir."
+            : "Giriş uğurludur. Yönləndirilirsən...",
+          adminNeedsTwoFactor ? "warning" : "success"
+        );
+        if (result.user?.mustChangePassword || adminNeedsTwoFactor) {
           try {
             localStorage.setItem("constera-admin-active-tab", "system");
           } catch {

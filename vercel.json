@@ -13,6 +13,7 @@
     { "source": "/api/catalog-quality", "destination": "/api/admin?__route=catalog-quality" },
     { "source": "/api/catalog-staging", "destination": "/api/admin?__route=catalog-staging" },
     { "source": "/api/categories", "destination": "/api/admin?__route=categories" },
+    { "source": "/api/contact", "destination": "/api/admin?__route=contact" },
     { "source": "/api/crm", "destination": "/api/admin?__route=crm" },
     { "source": "/api/entities", "destination": "/api/admin?__route=entities" },
     { "source": "/api/events", "destination": "/api/admin?__route=events" },

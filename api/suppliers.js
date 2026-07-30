@@ -3,6 +3,7 @@ import { hashOpaque, hashPassword, requireRole } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
 import { queueNotification } from "./_lib/notifications.js";
+import { assertPolicyConsent, recordPolicyConsent } from "./_lib/policy-consent.js";
 import { email, entityId, oneOf, safeUrl, text } from "./_lib/validation.js";
 
 const mapSupplier = (row) => ({
@@ -62,6 +63,7 @@ const normalizeTaxId = (value) => {
 
 const createSupplierApplication = async (req, body) => {
   if (text(body.fax, { max: 200 })) return { accepted: true };
+  assertPolicyConsent(body, { legacyField: "consent" });
   const submissionHash = hashOpaque(getClientIp(req));
   const recentRows = await query(
     "SELECT count(*)::int AS count FROM supplier_applications WHERE submission_hash = $1 AND created_at > now() - interval '24 hours'",
@@ -98,6 +100,12 @@ const createSupplierApplication = async (req, body) => {
         application.note || null, submissionHash
       ]
     );
+    await recordPolicyConsent({
+      entityType: "supplier_application",
+      entityId: application.id,
+      submissionHash,
+      sourcePath: text(body.sourcePath, { max: 500 })
+    });
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
     const notification = {
       subject: "Yeni təchizatçı müraciəti",

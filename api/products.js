@@ -12,7 +12,44 @@ const productFields = `id, sku, name, slug, brand, category_id, subcategory, pac
   stock_quantity, minimum_order, price_verified_at, image_url, source_url, source_label,
   specs, extra_data, status, created_at, updated_at`;
 
-const mapProduct = (row) => {
+const licensedImageExpression = `(SELECT media.url
+  FROM media_assets media
+ WHERE media.entity_type = 'product'
+   AND media.entity_id = products.id
+   AND media.status = 'active'
+   AND media.content_type LIKE 'image/%'
+   AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+   AND media.url ~ '^https://'
+ ORDER BY media.is_primary DESC, media.created_at DESC
+ LIMIT 1)`;
+
+const commerceReadyExpression = `EXISTS (
+  SELECT 1
+    FROM product_offers offer
+    JOIN suppliers supplier
+      ON supplier.id = offer.supplier_id
+     AND supplier.status <> 'Arxiv'
+    JOIN supplier_contracts contract
+      ON contract.supplier_id = offer.supplier_id
+     AND contract.status = 'active'
+     AND contract.starts_on <= current_date
+     AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+   WHERE offer.product_id = products.id
+     AND offer.status = 'active'
+     AND offer.price_status = 'confirmed'
+     AND offer.unit_price > 0
+     AND offer.currency = 'AZN'
+     AND offer.price_verified_at >= now() - interval '30 days'
+     AND offer.stock_quantity > 0
+     AND offer.source_url ~ '^https://'
+     AND ${licensedImageExpression} IS NOT NULL
+)`;
+
+const publicProductFields = `${productFields},
+  ${licensedImageExpression} AS licensed_image_url,
+  ${commerceReadyExpression} AS commerce_ready`;
+
+const mapProduct = (row, { publicView = true } = {}) => {
   const specs = row.specs || [];
   return {
     id: row.id,
@@ -37,7 +74,10 @@ const mapProduct = (row) => {
     stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
     minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
     priceVerifiedAt: row.price_verified_at,
-    imageUrl: row.image_url || "",
+    imageUrl: publicView ? row.licensed_image_url || "" : row.image_url || row.licensed_image_url || "",
+    sourceImageUrl: publicView ? undefined : row.image_url || "",
+    mediaLicensed: Boolean(row.licensed_image_url),
+    commerceReady: Boolean(row.commerce_ready),
     sourceUrl: row.source_url || "",
     sourceLabel: row.source_label || "",
     specs,
@@ -53,7 +93,7 @@ const mapProduct = (row) => {
   };
 };
 
-const loadProductDetails = async (row) => {
+const loadProductDetails = async (row, { publicView = true } = {}) => {
   const [historyRows, mediaRows, documentRows, relatedRows, offers] = await Promise.all([
     query(
       `SELECT price_amount, price_currency, price_text, source_url, captured_at
@@ -68,7 +108,9 @@ const loadProductDetails = async (row) => {
          FROM media_assets
         WHERE entity_type = 'product' AND entity_id = $1
           AND status = 'active' AND content_type LIKE 'image/%'
-        ORDER BY created_at DESC
+          AND license_type IN ('own', 'supplier', 'official', 'licensed')
+          AND url ~ '^https://'
+        ORDER BY is_primary DESC, created_at DESC
         LIMIT 10`,
       [row.id]
     ),
@@ -85,13 +127,13 @@ const loadProductDetails = async (row) => {
       [row.id]
     ),
     query(
-      `SELECT ${productFields}
+      `SELECT ${publicProductFields}
          FROM products
         WHERE status = 'active' AND id <> $1
           AND category_id IS NOT DISTINCT FROM $2
         ORDER BY
           (
-            (NULLIF(trim(coalesce(image_url, '')), '') IS NOT NULL)::int * 2
+            (NULLIF(trim(coalesce(${licensedImageExpression}, '')), '') IS NOT NULL)::int * 2
             + (NULLIF(trim(coalesce(source_url, '')), '') IS NOT NULL)::int * 2
             + (price_status = 'confirmed')::int
           ) DESC,
@@ -101,8 +143,9 @@ const loadProductDetails = async (row) => {
     ),
     listProductOffers(row.id)
   ]);
+  const primaryImage = publicView ? row.licensed_image_url : row.image_url || row.licensed_image_url;
   const gallery = [
-    ...(row.image_url ? [{ url: row.image_url, alt: row.name, primary: true }] : []),
+    ...(primaryImage ? [{ url: primaryImage, alt: row.name, primary: true }] : []),
     ...mediaRows.map((media) => ({
       url: media.url,
       alt: media.alt_text || row.name,
@@ -209,7 +252,7 @@ export default withApiErrors(async (req, res) => {
     }
     if (requestedIds.length) {
       const rows = await query(
-        `SELECT ${productFields}
+        `SELECT ${publicProductFields}
            FROM products
           WHERE id = ANY($1::text[]) AND status = 'active'`,
         [requestedIds]
@@ -247,16 +290,23 @@ export default withApiErrors(async (req, res) => {
       where.push("status = 'active'");
     }
     values.push(limit);
+    const selectedFields = ownScope ? productFields : publicProductFields;
     const rows = await query(
-      `SELECT ${productFields} FROM products ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY updated_at DESC LIMIT $${values.length}`,
+      `SELECT ${selectedFields} FROM products ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY updated_at DESC LIMIT $${values.length}`,
       values
     );
     if (id && !rows[0]) throw new ApiError(404, "product_not_found", "Məhsul tapılmadı.");
     if (id) {
-      const details = await loadProductDetails(rows[0]);
-      return sendJson(res, 200, { ok: true, data: { ...mapProduct(rows[0]), ...details } });
+      const details = await loadProductDetails(rows[0], { publicView: !ownScope });
+      return sendJson(res, 200, {
+        ok: true,
+        data: { ...mapProduct(rows[0], { publicView: !ownScope }), ...details }
+      });
     }
-    return sendJson(res, 200, { ok: true, data: rows.map(mapProduct) });
+    return sendJson(res, 200, {
+      ok: true,
+      data: rows.map((row) => mapProduct(row, { publicView: !ownScope }))
+    });
   }
 
   assertMethod(req, ["POST", "PATCH", "DELETE"]);
@@ -291,7 +341,7 @@ export default withApiErrors(async (req, res) => {
     );
     if (!existing[0]) throw new ApiError(404, "product_not_found", "Məhsul tapılmadı.");
     previousProduct = existing[0];
-    source = { ...mapProduct(existing[0]), ...body, id };
+    source = { ...mapProduct(existing[0], { publicView: false }), ...body, id };
   }
   const item = normalizeProduct(source);
   if (item.stockQuantity !== null) {
@@ -419,7 +469,10 @@ export default withApiErrors(async (req, res) => {
     }
     await syncProductInventoryLevels([item.id]);
     await recordAudit({ actorId: user.id, action: req.method === "POST" ? "create" : "update", entityType: "product", entityId: item.id, details: { sku: item.sku } });
-    return sendJson(res, req.method === "POST" ? 201 : 200, { ok: true, data: mapProduct(rows[0]) });
+    return sendJson(res, req.method === "POST" ? 201 : 200, {
+      ok: true,
+      data: mapProduct(rows[0], { publicView: false })
+    });
   } catch (error) {
     if (error?.code === "23505") throw new ApiError(409, "duplicate_product", "Bu ID və ya SKU ilə məhsul artıq mövcuddur.");
     if (error?.code === "23503") throw new ApiError(400, "category_not_found", "Seçilmiş kateqoriya bazada tapılmadı.");

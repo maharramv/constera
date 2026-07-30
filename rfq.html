@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/supplier-workflow.css" />
   </head>
   <body data-page="rfq">
     <div class="ambient ambient-one"></div>
@@ -160,6 +161,10 @@
             <label class="form-field rfq-wide">
               <span class="field-label">Qeyd</span>
               <textarea name="note" rows="5" placeholder="Çatdırılma, marka, ölçü, iş həcmi, operator, sertifikat və digər tələblər"></textarea>
+            </label>
+            <label class="supplier-application-consent rfq-wide">
+              <input name="legalAccepted" type="checkbox" value="true" required />
+              <span><a href="terms.html">İstifadə şərtləri</a> və <a href="privacy.html">məxfilik siyasəti</a> ilə razıyam.</span>
             </label>
             <button class="button button-primary rfq-wide" type="submit">Sorğunu göndər</button>
             <div class="rfq-output rfq-wide" data-rfq-output hidden></div>

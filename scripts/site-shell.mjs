@@ -51,6 +51,10 @@ const activeNavigationByPage = Object.freeze({
   "rfq-dashboard": "rfq-dashboard",
   tender: "tender",
   "ai-smeta": "ai-smeta",
+  contact: "home",
+  privacy: "home",
+  terms: "home",
+  "delivery-returns": "home",
   admin: "admin"
 });
 

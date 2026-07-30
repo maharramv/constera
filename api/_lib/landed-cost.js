@@ -20,6 +20,10 @@ export const calculateOfferLandedCosts = ({
   const safeQuantity = Math.max(0.001, Number(quantity || 1));
   const results = (Array.isArray(offers) ? offers : []).map((offer) => {
     const reasons = [];
+    if (offer.commercialReady === false) {
+      const issues = Array.isArray(offer.commercialIssues) ? offer.commercialIssues : [];
+      reasons.push(...(issues.length ? issues : ["Kommersiya yoxlaması tamamlanmayıb"]));
+    }
     const confirmedPrice = offer.priceStatus === "confirmed"
       && offer.unitPrice !== null
       && offer.currency === "AZN";

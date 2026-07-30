@@ -9,6 +9,7 @@ const routeLoaders = Object.freeze({
   "catalog-quality": () => import("./_admin/catalog-quality.js"),
   "catalog-staging": () => import("./_admin/catalog-staging.js"),
   categories: () => import("./_admin/categories.js"),
+  contact: () => import("./_admin/contact.js"),
   crm: () => import("./_admin/crm.js"),
   entities: () => import("./_admin/entities.js"),
   events: () => import("./_admin/events.js"),

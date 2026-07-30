@@ -170,8 +170,13 @@ test("mənbəli məhsullar əsas səhifə və kataloqda əvvəl göstərilir", a
   await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-product-grid] .market-card").first()).toHaveClass(/is-sourced-card/);
   await page.locator("[data-source-filter]").selectOption("sourced-image");
-  await expect(page.locator("[data-product-grid] .market-card").first()).toHaveClass(/has-real-media/);
-  await expect(page.locator("[data-active-filter-list]")).toContainText("Mənbə + real foto");
+  await expect(page.locator("[data-active-filter-list]")).toContainText("Mənbə + hüquqlu foto");
+  const licensedMediaCards = page.locator("[data-product-grid] .market-card.has-real-media");
+  if (await licensedMediaCards.count()) {
+    await expect(licensedMediaCards.first()).toBeVisible();
+  } else {
+    await expect(page.locator("[data-empty-state]")).toBeVisible();
+  }
 });
 
 test("uzun kataloq siyahıları mərhələli render olunur", async ({ page }) => {
@@ -234,6 +239,24 @@ test("mobil kataloq axtarış təklifləri klaviatura ilə seçilir", async ({ p
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+test("əlaqə və hüquqi səhifələr mobil ekranda tam işləyir", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const file of ["contact.html", "privacy.html", "terms.html", "delivery-returns.html"]) {
+    await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("h1")).toBeVisible();
+    await expect(page.locator("[data-site-footer]")).toBeVisible();
+    const overflow = await page.evaluate(() =>
+      Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+
+  await page.goto("/contact.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('[data-contact-form] [name="legalAccepted"]')).toHaveAttribute("required", "");
+  await page.goto("/privacy.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('.detail-panel [data-consent-choice="essential"]')).toBeVisible();
+  await expect(page.locator('.detail-panel [data-consent-choice="analytics"]')).toBeVisible();
+});
+
 test("kataloq köməkçisi mobil və desktop görünüşdə işləyir", async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize(viewport);
@@ -277,7 +300,7 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
     await page.setViewportSize(viewport);
     await page.goto("/product-detail.html?product=tvim-qaradag-optimal-300-40kg", { waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-product-detail] h1")).toContainText("Qaradağ Optimal 300");
-    await expect(page.locator(".detail-media img")).toBeVisible();
+    await expect(page.locator(".detail-media img, .detail-media .product-image-fallback")).toBeVisible();
     await expect(page.locator("[data-product-detail]")).toContainText("Qiymət tarixçəsi");
     await expect.poll(() => page.locator("[data-product-detail] .market-card").count()).toBeGreaterThan(0);
 

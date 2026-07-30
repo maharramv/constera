@@ -4,6 +4,39 @@ import { assertMethod, sendJson, withApiErrors } from "./_lib/http.js";
 import { normalizeProductAttributes } from "./_lib/product-attributes.js";
 import { categoryPublicId, categoryStorageId, parseLimit, parsePriceAmount, text } from "./_lib/validation.js";
 
+const licensedImageExpression = `(SELECT media.url
+  FROM media_assets media
+ WHERE media.entity_type = 'product'
+   AND media.entity_id = p.id
+   AND media.status = 'active'
+   AND media.content_type LIKE 'image/%'
+   AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+   AND media.url ~ '^https://'
+ ORDER BY media.is_primary DESC, media.created_at DESC
+ LIMIT 1)`;
+
+const commerceReadyExpression = `EXISTS (
+  SELECT 1
+    FROM product_offers offer
+    JOIN suppliers supplier
+      ON supplier.id = offer.supplier_id
+     AND supplier.status <> 'Arxiv'
+    JOIN supplier_contracts contract
+      ON contract.supplier_id = offer.supplier_id
+     AND contract.status = 'active'
+     AND contract.starts_on <= current_date
+     AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+   WHERE offer.product_id = p.id
+     AND offer.status = 'active'
+     AND offer.price_status = 'confirmed'
+     AND offer.unit_price > 0
+     AND offer.currency = 'AZN'
+     AND offer.price_verified_at >= now() - interval '30 days'
+     AND offer.stock_quantity > 0
+     AND offer.source_url ~ '^https://'
+     AND ${licensedImageExpression} IS NOT NULL
+)`;
+
 const mapProduct = (row) => {
   const specs = row.specs || [];
   const packageText = row.package_text || "Sorğu ilə";
@@ -29,7 +62,9 @@ const mapProduct = (row) => {
     stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
     minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
     priceVerifiedAt: row.price_verified_at,
-    imageUrl: row.image_url || "",
+    imageUrl: row.licensed_image_url || "",
+    mediaLicensed: Boolean(row.licensed_image_url),
+    commerceReady: Boolean(row.commerce_ready),
     sourceUrl: row.source_url || "",
     sourceLabel: row.source_label || "",
     specs,
@@ -139,7 +174,7 @@ export default withApiErrors(async (req, res) => {
   }
   if (sourceStatus === "sourced") where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL");
   if (sourceStatus === "sourced-image") {
-    where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL AND NULLIF(trim(coalesce(p.image_url, '')), '') IS NOT NULL");
+    where.push(`NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL AND ${licensedImageExpression} IS NOT NULL`);
   }
   if (sourceStatus === "unsourced") where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL");
   if (origin === "local") where.push("lower(coalesce(p.origin, '')) LIKE '%azərbaycan%' AND lower(coalesce(p.origin, '')) NOT LIKE '%idxal%'");
@@ -156,7 +191,8 @@ export default withApiErrors(async (req, res) => {
 
   const qualityExpression = `(
     CASE WHEN NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL THEN 500 ELSE 0 END +
-    CASE WHEN NULLIF(trim(coalesce(p.image_url, '')), '') IS NOT NULL THEN 180 ELSE 0 END +
+    CASE WHEN ${licensedImageExpression} IS NOT NULL THEN 180 ELSE 0 END +
+    CASE WHEN ${commerceReadyExpression} THEN 700 ELSE 0 END +
     CASE WHEN p.price_amount > 0 THEN 120 ELSE 0 END +
     CASE WHEN p.price_status = 'confirmed' AND NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL THEN 180 ELSE 0 END +
     CASE WHEN p.price_verified_at IS NOT NULL THEN 25 ELSE 0 END
@@ -211,7 +247,13 @@ export default withApiErrors(async (req, res) => {
 
   const [productRows, countRows, brandRows, subcategoryRows, availabilityRows, priceRows, categoryFacetRows, categoryRows, supplierRows, entityRows] = await Promise.all([
     query(
-      `SELECT p.* FROM products p WHERE ${where.join(" AND ")} ORDER BY ${orderBy} LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+      `SELECT p.*,
+              ${licensedImageExpression} AS licensed_image_url,
+              ${commerceReadyExpression} AS commerce_ready
+         FROM products p
+        WHERE ${where.join(" AND ")}
+        ORDER BY ${orderBy}
+        LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
       productValues
     ),
     query(`SELECT count(*)::int AS count FROM products p WHERE ${where.join(" AND ")}`, filteredValues),
