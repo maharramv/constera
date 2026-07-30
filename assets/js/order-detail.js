@@ -54,6 +54,7 @@
   let order = null;
   let sessionUser = null;
   let integrations = {};
+  let integrationDetails = {};
   let activeDocumentId = "";
 
   const setStatus = (message, type = "info") => {
@@ -186,6 +187,70 @@
     ].join("");
   };
 
+  const renderPayments = () => {
+    const payments = order?.payments || [];
+    const invoices = order?.invoices || [];
+    const bank = integrationDetails.bankTransfer;
+    const privileged = ["super_admin", "admin", "sales"].includes(sessionUser?.role);
+    const pendingBank = payments.find((item) => item.provider === "bank_transfer" && item.status === "pending");
+    const transactionLabels = {
+      pending: "Yoxlama gözləyir",
+      requires_action: "Müştəri əməliyyatı gözləyir",
+      paid: "Təsdiqlənib",
+      failed: "Təsdiqlənməyib",
+      cancelled: "Ləğv edilib",
+      refunded: "Geri qaytarılıb"
+    };
+    qs("[data-order-payment-count]").textContent = `${payments.length + invoices.length} əməliyyat`;
+    const instructions = qs("[data-order-bank-instructions]");
+    instructions.innerHTML = order.paymentMethod === "bank_transfer" && bank
+      ? `<article>
+          <strong>${escapeHtml(bank.bankName)} · ${escapeHtml(bank.accountName)}</strong>
+          <span>IBAN: ${escapeHtml(bank.iban)}${bank.taxId ? ` · VÖEN: ${escapeHtml(bank.taxId)}` : ""}</span>
+          <small>${escapeHtml(bank.note)} Məbləğ: ${formatMoney(order.totalAmount, order.currency)}</small>
+        </article>`
+      : order.paymentMethod === "bank_transfer"
+        ? "<p>Bank rekvizitləri hələ aktiv edilməyib.</p>"
+        : "";
+    const bankForm = qs("[data-order-bank-form]");
+    const canSubmitBank = sessionUser?.role === "customer"
+      && order.customerId === sessionUser.id
+      && order.paymentMethod === "bank_transfer"
+      && Boolean(bank)
+      && !pendingBank
+      && order.paymentStatus !== "paid"
+      && order.status !== "cancelled"
+      && !order.hasPendingPrice
+      && ["not_required", "approved"].includes(order.approvalStatus)
+      && Number(order.totalAmount) > 0;
+    bankForm.hidden = !canSubmitBank;
+    if (canSubmitBank && !bankForm.elements.payerName.value) {
+      bankForm.elements.payerName.value = order.companyName || order.contactName || "";
+    }
+    qs("[data-order-payments]").innerHTML = payments.map((item) => `
+      <article>
+        <strong>${item.provider === "bank_transfer" ? "Bank köçürməsi" : "Kart ödənişi"} · ${escapeHtml(transactionLabels[item.status] || item.status)}</strong>
+        <span>${formatMoney(item.amount, item.currency)}${item.reference ? ` · referans: ${escapeHtml(item.reference)}` : ""}</span>
+        <small>${item.payerName ? `${escapeHtml(item.payerName)} · ` : ""}${formatDate(item.paidAt || item.createdAt)}${item.reviewNote ? ` · ${escapeHtml(item.reviewNote)}` : ""}</small>
+        ${privileged && item.provider === "bank_transfer" && item.status === "pending"
+          ? `<div class="admin-actions"><button class="table-action" type="button" data-bank-review="${escapeHtml(item.id)}" data-decision="approve">Təsdiqlə</button><button class="table-action is-danger" type="button" data-bank-review="${escapeHtml(item.id)}" data-decision="reject">Rədd et</button></div>`
+          : ""}
+      </article>
+    `).join("") || "<p>Ödəniş əməliyyatı yoxdur.</p>";
+    qs("[data-order-invoices]").innerHTML = invoices.map((item) => `
+      <article>
+        <strong>Qaimə ${escapeHtml(item.externalId || item.id)} · ${item.status === "issued" ? "Təqdim edilib" : escapeHtml(item.status)}</strong>
+        <span>${item.provider === "manual" ? "Administrator tərəfindən əlavə edilib" : "Elektron qaimə provayderi"}</span>
+        ${item.documentUrl ? `<small><a href="${escapeHtml(item.documentUrl)}" target="_blank" rel="noopener noreferrer">Qaimə sənədini aç</a> · ${formatDate(item.issuedAt)}</small>` : `<small>${formatDate(item.createdAt)}</small>`}
+      </article>
+    `).join("") || "<p>Qaimə sənədi yoxdur.</p>";
+    const manualInvoiceForm = qs("[data-order-manual-invoice-form]");
+    manualInvoiceForm.hidden = !privileged
+      || order.hasPendingPrice
+      || order.totalAmount === null
+      || invoices.some((item) => item.status === "issued");
+  };
+
   const renderDocument = () => {
     const document = currentDocument();
     const snapshot = document?.payload?.order || order;
@@ -260,6 +325,7 @@
     renderFulfillments();
     renderPurchaseOrders();
     renderProcurement();
+    renderPayments();
     renderAdmin();
     const customerCanCancel = sessionUser?.role === "customer"
       && ["submitted", "confirmed"].includes(order.status);
@@ -294,7 +360,8 @@
         window.ConstEraAPI.integrationReadiness?.().catch(() => ({ data: { readiness: {} } }))
       ]);
       sessionUser = session.user;
-      integrations = readiness?.data?.readiness || {};
+      integrationDetails = readiness?.data || {};
+      integrations = integrationDetails.readiness || {};
       if (!sessionUser) {
         setStatus("Sifariş sənədini görmək üçün hesabına daxil ol.", "warning");
         window.setTimeout(() => {
@@ -354,6 +421,80 @@
       actionStatus.textContent = error.message || "Satınalma təsdiqi yenilənmədi.";
       actionStatus.dataset.type = "error";
       button.disabled = false;
+    }
+  });
+  qs("[data-order-bank-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Göndərilir...";
+    const paymentStatus = qs("[data-order-payment-status]");
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      if (fields.paidAt) fields.paidAt = new Date(fields.paidAt).toISOString();
+      await window.ConstEraAPI.submitBankTransfer(orderId, fields);
+      order = (await window.ConstEraAPI.order(orderId)).data;
+      form.reset();
+      render();
+      paymentStatus.textContent = "Bank köçürməsi yoxlamaya göndərildi.";
+      paymentStatus.dataset.type = "success";
+    } catch (error) {
+      paymentStatus.textContent = error.message || "Bank köçürməsi göndərilmədi.";
+      paymentStatus.dataset.type = "error";
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  });
+  qs("[data-order-payments]")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-bank-review]");
+    if (!button) return;
+    const decision = button.dataset.decision;
+    const note = window.prompt(
+      decision === "approve" ? "Təsdiq qeydi (istəyə bağlı)" : "Rədd səbəbi",
+      ""
+    );
+    if (note === null || (decision === "reject" && !note.trim())) return;
+    button.disabled = true;
+    const paymentStatus = qs("[data-order-payment-status]");
+    try {
+      await window.ConstEraAPI.reviewBankTransfer(button.dataset.bankReview, decision, note);
+      order = (await window.ConstEraAPI.order(orderId)).data;
+      render();
+      paymentStatus.textContent = decision === "approve"
+        ? "Bank köçürməsi təsdiqləndi."
+        : "Bank köçürməsi rədd edildi.";
+      paymentStatus.dataset.type = "success";
+    } catch (error) {
+      paymentStatus.textContent = error.message || "Bank köçürməsi yenilənmədi.";
+      paymentStatus.dataset.type = "error";
+      button.disabled = false;
+    }
+  });
+  qs("[data-order-manual-invoice-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Əlavə edilir...";
+    const paymentStatus = qs("[data-order-payment-status]");
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      await window.ConstEraAPI.registerInvoice(orderId, fields.documentUrl, fields.reference, fields.note);
+      order = (await window.ConstEraAPI.order(orderId)).data;
+      form.reset();
+      render();
+      paymentStatus.textContent = "Qaimə sənədi sifarişə əlavə edildi.";
+      paymentStatus.dataset.type = "success";
+    } catch (error) {
+      paymentStatus.textContent = error.message || "Qaimə əlavə edilmədi.";
+      paymentStatus.dataset.type = "error";
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
     }
   });
   adminForm?.addEventListener("submit", async (event) => {

@@ -44,6 +44,7 @@ export default withApiErrors(async (req, res) => {
       (SELECT count(*) FROM crm_leads)::int AS crm_leads,
       (SELECT count(*) FROM rental_bookings WHERE status NOT IN ('completed', 'cancelled'))::int AS active_rental_bookings,
       (SELECT count(*) FROM payment_transactions WHERE status IN ('pending', 'requires_action'))::int AS pending_payments,
+      (SELECT count(*) FROM payment_transactions WHERE provider = 'bank_transfer' AND status = 'pending')::int AS pending_bank_transfers,
       (SELECT count(*) FROM media_assets WHERE status = 'active')::int AS media,
       (SELECT count(*) FROM import_jobs)::int AS imports,
       (SELECT count(*) FROM supplier_applications WHERE status = 'pending')::int AS pending_supplier_applications,
@@ -69,6 +70,14 @@ export default withApiErrors(async (req, res) => {
             ORDER BY a.created_at DESC LIMIT 12`),
     query(`WITH classified_products AS (
       SELECT p.*,
+        EXISTS (
+          SELECT 1 FROM media_assets media
+           WHERE media.entity_type = 'product'
+             AND media.entity_id = p.id
+             AND media.status = 'active'
+             AND media.content_type LIKE 'image/%'
+             AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+        ) AS has_licensed_media,
         (
           lower(trim(coalesce(p.brand, ''))) = 'constera sorğu'
           OR lower(p.name) LIKE '%məhsul qrupu%'
@@ -85,6 +94,9 @@ export default withApiErrors(async (req, res) => {
         WHERE NOT p.is_request_group
           AND NULLIF(trim(coalesce(p.image_url, '')), '') IS NULL
       )::int AS missing_image,
+      count(*) FILTER (
+        WHERE NOT p.is_request_group AND NOT p.has_licensed_media
+      )::int AS missing_licensed_media,
       count(*) FILTER (
         WHERE NOT p.is_request_group
           AND NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL
@@ -141,6 +153,14 @@ export default withApiErrors(async (req, res) => {
     FROM classified_products p`),
     query(`WITH classified_products AS (
       SELECT p.*,
+        EXISTS (
+          SELECT 1 FROM media_assets media
+           WHERE media.entity_type = 'product'
+             AND media.entity_id = p.id
+             AND media.status = 'active'
+             AND media.content_type LIKE 'image/%'
+             AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+        ) AS has_licensed_media,
         (
           lower(trim(coalesce(p.brand, ''))) = 'constera sorğu'
           OR lower(p.name) LIKE '%məhsul qrupu%'
@@ -164,6 +184,7 @@ export default withApiErrors(async (req, res) => {
         p.price_verified_at,
         p.updated_at,
         NULLIF(trim(coalesce(p.image_url, '')), '') IS NULL AS missing_image,
+        NOT p.has_licensed_media AS missing_licensed_media,
         NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL AS missing_source,
         CASE
           WHEN jsonb_typeof(coalesce(p.specs, '[]'::jsonb)) = 'array'
@@ -190,6 +211,7 @@ export default withApiErrors(async (req, res) => {
     SELECT *,
       (
         missing_image::int * 3 +
+        missing_licensed_media::int * 3 +
         missing_source::int * 3 +
         missing_specs::int * 2 +
         missing_brand::int * 2 +
@@ -200,7 +222,7 @@ export default withApiErrors(async (req, res) => {
         duplicate_name::int
       )::int AS issue_score
     FROM quality_base
-    WHERE missing_image OR missing_source OR missing_specs OR missing_brand OR missing_category
+    WHERE missing_image OR missing_licensed_media OR missing_source OR missing_specs OR missing_brand OR missing_category
        OR stale_price OR expired_price OR unknown_stock OR duplicate_name
     ORDER BY issue_score DESC, updated_at ASC
     LIMIT 32`),
@@ -377,6 +399,7 @@ export default withApiErrors(async (req, res) => {
     total: Number(qualityRow.total || 0),
     requestGroups: Number(qualityRow.request_groups || 0),
     missingImage: Number(qualityRow.missing_image || 0),
+    missingLicensedMedia: Number(qualityRow.missing_licensed_media || 0),
     missingSource: Number(qualityRow.missing_source || 0),
     missingSpecs: Number(qualityRow.missing_specs || 0),
     missingBrand: Number(qualityRow.missing_brand || 0),
@@ -393,8 +416,9 @@ export default withApiErrors(async (req, res) => {
     offerInvalidPrice: Number(offerQualityRow.invalid_price || 0),
     productsWithoutOffers: Number(offerQualityRow.products_without_offers || 0)
   };
-  const completenessMaximum = qualitySummary.total * 5 + qualitySummary.offerTotal * 3;
+  const completenessMaximum = qualitySummary.total * 6 + qualitySummary.offerTotal * 3;
   const completenessMissing = qualitySummary.missingImage
+    + qualitySummary.missingLicensedMedia
     + qualitySummary.missingSource
     + qualitySummary.missingSpecs
     + qualitySummary.missingBrand
@@ -435,6 +459,7 @@ export default withApiErrors(async (req, res) => {
         items: qualityItemRows.map((item) => {
           const issues = [];
           if (item.missing_image) issues.push("Real foto yoxdur");
+          if (item.missing_licensed_media) issues.push("Media hüququ təsdiqlənməyib");
           if (item.missing_source) issues.push("Mənbə URL-i yoxdur");
           if (item.missing_specs) issues.push("Texniki məlumat azdır");
           if (item.missing_brand) issues.push("Brend göstərilməyib");
@@ -528,6 +553,7 @@ export default withApiErrors(async (req, res) => {
         emailWebhook: Boolean(process.env.EMAIL_WEBHOOK_URL),
         whatsappWebhook: Boolean(process.env.WHATSAPP_WEBHOOK_URL),
         payment: providerReadiness().payment,
+        bankTransfer: providerReadiness().bankTransfer,
         electronicInvoice: providerReadiness().electronicInvoice,
         aiEstimate: providerReadiness().aiEstimate,
         scheduledBackup: backup.ready

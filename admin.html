@@ -937,7 +937,7 @@
           </div>
 
           <div class="admin-panel glass" data-admin-panel="media" hidden>
-            <div class="market-section-heading"><div><p class="eyebrow">Vercel Blob</p><h2>Şəkil və sənəd kitabxanası</h2></div><span class="data-badge" data-admin-v2-media-count>0 fayl</span></div>
+            <div class="market-section-heading"><div><p class="eyebrow">Hüquq və mənbə nəzarəti</p><h2>Şəkil və sənəd kitabxanası</h2></div><span class="data-badge" data-admin-v2-media-count>0 fayl</span></div>
             <form class="admin-form" data-admin-v2-media-form>
               <div class="admin-form-grid">
                 <label class="admin-field"><span>Fayllar</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp,image/avif,application/pdf" multiple required /></label>
@@ -951,6 +951,20 @@
               </div>
               <div class="admin-actions"><button class="button button-primary" type="submit">Faylı yüklə</button></div>
               <p class="admin-import-status" data-admin-v2-media-status>JPEG və PNG brauzerdə WebP-yə optimallaşdırılır. Hər fayl maksimum 3 MB.</p>
+            </form>
+            <form class="admin-form" data-admin-v2-external-media-form>
+              <div class="admin-v2-section-heading"><h3>Rəsmi və ya lisenziyalı şəkil URL-i</h3></div>
+              <div class="admin-form-grid">
+                <label class="admin-field admin-field-wide"><span>Birbaşa şəkil URL-i</span><input name="url" type="url" required placeholder="https://cdn.istehsalci.az/mehsul.webp" /></label>
+                <label class="admin-field admin-field-wide"><span>Rəsmi mənbə səhifəsi</span><input name="sourceUrl" type="url" required placeholder="https://istehsalci.az/mehsul" /></label>
+                <label class="admin-field"><span>Əlaqəli bölmə</span><select name="entityType"><option value="product">Məhsul</option><option value="supplier">Təchizatçı</option><option value="service">Xidmət</option><option value="package">Paket</option><option value="rental">İcarə</option></select></label>
+                <label class="admin-field"><span>Qeyd ID-si</span><input name="entityId" required placeholder="product-..." /></label>
+                <label class="admin-field"><span>Alternativ mətn</span><input name="altText" required placeholder="Məhsulun rəsmi görünüşü" /></label>
+                <label class="admin-field"><span>İstifadə hüququ</span><select name="licenseType"><option value="official">Rəsmi istehsalçı mediası</option><option value="supplier">Təchizatçı təqdim edib</option><option value="licensed">Lisenziyalı media</option><option value="own">ConstEra-ya məxsus</option></select></label>
+                <label class="admin-field admin-field-wide"><span>Hüquq qeydi</span><input name="licenseNote" maxlength="1000" placeholder="İcazə, müqavilə və ya rəsmi media kitabxanası qeydi" /></label>
+                <label class="admin-field admin-checkbox-field"><input name="isPrimary" type="checkbox" /><span>Məhsulun əsas şəkli et</span></label>
+              </div>
+              <div class="admin-actions"><button class="button button-secondary" type="submit">URL-i yoxla və qeyd et</button></div>
             </form>
             <div class="admin-v2-media-grid" data-admin-v2-media></div>
           </div>

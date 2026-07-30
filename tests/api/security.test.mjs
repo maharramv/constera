@@ -4,7 +4,8 @@ import { hashOpaque, hashPassword, verifyPassword } from "../../api/_lib/auth.js
 import { ApiError, assertSameOrigin } from "../../api/_lib/http.js";
 import { matrixToObjects, parseCsv, readAliased } from "../../api/_lib/imports.js";
 import { categoryPublicId, categoryStorageId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug } from "../../api/_lib/validation.js";
-import { hasExpectedSignature } from "../../api/_admin/media.js";
+import { hasExpectedSignature, validateExternalMediaLicense } from "../../api/_admin/media.js";
+import { parseInventorySource } from "../../api/_admin/inventory.js";
 import { parseOrderQuantity } from "../../api/_admin/orders.js";
 import { calculateSettlementAmounts, settlementTransitionAllowed } from "../../api/_lib/commercial-operations.js";
 
@@ -83,6 +84,47 @@ test("media yoxlaması fayl imzası ilə saxta MIME dəyərini ayırır", () => 
   assert.equal(hasExpectedSignature(png, "image/png"), true);
   assert.equal(hasExpectedSignature(Buffer.from("%PDF-1.7"), "application/pdf"), true);
   assert.equal(hasExpectedSignature(Buffer.from("not an image"), "image/png"), false);
+});
+
+test("xarici media yalnız hüquq və rəsmi HTTPS mənbəyi ilə qəbul olunur", () => {
+  assert.deepEqual(validateExternalMediaLicense({
+    sourceUrl: "https://manufacturer.example/product",
+    licenseType: "official",
+    licenseNote: ""
+  }), {
+    sourceUrl: "https://manufacturer.example/product",
+    licenseType: "official",
+    licenseNote: null
+  });
+  assert.throws(
+    () => validateExternalMediaLicense({
+      sourceUrl: "https://supplier.example/product",
+      licenseType: "supplier",
+      licenseNote: ""
+    }),
+    (error) => error instanceof ApiError && error.code === "media_license_note_required"
+  );
+  assert.throws(
+    () => validateExternalMediaLicense({
+      sourceUrl: "http://manufacturer.example/product",
+      licenseType: "official"
+    }),
+    ApiError
+  );
+});
+
+test("inventar idxalı CSV və JSON fayllarını eyni başlıqlara normallaşdırır", () => {
+  const csv = parseInventorySource("sku,qiymət,stok\nP-10,12.50,4", "csv");
+  const json = parseInventorySource(JSON.stringify({
+    items: [{ SKU: "P-11", "Qiymət": 14.2, "Stok miqdarı": 6 }]
+  }), "json");
+  assert.equal(csv.format, "csv");
+  assert.equal(readAliased(csv.rows[0], "sku"), "P-10");
+  assert.equal(json.format, "json");
+  assert.equal(readAliased(json.rows[0], "sku"), "P-11");
+  assert.equal(readAliased(json.rows[0], "price"), 14.2);
+  assert.equal(readAliased(json.rows[0], "stockQuantity"), 6);
+  assert.throws(() => parseInventorySource("{yanlış", "json"), ApiError);
 });
 
 test("sifariş miqdarı üç onluq dəqiqliyə normallaşdırılır", () => {

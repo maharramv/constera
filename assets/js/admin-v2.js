@@ -274,6 +274,7 @@
     );
     const qualityMetrics = [
       ["Real foto", "missingImage", qualityTotal],
+      ["Media istifadə hüququ", "missingLicensedMedia", qualityTotal],
       ["Məhsul mənbəyi", "missingSource", qualityTotal],
       ["Texniki məlumat", "missingSpecs", qualityTotal],
       ["Dəqiq brend", "missingBrand", qualityTotal],
@@ -309,6 +310,7 @@
       emailWebhook: "E-poçt webhook-u",
       whatsappWebhook: "WhatsApp webhook-u",
       payment: "Kart ödənişi",
+      bankTransfer: "Bank köçürməsi",
       electronicInvoice: "Elektron qaimə",
       aiEstimate: "Xarici AI smeta",
       scheduledBackup: "Gündəlik bulud backup-ı"
@@ -684,7 +686,7 @@
     const licenseLabels = { own: "ConstEra", supplier: "Təchizatçı", official: "Rəsmi media", licensed: "Lisenziyalı", unspecified: "Hüquq qeyd edilməyib" };
     grid.innerHTML = state.media.map((item) => `<article>
       <div class="admin-v2-media-preview">${item.contentType.startsWith("image/") ? `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.altText || item.filename)}" loading="lazy" />` : '<span>PDF</span>'}</div>
-      <div><strong>${item.isPrimary ? "Əsas · " : ""}${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${escapeHtml(licenseLabels[item.licenseType] || item.licenseType)} · ${Math.round(item.sizeBytes / 1024)} KB · ${formatDate(item.createdAt)}</small></div>
+      <div><strong>${item.isPrimary ? "Əsas · " : ""}${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${escapeHtml(licenseLabels[item.licenseType] || item.licenseType)} · ${item.provider === "external" ? "Xarici URL" : `${Math.round(item.sizeBytes / 1024)} KB`} · ${formatDate(item.createdAt)}</small></div>
       <div class="admin-v2-row-actions"><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button>${item.contentType.startsWith("image/") && item.entityId && !item.isPrimary ? `<button class="table-action" type="button" data-media-primary="${escapeHtml(item.id)}">Əsas et</button>` : ""}<button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
     </article>`).join("") || "<p>Yüklənmiş media yoxdur.</p>";
   };
@@ -1483,6 +1485,26 @@
       form.reset();
       await loadMedia();
       setStatus("[data-admin-v2-media-status]", `${files.length} fayl media kitabxanasına yükləndi.`, "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-media-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-v2-external-media-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Yoxlanılır...");
+    try {
+      const fields = Object.fromEntries(new FormData(form).entries());
+      await api.registerExternalMedia({
+        ...fields,
+        isPrimary: form.elements.isPrimary.checked
+      });
+      form.reset();
+      await loadMedia();
+      setStatus("[data-admin-v2-media-status]", "Şəkil URL-i, mənbə və istifadə hüququ yoxlanılaraq qeydə alındı.", "success");
     } catch (error) {
       setStatus("[data-admin-v2-media-status]", error.message, "error");
     } finally {

@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { backupDeliveryReadiness } from "../../api/_lib/cloud-backup.js";
 import { buildMerchantFeedXml } from "../../api/_lib/merchant-feed.js";
-import { providerConfigurationStatus } from "../../api/_lib/provider-adapters.js";
+import {
+  bankTransferInstructions,
+  bankTransferReadiness,
+  providerConfigurationStatus
+} from "../../api/_lib/provider-adapters.js";
 import { contractActivationReadiness } from "../../api/_admin/operations-center.js";
 
 test("Merchant XML xüsusi simvolları qoruyur və yalnız doğru identifikatoru yazır", () => {
@@ -89,6 +93,42 @@ test("backup ayrıca özəl Blob token-i ilə hazır olur və provider statusu s
     assert.equal(payment.ready, true);
     assert.equal(JSON.stringify(payment).includes("do-not-expose"), false);
     assert.equal(JSON.stringify(payment).includes("provider.example.test"), false);
+  } finally {
+    keys.forEach((key) => {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    });
+  }
+});
+
+test("bank köçürməsi yalnız tam Azərbaycan rekvizitləri ilə aktiv olur", () => {
+  const keys = [
+    "BANK_TRANSFER_ACCOUNT_NAME",
+    "BANK_TRANSFER_BANK_NAME",
+    "BANK_TRANSFER_IBAN",
+    "BANK_TRANSFER_TAX_ID"
+  ];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  keys.forEach((key) => delete process.env[key]);
+  try {
+    assert.equal(bankTransferReadiness(), false);
+    assert.equal(bankTransferInstructions(), null);
+    process.env.BANK_TRANSFER_ACCOUNT_NAME = "ConstEra MMC";
+    process.env.BANK_TRANSFER_BANK_NAME = "Test Bank";
+    process.env.BANK_TRANSFER_IBAN = "AZ37 TEST 0000 0000 0000 0000 0000";
+    process.env.BANK_TRANSFER_TAX_ID = "1234567890";
+    assert.equal(bankTransferReadiness(), true);
+    assert.deepEqual(bankTransferInstructions(), {
+      accountName: "ConstEra MMC",
+      bankName: "Test Bank",
+      iban: "AZ37TEST00000000000000000000",
+      taxId: "1234567890",
+      currency: "AZN",
+      note: "Təyinat hissəsində sifariş nömrəsini qeyd edin."
+    });
+    const status = providerConfigurationStatus().find((item) => item.key === "bankTransfer");
+    assert.equal(status.ready, true);
+    assert.equal(JSON.stringify(status).includes("AZ37TEST"), false);
   } finally {
     keys.forEach((key) => {
       if (previous[key] === undefined) delete process.env[key];

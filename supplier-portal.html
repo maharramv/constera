@@ -200,10 +200,14 @@
               </div>
               <button class="button button-secondary" type="button" data-inventory-bulk-template>Şablon doldur</button>
             </div>
+            <div class="admin-form-grid">
+              <label class="admin-field"><span>CSV və ya JSON faylı</span><input data-inventory-bulk-file type="file" accept=".csv,.json,text/csv,application/json" /></label>
+              <label class="admin-field"><span>Format</span><select data-inventory-bulk-format><option value="auto">Avtomatik tanı</option><option value="csv">CSV</option><option value="json">JSON</option></select></label>
+            </div>
             <textarea
               class="admin-import-area"
               data-inventory-bulk-input
-              aria-label="Toplu qiymət və stok yeniləmə CSV-si"
+              aria-label="Toplu qiymət və stok yeniləmə CSV və ya JSON məlumatı"
               rows="8"
               placeholder="sku,qiymət,status,stok,minimum sifariş,mənbə url"
             ></textarea>

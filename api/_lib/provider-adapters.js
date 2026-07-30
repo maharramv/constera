@@ -47,8 +47,40 @@ const configuredHttpsEndpoint = (value, secret) => {
   }
 };
 
+const normalizedIban = () => String(process.env.BANK_TRANSFER_IBAN || "")
+  .replace(/\s+/g, "")
+  .toUpperCase();
+
+const hasValidIbanChecksum = (iban) => {
+  if (!/^AZ[0-9]{2}[0-9A-Z]{24}$/.test(iban)) return false;
+  const rearranged = `${iban.slice(4)}${iban.slice(0, 4)}`
+    .replace(/[A-Z]/g, (character) => String(character.charCodeAt(0) - 55));
+  let remainder = 0;
+  for (const digit of rearranged) remainder = (remainder * 10 + Number(digit)) % 97;
+  return remainder === 1;
+};
+
+export const bankTransferReadiness = () => (
+  String(process.env.BANK_TRANSFER_ACCOUNT_NAME || "").trim().length >= 3
+  && String(process.env.BANK_TRANSFER_BANK_NAME || "").trim().length >= 2
+  && hasValidIbanChecksum(normalizedIban())
+);
+
+export const bankTransferInstructions = () => {
+  if (!bankTransferReadiness()) return null;
+  return {
+    accountName: String(process.env.BANK_TRANSFER_ACCOUNT_NAME).trim(),
+    bankName: String(process.env.BANK_TRANSFER_BANK_NAME).trim(),
+    iban: normalizedIban(),
+    taxId: String(process.env.BANK_TRANSFER_TAX_ID || "").trim(),
+    currency: "AZN",
+    note: "Təyinat hissəsində sifariş nömrəsini qeyd edin."
+  };
+};
+
 export const providerReadiness = () => ({
   payment: configuredHttpsEndpoint(process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET),
+  bankTransfer: bankTransferReadiness(),
   electronicInvoice: configuredHttpsEndpoint(process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET),
   aiEstimate: configuredHttpsEndpoint(process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET),
   email: configuredHttpsEndpoint(process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured"),
@@ -64,7 +96,15 @@ export const providerConfigurationStatus = () => {
     ["email", "E-poçt", process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false],
     ["whatsapp", "WhatsApp", process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false]
   ];
-  return items.map(([key, label, endpoint, secret, secretRequired]) => {
+  return [{
+    key: "bankTransfer",
+    label: "Bank köçürməsi",
+    ready: readiness.bankTransfer,
+    accountConfigured: Boolean(String(process.env.BANK_TRANSFER_ACCOUNT_NAME || "").trim()),
+    bankConfigured: Boolean(String(process.env.BANK_TRANSFER_BANK_NAME || "").trim()),
+    ibanConfigured: Boolean(normalizedIban()),
+    secretRequired: false
+  }, ...items.map(([key, label, endpoint, secret, secretRequired]) => {
     let endpointValid = false;
     try {
       endpointValid = new URL(endpoint || "").protocol === "https:";
@@ -80,7 +120,7 @@ export const providerConfigurationStatus = () => {
       secretConfigured: Boolean(secret),
       secretRequired
     };
-  });
+  })];
 };
 
 export const createPaymentCheckout = async ({ transaction, order, returnUrl }) => {

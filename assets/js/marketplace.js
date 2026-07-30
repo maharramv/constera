@@ -5452,6 +5452,8 @@ const initSupplierPortal = () => {
   const importFileButton = document.querySelector("[data-supplier-import-file-run]");
   const importStatus = document.querySelector("[data-supplier-import-status]");
   const bulkInput = document.querySelector("[data-inventory-bulk-input]");
+  const bulkFile = document.querySelector("[data-inventory-bulk-file]");
+  const bulkFormat = document.querySelector("[data-inventory-bulk-format]");
   const bulkTemplateButton = document.querySelector("[data-inventory-bulk-template]");
   const bulkPreviewButton = document.querySelector("[data-inventory-bulk-preview]");
   const bulkApplyButton = document.querySelector("[data-inventory-bulk-apply]");
@@ -5987,6 +5989,7 @@ const initSupplierPortal = () => {
         escapeCsvValue(product.sourceUrl || "")
       ].join(","))
     ].join("\n");
+    if (bulkFormat) bulkFormat.value = "csv";
     bulkInventoryPreview = [];
     if (bulkPreviewList) bulkPreviewList.hidden = true;
     if (bulkStatus) {
@@ -5994,6 +5997,32 @@ const initSupplierPortal = () => {
         ? `${samples.length} real məhsul nümunəsi əlavə edildi. Dəyərləri dəyişib uyğunluğu yoxla.`
         : "Məhsul tapılmadı. Əvvəl məhsul əlavə et və ya canlı təchizatçı hesabına daxil ol.";
       bulkStatus.dataset.type = samples.length ? "info" : "warning";
+    }
+  });
+  bulkFile?.addEventListener("change", async () => {
+    const file = bulkFile.files?.[0];
+    if (!file || !bulkInput) return;
+    if (file.size > 180_000) {
+      if (bulkStatus) {
+        bulkStatus.textContent = "Fayl maksimum 180 KB ola bilər.";
+        bulkStatus.dataset.type = "error";
+      }
+      bulkFile.value = "";
+      return;
+    }
+    try {
+      bulkInput.value = await file.text();
+      if (bulkFormat) bulkFormat.value = file.name.toLocaleLowerCase("az-AZ").endsWith(".json") ? "json" : "csv";
+      bulkInput.dispatchEvent(new Event("input", { bubbles: true }));
+      if (bulkStatus) {
+        bulkStatus.textContent = `${file.name} oxundu. Saxlamadan əvvəl uyğunluğu yoxla.`;
+        bulkStatus.dataset.type = "info";
+      }
+    } catch {
+      if (bulkStatus) {
+        bulkStatus.textContent = "Fayl brauzerdə oxunmadı.";
+        bulkStatus.dataset.type = "error";
+      }
     }
   });
   bulkInput?.addEventListener("input", () => {
@@ -6013,9 +6042,14 @@ const initSupplierPortal = () => {
       return;
     }
     button.disabled = true;
-    if (bulkStatus) bulkStatus.textContent = action === "validate" ? "CSV serverdə yoxlanılır..." : "Məhsullar Neon bazasında yenilənir...";
+    if (bulkStatus) bulkStatus.textContent = action === "validate" ? "CSV/JSON serverdə yoxlanılır..." : "Məhsullar Neon bazasında yenilənir...";
     try {
-      const result = await window.ConstEraAPI.importInventory(bulkInput?.value || "", action);
+      const result = await window.ConstEraAPI.importInventory(
+        bulkInput?.value || "",
+        action,
+        "",
+        bulkFormat?.value || "auto"
+      );
       if (action === "validate") {
         bulkInventoryPreview = result.data.preview || [];
         renderBulkInventoryPreview();
@@ -6669,6 +6703,7 @@ const renderCheckout = () => {
   const status = document.querySelector("[data-checkout-status]");
   const history = document.querySelector("[data-customer-orders]");
   const cardOption = form?.querySelector("[data-payment-card]");
+  const bankOption = form?.querySelector("[data-payment-bank]");
   const approvalFields = form?.querySelector("[data-procurement-fields]");
   if (!itemsContainer || !summary || !form) return;
   if (getCart().length) {
@@ -6683,6 +6718,7 @@ const renderCheckout = () => {
   const productById = new Map((marketplace.products || []).map((product) => [product.id, product]));
   let latestDeliveryQuote = null;
   let deliveryQuoteTimer = 0;
+  let bankTransferReady = false;
   const setStatus = (message, type = "info") => {
     if (!status) return;
     status.textContent = message;
@@ -6831,16 +6867,28 @@ const renderCheckout = () => {
   };
 
   const loadPaymentReadiness = async () => {
-    if (!cardOption || !window.ConstEraAPI?.integrationReadiness) return;
+    if ((!cardOption && !bankOption) || !window.ConstEraAPI?.integrationReadiness) return;
     try {
       const result = await window.ConstEraAPI.integrationReadiness();
-      const ready = Boolean(result.data?.readiness?.payment);
-      cardOption.disabled = !ready;
-      cardOption.textContent = ready
-        ? "Kartla təhlükəsiz onlayn ödəniş"
-        : "Kartla ödəniş (provayder qoşulmayıb)";
+      const cardReady = Boolean(result.data?.readiness?.payment);
+      bankTransferReady = Boolean(result.data?.readiness?.bankTransfer);
+      if (cardOption) {
+        cardOption.disabled = !cardReady;
+        cardOption.textContent = cardReady
+          ? "Kartla təhlükəsiz onlayn ödəniş"
+          : "Kartla ödəniş (provayder qoşulmayıb)";
+      }
+      if (bankOption) {
+        bankOption.disabled = !bankTransferReady;
+        bankOption.textContent = bankTransferReady
+          ? "Bank köçürməsi"
+          : "Bank köçürməsi (rekvizitlər qurulmayıb)";
+      }
+      if (form.elements.paymentMethod.selectedOptions[0]?.disabled) form.elements.paymentMethod.value = "invoice";
     } catch {
-      cardOption.disabled = true;
+      if (cardOption) cardOption.disabled = true;
+      if (bankOption) bankOption.disabled = true;
+      bankTransferReady = false;
     }
   };
 
@@ -6891,6 +6939,17 @@ const renderCheckout = () => {
       const session = await window.ConstEraAPI.session().catch(() => ({ user: null }));
       if (!session.user) {
         setStatus("Kartla ödəniş üçün əvvəl müştəri hesabına daxil ol.", "warning");
+        return;
+      }
+    }
+    if (requestedPayment === "bank_transfer") {
+      if (!bankTransferReady) {
+        setStatus("Bank köçürməsi rekvizitləri hələ qurulmayıb.", "warning");
+        return;
+      }
+      const session = await window.ConstEraAPI.session().catch(() => ({ user: null }));
+      if (!session.user) {
+        setStatus("Bank köçürməsi təsdiqini izləmək üçün əvvəl müştəri hesabına daxil ol.", "warning");
         return;
       }
     }

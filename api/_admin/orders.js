@@ -72,6 +72,8 @@ export default withApiErrors(async (req, res) => {
         order.reservations = order.reservations.filter((item) => visibleIds.has(item.orderItemId));
         order.purchaseOrders = order.purchaseOrders.filter((item) => visibleSupplierIds.has(item.supplierId));
         order.documents = [];
+        order.payments = [];
+        order.invoices = [];
         order.procurement = null;
       }
       return sendJson(res, 200, { ok: true, data: order });

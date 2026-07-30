@@ -126,6 +126,33 @@
               <p class="admin-import-status" data-order-procurement-status role="status" aria-live="polite"></p>
             </section>
 
+            <section class="admin-v2-section" data-order-payment-panel>
+              <div class="admin-v2-section-heading">
+                <h2>Ödəniş və qaimə</h2>
+                <span class="data-badge" data-order-payment-count>0 əməliyyat</span>
+              </div>
+              <div class="order-history" data-order-bank-instructions></div>
+              <form class="admin-form" data-order-bank-form hidden>
+                <div class="admin-form-grid">
+                  <label class="admin-field"><span>Ödəyicinin adı</span><input name="payerName" maxlength="200" /></label>
+                  <label class="admin-field"><span>Bank əməliyyatı referansı</span><input name="reference" minlength="4" maxlength="160" required /></label>
+                  <label class="admin-field"><span>Ödəniş tarixi</span><input name="paidAt" type="datetime-local" /></label>
+                </div>
+                <div class="admin-actions"><button class="button button-secondary" type="submit">Köçürməni yoxlamaya göndər</button></div>
+              </form>
+              <div class="order-history" data-order-payments></div>
+              <div class="order-history" data-order-invoices></div>
+              <form class="admin-form" data-order-manual-invoice-form hidden>
+                <div class="admin-form-grid">
+                  <label class="admin-field"><span>Qaimə nömrəsi</span><input name="reference" minlength="3" maxlength="200" required /></label>
+                  <label class="admin-field admin-field-wide"><span>Qaimə sənədi URL-i</span><input name="documentUrl" type="url" placeholder="https://..." required /></label>
+                  <label class="admin-field admin-field-wide"><span>Qeyd</span><input name="note" maxlength="500" /></label>
+                </div>
+                <div class="admin-actions"><button class="button button-outline" type="submit">Hazır qaiməni əlavə et</button></div>
+              </form>
+              <p class="admin-import-status" data-order-payment-status role="status" aria-live="polite"></p>
+            </section>
+
             <section class="admin-v2-section" data-order-admin-panel hidden>
               <div class="admin-v2-section-heading"><h2>Əməliyyat məlumatları</h2></div>
               <form class="admin-form" data-order-admin-form>

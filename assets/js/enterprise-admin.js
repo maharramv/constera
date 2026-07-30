@@ -42,7 +42,7 @@
     const readiness = integrations.readiness || {};
     const stages = analytics.funnel?.stages || [];
     const integrationNames = {
-      payment: "Ödəniş", electronicInvoice: "Elektron qaimə", aiEstimate: "AI smeta",
+      payment: "Kart ödənişi", bankTransfer: "Bank köçürməsi", electronicInvoice: "Elektron qaimə", aiEstimate: "AI smeta",
       email: "E-poçt", whatsapp: "WhatsApp"
     };
     const funnelNames = {

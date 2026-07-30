@@ -4,7 +4,7 @@ import { isIP } from "node:net";
 import { query } from "./db.js";
 
 const structuralIssueTypes = [
-  "missing_image", "invalid_image_url", "missing_source", "invalid_source_url",
+  "missing_image", "missing_licensed_media", "invalid_image_url", "missing_source", "invalid_source_url",
   "missing_specs", "missing_brand", "missing_category", "stale_price",
   "expired_price", "unknown_stock", "duplicate_name", "invalid_offer_price",
   "offer_missing_source", "offer_stale_price", "offer_unknown_stock"
@@ -134,6 +134,15 @@ const buildStructuralIssues = (products, offers) => {
     const duplicateKey = `${String(product.name || "").trim().toLowerCase()}::${String(product.brand || "").trim().toLowerCase()}`;
     if (!product.image_url) issues.push(issue("product", product.id, "missing_image", "high", "Real məhsul fotosu yoxdur."));
     else if (!/^(?:\/|assets\/|https:\/\/)/i.test(product.image_url)) issues.push(issue("product", product.id, "invalid_image_url", "high", "Şəkil URL-i düzgün deyil."));
+    if (!product.has_licensed_media) {
+      issues.push(issue(
+        "product",
+        product.id,
+        "missing_licensed_media",
+        "high",
+        "Şəkil üçün sahiblik, təchizatçı icazəsi və ya rəsmi/lisenziyalı media qeydi yoxdur."
+      ));
+    }
     if (!product.source_url) issues.push(issue("product", product.id, "missing_source", "high", "Məhsul mənbəsi göstərilməyib."));
     else if (!/^https:\/\//i.test(product.source_url)) issues.push(issue("product", product.id, "invalid_source_url", "high", "Mənbə HTTPS deyil."));
     if (specsCount < 2) issues.push(issue("product", product.id, "missing_specs", "medium", "Texniki xüsusiyyətlər kifayət deyil."));
@@ -171,13 +180,24 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
   try {
     const [products, offers] = await Promise.all([
       query(
-        `SELECT id, sku, name, brand, category_id, specs, image_url, source_url,
-                price_status, price_verified_at, stock_quantity, availability, updated_at
-           FROM products
-          WHERE status = 'active'
-            AND lower(trim(coalesce(brand, ''))) <> 'constera sorğu'
-            AND lower(name) NOT LIKE '%məhsul qrupu%'
-            AND upper(sku) NOT LIKE '%RFQ%'`
+        `SELECT product.id, product.sku, product.name, product.brand, product.category_id,
+                product.specs, product.image_url, product.source_url, product.price_status,
+                product.price_verified_at, product.stock_quantity, product.availability,
+                product.updated_at,
+                EXISTS (
+                  SELECT 1
+                    FROM media_assets media
+                   WHERE media.entity_type = 'product'
+                     AND media.entity_id = product.id
+                     AND media.status = 'active'
+                     AND media.content_type LIKE 'image/%'
+                     AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                ) AS has_licensed_media
+           FROM products product
+          WHERE product.status = 'active'
+            AND lower(trim(coalesce(product.brand, ''))) <> 'constera sorğu'
+            AND lower(product.name) NOT LIKE '%məhsul qrupu%'
+            AND upper(product.sku) NOT LIKE '%RFQ%'`
       ),
       query(
         `SELECT id, product_id, unit_price, price_status, price_verified_at,

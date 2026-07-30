@@ -71,3 +71,32 @@ test("müqavilə və backup yalnız real təsdiqlə production-a keçir", () => 
   assert.match(backup, /BACKUP_BLOB_READ_WRITE_TOKEN/);
   assert.match(env, /BACKUP_BLOB_READ_WRITE_TOKEN=/);
 });
+
+test("rəsmi media, CSV/JSON inventar və bank köçürməsi idarə olunan axınla işləyir", () => {
+  const media = read("api/_admin/media.js");
+  const quality = read("api/_lib/catalog-quality.js");
+  const inventory = read("api/_admin/inventory.js");
+  const integrations = read("api/_admin/integrations.js");
+  const orderLifecycle = read("api/_lib/order-lifecycle.js");
+  const admin = read("admin.html");
+  const supplier = read("supplier-portal.html");
+  const order = read("order-detail.html");
+  const env = read(".env.example");
+
+  assert.match(media, /register-external/);
+  assert.match(media, /validatePublicUrl/);
+  assert.match(media, /provider !== "external"/);
+  assert.match(quality, /missing_licensed_media/);
+  assert.match(inventory, /parseInventorySource/);
+  assert.match(inventory, /\["auto", "csv", "json"\]/);
+  assert.match(integrations, /submit-bank-transfer/);
+  assert.match(integrations, /review-bank-transfer/);
+  assert.match(integrations, /register-invoice/);
+  assert.match(orderLifecycle, /payments: paymentRows\.map/);
+  assert.match(orderLifecycle, /invoices: invoiceRows\.map/);
+  assert.match(admin, /data-admin-v2-external-media-form/);
+  assert.match(supplier, /data-inventory-bulk-file/);
+  assert.match(order, /data-order-bank-form/);
+  assert.match(order, /data-order-manual-invoice-form/);
+  assert.match(env, /BANK_TRANSFER_IBAN=/);
+});

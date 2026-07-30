@@ -29,6 +29,10 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM inventory_reservations WHERE status = 'shortage') AS shortage_reservations,
     (SELECT count(*)::int FROM crm_leads) AS crm_leads,
     (SELECT count(*)::int FROM rental_bookings) AS rental_bookings,
+    (SELECT count(*)::int FROM payment_transactions) AS payment_transactions,
+    (SELECT count(*)::int FROM payment_transactions
+      WHERE provider = 'bank_transfer' AND status = 'pending') AS pending_bank_transfers,
+    (SELECT count(*)::int FROM electronic_invoices WHERE status = 'issued') AS issued_invoices,
     (SELECT count(*)::int FROM supplier_applications WHERE status = 'pending') AS pending_supplier_applications,
     (SELECT count(*)::int FROM price_review_requests WHERE status = 'pending') AS pending_price_reviews,
     (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users,
@@ -50,6 +54,9 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM security_events) AS security_events,
     (SELECT count(*)::int FROM backup_verifications) AS backup_verifications,
     (SELECT count(*)::int FROM media_assets WHERE status = 'active' AND is_primary = true) AS primary_media_assets,
+    (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active' AND content_type LIKE 'image/%'
+        AND license_type IN ('own', 'supplier', 'official', 'licensed')) AS licensed_media_assets,
     (SELECT count(*)::int FROM web_push_subscriptions WHERE status = 'active') AS active_push_subscriptions
 `);
 
@@ -117,6 +124,14 @@ const [integrity] = await query(`
       ), 0)) AS inventory_reservation_mismatch,
     (SELECT count(*)::int FROM electronic_invoices
       WHERE status = 'issued' AND NULLIF(document_url, '') IS NULL) AS issued_invoices_without_document,
+    (SELECT count(*)::int FROM payment_transactions transaction
+      JOIN orders orders ON orders.id = transaction.order_id
+      WHERE transaction.provider = 'bank_transfer'
+        AND (
+          NULLIF(transaction.payload->'submission'->>'reference', '') IS NULL
+          OR (transaction.status = 'pending' AND orders.payment_status <> 'awaiting')
+          OR (transaction.status = 'paid' AND orders.payment_status <> 'paid')
+        )) AS invalid_bank_transfer_state,
     (SELECT count(*)::int FROM order_documents document
       JOIN orders o ON o.id = document.order_id
       WHERE document.document_type = 'proforma_invoice'
@@ -336,6 +351,13 @@ const [integrity] = await query(`
       WHERE status = 'active'
         AND license_type <> 'own'
         AND NULLIF(source_url, '') IS NULL) AS sourced_media_without_source,
+    (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active' AND provider = 'external'
+        AND (
+          url !~ '^https://'
+          OR license_type NOT IN ('own', 'supplier', 'official', 'licensed')
+          OR NULLIF(source_url, '') IS NULL
+        )) AS invalid_external_media,
     (SELECT count(*)::int FROM backup_verifications
       WHERE status = 'verified'
         AND (schema_migrations <> 23 OR NULLIF(checksum_sha256, '') IS NULL)

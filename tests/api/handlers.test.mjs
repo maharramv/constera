@@ -117,6 +117,10 @@ test("provider hazırlığı açarsız rejimdə açıq və təhlükəsiz cavab v
   const keys = [
     "PAYMENT_WEBHOOK_URL",
     "PAYMENT_WEBHOOK_SECRET",
+    "BANK_TRANSFER_ACCOUNT_NAME",
+    "BANK_TRANSFER_BANK_NAME",
+    "BANK_TRANSFER_IBAN",
+    "BANK_TRANSFER_TAX_ID",
     "EINVOICE_WEBHOOK_URL",
     "EINVOICE_WEBHOOK_SECRET",
     "AI_ESTIMATE_WEBHOOK_URL",
@@ -133,6 +137,7 @@ test("provider hazırlığı açarsız rejimdə açıq və təhlükəsiz cavab v
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.payload.data.readiness, {
       payment: false,
+      bankTransfer: false,
       electronicInvoice: false,
       aiEstimate: false,
       email: false,

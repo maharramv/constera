@@ -1,13 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import { del, put } from "@vercel/blob";
 import { requireRole } from "../_lib/auth.js";
+import { validatePublicUrl } from "../_lib/catalog-quality.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { oneOf, parseLimit, text } from "../_lib/validation.js";
 
 const entityTypes = ["product", "supplier", "service", "package", "rental", "general"];
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"]);
+const externalImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const licenseTypes = ["own", "supplier", "official", "licensed", "unspecified"];
+const externalLicenseTypes = ["own", "supplier", "official", "licensed"];
 
 export const hasExpectedSignature = (buffer, contentType) => {
   if (contentType === "image/jpeg") return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
@@ -35,6 +38,7 @@ const mapMedia = (row) => ({
   filename: row.filename,
   pathname: row.pathname,
   url: row.url,
+  provider: row.provider,
   contentType: row.content_type,
   sizeBytes: row.size_bytes,
   altText: row.alt_text || "",
@@ -63,6 +67,130 @@ const optionalHttpsUrl = (value) => {
   } catch {
     throw new ApiError(400, "invalid_media_source", "Media mənbəyi təhlükəsiz HTTPS ünvanı olmalıdır.");
   }
+};
+
+const requiredHttpsUrl = (value, field, code = "invalid_media_source") => {
+  const source = text(value, { field, required: true, max: 2_000 });
+  try {
+    const url = new URL(source);
+    if (url.protocol !== "https:" || url.username || url.password) throw new Error();
+    return url.toString();
+  } catch {
+    throw new ApiError(400, code, `${field} təhlükəsiz HTTPS ünvanı olmalıdır.`);
+  }
+};
+
+export const validateExternalMediaLicense = ({ sourceUrl, licenseType, licenseNote }) => {
+  const normalizedSourceUrl = requiredHttpsUrl(sourceUrl, "Media mənbəyi");
+  const requestedLicenseType = text(licenseType, {
+    field: "İstifadə hüququ",
+    required: true,
+    max: 40
+  });
+  const normalizedLicenseType = oneOf(
+    requestedLicenseType,
+    externalLicenseTypes,
+    "official",
+    "İstifadə hüququ"
+  );
+  const normalizedLicenseNote = text(licenseNote, { max: 1_000 });
+  if (["supplier", "licensed"].includes(normalizedLicenseType) && !normalizedLicenseNote) {
+    throw new ApiError(
+      400,
+      "media_license_note_required",
+      "Təchizatçı və lisenziyalı media üçün icazə və ya müqavilə qeydi tələb olunur."
+    );
+  }
+  return {
+    sourceUrl: normalizedSourceUrl,
+    licenseType: normalizedLicenseType,
+    licenseNote: normalizedLicenseNote || null
+  };
+};
+
+const redirectStatuses = new Set([301, 302, 303, 307, 308]);
+
+export const probeExternalImage = async (value) => {
+  let currentUrl = requiredHttpsUrl(value, "Şəkil URL-i", "invalid_external_media_url");
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
+    const publicUrl = await validatePublicUrl(currentUrl);
+    if (!publicUrl.ok) {
+      throw new ApiError(400, "unsafe_external_media_url", `Şəkil URL-i qəbul edilmədi: ${publicUrl.reason}.`);
+    }
+    let response;
+    try {
+      response = await fetch(publicUrl.url, {
+        method: "GET",
+        redirect: "manual",
+        signal: AbortSignal.timeout(8_000),
+        headers: {
+          Accept: "image/avif,image/webp,image/png,image/jpeg",
+          Range: "bytes=0-127",
+          "User-Agent": "ConstEra-Media-Validator/1.0"
+        }
+      });
+    } catch {
+      throw new ApiError(422, "external_media_unreachable", "Şəkil ünvanına təhlükəsiz bağlantı qurulmadı.");
+    }
+    if (redirectStatuses.has(response.status)) {
+      const location = response.headers.get("location");
+      await response.body?.cancel().catch(() => null);
+      if (!location || redirectCount === 3) {
+        throw new ApiError(422, "external_media_redirect", "Şəkil URL-i həddindən artıq və ya etibarsız yönləndirmə qaytardı.");
+      }
+      currentUrl = new URL(location, publicUrl.url).toString();
+      continue;
+    }
+    if (!(response.ok || response.status === 206)) {
+      await response.body?.cancel().catch(() => null);
+      throw new ApiError(422, "external_media_unreachable", `Şəkil mənbəyi HTTP ${response.status} qaytardı.`);
+    }
+    const contentType = String(response.headers.get("content-type") || "")
+      .split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+    if (!externalImageTypes.has(contentType)) {
+      await response.body?.cancel().catch(() => null);
+      throw new ApiError(422, "invalid_external_media_type", "Xarici media JPEG, PNG, WebP və ya AVIF şəkli olmalıdır.");
+    }
+    const contentRange = String(response.headers.get("content-range") || "");
+    const rangeTotal = Number(contentRange.match(/\/(\d+)$/)?.[1] || 0);
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    const declaredSize = rangeTotal || contentLength;
+    if (Number.isFinite(declaredSize) && declaredSize > 15_000_000) {
+      await response.body?.cancel().catch(() => null);
+      throw new ApiError(413, "external_media_too_large", "Xarici şəkil maksimum 15 MB ola bilər.");
+    }
+    const reader = response.body?.getReader();
+    const chunks = [];
+    let collected = 0;
+    while (reader && collected < 64 && chunks.length < 4) {
+      const chunk = await reader.read().catch(() => ({ value: null, done: true }));
+      if (!chunk.value) break;
+      chunks.push(Buffer.from(chunk.value));
+      collected += chunk.value.length;
+      if (chunk.done) break;
+    }
+    await reader?.cancel().catch(() => null);
+    const signature = chunks.length ? Buffer.concat(chunks).subarray(0, 128) : Buffer.alloc(0);
+    if (!signature.length || !hasExpectedSignature(signature, contentType)) {
+      throw new ApiError(422, "invalid_external_media_signature", "Şəkil məzmunu elan edilən formata uyğun deyil.");
+    }
+    let pathName = publicUrl.url.pathname.split("/").pop() || "external-image";
+    try {
+      pathName = decodeURIComponent(pathName);
+    } catch {
+      pathName = "external-image";
+    }
+    pathName = pathName.replace(/[?#].*$/, "");
+    return {
+      url: publicUrl.url.toString(),
+      contentType,
+      sizeBytes: Number.isFinite(declaredSize) && declaredSize > 0 ? declaredSize : 0,
+      filename: safeFilename(pathName.includes(".") ? pathName : `external-image.${contentType.split("/")[1]}`)
+    };
+  }
+  throw new ApiError(422, "external_media_redirect", "Şəkil URL-i yoxlanılmadı.");
 };
 
 const assertSupplierMediaScope = async (user, entityType, entityId) => {
@@ -151,16 +279,18 @@ export default withApiErrors(async (req, res) => {
   const body = await readJson(req, 4_200_000);
 
   if (req.method === "DELETE") {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      throw new ApiError(503, "blob_not_configured", "Vercel Blob hələ layihəyə qoşulmayıb.");
-    }
     const id = text(body.id || req.query.id, { field: "Media ID-si", required: true, max: 160 });
     const rows = await query("SELECT * FROM media_assets WHERE id = $1 AND status = 'active' LIMIT 1", [id]);
     const item = rows[0];
     if (!item) throw new ApiError(404, "media_not_found", "Media faylı tapılmadı.");
     if (!privileged && item.owner_id !== user.id) throw new ApiError(403, "permission_denied", "Bu faylı silmək icazəsi yoxdur.");
     await assertSupplierMediaScope(user, item.entity_type, item.entity_id);
-    await del(item.url);
+    if (item.provider !== "external") {
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        throw new ApiError(503, "blob_not_configured", "Vercel Blob hələ layihəyə qoşulmayıb.");
+      }
+      await del(item.url);
+    }
     await query("UPDATE media_assets SET status = 'archived', is_primary = false, updated_at = now() WHERE id = $1", [id]);
     if (item.is_primary && item.entity_id) {
       const replacement = (await query(
@@ -195,6 +325,56 @@ export default withApiErrors(async (req, res) => {
     return sendJson(res, 200, { ok: true, data: { id, status: "archived" } });
   }
 
+  if (req.method === "POST" && body.action === "register-external") {
+    const entityType = oneOf(body.entityType, entityTypes, "product", "Media tipi");
+    const entityIdValue = text(body.entityId, { field: "Qeyd ID-si", required: true, max: 160 });
+    await assertSupplierMediaScope(user, entityType, entityIdValue);
+    const rights = validateExternalMediaLicense(body);
+    const publicSource = await validatePublicUrl(rights.sourceUrl);
+    if (!publicSource.ok) {
+      throw new ApiError(400, "unsafe_media_source", `Media mənbəyi qəbul edilmədi: ${publicSource.reason}.`);
+    }
+    const media = await probeExternalImage(body.url);
+    const duplicate = (await query(
+      `SELECT * FROM media_assets
+        WHERE url = $1 AND entity_type = $2
+          AND entity_id IS NOT DISTINCT FROM $3 AND status = 'active'
+        LIMIT 1`,
+      [media.url, entityType, entityIdValue]
+    ))[0];
+    if (duplicate) return sendJson(res, 200, { ok: true, data: mapMedia(duplicate), duplicate: true });
+    const id = `med-${randomUUID()}`;
+    const urlHash = createHash("sha256").update(media.url).digest("hex");
+    const rows = await query(
+      `INSERT INTO media_assets (
+         id, owner_id, entity_type, entity_id, filename, pathname, url,
+         content_type, size_bytes, provider, alt_text, source_url, license_type,
+         license_note, checksum_sha256, is_primary, updated_at
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, 'external', $10,
+         $11, $12, $13, NULL, false, now()
+       )
+       RETURNING *`,
+      [
+        id, user.id, entityType, entityIdValue, media.filename, `external:${urlHash}`, media.url,
+        media.contentType, media.sizeBytes, text(body.altText, { max: 240 }) || null,
+        rights.sourceUrl, rights.licenseType, rights.licenseNote
+      ]
+    );
+    if (body.isPrimary === true || String(body.isPrimary) === "true") {
+      await markPrimary({ id, entityType, entityId: entityIdValue, url: media.url });
+      rows[0].is_primary = true;
+    }
+    await recordAudit({
+      actorId: user.id,
+      action: "register_external",
+      entityType: "media",
+      entityId: id,
+      details: { entityType, entityId: entityIdValue, sourceUrl: rights.sourceUrl, licenseType: rights.licenseType }
+    });
+    return sendJson(res, 201, { ok: true, data: mapMedia(rows[0]) });
+  }
+
   if (req.method === "PATCH") {
     const id = text(body.id || req.query.id, { field: "Media ID-si", required: true, max: 160 });
     const current = (await query("SELECT * FROM media_assets WHERE id = $1 AND status = 'active' LIMIT 1", [id]))[0];
@@ -211,6 +391,10 @@ export default withApiErrors(async (req, res) => {
     if (shouldRemainPrimary && !current.content_type.startsWith("image/")) {
       throw new ApiError(400, "primary_media_must_be_image", "Yalnız şəkil əsas media seçilə bilər.");
     }
+    const licenseType = oneOf(body.licenseType ?? current.license_type, licenseTypes, "unspecified", "İstifadə hüququ");
+    if (current.provider === "external" && licenseType === "unspecified") {
+      throw new ApiError(400, "external_media_license_required", "Xarici media üçün istifadə hüququ təsdiqlənməlidir.");
+    }
     const rows = await query(
       `UPDATE media_assets
           SET entity_type = $2, entity_id = $3, alt_text = $4,
@@ -224,7 +408,7 @@ export default withApiErrors(async (req, res) => {
         entityIdValue,
         text(body.altText ?? current.alt_text, { max: 240 }) || null,
         optionalHttpsUrl(body.sourceUrl ?? current.source_url),
-        oneOf(body.licenseType ?? current.license_type, licenseTypes, "unspecified", "İstifadə hüququ"),
+        licenseType,
         text(body.licenseNote ?? current.license_note, { max: 1_000 }) || null
       ]
     );

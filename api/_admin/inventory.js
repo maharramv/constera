@@ -1,7 +1,7 @@
 import { requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
-import { matrixToObjects, parseCsv, readAliased } from "../_lib/imports.js";
+import { matrixToObjects, normalizeImportHeader, parseCsv, readAliased } from "../_lib/imports.js";
 import { reconcileShortageReservations } from "../_lib/order-operations.js";
 import { categoryPublicId, oneOf, parseLimit, parsePriceAmount, safeUrl, text } from "../_lib/validation.js";
 
@@ -32,6 +32,35 @@ const bulkAmount = (value, field, errors) => {
     return { provided: true, value: null };
   }
   return { provided: true, value: Number(normalized) };
+};
+
+export const parseInventorySource = (source, requestedFormat = "auto") => {
+  const format = requestedFormat === "auto"
+    ? (/^[\s\uFEFF]*[\[{]/.test(source) ? "json" : "csv")
+    : requestedFormat;
+  if (format === "csv") {
+    return {
+      format,
+      rowOffset: 2,
+      rows: matrixToObjects(parseCsv(source))
+    };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(String(source || "").replace(/^\uFEFF/, ""));
+  } catch {
+    throw new ApiError(400, "invalid_inventory_json", "JSON faylının strukturu düzgün deyil.");
+  }
+  const candidates = Array.isArray(parsed)
+    ? parsed
+    : ["products", "items", "rows", "data"].map((key) => parsed?.[key]).find(Array.isArray) || [];
+  const rows = candidates.filter((item) => item && typeof item === "object" && !Array.isArray(item)).map((item) =>
+    Object.entries(item).reduce((normalized, [key, value]) => {
+      normalized[normalizeImportHeader(key)] = value;
+      return normalized;
+    }, {})
+  );
+  return { format, rowOffset: 1, rows };
 };
 
 const supplierScope = async (user, requestedSupplierId = "") => {
@@ -143,10 +172,11 @@ const loadInventory = async (user, requestedSupplierId = "", limitValue = 500) =
 };
 
 const parseBulkInventory = async (body, supplier) => {
-  const csv = text(body.csv, { field: "CSV məlumatı", required: true, max: 180_000 });
-  const matrix = parseCsv(csv);
-  const sourceRows = matrixToObjects(matrix);
-  if (!sourceRows.length) throw new ApiError(400, "empty_inventory_import", "CSV-də məlumat sətri tapılmadı.");
+  const source = text(body.source ?? body.csv, { field: "CSV/JSON məlumatı", required: true, max: 180_000 });
+  const requestedFormat = oneOf(body.format, ["auto", "csv", "json"], "auto", "Fayl formatı");
+  const parsedSource = parseInventorySource(source, requestedFormat);
+  const sourceRows = parsedSource.rows;
+  if (!sourceRows.length) throw new ApiError(400, "empty_inventory_import", "CSV/JSON faylında məlumat sətri tapılmadı.");
   if (sourceRows.length > 1_000) throw new ApiError(413, "inventory_import_too_large", "Bir dəfəyə maksimum 1 000 SKU yenilənə bilər.");
 
   const values = [];
@@ -159,7 +189,7 @@ const parseBulkInventory = async (body, supplier) => {
   const productsBySku = new Map(products.map((product) => [product.sku.trim().toLocaleLowerCase("az-AZ"), product]));
   const seen = new Set();
   const preview = sourceRows.map((row, index) => {
-    const rowNumber = index + 2;
+    const rowNumber = index + parsedSource.rowOffset;
     const sku = text(readAliased(row, "sku"), { max: 120 });
     const skuKey = sku.toLocaleLowerCase("az-AZ");
     const product = productsBySku.get(skuKey);
@@ -218,6 +248,7 @@ const parseBulkInventory = async (body, supplier) => {
     };
   });
   return {
+    format: parsedSource.format,
     total: preview.length,
     valid: preview.filter((item) => item.valid).length,
     errors: preview.filter((item) => !item.valid).length,

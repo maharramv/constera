@@ -115,9 +115,9 @@
       method: "PATCH",
       body: JSON.stringify({ items, supplierId })
     }),
-    importInventory: (csv, action = "validate", supplierId = "") => request("/api/inventory", {
+    importInventory: (source, action = "validate", supplierId = "", format = "auto") => request("/api/inventory", {
       method: "POST",
-      body: JSON.stringify({ csv, action, supplierId })
+      body: JSON.stringify({ source, action, supplierId, format })
     }),
     saveSupplier: (data, update = false) => request("/api/suppliers", {
       method: update ? "PATCH" : "POST",
@@ -176,6 +176,10 @@
       return request(`/api/media?${params}`);
     },
     uploadMedia: (data) => request("/api/media", { method: "POST", body: JSON.stringify(data) }),
+    registerExternalMedia: (data) => request("/api/media", {
+      method: "POST",
+      body: JSON.stringify({ action: "register-external", ...data })
+    }),
     updateMedia: (data) => request("/api/media", { method: "PATCH", body: JSON.stringify(data) }),
     deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
     notifications: () => request("/api/notifications?limit=200"),
@@ -236,9 +240,21 @@
       method: "POST",
       body: JSON.stringify({ action: "create-payment", orderId, idempotencyKey })
     }),
+    submitBankTransfer: (orderId, data) => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "submit-bank-transfer", orderId, ...data })
+    }),
+    reviewBankTransfer: (transactionId, decision, note = "") => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "review-bank-transfer", transactionId, decision, note })
+    }),
     issueElectronicInvoice: (orderId) => request("/api/integrations", {
       method: "POST",
       body: JSON.stringify({ action: "issue-invoice", orderId })
+    }),
+    registerInvoice: (orderId, documentUrl, reference, note = "") => request("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "register-invoice", orderId, documentUrl, reference, note })
     }),
     aiEstimate: (input, deterministicEstimate) => request("/api/integrations", {
       method: "POST",

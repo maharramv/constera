@@ -13,6 +13,31 @@ const mapDocument = (row) => ({
   issuedAt: row.issued_at
 });
 
+const mapPayment = (row) => ({
+  id: row.id,
+  provider: row.provider,
+  status: row.status,
+  amount: Number(row.amount),
+  currency: row.currency,
+  reference: row.provider === "bank_transfer" ? text(row.payload?.submission?.reference, { max: 160 }) : "",
+  payerName: row.provider === "bank_transfer" ? text(row.payload?.submission?.payerName, { max: 200 }) : "",
+  paidAt: row.provider === "bank_transfer" ? row.payload?.submission?.paidAt || null : null,
+  reviewNote: row.provider === "bank_transfer" ? text(row.payload?.review?.note, { max: 500 }) : "",
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+const mapInvoice = (row) => ({
+  id: row.id,
+  provider: row.provider,
+  externalId: row.external_id || "",
+  status: row.status,
+  documentUrl: row.document_url || "",
+  issuedAt: row.issued_at,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
 export const mapOrder = (row) => ({
   id: row.id,
   orderNumber: Number(row.order_number),
@@ -48,6 +73,8 @@ export const mapOrder = (row) => ({
   deliveryQuote: row.deliveryQuote || null,
   procurement: row.procurement || null,
   purchaseOrders: row.purchaseOrders || [],
+  payments: row.payments || [],
+  invoices: row.invoices || [],
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -82,7 +109,16 @@ export const readOrder = async (id) => {
 export const readOrderDetails = async (id) => {
   const order = await readOrder(id);
   if (!order) return null;
-  const [historyRows, documentRows, operations, quoteRows, procurement, purchaseOrders] = await Promise.all([
+  const [
+    historyRows,
+    documentRows,
+    operations,
+    quoteRows,
+    procurement,
+    purchaseOrders,
+    paymentRows,
+    invoiceRows
+  ] = await Promise.all([
     query(
       `SELECT history.*, actor.name AS actor_name
          FROM order_status_history history
@@ -108,7 +144,21 @@ export const readOrderDetails = async (id) => {
       [id]
     ),
     readProcurementRequest(id),
-    readSupplierPurchaseOrders(id)
+    readSupplierPurchaseOrders(id),
+    query(
+      `SELECT id, provider, status, amount, currency, payload, created_at, updated_at
+         FROM payment_transactions
+        WHERE order_id = $1
+        ORDER BY created_at DESC`,
+      [id]
+    ),
+    query(
+      `SELECT id, provider, external_id, status, document_url, issued_at, created_at, updated_at
+         FROM electronic_invoices
+        WHERE order_id = $1
+        ORDER BY created_at DESC`,
+      [id]
+    )
   ]);
   return {
     ...order,
@@ -134,6 +184,8 @@ export const readOrderDetails = async (id) => {
     } : null,
     procurement,
     purchaseOrders,
+    payments: paymentRows.map(mapPayment),
+    invoices: invoiceRows.map(mapInvoice),
     history: historyRows.map((item) => ({
       id: item.id,
       actorName: item.actor_name || "Sistem",

@@ -1,20 +1,21 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { priceEstimateWithCatalog } from "../_lib/estimate-catalog.js";
 import { parseEstimateDocument } from "../_lib/estimate-import.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
-import { deliverNotificationNow } from "../_lib/notifications.js";
+import { deliverNotificationNow, queueNotification } from "../_lib/notifications.js";
 import { readOrderDetails, recordOrderHistory } from "../_lib/order-lifecycle.js";
 import {
+  bankTransferInstructions,
   createPaymentCheckout,
   generateProviderEstimate,
   issueElectronicInvoice,
   providerConfigurationStatus,
   providerReadiness
 } from "../_lib/provider-adapters.js";
-import { email, oneOf, text } from "../_lib/validation.js";
+import { email, oneOf, safeUrl, text } from "../_lib/validation.js";
 
 const privilegedRoles = ["super_admin", "admin", "sales"];
 
@@ -65,6 +66,58 @@ const mapInvoice = (row) => ({
   updatedAt: row.updated_at
 });
 
+const mapPayment = (row) => ({
+  id: row.id,
+  orderId: row.order_id,
+  provider: row.provider,
+  externalId: row.external_id || "",
+  status: row.status,
+  amount: Number(row.amount),
+  currency: row.currency,
+  reference: text(row.payload?.submission?.reference, { max: 160 }),
+  payerName: text(row.payload?.submission?.payerName, { max: 200 }),
+  paidAt: row.payload?.submission?.paidAt || null,
+  reviewNote: text(row.payload?.review?.note, { max: 500 }),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+const notifyPrivilegedUsers = async ({ subject, body, templateKey, payload }) => {
+  const users = await query(
+    "SELECT id FROM users WHERE status = 'active' AND role IN ('super_admin', 'admin', 'sales')"
+  );
+  await Promise.all(users.map((item) => queueNotification({
+    userId: item.id,
+    channel: "in_app",
+    subject,
+    body,
+    templateKey,
+    payload
+  })));
+};
+
+const assertPayableOrder = (order, label) => {
+  if (order.status === "cancelled" || order.paymentStatus === "paid") {
+    throw new ApiError(409, "order_not_payable", `Bu sifariş üçün ${label} qəbul edilmir.`);
+  }
+  if (order.approvalStatus !== "not_required" && order.approvalStatus !== "approved") {
+    throw new ApiError(409, "procurement_approval_required", `${label} əvvəl satınalma təsdiqi tamamlanmalıdır.`);
+  }
+  if (order.hasPendingPrice || order.totalAmount === null || order.totalAmount <= 0) {
+    throw new ApiError(409, "order_price_pending", `${label} əvvəl sifarişin yekun məbləği təsdiqlənməlidir.`);
+  }
+};
+
+const normalizedPaidAt = (value) => {
+  const source = text(value, { max: 80 });
+  if (!source) return null;
+  const timestamp = Date.parse(source);
+  if (!Number.isFinite(timestamp) || timestamp > Date.now() + 86_400_000 || timestamp < Date.now() - 366 * 86_400_000) {
+    throw new ApiError(400, "invalid_payment_date", "Ödəniş tarixi düzgün deyil.");
+  }
+  return new Date(timestamp).toISOString();
+};
+
 const paymentTransitionAllowed = (current, next) => (
   current === next
   || (["pending", "requires_action"].includes(current) && ["paid", "failed", "cancelled"].includes(next))
@@ -79,7 +132,8 @@ export default withApiErrors(async (req, res) => {
         ok: true,
         data: {
           readiness: providerReadiness(),
-          configuration: providerConfigurationStatus()
+          configuration: providerConfigurationStatus(),
+          bankTransfer: bankTransferInstructions()
         }
       });
     }
@@ -261,6 +315,222 @@ export default withApiErrors(async (req, res) => {
     });
   }
 
+  if (action === "submit-bank-transfer") {
+    const user = await requireRole(req);
+    const orderId = text(body.orderId, { field: "Sifariş ID-si", required: true, max: 160 });
+    const order = await readOrderDetails(orderId);
+    if (!order) throw new ApiError(404, "order_not_found", "Sifariş tapılmadı.");
+    if (!privilegedRoles.includes(user.role) && order.customerId !== user.id) {
+      throw new ApiError(403, "forbidden", "Bu sifariş üçün bank köçürməsi təqdim etmək icazəsi yoxdur.");
+    }
+    assertPayableOrder(order, "Bank köçürməsi qeydindən");
+    if (!providerReadiness().bankTransfer) {
+      throw new ApiError(503, "bank_transfer_not_configured", "Bank köçürməsi rekvizitləri hələ qurulmayıb.");
+    }
+    const reference = text(body.reference, {
+      field: "Bank əməliyyatı referansı",
+      required: true,
+      min: 4,
+      max: 160
+    });
+    const payerName = text(body.payerName, { max: 200 }) || order.companyName || order.contactName;
+    const paidAt = normalizedPaidAt(body.paidAt);
+    const idempotencyKey = `bank-${createHash("sha256")
+      .update(`${order.id}:${reference.toLocaleLowerCase("az-AZ")}`)
+      .digest("hex")
+      .slice(0, 40)}`;
+    const pendingForOrder = (await query(
+      `SELECT * FROM payment_transactions
+        WHERE order_id = $1 AND provider = 'bank_transfer' AND status = 'pending'
+        ORDER BY created_at DESC LIMIT 1`,
+      [order.id]
+    ))[0];
+    if (pendingForOrder && pendingForOrder.idempotency_key !== idempotencyKey) {
+      throw new ApiError(409, "bank_transfer_review_pending", "Bu sifariş üçün başqa bank köçürməsi artıq yoxlama gözləyir.");
+    }
+    const existing = (await query(
+      "SELECT * FROM payment_transactions WHERE order_id = $1 AND idempotency_key = $2 LIMIT 1",
+      [order.id, idempotencyKey]
+    ))[0];
+    if (existing?.status === "paid") {
+      return sendJson(res, 200, { ok: true, data: mapPayment(existing), duplicate: true });
+    }
+    const transactionId = existing?.id || `pay-${randomUUID()}`;
+    const submission = {
+      reference,
+      payerName,
+      paidAt,
+      submittedBy: user.id,
+      submittedAt: new Date().toISOString()
+    };
+    const rows = existing
+      ? await query(
+        `UPDATE payment_transactions
+            SET provider = 'bank_transfer', amount = $2, currency = $3, status = 'pending',
+                payload = jsonb_build_object('submission', $4::jsonb),
+                checkout_url = NULL, error_text = NULL, updated_at = now()
+          WHERE id = $1
+          RETURNING *`,
+        [transactionId, order.totalAmount, order.currency, JSON.stringify(submission)]
+      )
+      : await query(
+        `INSERT INTO payment_transactions (
+           id, order_id, provider, idempotency_key, amount, currency, status, payload
+         ) VALUES ($1, $2, 'bank_transfer', $3, $4, $5, 'pending', $6::jsonb)
+         RETURNING *`,
+        [transactionId, order.id, idempotencyKey, order.totalAmount, order.currency, JSON.stringify({ submission })]
+      );
+    await query(
+      "UPDATE orders SET payment_method = 'bank_transfer', payment_status = 'awaiting', updated_at = now() WHERE id = $1",
+      [order.id]
+    );
+    await recordOrderHistory({
+      order,
+      actorId: user.id,
+      status: order.status,
+      paymentStatus: "awaiting",
+      note: `Bank köçürməsi yoxlamaya təqdim edildi: ${reference}`
+    });
+    await recordAudit({
+      actorId: user.id,
+      action: "submit",
+      entityType: "bank_transfer",
+      entityId: transactionId,
+      details: { orderId: order.id, reference }
+    });
+    await notifyPrivilegedUsers({
+      subject: `Sifariş #${order.orderNumber}: bank köçürməsi`,
+      body: `${payerName} tərəfindən ${Number(order.totalAmount).toFixed(2)} ${order.currency} köçürmə yoxlamaya təqdim edildi.`,
+      templateKey: "bank_transfer_submitted",
+      payload: { orderId: order.id, transactionId }
+    });
+    return sendJson(res, existing ? 200 : 201, { ok: true, data: mapPayment(rows[0]) });
+  }
+
+  if (action === "review-bank-transfer") {
+    const user = await requireRole(req, privilegedRoles);
+    const transactionId = text(body.transactionId, { field: "Ödəniş ID-si", required: true, max: 160 });
+    const decision = oneOf(body.decision, ["approve", "reject"], "reject", "Qərar");
+    const note = text(body.note, { max: 500 });
+    if (decision === "reject" && !note) {
+      throw new ApiError(400, "review_note_required", "Rədd qərarı üçün səbəb yazılmalıdır.");
+    }
+    const transaction = await readTransaction(transactionId);
+    if (!transaction || transaction.provider !== "bank_transfer") {
+      throw new ApiError(404, "bank_transfer_not_found", "Bank köçürməsi qeydi tapılmadı.");
+    }
+    if (transaction.status !== "pending") {
+      throw new ApiError(409, "bank_transfer_already_reviewed", "Bank köçürməsi artıq yoxlanılıb.");
+    }
+    const order = await readOrderDetails(transaction.order_id);
+    const transactionStatus = decision === "approve" ? "paid" : "failed";
+    const paymentStatus = decision === "approve" ? "paid" : "failed";
+    const rows = await query(
+      `UPDATE payment_transactions
+          SET status = $2,
+              payload = payload || jsonb_build_object(
+                'review', jsonb_build_object(
+                  'decision', $3::text, 'note', $4::text,
+                  'reviewedBy', $5::text, 'reviewedAt', now()
+                )
+              ),
+              error_text = CASE WHEN $2 = 'failed' THEN NULLIF($4, '') ELSE NULL END,
+              updated_at = now()
+        WHERE id = $1 AND status = 'pending'
+        RETURNING *`,
+      [transactionId, transactionStatus, decision, note, user.id]
+    );
+    if (!rows[0]) throw new ApiError(409, "bank_transfer_already_reviewed", "Bank köçürməsi artıq başqa əməkdaş tərəfindən yoxlanılıb.");
+    await query("UPDATE orders SET payment_status = $2, updated_at = now() WHERE id = $1", [order.id, paymentStatus]);
+    await recordOrderHistory({
+      order,
+      actorId: user.id,
+      status: order.status,
+      paymentStatus,
+      note: decision === "approve" ? "Bank köçürməsi təsdiqləndi." : `Bank köçürməsi rədd edildi: ${note}`
+    });
+    await recordAudit({
+      actorId: user.id,
+      action: decision,
+      entityType: "bank_transfer",
+      entityId: transactionId,
+      details: { orderId: order.id, note }
+    });
+    await syncOrderLead(order.id);
+    if (order.customerId) {
+      await queueNotification({
+        userId: order.customerId,
+        channel: "in_app",
+        subject: `Sifariş #${order.orderNumber}: ödəniş`,
+        body: decision === "approve"
+          ? "Bank köçürməsi təsdiqləndi."
+          : `Bank köçürməsi təsdiqlənmədi: ${note}`,
+        templateKey: "bank_transfer_reviewed",
+        payload: { orderId: order.id, transactionId, decision }
+      });
+    }
+    return sendJson(res, 200, { ok: true, data: mapPayment(rows[0]) });
+  }
+
+  if (action === "register-invoice") {
+    const user = await requireRole(req, privilegedRoles);
+    const orderId = text(body.orderId, { field: "Sifariş ID-si", required: true, max: 160 });
+    const order = await readOrderDetails(orderId);
+    if (!order) throw new ApiError(404, "order_not_found", "Sifariş tapılmadı.");
+    if (order.hasPendingPrice || order.totalAmount === null) {
+      throw new ApiError(409, "order_price_pending", "Qaimə üçün yekun məbləğ təsdiqlənməlidir.");
+    }
+    const documentUrl = safeUrl(body.documentUrl, "Qaimə sənədi URL-i");
+    if (!documentUrl) throw new ApiError(400, "invoice_document_required", "Qaimə sənədinin HTTPS URL-i tələb olunur.");
+    const documentLocation = new URL(documentUrl);
+    if (documentLocation.username || documentLocation.password) {
+      throw new ApiError(400, "invalid_invoice_document", "Qaimə sənədi URL-ində giriş məlumatı ola bilməz.");
+    }
+    const reference = text(body.reference, { field: "Qaimə nömrəsi", required: true, min: 3, max: 200 });
+    const note = text(body.note, { max: 500 });
+    const current = (await query("SELECT * FROM electronic_invoices WHERE order_id = $1 LIMIT 1", [order.id]))[0];
+    if (current?.status === "issued" && current.document_url !== documentUrl) {
+      throw new ApiError(409, "invoice_already_issued", "Bu sifariş üçün qaimə artıq qeydə alınıb.");
+    }
+    const invoiceId = current?.id || `einv-${randomUUID()}`;
+    const payload = { registeredBy: user.id, note, registeredAt: new Date().toISOString() };
+    const rows = current
+      ? await query(
+        `UPDATE electronic_invoices
+            SET provider = 'manual', external_id = $2, document_url = $3,
+                payload = $4::jsonb, status = 'issued', issued_at = now(),
+                error_text = NULL, updated_at = now()
+          WHERE id = $1
+          RETURNING *`,
+        [invoiceId, reference, documentUrl, JSON.stringify(payload)]
+      )
+      : await query(
+        `INSERT INTO electronic_invoices (
+           id, order_id, provider, external_id, status, document_url, payload, issued_at
+         ) VALUES ($1, $2, 'manual', $3, 'issued', $4, $5::jsonb, now())
+         RETURNING *`,
+        [invoiceId, order.id, reference, documentUrl, JSON.stringify(payload)]
+      );
+    await recordAudit({
+      actorId: user.id,
+      action: "register",
+      entityType: "electronic_invoice",
+      entityId: invoiceId,
+      details: { orderId, reference }
+    });
+    if (order.customerId) {
+      await queueNotification({
+        userId: order.customerId,
+        channel: "in_app",
+        subject: `Sifariş #${order.orderNumber}: qaimə`,
+        body: `Qaimə ${reference} sifarişə əlavə edildi.`,
+        templateKey: "invoice_registered",
+        payload: { orderId, invoiceId }
+      });
+    }
+    return sendJson(res, current ? 200 : 201, { ok: true, data: mapInvoice(rows[0]) });
+  }
+
   if (action === "create-payment") {
     const user = await requireRole(req);
     const orderId = text(body.orderId, { field: "Sifariş ID-si", required: true, max: 160 });
@@ -269,15 +539,7 @@ export default withApiErrors(async (req, res) => {
     if (!privilegedRoles.includes(user.role) && order.customerId !== user.id) {
       throw new ApiError(403, "forbidden", "Bu sifariş üçün ödəniş yaratmaq icazəsi yoxdur.");
     }
-    if (order.status === "cancelled" || order.paymentStatus === "paid") {
-      throw new ApiError(409, "order_not_payable", "Bu sifariş üçün yeni ödəniş yaratmaq mümkün deyil.");
-    }
-    if (order.approvalStatus !== "not_required" && order.approvalStatus !== "approved") {
-      throw new ApiError(409, "procurement_approval_required", "Kart ödənişindən əvvəl satınalma təsdiqi tamamlanmalıdır.");
-    }
-    if (order.hasPendingPrice || order.totalAmount === null || order.totalAmount <= 0) {
-      throw new ApiError(409, "order_price_pending", "Kart ödənişindən əvvəl sifarişin yekun məbləği təsdiqlənməlidir.");
-    }
+    assertPayableOrder(order, "Kart ödənişindən");
     if (!providerReadiness().payment) throw new ApiError(503, "payment_not_configured", "Kart ödənişi provayderi hələ qoşulmayıb.");
     const idempotencyKey = text(body.idempotencyKey, { max: 160 }) || `order-${order.id}`;
     const existingRows = await query(
