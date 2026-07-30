@@ -32,7 +32,9 @@ test("bütün açıq kommersiya formaları versiyalanan hüquqi razılıq gönd�
 
 test("əlaqə forması CRM route-u və siyasət sübutu ilə serverə bağlıdır", () => {
   assert.match(read("api/admin.js"), /contact:\s*\(\) => import\("\.\/_admin\/contact\.js"\)/);
-  assert.match(read("vercel.json"), /"source": "\/api\/contact"/);
+  const vercel = JSON.parse(read("vercel.json"));
+  assert.ok(vercel.rewrites.some((route) =>
+    route.source === "/api/contact" && route.destination === "/api/admin?__route=contact"));
   assert.match(read("assets/js/production.js"), /contact:\s*\(data\) => request\("\/api\/contact"/);
   assert.match(read("api/_admin/contact.js"), /recordPolicyConsent/);
   assert.match(read("db/migrations/024_launch_legal_consent.sql"), /CREATE TABLE IF NOT EXISTS policy_consents/);
