@@ -68,14 +68,18 @@ test("production kataloqu sıxılmış və versiyalanmış data resursundan yük
   assert.match(serviceWorker, /assets\/data\/marketplace\.data/);
 });
 
-test("GitHub Actions production monitorinqi və əsas branch keyfiyyət yoxlamasını işlədir", () => {
-  const monitor = read(".github/workflows/production-monitor.yml");
-  const quality = read(".github/workflows/quality.yml");
-  assert.match(monitor, /schedule:/);
-  assert.match(monitor, /node scripts\/check-production\.mjs/);
-  assert.match(monitor, /https:\/\/constera\.az/);
-  assert.match(quality, /npm run check/);
-  assert.match(quality, /branches:\s*\n\s*- main/);
+test("Vercel production monitorinqi və deploy keyfiyyət qapısını avtomatik işlədir", () => {
+  const monitor = read("api/_admin/production-monitor.js");
+  const sharedMonitor = read("api/_lib/production-monitor.js");
+  const vercel = JSON.parse(read("vercel.json"));
+  assert.match(monitor, /runProductionMonitor/);
+  assert.match(monitor, /cron_unauthorized/);
+  assert.match(sharedMonitor, /database === "ready"/);
+  assert.match(sharedMonitor, /Promise\.all/);
+  assert.equal(vercel.installCommand, "npm ci && npm run verify:deploy");
+  assert.ok(vercel.crons.some((item) =>
+    item.path === "/api/cron-production-monitor" && item.schedule === "17 4 * * *"
+  ));
 });
 
 test("kritik kataloq, müqavilə, ödəniş və logistika yazmaları administrator 2FA qorumasındadır", () => {

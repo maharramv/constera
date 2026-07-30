@@ -159,6 +159,13 @@ test("scheduled backup endpoint-i cron sirri olmadan bağlıdır", async () => {
   assert.equal(response.payload.error.code, "cron_unauthorized");
 });
 
+test("production monitor endpoint-i cron sirri olmadan bağlıdır", async () => {
+  const response = createResponse();
+  await adminHandler({ method: "GET", headers: {}, query: { __route: "production-monitor" } }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.error.code, "cron_unauthorized");
+});
+
 test("təchizatçının şəxsi məhsul siyahısı anonim sorğuya açılmır", async () => withoutDatabase(async () => {
   const response = createResponse();
   await productsHandler({ method: "GET", headers: {}, query: { scope: "mine" } }, response);

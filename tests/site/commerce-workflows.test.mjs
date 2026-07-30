@@ -349,6 +349,7 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const qualityWorkflow = read("docs/quality-workflow.yml");
   const monitorWorkflow = read("docs/production-monitor-workflow.yml");
   const productionCheck = read("scripts/check-production.mjs");
+  const productionMonitor = read("api/_lib/production-monitor.js");
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
@@ -360,7 +361,8 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   assert.match(qualityWorkflow, /npm run check/);
   assert.match(qualityWorkflow, /npm run test:layout/);
   assert.match(monitorWorkflow, /npm run check:production/);
-  assert.match(productionCheck, /database === "ready"/);
+  assert.match(productionCheck, /runProductionMonitor/);
+  assert.match(productionMonitor, /database === "ready"/);
   assert.match(packageJson.scripts["verify:deploy"], /npm run test:api/);
   assert.match(packageJson.scripts["verify:deploy"], /npm run test:site/);
   assert.equal(vercelConfig.installCommand, "npm ci && npm run verify:deploy");
