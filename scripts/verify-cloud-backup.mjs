@@ -14,5 +14,9 @@ console.log(`- migration: ${result.schemaMigrations}`);
 console.log(`- kolleksiya: ${result.tableCount}`);
 console.log(`- qeyd: ${result.recordCount}`);
 console.log(`- SHA-256: ${result.checksum}`);
+console.log(`- bərpa məşqi: ${result.details.restoreRehearsal.ready ? "uğurlu" : "uğursuz"}`);
+console.log(`- gzip: ${result.details.restoreRehearsal.compressedBytes} bayt`);
+console.log(`- əlaqəsiz istinad: ${result.details.restoreRehearsal.orphanReferences}`);
+console.log(`- təkrarlanan ID: ${result.details.restoreRehearsal.duplicateIds}`);
 
 if (result.status !== "verified") process.exit(1);

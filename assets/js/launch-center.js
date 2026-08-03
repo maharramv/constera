@@ -336,8 +336,9 @@
         <div><span>Backup kanalı</span><strong class="${data.backup?.ready ? "is-ready" : "is-pending"}">${escapeHtml(data.backup?.label || "Qurulmayıb")}</strong></div>
         <div><span>Son bütövlük yoxlaması</span><strong class="${verification.ready ? "is-ready" : "is-pending"}">${escapeHtml(formatDate(verification.createdAt))}</strong></div>
         <div><span>Yoxlanmış həcm</span><strong>${Number(latest.tableCount || 0)} cədvəl · ${Number(latest.recordCount || 0).toLocaleString("az-AZ")} qeyd</strong></div>
+        <div><span>Bərpa məşqi</span><strong class="${latest.restoreRehearsal?.ready ? "is-ready" : "is-pending"}">${latest.restoreRehearsal?.ready ? `${Number(latest.restoreRehearsal.restoredCollections || 0)} kolleksiya uğurla açıldı` : "Yeni yoxlama tələb olunur"}</strong></div>
         <div><span>Kritik 2FA siyasəti</span><strong class="${metrics.criticalTwoFactorEnforced ? "is-ready" : "is-pending"}">${metrics.criticalTwoFactorEnforced ? "Aktiv" : "Aktiv deyil"}</strong></div>
-        <div><span>Monitor nasazlıq xəbərdarlığı</span><strong class="${data.monitoring?.externalAlert ? "is-ready" : "is-pending"}">${data.monitoring?.externalAlert ? "Xarici kanal hazırdır" : "Yalnız Vercel loqu"}</strong></div>
+        <div><span>Monitor nasazlıq xəbərdarlığı</span><strong class="${data.monitoring?.externalAlert || data.monitoring?.scheduledWorkflow ? "is-ready" : "is-pending"}">${data.monitoring?.externalAlert ? "Webhook kanalı hazırdır" : data.monitoring?.scheduledWorkflow ? "GitHub incident monitoru aktivdir" : "Yalnız Vercel loqu"}</strong></div>
       `;
     }
 

@@ -92,6 +92,7 @@ CSV-yə və ya ictimai sənədə yazılmır.
 npm ci
 npm run check:full
 npm run db:audit
+npm run db:verify-backup
 npm run check:production -- https://constera.az
 ```
 
@@ -102,7 +103,12 @@ Admin panelində əlavə olaraq:
 - backup bütövlük yoxlamasının son 7 gündə uğurlu olduğunu təsdiqlə;
 - səlahiyyətli hesabların hamısında 2FA-nın aktiv olduğunu yoxla;
 - monitor nasazlığı üçün xarici xəbərdarlıq kanalını qur;
+- GitHub `ConstEra keyfiyyət yoxlaması` və `ConstEra production monitorinqi` workflow-larının yaşıl olduğunu yoxla;
 - pilot məhsulda müqavilə və media bloklarının qalmadığını yoxla.
+
+Sahib tərəfdən tələb olunan sübutları `docs/launch-evidence-checklist.md` və
+`docs/csv-templates/` daxilindəki şablonlarla topla. Şablonun doldurulması özü
+təsdiq deyil; sənəd və məlumat uyğun admin bölməsində 2FA ilə yoxlanmalıdır.
 
 ## 7. Monitorinq və geri dönüş
 

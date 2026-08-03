@@ -51,6 +51,7 @@ test("health bazasız rejimi açıq bildirir", async () => withoutDatabase(async
   assert.equal(response.statusCode, 200);
   assert.equal(response.payload.database, "not_configured");
   assert.equal(response.payload.ok, true);
+  assert.match(response.headers["X-Request-ID"], /^[a-zA-Z0-9_.:-]{6,160}$/);
 }));
 
 test("sessiya endpoint-i cookiesiz anonim cavab verir", async () => withoutDatabase(async () => {

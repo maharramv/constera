@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { gzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
@@ -143,6 +143,111 @@ export const backupSummary = (backup) => Object.fromEntries(
   Object.entries(backup.data || {}).map(([name, rows]) => [name, Array.isArray(rows) ? rows.length : 0])
 );
 
+const restoreReferences = Object.freeze([
+  ["users", "company_id", "companies"],
+  ["categories", "parent_id", "categories"],
+  ["suppliers", "company_id", "companies"],
+  ["products", "category_id", "categories"],
+  ["products", "supplier_id", "suppliers"],
+  ["productOffers", "product_id", "products"],
+  ["productOffers", "supplier_id", "suppliers"],
+  ["priceHistory", "product_id", "products"],
+  ["tenderLots", "tender_id", "tenders"],
+  ["tenderBids", "tender_id", "tenders"],
+  ["rfqItems", "rfq_id", "rfqs"],
+  ["offers", "rfq_id", "rfqs"],
+  ["commercialProposals", "rfq_id", "rfqs"],
+  ["orderItems", "order_id", "orders"],
+  ["orderStatusHistory", "order_id", "orders"],
+  ["orderDocuments", "order_id", "orders"],
+  ["inventoryLevels", "warehouse_id", "warehouses"],
+  ["inventoryLevels", "product_id", "products"],
+  ["orderFulfillments", "order_id", "orders"],
+  ["supplierPurchaseOrders", "order_id", "orders"],
+  ["supplierPurchaseOrderItems", "purchase_order_id", "supplierPurchaseOrders"],
+  ["inventoryReservations", "order_id", "orders"],
+  ["deliveryQuotes", "order_id", "orders"],
+  ["procurementDecisions", "request_id", "procurementRequests"],
+  ["crmActivities", "lead_id", "crmLeads"],
+  ["supportCaseItems", "case_id", "supportCases"],
+  ["supportCaseMessages", "case_id", "supportCases"],
+  ["supplierFeedRuns", "feed_id", "supplierFeeds"],
+  ["supplierSettlementItems", "settlement_id", "supplierSettlements"]
+]);
+
+export const validateBackupRestoreRoundTrip = (backup, { compressedPayload = null } = {}) => {
+  const errors = [];
+  let compressed;
+  let restored;
+  try {
+    compressed = Buffer.isBuffer(compressedPayload)
+      ? compressedPayload
+      : gzipSync(Buffer.from(JSON.stringify(backup)), { level: 9 });
+    restored = JSON.parse(gunzipSync(compressed).toString("utf8"));
+  } catch {
+    return {
+      ready: false,
+      errors: ["Backup gzip round-trip zamanı açıla bilmədi."],
+      compressedBytes: 0,
+      restoredCollections: 0,
+      restoredRecords: 0,
+      duplicateIds: 0,
+      orphanReferences: 0
+    };
+  }
+
+  if (restored.version !== BACKUP_VERSION) errors.push("Backup versiyası bərpa kodu ilə uyğun deyil.");
+  if (Number(restored.schemaMigrations) !== SCHEMA_MIGRATIONS) errors.push("Backup migration sayı cari sxemlə uyğun deyil.");
+  if (!restored.data || typeof restored.data !== "object" || Array.isArray(restored.data)) {
+    errors.push("Backup data bölməsi obyekt deyil.");
+  }
+
+  const collections = Object.entries(restored.data || {});
+  const invalidCollections = collections.filter(([, rows]) => !Array.isArray(rows)).map(([name]) => name);
+  if (invalidCollections.length) errors.push(`Massiv olmayan kolleksiyalar: ${invalidCollections.join(", ")}.`);
+
+  let duplicateIds = 0;
+  for (const [name, rows] of collections) {
+    if (!Array.isArray(rows)) continue;
+    const identifiers = rows.map((row) => row?.id).filter((id) => id !== null && id !== undefined && id !== "");
+    const duplicates = identifiers.length - new Set(identifiers.map(String)).size;
+    if (duplicates > 0) {
+      duplicateIds += duplicates;
+      errors.push(`${name} kolleksiyasında ${duplicates} təkrarlanan ID var.`);
+    }
+  }
+
+  let orphanReferences = 0;
+  for (const [collectionName, field, targetName] of restoreReferences) {
+    const rows = restored.data?.[collectionName];
+    const targets = restored.data?.[targetName];
+    if (!Array.isArray(rows) || !Array.isArray(targets)) continue;
+    const targetIds = new Set(targets.map((row) => String(row?.id || "")).filter(Boolean));
+    const missing = rows.filter((row) => {
+      const value = row?.[field];
+      return value !== null && value !== undefined && value !== "" && !targetIds.has(String(value));
+    }).length;
+    if (missing > 0) {
+      orphanReferences += missing;
+      errors.push(`${collectionName}.${field} üçün ${missing} əlaqəsiz istinad var.`);
+    }
+  }
+
+  const restoredRecords = collections.reduce(
+    (total, [, rows]) => total + (Array.isArray(rows) ? rows.length : 0),
+    0
+  );
+  return {
+    ready: errors.length === 0,
+    errors,
+    compressedBytes: compressed.byteLength,
+    restoredCollections: collections.length,
+    restoredRecords,
+    duplicateIds,
+    orphanReferences
+  };
+};
+
 export const verifyCloudBackup = async ({ actorId = null } = {}) => {
   const backup = await buildCloudBackup();
   const summary = backupSummary(backup);
@@ -161,11 +266,15 @@ export const verifyCloudBackup = async ({ actorId = null } = {}) => {
   const checksum = createHash("sha256").update(serialized).digest("hex");
   const tableCount = Object.keys(summary).length;
   const recordCount = Object.values(summary).reduce((total, count) => total + Number(count || 0), 0);
-  const status = missing.length || backup.schemaMigrations !== SCHEMA_MIGRATIONS ? "failed" : "verified";
+  const restoreRehearsal = validateBackupRestoreRoundTrip(backup);
+  const status = missing.length || backup.schemaMigrations !== SCHEMA_MIGRATIONS || !restoreRehearsal.ready
+    ? "failed"
+    : "verified";
   const details = {
     missing,
     requiredCollections: required.length,
-    nonEmptyCollections: Object.values(summary).filter((count) => Number(count) > 0).length
+    nonEmptyCollections: Object.values(summary).filter((count) => Number(count) > 0).length,
+    restoreRehearsal
   };
   await query(
     `INSERT INTO backup_verifications (
@@ -204,6 +313,10 @@ export const deliverScheduledBackup = async () => {
   }
   const backup = await buildCloudBackup();
   const compressed = gzipSync(Buffer.from(JSON.stringify(backup)), { level: 9 });
+  const restoreRehearsal = validateBackupRestoreRoundTrip(backup, { compressedPayload: compressed });
+  if (!restoreRehearsal.ready) {
+    throw new Error(`Backup bərpa məşqini keçmədi: ${restoreRehearsal.errors.join(" ")}`);
+  }
   let deliveryDetails;
   if (delivery.channel === "webhook") {
     let response;
@@ -249,7 +362,18 @@ export const deliverScheduledBackup = async () => {
     action: "scheduled_export",
     entityType: "backup",
     entityId: backup.backupId,
-    details: { compressedBytes: compressed.byteLength, counts: summary, ...deliveryDetails }
+    details: {
+      compressedBytes: compressed.byteLength,
+      counts: summary,
+      restoreRehearsal: {
+        ready: restoreRehearsal.ready,
+        restoredCollections: restoreRehearsal.restoredCollections,
+        restoredRecords: restoreRehearsal.restoredRecords,
+        orphanReferences: restoreRehearsal.orphanReferences,
+        duplicateIds: restoreRehearsal.duplicateIds
+      },
+      ...deliveryDetails
+    }
   });
   return {
     status: "sent",

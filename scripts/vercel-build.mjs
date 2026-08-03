@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { extname, join } from "node:path";
 import { gzipSync } from "node:zlib";
 import vm from "node:vm";
-import { transformSync } from "esbuild";
+import { buildSync, transformSync } from "esbuild";
 import { renderSitePage, siteShellTemplateFiles } from "./site-shell.mjs";
 
 const requiredFiles = [
@@ -66,6 +66,7 @@ const requiredFiles = [
   "assets/js/enterprise-admin.js",
   "assets/js/operations-center.js",
   "service-worker.js",
+  ".well-known/security.txt",
   "scripts/site-shell.mjs",
   ...siteShellTemplateFiles
 ];
@@ -105,7 +106,8 @@ const staticEntries = [
   "docs",
   "robots.txt",
   "sitemap.xml",
-  "service-worker.js"
+  "service-worker.js",
+  ".well-known"
 ];
 
 const missingFiles = requiredFiles.filter((file) => {
@@ -138,10 +140,21 @@ staticEntries.forEach((entry) => {
 staticEntries
   .filter((entry) => entry.endsWith(".html"))
   .forEach((entry) => {
-    const rendered = renderSitePage(readFileSync(entry, "utf8"), { file: entry }).replace(
+    let rendered = renderSitePage(readFileSync(entry, "utf8"), { file: entry }).replace(
       /\s*<script src="assets\/js\/catalog-data\.js"><\/script>\s*<script src="assets\/js\/taxonomy-expansion\.js"><\/script>\s*<script src="assets\/js\/azerbaijan-real-products\.js"><\/script>/,
       '\n    <script src="assets/js/catalog-loader.js"></script>'
     );
+    if (entry === "supplier-portal.html") {
+      rendered = rendered
+        .replace(
+          '<script src="assets/js/catalog-loader.js"></script>',
+          '<script src="assets/js/catalog-loader.js" data-catalog="supplier-marketplace.data"></script>'
+        )
+        .replace(
+          '<script src="assets/js/marketplace.js"></script>',
+          '<script src="assets/js/supplier-portal-page.js"></script>'
+        );
+    }
     writeFileSync(`dist/${entry}`, rendered);
   });
 
@@ -159,6 +172,53 @@ mkdirSync("dist/assets/data", { recursive: true });
 writeFileSync(
   "dist/assets/data/marketplace.data",
   gzipSync(Buffer.from(JSON.stringify(marketplace)), { level: 9 })
+);
+writeFileSync(
+  "dist/assets/data/supplier-marketplace.data",
+  gzipSync(Buffer.from(JSON.stringify({
+    categories: marketplace.categories || [],
+    serviceCategories: [],
+    packageCategories: [],
+    rentalCategories: [],
+    brands: [],
+    suppliers: [],
+    products: [],
+    services: [],
+    packages: [],
+    rentals: []
+  })), { level: 9 })
+);
+
+const marketplaceSource = readFileSync("assets/js/marketplace.js", "utf8");
+const marketplaceOpening = "(async () => {\n";
+const marketplaceClosing = "\n})();";
+const marketplaceClosingIndex = marketplaceSource.lastIndexOf(marketplaceClosing);
+if (!marketplaceSource.startsWith(marketplaceOpening) || marketplaceClosingIndex < 0) {
+  throw new Error("marketplace.js build qabığı gözlənilən formatda deyil.");
+}
+const marketplaceBody = marketplaceSource.slice(marketplaceOpening.length, marketplaceClosingIndex);
+const marketplaceInitializersIndex = marketplaceBody.indexOf("renderHomeSourcedShowcase();");
+if (marketplaceInitializersIndex < 0) {
+  throw new Error("marketplace.js başlanğıc çağırışları tapılmadı.");
+}
+const supplierPortalSource = `${marketplaceBody.slice(0, marketplaceInitializersIndex)}initSupplierPortal();\n`;
+const supplierPortalBuild = buildSync({
+  stdin: {
+    contents: supplierPortalSource,
+    sourcefile: "supplier-portal-page.js",
+    resolveDir: process.cwd()
+  },
+  bundle: true,
+  format: "esm",
+  legalComments: "none",
+  minify: true,
+  target: "es2022",
+  treeShaking: true,
+  write: false
+});
+writeFileSync(
+  "dist/assets/js/supplier-portal-page.js",
+  `;(async()=>{${supplierPortalBuild.outputFiles[0].text}})();\n`
 );
 [
   "dist/assets/js/catalog-data.js",

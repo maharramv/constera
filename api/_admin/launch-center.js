@@ -433,7 +433,7 @@ export const loadLaunchCenter = async () => {
         LIMIT 30`
     ),
     query(
-      `SELECT status, created_at, table_count, record_count, checksum_sha256
+      `SELECT status, created_at, table_count, record_count, checksum_sha256, details
          FROM backup_verifications
         ORDER BY created_at DESC
        LIMIT 1`
@@ -452,7 +452,10 @@ export const loadLaunchCenter = async () => {
 
   const providers = providerReadiness();
   const marketing = googleMarketingReadiness();
-  const monitoring = { externalAlert: productionMonitorAlertReadiness() };
+  const monitoring = {
+    externalAlert: productionMonitorAlertReadiness(),
+    scheduledWorkflow: true
+  };
   const backup = backupDeliveryReadiness();
   const metricsRow = metricRows[0] || {};
   const metrics = {
@@ -498,7 +501,8 @@ export const loadLaunchCenter = async () => {
     createdAt: backupVerificationRows[0].created_at,
     tableCount: number(backupVerificationRows[0].table_count),
     recordCount: number(backupVerificationRows[0].record_count),
-    checksumSha256: backupVerificationRows[0].checksum_sha256 || ""
+    checksumSha256: backupVerificationRows[0].checksum_sha256 || "",
+    restoreRehearsal: backupVerificationRows[0].details?.restoreRehearsal || null
   } : null;
   const backupVerification = backupVerificationState(latestBackup);
   const searches = searchInsightRows.map((row) => ({

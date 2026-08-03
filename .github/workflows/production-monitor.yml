@@ -1,0 +1,97 @@
+name: ConstEra production monitorinqi
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: constera-production-monitor
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Repozitoriyanı yüklə
+        uses: actions/checkout@v4
+
+      - name: Node.js 22 qur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Production müqaviləsini yoxla
+        id: production-check
+        continue-on-error: true
+        run: npm run check:production -- https://constera.az
+
+      - name: Nasazlıq üçün incident aç və ya yenilə
+        if: steps.production-check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- constera-production-monitor -->';
+            const title = '[Monitor] constera.az production yoxlaması uğursuzdur';
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.body?.includes(marker));
+            const body = `${marker}\nProduction smoke testi uğursuz oldu.\n\nYoxlama: ${runUrl}\nVaxt: ${new Date().toISOString()}`;
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Yoxlama yenidən uğursuz oldu: ${runUrl}`
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }
+
+      - name: Bərpa olunmuş incident-i bağla
+        if: steps.production-check.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- constera-production-monitor -->';
+            const runUrl = '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            for (const issue of issues.filter((item) => !item.pull_request && item.body?.includes(marker))) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Production yoxlaması bərpa olundu: ${runUrl}`
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+            }
+
+      - name: Uğursuz monitoru qırmızı saxla
+        if: steps.production-check.outcome == 'failure'
+        run: exit 1

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export class ApiError extends Error {
   constructor(status, code, message, details) {
     super(message);
@@ -65,18 +67,95 @@ export const getClientIp = (req) =>
     .split(",")[0]
     .trim();
 
+const requestIdentifier = (req) => {
+  const candidate = String(req.headers?.["x-request-id"] || req.headers?.["x-vercel-id"] || "").trim();
+  return /^[a-zA-Z0-9_.:-]{6,160}$/.test(candidate) ? candidate : randomUUID();
+};
+
+const requestRoute = (req) => {
+  const source = String(req.url || req.headers?.["x-matched-path"] || "").trim();
+  if (source) {
+    try {
+      return new URL(source, "https://constera.local").pathname.slice(0, 240);
+    } catch {
+      // Gateway route adı aşağıda təhlükəsiz şəkildə qurulur.
+    }
+  }
+  const gatewayRoute = String(req.query?.__route || "api").replace(/[^a-z0-9-]/gi, "").slice(0, 120);
+  return `/api/${gatewayRoute || "api"}`;
+};
+
+const structuredLogsEnabled = () => (
+  Boolean(process.env.VERCEL)
+  || process.env.CONSTERA_STRUCTURED_LOGS === "true"
+);
+
+const logRequest = ({ level = "info", requestId, route, method, status, durationMs, error, force = false }) => {
+  if (!structuredLogsEnabled() && !force) return;
+  const payload = {
+    level,
+    message: level === "error" ? "API sorğusu uğursuz oldu" : "API sorğusu tamamlandı",
+    requestId,
+    route,
+    method,
+    status,
+    durationMs,
+    ...(error ? {
+      error: {
+        name: String(error.name || "Error").slice(0, 120),
+        code: String(error.code || "internal_error").slice(0, 120),
+        message: String(error.message || "Naməlum server xətası").slice(0, 500)
+      }
+    } : {})
+  };
+  const output = JSON.stringify(payload);
+  if (level === "error") console.error(output);
+  else console.log(output);
+};
+
 export const withApiErrors = (handler) => async (req, res) => {
+  const startedAt = Date.now();
+  const requestId = requestIdentifier(req);
+  const route = requestRoute(req);
+  const method = String(req.method || "GET").slice(0, 16);
+  res.setHeader("X-Request-ID", requestId);
   try {
-    return await handler(req, res);
+    const result = await handler(req, res);
+    logRequest({
+      requestId,
+      route,
+      method,
+      status: Number(res.statusCode || 200),
+      durationMs: Date.now() - startedAt
+    });
+    return result;
   } catch (error) {
     if (error instanceof ApiError) {
+      logRequest({
+        level: error.status >= 500 ? "error" : "info",
+        requestId,
+        route,
+        method,
+        status: error.status,
+        durationMs: Date.now() - startedAt,
+        error
+      });
       return sendJson(res, error.status, {
         ok: false,
         error: { code: error.code, message: error.message, ...(error.details ? { details: error.details } : {}) }
       }, error.status === 405 ? { Allow: error.details.allowed.join(", ") } : {});
     }
 
-    console.error("ConstEra API xətası", error);
+    logRequest({
+      level: "error",
+      requestId,
+      route,
+      method,
+      status: 500,
+      durationMs: Date.now() - startedAt,
+      error,
+      force: true
+    });
     return sendJson(res, 500, {
       ok: false,
       error: { code: "internal_error", message: "Server sorğunu tamamlaya bilmədi." }

@@ -225,9 +225,11 @@ export const buildLaunchReadiness = ({
       key: "monitor_alert",
       label: "İstehsal monitoru xəbərdarlığı",
       detail: monitoring.externalAlert
-        ? "Gündəlik monitor nasazlığı xarici kanala göndərilir"
-        : "Monitor nasazlığı yalnız Vercel loqlarında görünür",
-      ready: Boolean(monitoring.externalAlert),
+        ? "Vercel monitor nasazlığı qorunan xarici webhook-a göndərilir"
+        : monitoring.scheduledWorkflow
+          ? "GitHub monitoru 6 saatdan bir yoxlayır və incident issue açır"
+          : "Monitor nasazlığı yalnız Vercel loqlarında görünür",
+      ready: Boolean(monitoring.externalAlert || monitoring.scheduledWorkflow),
       required: false,
       target: "system",
       action: "Monitor bildirişini qur"

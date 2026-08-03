@@ -11,9 +11,14 @@
     packages: [],
     rentals: []
   };
-  const scriptUrl = new URL(document.currentScript?.src || "assets/js/catalog-loader.js", window.location.href);
+  const loaderScript = document.currentScript;
+  const scriptUrl = new URL(loaderScript?.src || "assets/js/catalog-loader.js", window.location.href);
   const revision = scriptUrl.searchParams.get("v");
-  const dataUrl = new URL("../data/marketplace.data", scriptUrl);
+  const requestedDataFile = String(loaderScript?.dataset.catalog || "marketplace.data").trim();
+  const dataFile = /^[a-z0-9-]+\.data$/i.test(requestedDataFile)
+    ? requestedDataFile
+    : "marketplace.data";
+  const dataUrl = new URL(`../data/${dataFile}`, scriptUrl);
   if (revision) dataUrl.searchParams.set("v", revision);
 
   const publish = (catalog, error = null) => {

@@ -88,3 +88,11 @@ test("təchizatçı pilot hazırlığı şirkət, profil, hesab, müqavilə, tə
   assert.equal(ready.readyForPilot, true);
   assert.ok(ready.score < 100);
 });
+
+test("GitHub planlı monitoru webhook olmadan xarici incident nəzarəti sayılır", () => {
+  const readiness = buildLaunchReadiness({ monitoring: { scheduledWorkflow: true } });
+  const monitor = readiness.sections.flatMap((section) => section.items)
+    .find((item) => item.key === "monitor_alert");
+  assert.equal(monitor.ready, true);
+  assert.match(monitor.detail, /GitHub monitoru/);
+});

@@ -74,6 +74,7 @@ if (/["']\/assets\/(?:css|js)\/[^"'?]+\.(?:css|js)["']/i.test(serviceWorker)) {
 
 const heaviestJavascriptPage = [...pageUsage].sort((left, right) => right.javascript - left.javascript)[0];
 const heaviestCssPage = [...pageUsage].sort((left, right) => right.css - left.css)[0];
+const supplierPortalUsage = pageUsage.find((item) => item.page === "supplier-portal.html");
 if (totalBytes > 3_000_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
 if (javascriptBytes > 560_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
 if (cssBytes > 80_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
@@ -88,6 +89,21 @@ if (heaviestJavascriptPage?.javascriptGzip > 140_000) {
 }
 if (heaviestCssPage?.cssGzip > 20_000) {
   errors.push(`${heaviestCssPage.page} sıxılmış CSS büdcəsini keçib: ${heaviestCssPage.cssGzip} bayt.`);
+}
+if (!assetBytes.has("assets/js/supplier-portal-page.js")) {
+  errors.push("supplier-portal-page.js: təchizatçı kabinetinin ayrılmış bundle faylı yaradılmayıb.");
+}
+if (!assetBytes.has("assets/data/supplier-marketplace.data")) {
+  errors.push("supplier-marketplace.data: təchizatçı kabinetinin yüngül məlumat profili yaradılmayıb.");
+}
+if (supplierPortalUsage?.javascript > 125_000) {
+  errors.push(`supplier-portal.html JavaScript büdcəsini keçib: ${supplierPortalUsage.javascript} bayt.`);
+}
+if (supplierPortalUsage?.javascriptGzip > 40_000) {
+  errors.push(`supplier-portal.html sıxılmış JavaScript büdcəsini keçib: ${supplierPortalUsage.javascriptGzip} bayt.`);
+}
+if (Number(assetBytes.get("assets/data/supplier-marketplace.data") || 0) > 20_000) {
+  errors.push("supplier-marketplace.data yüngül məlumat büdcəsini keçib.");
 }
 
 console.log(

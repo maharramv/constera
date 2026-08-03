@@ -71,7 +71,7 @@ Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçat
 - `assets/js/catalog-data.js` - əsas kataloq məlumatları
 - `assets/js/taxonomy-expansion.js` - geniş material, xidmət, paket və icarə taksonomiyası
 - `assets/js/azerbaijan-real-products.js` - açıq mənbələrdən yoxlanmış Azərbaycan bazarı məhsulları və mənbə keyfiyyəti sıralaması
-- `assets/js/marketplace.js` - göstərmə, filtr, sorğu, smeta və lokal idarəetmə məntiqi
+- `assets/js/marketplace.js` - göstərmə, filtr, sorğu, smeta və lokal idarəetmə məntiqinin build mənbəyi; təchizatçı kabineti production build-də ayrıca yüngül bundle-a ayrılır
 - `assets/js/production.js` - API, giriş, bulud sinxronizasiyası və RFQ server ötürməsi
 - `assets/js/script.js` - ümumi naviqasiya, SEO, əlçatanlıq və əlaqə forması
 - `templates/` - bütün səhifələr üçün vahid header, giriş header-i və footer şablonları
@@ -80,8 +80,9 @@ Admin və təchizatçı panellərində lokal ehtiyat rejimi qalır. Baza əlçat
 - `scripts/vercel-build.mjs` - statik Vercel ixracı
 - `tests/layout/` - bütün səhifələrin mobile və desktop ölçülərində Playwright layout testləri
 - `npm run verify:deploy` - hər Vercel deploy-unda bir dəfə işləyən məcburi audit, API və sayt quality gate-i
-- `docs/quality-workflow.yml` - token-da `workflow` icazəsi aktivləşəndə GitHub Actions üçün responsiv test şablonu
-- `docs/production-monitor-workflow.yml` - `constera.az` üçün altı saatlıq smoke monitorinqi şablonu
+- `.github/workflows/quality.yml` - hər push və pull request üçün audit, build və responsiv test quality gate-i
+- `.github/workflows/production-monitor.yml` - `constera.az` üçün altı saatlıq smoke monitoru və avtomatik incident issue axını
+- `docs/launch-evidence-checklist.md` - təchizatçı, media, logistika və ilk pilot sifariş üçün sübut paketi
 - `docs/launch-runbook.md` - ilk real təchizatçı və sifariş pilotunun təhlükəsiz buraxılış ardıcıllığı
 
 ## Lokal yoxlama
@@ -149,7 +150,7 @@ Planı bazanı dəyişmədən görmək üçün eyni əmrə `--dry-run` əlavə e
 
 Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır.
 
-Gündəlik bulud backup-ı üçün `BACKUP_WEBHOOK_URL` və `BACKUP_WEBHOOK_SECRET` birlikdə qurulmalıdır. Endpoint gzip edilmiş JSON qəbul etməli və faylı özəl yaddaşda saxlamalıdır. `MONITOR_ALERT_WEBHOOK_URL` və ən azı 24 simvolluq `MONITOR_ALERT_WEBHOOK_SECRET` qurulduqda gündəlik production monitor xətanı həmin kanala `production_monitor_failed` JSON hadisəsi kimi göndərir və yenə HTTP 500 qaytararaq Vercel cron-u uğursuz işarələyir. Kart ödənişi, elektron qaimə və xarici AI smeta yalnız müvafiq HTTPS webhook və gizli açar cütü olduqda interfeysdə aktivləşir.
+Gündəlik bulud backup-ı üçün `BACKUP_WEBHOOK_URL` və `BACKUP_WEBHOOK_SECRET` birlikdə qurulmalıdır. Endpoint gzip edilmiş JSON qəbul etməli və faylı özəl yaddaşda saxlamalıdır. Hər yoxlama backup-ı gzip round-trip, kolleksiya tipi, təkrarlanan ID və əsas referensial əlaqələr üzrə bərpa məşqindən keçirir. `MONITOR_ALERT_WEBHOOK_URL` və ən azı 24 simvolluq `MONITOR_ALERT_WEBHOOK_SECRET` qurulduqda gündəlik production monitor xətanı həmin kanala `production_monitor_failed` JSON hadisəsi kimi göndərir və yenə HTTP 500 qaytararaq Vercel cron-u uğursuz işarələyir. GitHub monitoru əlavə olaraq altı saatdan bir ictimai müqaviləni yoxlayır və nasazlıqda incident issue açır. Kart ödənişi, elektron qaimə və xarici AI smeta yalnız müvafiq HTTPS webhook və gizli açar cütü olduqda interfeysdə aktivləşir.
 
 Alternativ olaraq lokal terminaldan administrator yaratmaq olar:
 
