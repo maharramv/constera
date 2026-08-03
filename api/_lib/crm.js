@@ -36,6 +36,51 @@ export const syncRfqLead = async (rfqId) => {
   );
 };
 
+export const syncCommercialProposalLead = async (proposalId) => {
+  await query(
+    `INSERT INTO crm_leads (
+       id, source_type, source_id, customer_id, company_name, contact_name,
+       email, phone, city, title, value_amount, currency, stage, note, created_at, updated_at
+     )
+     SELECT
+       'lead-' || md5('rfq:' || rfq.id),
+       'rfq', rfq.id, rfq.customer_id, rfq.company_name,
+       COALESCE(NULLIF(rfq.contact_name, ''), rfq.company_name),
+       rfq.email, rfq.phone, rfq.city, rfq.title,
+       proposal.total_amount, proposal.currency,
+       CASE
+         WHEN proposal.status = 'accepted' OR EXISTS (
+           SELECT 1 FROM commercial_proposals accepted
+           WHERE accepted.rfq_id = rfq.id AND accepted.status = 'accepted'
+         ) THEN 'won'
+         WHEN proposal.status IN ('issued', 'draft') OR EXISTS (
+           SELECT 1 FROM commercial_proposals open_proposal
+           WHERE open_proposal.rfq_id = rfq.id AND open_proposal.status IN ('issued', 'draft')
+         ) THEN 'proposal'
+         WHEN rfq.status = 'Ləğv edildi' THEN 'lost'
+         ELSE 'qualified'
+       END,
+       COALESCE(NULLIF(proposal.note, ''), rfq.note), rfq.created_at, now()
+     FROM commercial_proposals proposal
+     JOIN rfqs rfq ON rfq.id = proposal.rfq_id
+     WHERE proposal.id = $1
+     ON CONFLICT (source_type, source_id) WHERE source_id IS NOT NULL DO UPDATE SET
+       customer_id = EXCLUDED.customer_id,
+       company_name = EXCLUDED.company_name,
+       contact_name = EXCLUDED.contact_name,
+       email = EXCLUDED.email,
+       phone = EXCLUDED.phone,
+       city = EXCLUDED.city,
+       title = EXCLUDED.title,
+       value_amount = EXCLUDED.value_amount,
+       currency = EXCLUDED.currency,
+       stage = EXCLUDED.stage,
+       note = EXCLUDED.note,
+       updated_at = now()`,
+    [proposalId]
+  );
+};
+
 export const syncOrderLead = async (orderId) => {
   await query(
     `INSERT INTO crm_leads (

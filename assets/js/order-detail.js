@@ -276,10 +276,19 @@
       <td data-label="Cəm">${formatMoney(item.lineTotal, currency)}</td>
     </tr>`).join("");
     qs("[data-order-subtotal]").textContent = formatMoney(snapshot.subtotal, currency);
+    const discountRow = qs("[data-order-discount-row]");
+    discountRow.hidden = !Number(snapshot.discountAmount || 0);
+    qs("[data-order-discount]").textContent = `− ${formatMoney(snapshot.discountAmount || 0, currency)}`;
     qs("[data-order-delivery]").textContent = formatMoney(snapshot.deliveryAmount || 0, currency);
+    const vatRow = qs("[data-order-vat-row]");
+    vatRow.hidden = snapshot.vatMode === "not_applicable" && !Number(snapshot.vatAmount || 0);
+    qs("[data-order-vat-label]").textContent = snapshot.vatMode === "included"
+      ? `ƏDV (${snapshot.vatRate || 0}%, daxildir)`
+      : `ƏDV (${snapshot.vatRate || 0}%)`;
+    qs("[data-order-vat]").textContent = formatMoney(snapshot.vatAmount || 0, currency);
     qs("[data-order-total]").textContent = formatMoney(snapshot.totalAmount, currency);
     const sourceNote = snapshot.rfqId
-      ? ` Mənbə: RFQ ${snapshot.rfqId}, qalib təklif ${snapshot.offerId || "-"}.`
+      ? ` Mənbə: RFQ ${snapshot.rfqId}, qalib təklif ${snapshot.offerId || "-"}${snapshot.commercialProposalId ? `, kommersiya təklifi ${snapshot.commercialProposalId}` : ""}.`
       : snapshot.tenderId
         ? ` Mənbə: tender ${snapshot.tenderId}, qalib təklif ${snapshot.tenderBidId || "-"}.`
         : "";

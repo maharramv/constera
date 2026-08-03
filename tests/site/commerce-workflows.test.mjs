@@ -54,6 +54,7 @@ test("RFQ təklifləri serverdə müqayisə olunur və yalnız bir qalib seçili
   const dashboardJs = read("assets/js/marketplace.js");
   const rfqApi = read("api/rfqs.js");
   const offersApi = read("api/offers.js");
+  const offerSelection = read("api/_lib/offer-selection.js");
   const migration = read("db/migrations/011_rfq_offer_selection.sql");
 
   assert.ok(
@@ -64,24 +65,28 @@ test("RFQ təklifləri serverdə müqayisə olunur və yalnız bir qalib seçili
   assert.match(dashboardJs, /data-rfq-offer-select/);
   assert.match(rfqApi, /offer_supplier\.company_id/);
   assert.match(offersApi, /ownsRfq/);
-  assert.match(offersApi, /status = 'accepted'/);
-  assert.match(offersApi, /SELECT count\(\*\) FROM rejected/);
-  assert.match(offersApi, /offer_accepted/);
+  assert.match(offersApi, /acceptRfqOffer/);
+  assert.match(offerSelection, /status = 'accepted'/);
+  assert.match(offerSelection, /SELECT count\(\*\) FROM rejected/);
+  assert.match(offerSelection, /offer_accepted/);
   assert.match(migration, /UNIQUE INDEX/);
   assert.match(migration, /WHERE status = 'accepted'/);
 });
 
 test("qalib RFQ təklifi bir dəfə sifarişə çevrilir və proforma yaradır", () => {
   const offersApi = read("api/offers.js");
+  const offerSelection = read("api/_lib/offer-selection.js");
   const conversion = read("api/_lib/rfq-order.js");
   const lifecycle = read("api/_lib/order-lifecycle.js");
   const migration = read("db/migrations/014_rfq_order_conversion.sql");
   const marketplace = read("assets/js/marketplace.js");
 
-  assert.match(offersApi, /ensureOrderForAcceptedOffer/);
-  assert.match(offersApi, /rfq_already_converted/);
-  assert.match(offersApi, /WHERE id = \$1 AND status IN \('draft', 'submitted', 'accepted'\)/);
+  assert.match(offersApi, /acceptRfqOffer/);
+  assert.match(offerSelection, /ensureOrderForAcceptedOffer/);
+  assert.match(offerSelection, /rfq_already_converted/);
+  assert.match(offerSelection, /WHERE id = \$1 AND status IN \('draft', 'submitted', 'accepted'\)/);
   assert.match(conversion, /ON CONFLICT \(rfq_id\) WHERE rfq_id IS NOT NULL DO NOTHING/);
+  assert.match(conversion, /commercialReady: true/);
   assert.match(conversion, /proforma_invoice/);
   assert.match(conversion, /order_summary/);
   assert.match(lifecycle, /rfqId: order\.rfqId/);
@@ -89,6 +94,36 @@ test("qalib RFQ təklifi bir dəfə sifarişə çevrilir və proforma yaradır",
   assert.match(migration, /orders_offer_unique/);
   assert.match(migration, /order_items_supplier_idx/);
   assert.match(marketplace, /order-detail\.html\?order=/);
+});
+
+test("RFQ müqayisəsi versiyalı kommersiya təklifinə, CRM-ə və sifarişə bağlanır", () => {
+  const dashboard = read("rfq-dashboard.html");
+  const proposalPage = read("proposal-detail.html");
+  const proposalClient = read("assets/js/proposal-detail.js");
+  const marketplace = read("assets/js/marketplace.js");
+  const production = read("assets/js/production.js");
+  const proposalsApi = read("api/_admin/proposals.js");
+  const ordersApi = read("api/_admin/orders.js");
+  const crm = read("api/_lib/crm.js");
+  const migration = read("db/migrations/025_commercial_proposals.sql");
+
+  assert.match(dashboard, /data-rfq-proposal-form/);
+  assert.match(dashboard, /data-rfq-create-proposal/);
+  assert.match(marketplace, /ConstEraAPI\.createProposal/);
+  assert.match(production, /createProposal:/);
+  assert.match(proposalPage, /data-proposal-comparisons/);
+  assert.match(proposalPage, /data-proposal-accept/);
+  assert.match(proposalClient, /updateProposal\(currentProposal\.id, "accepted"\)/);
+  assert.match(proposalsApi, /acceptRfqOffer/);
+  assert.match(proposalsApi, /commercial_proposal_issued/);
+  assert.match(proposalsApi, /converted_order\.commercial_proposal_id = proposal\.id/);
+  assert.match(proposalsApi, /field: "Seçilmiş təchizatçı təklifi"/);
+  assert.match(proposalsApi, /\["Bağlandı", "Ləğv edildi"\]/);
+  assert.match(ordersApi, /commercial_terms_locked/);
+  assert.match(crm, /syncCommercialProposalLead/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS commercial_proposals/);
+  assert.match(migration, /offer_comparison jsonb/);
+  assert.match(migration, /UNIQUE \(rfq_id, version\)/);
 });
 
 test("məhsul səhifəsi qalereya, qiymət tarixçəsi və əlaqəli məhsullar alır", () => {
@@ -353,7 +388,9 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
-  assert.match(backup, /constera-cloud-backup-v8/);
+  assert.match(backup, /constera-cloud-backup-v9/);
+  assert.match(backup, /commercialProposals/);
+  assert.match(backup, /policyConsents/);
   assert.doesNotMatch(backup, /password_hash/);
   assert.doesNotMatch(backup, /SELECT \* FROM users/);
   assert.match(backup, /Content-Encoding/);

@@ -111,6 +111,7 @@ const buildOrderItem = async (source) => {
     lineTotal: Number(source.price_amount),
     snapshot: {
       source: "rfq_offer",
+      commercialReady: true,
       rfqId: source.rfq_id,
       offerId: source.offer_id,
       rfqType: source.rfq_type,
@@ -130,15 +131,40 @@ const buildOrderItem = async (source) => {
   };
 };
 
-export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) => {
+export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null, commercialProposal = null }) => {
   const source = await loadAcceptedOffer(offerId);
   if (!source) return null;
+  if (commercialProposal?.selectedOfferId && commercialProposal.selectedOfferId !== offerId) return null;
+  const pricing = commercialProposal ? {
+    proposalId: commercialProposal.id,
+    documentNumber: commercialProposal.documentNumber || "",
+    subtotal: Number(commercialProposal.subtotal),
+    discountAmount: Number(commercialProposal.discountAmount || 0),
+    deliveryAmount: Number(commercialProposal.deliveryAmount || 0),
+    vatMode: commercialProposal.vatMode || "not_applicable",
+    vatRate: Number(commercialProposal.vatRate || 0),
+    vatAmount: Number(commercialProposal.vatAmount || 0),
+    totalAmount: Number(commercialProposal.totalAmount),
+    currency: commercialProposal.currency || source.currency || "AZN"
+  } : {
+    proposalId: null,
+    documentNumber: "",
+    subtotal: Number(source.price_amount),
+    discountAmount: 0,
+    deliveryAmount: 0,
+    vatMode: "not_applicable",
+    vatRate: 0,
+    vatAmount: 0,
+    totalAmount: Number(source.price_amount),
+    currency: source.currency || "AZN"
+  };
 
   const existingRows = await query(
-    "SELECT id, offer_id FROM orders WHERE rfq_id = $1 LIMIT 1",
+    "SELECT id, offer_id, commercial_proposal_id FROM orders WHERE rfq_id = $1 LIMIT 1",
     [source.rfq_id]
   );
   if (existingRows[0] && existingRows[0].offer_id !== offerId) return null;
+  if (existingRows[0] && pricing.proposalId && existingRows[0].commercial_proposal_id !== pricing.proposalId) return null;
   let orderId = existingRows[0]?.id || "";
   let created = false;
 
@@ -155,6 +181,7 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
     const address = source.address || source.city || "RFQ üzrə dəqiqləşdirilir";
     const orderNote = [
       `RFQ ${source.rfq_id} üzrə ${source.supplier_name || "təchizatçı"} qalib təklifindən avtomatik yaradılıb.`,
+      pricing.documentNumber ? `Kommersiya təklifi: ${pricing.documentNumber}.` : "",
       source.lead_time ? `Təchizat müddəti: ${source.lead_time}.` : "",
       source.delivery ? `Çatdırılma: ${source.delivery}.` : "",
       source.warranty ? `Zəmanət: ${source.warranty}.` : "",
@@ -164,18 +191,20 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
     const rows = await query(
       `WITH new_order AS (
          INSERT INTO orders (
-           id, customer_id, rfq_id, offer_id,
+           id, customer_id, rfq_id, offer_id, commercial_proposal_id,
            company_name, contact_name, email, phone, city, address,
            delivery_mode, payment_method, payment_status, status,
-           subtotal, delivery_amount, total_amount, currency,
+           subtotal, discount_amount, delivery_amount,
+           vat_mode, vat_rate, vat_amount, total_amount, currency,
            has_pending_price, note
          )
          SELECT
-           $1, $2, $3, $4,
-           $5, $6, $7, $8, $9, $10,
-           $11, 'invoice', 'awaiting', 'confirmed',
-           $12, 0, $12, $13,
-           false, $14
+           $1, $2, $3, $4, $5,
+           $6, $7, $8, $9, $10, $11,
+           $12, 'invoice', 'awaiting', 'confirmed',
+           $13, $14, $15,
+           $16, $17, $18, $19, $20,
+           false, $21
          WHERE EXISTS (
            SELECT 1 FROM offers accepted
            WHERE accepted.id = $4 AND accepted.status = 'accepted'
@@ -188,8 +217,8 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
            quantity, unit, unit_price, price_text, line_total, snapshot
          )
          SELECT
-           $15, new_order.id, $16, $17, $18, $19,
-           $20, $21, $22, $23, $24, $25::jsonb
+           $22, new_order.id, $23, $24, $25, $26,
+           $27, $28, $29, $30, $31, $32::jsonb
          FROM new_order
          RETURNING id
        )
@@ -201,6 +230,7 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
         source.customer_id,
         source.rfq_id,
         source.offer_id,
+        pricing.proposalId,
         source.company_name,
         contactName,
         contactEmail,
@@ -208,8 +238,14 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
         city,
         address,
         deliveryModeFromRfq(source.delivery_mode),
-        Number(source.price_amount),
-        source.currency || "AZN",
+        pricing.subtotal,
+        pricing.discountAmount,
+        pricing.deliveryAmount,
+        pricing.vatMode,
+        pricing.vatRate,
+        pricing.vatAmount,
+        pricing.totalAmount,
+        pricing.currency,
         orderNote,
         item.id,
         item.productId,
@@ -221,17 +257,22 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
         item.unitPrice,
         item.priceText,
         item.lineTotal,
-        JSON.stringify(item.snapshot)
+        JSON.stringify({
+          ...item.snapshot,
+          commercialProposalId: pricing.proposalId,
+          commercialProposalNumber: pricing.documentNumber
+        })
       ]
     );
     orderId = rows[0]?.id || "";
     created = Boolean(orderId);
     if (!orderId) {
       const concurrentRows = await query(
-        "SELECT id, offer_id FROM orders WHERE rfq_id = $1 LIMIT 1",
+        "SELECT id, offer_id, commercial_proposal_id FROM orders WHERE rfq_id = $1 LIMIT 1",
         [source.rfq_id]
       );
       if (concurrentRows[0]?.offer_id !== offerId) return null;
+      if (pricing.proposalId && concurrentRows[0]?.commercial_proposal_id !== pricing.proposalId) return null;
       orderId = concurrentRows[0]?.id || "";
     }
   }
@@ -264,7 +305,8 @@ export const ensureOrderForAcceptedOffer = async ({ offerId, actorId = null }) =
         source: "rfq_offer",
         rfqId: source.rfq_id,
         offerId: source.offer_id,
-        supplierId: source.supplier_id
+        supplierId: source.supplier_id,
+        commercialProposalId: pricing.proposalId
       }
     });
   }

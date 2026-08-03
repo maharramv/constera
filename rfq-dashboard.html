@@ -193,10 +193,75 @@
                 <h2 data-rfq-summary-title>Seçilmiş sorğu</h2>
               </div>
               <div class="admin-actions">
+                <button class="button button-primary" type="button" data-rfq-create-proposal hidden>Kommersiya təklifi hazırla</button>
+                <a class="button button-outline" href="proposal-detail.html" data-rfq-open-proposal hidden>Son təklifi aç</a>
                 <button class="button button-secondary" type="button" data-rfq-copy-summary>Xülasəni kopyala</button>
-                <button class="button button-primary" type="button" data-rfq-print-summary>Çap et</button>
+                <button class="button button-secondary" type="button" data-rfq-print-summary>Çap et</button>
               </div>
             </div>
+            <form class="admin-form commercial-proposal-form" data-rfq-proposal-form hidden>
+              <input type="hidden" name="rfqId" />
+              <div class="market-section-heading">
+                <div>
+                  <p class="eyebrow">Satış sənədi</p>
+                  <h3>Müqayisəli kommersiya təklifi</h3>
+                </div>
+                <button class="button button-outline" type="button" data-rfq-cancel-proposal>Bağla</button>
+              </div>
+              <div class="admin-form-grid">
+                <label class="admin-field admin-field-wide">
+                  <span>Seçilmiş təchizatçı təklifi</span>
+                  <select name="selectedOfferId" required data-rfq-proposal-offer></select>
+                </label>
+                <label class="admin-field">
+                  <span>Etibarlılıq, gün</span>
+                  <input name="validDays" type="number" min="1" max="90" step="1" value="14" required />
+                </label>
+                <label class="admin-field">
+                  <span>Endirim məbləği</span>
+                  <input name="discountAmount" type="number" min="0" step="0.01" value="0" />
+                </label>
+                <label class="admin-field">
+                  <span>Çatdırılma məbləği</span>
+                  <input name="deliveryAmount" type="number" min="0" step="0.01" value="0" />
+                </label>
+                <label class="admin-field">
+                  <span>ƏDV rejimi</span>
+                  <select name="vatMode" required>
+                    <option value="">ƏDV rejimini seç</option>
+                    <option value="excluded">ƏDV ayrıca hesablanır</option>
+                    <option value="included">ƏDV qiymətə daxildir</option>
+                    <option value="not_applicable">ƏDV tətbiq edilmir</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span>ƏDV, %</span>
+                  <input name="vatRate" type="number" min="0" max="100" step="0.01" value="18" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Ödəniş şərtləri</span>
+                  <input name="paymentTerms" maxlength="1000" value="Bank köçürməsi ilə, proforma əsasında" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Çatdırılma şərtləri</span>
+                  <input name="deliveryTerms" maxlength="1000" placeholder="Təchizatçı təklifinə əsasən" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Zəmanət şərtləri</span>
+                  <input name="warrantyTerms" maxlength="1000" placeholder="İstehsalçı və təchizatçı şərtlərinə əsasən" />
+                </label>
+                <label class="admin-field admin-field-wide">
+                  <span>Kommersiya qeydi</span>
+                  <textarea name="note" rows="3" maxlength="3000" placeholder="Qiymət, stok və icra ilə bağlı əlavə şərtlər"></textarea>
+                </label>
+              </div>
+              <div class="admin-actions">
+                <button class="button button-primary" type="submit">Yarat və müştəriyə göndər</button>
+              </div>
+              <p class="admin-import-status" data-rfq-proposal-status role="status" aria-live="polite">
+                Təklif RFQ və təchizatçı məlumatlarının dəyişməz nüsxəsi ilə yaradılacaq.
+              </p>
+            </form>
             <div class="rfq-print-sheet" data-rfq-summary-content></div>
             <p class="admin-import-status" data-rfq-summary-status>
               Sorğu cədvəlindən “Aktı aç” düyməsini seç.

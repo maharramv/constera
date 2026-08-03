@@ -77,7 +77,7 @@ test("checkout indekslənmir və PWA şəxsi/API sorğularını keşləmir", () 
   assert.match(serviceWorker, /pathname\.startsWith\("\/api\/"\)/);
   assert.match(serviceWorker, /PRIVATE_PAGES[\s\S]*"\/checkout\.html"/);
   const appShell = serviceWorker.match(/const APP_SHELL = \[([\s\S]*?)\];/)?.[1] || "";
-  for (const page of ["admin.html", "checkout.html", "customer-cabinet.html", "login.html", "order-detail.html", "price-import.html", "rfq-dashboard.html", "supplier-portal.html"]) {
+  for (const page of ["admin.html", "checkout.html", "customer-cabinet.html", "login.html", "order-detail.html", "proposal-detail.html", "price-import.html", "rfq-dashboard.html", "supplier-portal.html"]) {
     assert.doesNotMatch(appShell, new RegExp(page.replace(".", "\\.")), `${page}: əvvəlcədən keşlənməməlidir`);
   }
   assert.match(serviceWorker, /caches\.match\("\/offline\.html"\)/);

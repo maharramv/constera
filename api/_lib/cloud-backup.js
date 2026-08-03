@@ -3,6 +3,9 @@ import { gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
+const BACKUP_VERSION = "constera-cloud-backup-v9";
+const SCHEMA_MIGRATIONS = 25;
+
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
   users: `SELECT id, company_id, email, name, role, status, must_change_password,
@@ -25,6 +28,7 @@ const backupQueries = Object.freeze({
   rfqs: "SELECT * FROM rfqs ORDER BY created_at",
   rfqItems: "SELECT * FROM rfq_items ORDER BY rfq_id, created_at",
   offers: "SELECT * FROM offers ORDER BY rfq_id, created_at",
+  commercialProposals: "SELECT * FROM commercial_proposals ORDER BY rfq_id, version",
   orders: "SELECT * FROM orders ORDER BY created_at",
   orderItems: "SELECT * FROM order_items ORDER BY order_id, created_at",
   orderStatusHistory: "SELECT * FROM order_status_history ORDER BY order_id, created_at",
@@ -45,6 +49,7 @@ const backupQueries = Object.freeze({
   supplierApplications: "SELECT * FROM supplier_applications ORDER BY created_at",
   priceReviewRequests: "SELECT * FROM price_review_requests ORDER BY requested_at",
   notifications: "SELECT * FROM notifications ORDER BY created_at",
+  policyConsents: "SELECT * FROM policy_consents ORDER BY created_at",
   paymentTransactions: `SELECT id, order_id, provider, external_id, idempotency_key, amount,
                                currency, status, checkout_url, created_at, updated_at
                           FROM payment_transactions ORDER BY created_at`,
@@ -125,11 +130,11 @@ export const buildCloudBackup = async () => {
   );
   const data = Object.fromEntries(entries);
   return {
-    version: "constera-cloud-backup-v8",
+    version: BACKUP_VERSION,
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: 23,
+    schemaMigrations: SCHEMA_MIGRATIONS,
     data
   };
 };
@@ -141,13 +146,22 @@ export const backupSummary = (backup) => Object.fromEntries(
 export const verifyCloudBackup = async ({ actorId = null } = {}) => {
   const backup = await buildCloudBackup();
   const summary = backupSummary(backup);
-  const required = ["companies", "users", "categories", "products", "suppliers", "auditLogs"];
+  const required = [
+    "companies",
+    "users",
+    "categories",
+    "products",
+    "suppliers",
+    "commercialProposals",
+    "policyConsents",
+    "auditLogs"
+  ];
   const missing = required.filter((name) => !Array.isArray(backup.data?.[name]));
   const serialized = JSON.stringify(backup);
   const checksum = createHash("sha256").update(serialized).digest("hex");
   const tableCount = Object.keys(summary).length;
   const recordCount = Object.values(summary).reduce((total, count) => total + Number(count || 0), 0);
-  const status = missing.length || backup.schemaMigrations !== 23 ? "failed" : "verified";
+  const status = missing.length || backup.schemaMigrations !== SCHEMA_MIGRATIONS ? "failed" : "verified";
   const details = {
     missing,
     requiredCollections: required.length,

@@ -4086,6 +4086,12 @@ const renderRfqDashboard = () => {
   const summaryStatus = document.querySelector("[data-rfq-summary-status]");
   const copySummaryButton = document.querySelector("[data-rfq-copy-summary]");
   const printSummaryButton = document.querySelector("[data-rfq-print-summary]");
+  const createProposalButton = document.querySelector("[data-rfq-create-proposal]");
+  const openProposalLink = document.querySelector("[data-rfq-open-proposal]");
+  const proposalForm = document.querySelector("[data-rfq-proposal-form]");
+  const proposalOfferSelect = document.querySelector("[data-rfq-proposal-offer]");
+  const proposalStatus = document.querySelector("[data-rfq-proposal-status]");
+  const cancelProposalButton = document.querySelector("[data-rfq-cancel-proposal]");
   const offerPanel = document.querySelector("[data-rfq-offer-panel]");
   const refreshButton = document.querySelector("[data-rfq-refresh]");
   const connectionStatus = document.querySelector("[data-rfq-connection-status]");
@@ -4101,6 +4107,13 @@ const renderRfqDashboard = () => {
     package: "Paket",
     rental: "İcarə",
     custom: "Sərbəst"
+  };
+  const proposalStatusLabels = {
+    draft: "Qaralama",
+    issued: "Göndərilib",
+    accepted: "Qəbul edilib",
+    expired: "Müddəti bitib",
+    cancelled: "Ləğv edilib"
   };
   const statusList = ["Yeni", "Baxılır", "Təklif gözləyir", "Təklif alındı", "Bağlandı", "Ləğv edildi"];
   const supplierOptions = () => `
@@ -4138,13 +4151,14 @@ const renderRfqDashboard = () => {
   };
   const renderOfferText = (draft) => {
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
+    const latestProposal = Array.isArray(draft.proposals) ? draft.proposals[0] : null;
     const bestOffer = getBestOffer(draft);
     if (!bestOffer) {
       return `<span class="status-pill">0 təklif</span>`;
     }
     return `
       <strong>${escapeHtml(bestOffer.price || "Qiymət yoxdur")}</strong>
-      <small>${bestOffer.status === "accepted" ? "Qalib · " : ""}${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif${bestOffer.orderNumber ? ` · Sifariş #${escapeHtml(bestOffer.orderNumber)}` : ""}</small>
+      <small>${bestOffer.status === "accepted" ? "Qalib · " : ""}${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.leadTime || "müddət açıq")} · ${offers.length} təklif${bestOffer.orderNumber ? ` · Sifariş #${escapeHtml(bestOffer.orderNumber)}` : ""}${latestProposal ? ` · ${escapeHtml(latestProposal.documentNumber)}` : ""}</small>
     `;
   };
 
@@ -4173,6 +4187,20 @@ const renderRfqDashboard = () => {
     createdAt: offer.createdAt || offer.created_at || new Date().toISOString(),
     status: offer.status || "submitted"
   });
+  const normalizeProposal = (proposal = {}) => ({
+    ...proposal,
+    id: proposal.id || "",
+    documentNumber: proposal.documentNumber || proposal.document_number || "Kommersiya təklifi",
+    version: Number(proposal.version || 1),
+    status: proposal.status || "draft",
+    totalAmount: Number(proposal.totalAmount ?? proposal.total_amount ?? 0),
+    currency: proposal.currency || "AZN",
+    validUntil: proposal.validUntil || proposal.valid_until || "",
+    selectedOfferId: proposal.selectedOfferId || proposal.selected_offer_id || "",
+    issuedAt: proposal.issuedAt || proposal.issued_at || "",
+    acceptedAt: proposal.acceptedAt || proposal.accepted_at || "",
+    createdAt: proposal.createdAt || proposal.created_at || ""
+  });
   const normalizeCloudRfq = (rfq) => ({
     id: rfq.id,
     cloudId: rfq.id,
@@ -4197,6 +4225,7 @@ const renderRfqDashboard = () => {
     note: rfq.note || "",
     items: rfq.items || [],
     offers: (rfq.offers || []).map(normalizeOffer),
+    proposals: (rfq.proposals || []).map(normalizeProposal),
     createdAt: rfq.created_at || rfq.createdAt || new Date().toISOString(),
     updatedAt: rfq.updated_at || rfq.updatedAt || ""
   });
@@ -4212,9 +4241,10 @@ const renderRfqDashboard = () => {
         supplierId: draft.supplierId || "",
         supplier: draft.supplier || "Açıq sorğu",
         priority: draft.priority || "Normal",
-        offers: Array.isArray(draft.offers) ? draft.offers.map(normalizeOffer) : []
+        offers: Array.isArray(draft.offers) ? draft.offers.map(normalizeOffer) : [],
+        proposals: Array.isArray(draft.proposals) ? draft.proposals.map(normalizeProposal) : []
       };
-      if (!draft.id || !draft.type || !draft.status || draft.supplierId === undefined || !draft.priority || !Array.isArray(draft.offers)) changed = true;
+      if (!draft.id || !draft.type || !draft.status || draft.supplierId === undefined || !draft.priority || !Array.isArray(draft.offers) || !Array.isArray(draft.proposals)) changed = true;
       return next;
     });
     if (changed && cloudDrafts === null) storage.write("constera-rfq-drafts", drafts);
@@ -4293,11 +4323,25 @@ const renderRfqDashboard = () => {
   const renderSummaryPanel = (draft) => {
     if (!summaryPanel || !summaryContent || !draft) return;
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
+    const proposals = Array.isArray(draft.proposals) ? draft.proposals : [];
+    const latestProposal = proposals[0] || null;
     const bestOffer = getBestOffer(draft);
-    const canChooseOffer = !cloudUser || ["super_admin", "admin", "sales", "customer"].includes(cloudUser.role);
+    const canCreateProposal = cloudDrafts !== null
+      && ["super_admin", "admin", "sales"].includes(cloudUser?.role)
+      && offers.some((offer) => Number.isFinite(parseOfferPrice(offer)) && parseOfferPrice(offer) > 0 && offer.supplierId);
+    const canChooseOffer = cloudDrafts === null;
     latestSummaryText = buildSummaryText(draft);
     selectedSummaryId = draft.id;
     summaryPanel.hidden = false;
+    if (proposalForm && proposalForm.elements.rfqId?.value !== draft.id) proposalForm.hidden = true;
+    if (createProposalButton) createProposalButton.hidden = !canCreateProposal;
+    if (openProposalLink) {
+      openProposalLink.hidden = !latestProposal?.id;
+      openProposalLink.href = latestProposal?.id
+        ? `proposal-detail.html?proposal=${encodeURIComponent(latestProposal.id)}`
+        : "proposal-detail.html";
+      openProposalLink.textContent = latestProposal?.status === "accepted" ? "Qəbul edilmiş təklifi aç" : "Son təklifi aç";
+    }
     if (summaryTitle) summaryTitle.textContent = draft.product || "Sərbəst sorğu";
     summaryContent.innerHTML = `
       <article class="rfq-summary-head">
@@ -4316,6 +4360,7 @@ const renderRfqDashboard = () => {
         <div><dt>Büdcə</dt><dd>${escapeHtml(draft.budget || "Seçilməyib")}</dd></div>
         <div><dt>Çatdırılma/operator</dt><dd>${escapeHtml(draft.deliveryMode || "Seçilməyib")}</dd></div>
         <div><dt>${bestOffer?.status === "accepted" ? "Qalib təklif" : "Ən aşağı təklif"}</dt><dd>${bestOffer ? `${escapeHtml(bestOffer.supplier || "Təchizatçı")} · ${escapeHtml(bestOffer.price || "Qiymət yoxdur")}` : "Hələ yoxdur"}</dd></div>
+        <div><dt>Kommersiya təklifi</dt><dd>${latestProposal ? `${escapeHtml(latestProposal.documentNumber)} · ${escapeHtml(proposalStatusLabels[latestProposal.status] || latestProposal.status)}` : "Hələ yaradılmayıb"}</dd></div>
       </dl>
       <div class="rfq-offer-grid">
         ${offers.length ? offers.map((offer) => `
@@ -4331,7 +4376,7 @@ const renderRfqDashboard = () => {
               ? `<a class="button button-secondary" href="order-detail.html?order=${encodeURIComponent(offer.orderId)}">Sifariş #${escapeHtml(offer.orderNumber || "")} və proforma</a>`
               : ""}
             ${canChooseOffer && (!offer.status || ["draft", "submitted"].includes(offer.status))
-              ? `<button class="button button-primary" type="button" data-rfq-offer-select="${escapeAttr(offer.id)}" data-rfq-offer-rfq="${escapeAttr(draft.id)}">Qalib seç</button>`
+              ? `<button class="button button-primary" type="button" data-rfq-offer-select="${escapeAttr(offer.id)}" data-rfq-offer-rfq="${escapeAttr(draft.id)}">Lokal qalib seç</button>`
               : ""}
           </article>
         `).join("") : `
@@ -4343,7 +4388,13 @@ const renderRfqDashboard = () => {
         `}
       </div>
     `;
-    if (summaryStatus) summaryStatus.textContent = "Təklif aktı hazırdır. Xülasəni kopyalaya və ya çap edə bilərsən.";
+    if (summaryStatus) {
+      summaryStatus.textContent = latestProposal
+        ? `${latestProposal.documentNumber} sənədi hazırdır. Açıb PDF kimi saxlaya və ya qəbul edə bilərsən.`
+        : canCreateProposal
+          ? "Təkliflər müqayisə edildi. İndi kommersiya təklifi yaradıb müştəriyə göndər."
+          : "Təklif aktı hazırdır. Kommersiya sənədi üçün qiymətli təchizatçı təklifi tələb olunur.";
+    }
   };
 
   const exportDrafts = (drafts) => {
@@ -4440,6 +4491,7 @@ const renderRfqDashboard = () => {
     }, {});
     const offerCount = drafts.reduce((sum, draft) => sum + (draft.offers || []).length, 0);
     const acceptedCount = drafts.filter((draft) => (draft.offers || []).some((offer) => offer.status === "accepted")).length;
+    const proposalCount = drafts.reduce((sum, draft) => sum + (draft.proposals || []).length, 0);
     const canManageRfq = cloudDrafts === null || ["super_admin", "admin", "sales"].includes(cloudUser?.role);
 
     stats.innerHTML = `
@@ -4448,6 +4500,7 @@ const renderRfqDashboard = () => {
       <article class="stat-card"><span class="stat-value">${counts["Təklif gözləyir"] || 0}</span><p>təklif gözləyir</p></article>
       <article class="stat-card"><span class="stat-value">${counts["Təklif alındı"] || 0}</span><p>təklif alınıb</p></article>
       <article class="stat-card"><span class="stat-value">${offerCount}</span><p>təchizatçı təklifi</p></article>
+      <article class="stat-card"><span class="stat-value">${proposalCount}</span><p>kommersiya təklifi</p></article>
       <article class="stat-card"><span class="stat-value">${acceptedCount}</span><p>qalib seçilib</p></article>
     `;
 
@@ -4525,7 +4578,87 @@ const renderRfqDashboard = () => {
       summaryStatus.textContent = "Əvvəlcə cədvəldən sorğu seç.";
       return;
     }
+    const restoreProposalForm = proposalForm && !proposalForm.hidden;
+    if (proposalForm) proposalForm.hidden = true;
     window.print();
+    if (proposalForm && restoreProposalForm) proposalForm.hidden = false;
+  });
+  const fillProposalTermsFromOffer = (draft, offerId) => {
+    if (!proposalForm || !draft) return;
+    const offer = (draft.offers || []).find((item) => item.id === offerId);
+    const deliveryTerms = proposalForm.elements.deliveryTerms;
+    const warrantyTerms = proposalForm.elements.warrantyTerms;
+    if (deliveryTerms) deliveryTerms.value = offer?.delivery || "";
+    if (warrantyTerms) warrantyTerms.value = offer?.warranty || "";
+  };
+  createProposalButton?.addEventListener("click", () => {
+    const draft = getDrafts().find((item) => item.id === selectedSummaryId);
+    if (!draft || !proposalForm || !proposalOfferSelect) return;
+    const eligibleOffers = (draft.offers || [])
+      .filter((offer) => Number.isFinite(parseOfferPrice(offer)) && parseOfferPrice(offer) > 0 && offer.supplierId)
+      .sort((a, b) => parseOfferPrice(a) - parseOfferPrice(b));
+    if (!eligibleOffers.length) {
+      if (summaryStatus) summaryStatus.textContent = "Əvvəlcə qiyməti və təchizatçısı təsdiqlənmiş təklif əlavə et.";
+      return;
+    }
+    proposalForm.reset();
+    proposalForm.elements.vatRate.disabled = false;
+    proposalForm.elements.rfqId.value = draft.id;
+    proposalOfferSelect.innerHTML = eligibleOffers.map((offer) => `
+      <option value="${escapeAttr(offer.id)}">${escapeHtml(offer.supplier || "Təchizatçı")} · ${escapeHtml(offer.price || "Qiymət yoxdur")} · ${escapeHtml(offer.leadTime || "müddət açıq")}</option>
+    `).join("");
+    proposalOfferSelect.value = getBestOffer(draft)?.id || eligibleOffers[0].id;
+    fillProposalTermsFromOffer(draft, proposalOfferSelect.value);
+    proposalForm.hidden = false;
+    proposalForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  proposalOfferSelect?.addEventListener("change", () => {
+    const draft = getDrafts().find((item) => item.id === proposalForm?.elements.rfqId?.value);
+    fillProposalTermsFromOffer(draft, proposalOfferSelect.value);
+  });
+  proposalForm?.elements.vatMode?.addEventListener("change", () => {
+    const vatRateInput = proposalForm.elements.vatRate;
+    if (!vatRateInput) return;
+    const disabled = proposalForm.elements.vatMode.value === "not_applicable";
+    vatRateInput.disabled = disabled;
+    vatRateInput.value = disabled ? "0" : vatRateInput.value || "18";
+  });
+  cancelProposalButton?.addEventListener("click", () => {
+    if (proposalForm) proposalForm.hidden = true;
+  });
+  proposalForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!window.ConstEraAPI?.createProposal || cloudDrafts === null) {
+      if (proposalStatus) proposalStatus.textContent = "Kommersiya təklifi üçün canlı hesab və Neon bağlantısı tələb olunur.";
+      return;
+    }
+    const data = new FormData(proposalForm);
+    const submitButton = proposalForm.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    if (proposalStatus) proposalStatus.textContent = "Müqayisə və kommersiya şərtləri sənədə yazılır...";
+    try {
+      const result = await window.ConstEraAPI.createProposal({
+        action: "issue",
+        rfqId: data.get("rfqId"),
+        selectedOfferId: data.get("selectedOfferId"),
+        validDays: data.get("validDays"),
+        discountAmount: data.get("discountAmount"),
+        deliveryAmount: data.get("deliveryAmount"),
+        vatMode: data.get("vatMode"),
+        vatRate: data.get("vatRate"),
+        paymentTerms: data.get("paymentTerms"),
+        deliveryTerms: data.get("deliveryTerms"),
+        warrantyTerms: data.get("warrantyTerms"),
+        note: data.get("note")
+      });
+      await refreshCloudRfqs();
+      if (proposalStatus) proposalStatus.textContent = `${result.data.documentNumber} yaradıldı və müştəriyə göndərildi.`;
+      window.location.assign(`proposal-detail.html?proposal=${encodeURIComponent(result.data.id)}`);
+    } catch (error) {
+      if (proposalStatus) proposalStatus.textContent = error.message;
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
   });
   const refreshCloudRfqs = async () => {
     if (!cloudUser || !window.ConstEraAPI?.rfqs) return;

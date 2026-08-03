@@ -17,13 +17,16 @@ export default withApiErrors(async (req, res) => {
     const values = [];
     const where = [];
     let offerScope = "";
+    let proposalScope = "";
     if (user.role === "customer") {
       values.push(user.id);
       where.push(`r.customer_id = $${values.length}`);
+      proposalScope = "AND proposal.status <> 'draft'";
     } else if (user.role === "supplier") {
       values.push(user.companyId || "none");
       where.push(`(r.supplier_id IS NULL OR s.company_id = $${values.length})`);
       offerScope = `AND offer_supplier.company_id = $${values.length}`;
+      proposalScope = "AND false";
     }
     values.push(limit);
     const rows = await query(
@@ -56,7 +59,27 @@ export default withApiErrors(async (req, res) => {
                 LEFT JOIN suppliers offer_supplier ON offer_supplier.id = o.supplier_id
                 LEFT JOIN orders converted_order ON converted_order.offer_id = o.id
                 WHERE o.rfq_id = r.id ${offerScope}
-              ), '[]'::json) AS offers
+              ), '[]'::json) AS offers,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                  'id', proposal.id,
+                  'documentNumber', proposal.document_number,
+                  'version', proposal.version,
+                  'status', CASE
+                    WHEN proposal.status = 'issued' AND proposal.valid_until < (now() AT TIME ZONE 'Asia/Baku')::date THEN 'expired'
+                    ELSE proposal.status
+                  END,
+                  'totalAmount', proposal.total_amount,
+                  'currency', proposal.currency,
+                  'validUntil', proposal.valid_until,
+                  'selectedOfferId', proposal.selected_offer_id,
+                  'issuedAt', proposal.issued_at,
+                  'acceptedAt', proposal.accepted_at,
+                  'createdAt', proposal.created_at
+                ) ORDER BY proposal.created_at DESC)
+                FROM commercial_proposals proposal
+                WHERE proposal.rfq_id = r.id ${proposalScope}
+              ), '[]'::json) AS proposals
          FROM rfqs r
          LEFT JOIN suppliers s ON s.id = r.supplier_id
          LEFT JOIN rfq_items i ON i.rfq_id = r.id

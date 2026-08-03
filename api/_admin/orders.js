@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSessionUser, hashOpaque, requireRole } from "../_lib/auth.js";
+import { calculateCommercialProposalTotals } from "../_lib/commercial-proposals.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -187,18 +188,35 @@ export default withApiErrors(async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(body, "deliveryAmount") && body.deliveryAmount !== "" && deliveryAmount === null) {
       throw new ApiError(400, "validation_error", "Çatdırılma məbləği düzgün deyil.");
     }
-    const totalAmount = current.subtotal === null
-      ? null
-      : Math.round((Number(current.subtotal) + Number(deliveryAmount || 0)) * 100) / 100;
+    if (
+      current.commercialProposalId
+      && Object.prototype.hasOwnProperty.call(body, "deliveryAmount")
+      && Math.abs(Number(deliveryAmount || 0) - Number(current.deliveryAmount || 0)) > 0.009
+    ) {
+      throw new ApiError(
+        409,
+        "commercial_terms_locked",
+        "Qəbul edilmiş kommersiya təklifinin çatdırılma və maliyyə şərtləri dəyişdirilə bilməz. Yeni təklif versiyası yaradılmalıdır."
+      );
+    }
+    const recalculated = current.subtotal === null ? null : calculateCommercialProposalTotals({
+      subtotal: current.subtotal,
+      discountAmount: current.discountAmount,
+      deliveryAmount,
+      vatMode: current.vatMode,
+      vatRate: current.vatRate
+    });
+    const totalAmount = recalculated?.totalAmount ?? null;
+    const vatAmount = recalculated?.vatAmount ?? current.vatAmount;
     const trackingCode = text(body.trackingCode ?? current.trackingCode, { max: 160 }) || null;
     const deliveryProvider = text(body.deliveryProvider ?? current.deliveryProvider, { max: 200 }) || null;
     const historyNote = text(body.historyNote, { max: 1_000 });
     await query(
       `UPDATE orders
           SET status = $2, payment_status = $3, delivery_amount = $4, total_amount = $5,
-              tracking_code = $6, delivery_provider = $7, updated_at = now()
+              vat_amount = $6, tracking_code = $7, delivery_provider = $8, updated_at = now()
         WHERE id = $1`,
-      [id, status, paymentStatus, deliveryAmount, totalAmount, trackingCode, deliveryProvider]
+      [id, status, paymentStatus, deliveryAmount, totalAmount, vatAmount, trackingCode, deliveryProvider]
     );
     if (status !== current.status) await syncOperationsForOrderStatus(id, status);
     await ensureSupplierPurchaseOrders(id);

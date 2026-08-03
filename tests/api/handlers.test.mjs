@@ -7,6 +7,7 @@ import adminHandler from "../../api/admin.js";
 import productsHandler from "../../api/products.js";
 import rfqsHandler from "../../api/rfqs.js";
 import offersHandler from "../../api/offers.js";
+import proposalsHandler from "../../api/_admin/proposals.js";
 import { parseRfqQuantity } from "../../api/_lib/rfq-order.js";
 import { chooseProductOffer } from "../../api/_lib/product-offers.js";
 import { calculateOfferLandedCosts } from "../../api/_lib/landed-cost.js";
@@ -88,6 +89,7 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
     "inventory",
     "operations-center",
     "procurement",
+    "proposals",
     "product-offers",
     "purchase-orders",
     "price-monitor",
@@ -183,6 +185,11 @@ test("RFQ və təklif müqayisəsi anonim istifadəçiyə açılmır", async () 
   await offersHandler({ method: "GET", headers: {}, query: { rfqId: "rfq-test" } }, offerResponse);
   assert.equal(offerResponse.statusCode, 401);
   assert.equal(offerResponse.payload.error.code, "authentication_required");
+
+  const proposalResponse = createResponse();
+  await proposalsHandler({ method: "GET", headers: {}, query: { rfqId: "rfq-test" } }, proposalResponse);
+  assert.equal(proposalResponse.statusCode, 401);
+  assert.equal(proposalResponse.payload.error.code, "authentication_required");
 }));
 
 test("RFQ miqdarı Azərbaycan yazılışından təhlükəsiz rəqəmə çevrilir", () => {

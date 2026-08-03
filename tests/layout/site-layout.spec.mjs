@@ -20,6 +20,7 @@ const pages = [
   "customer-cabinet.html",
   "checkout.html",
   "order-detail.html",
+  "proposal-detail.html",
   "rfq.html",
   "rfq-dashboard.html",
   "tender.html",
@@ -444,4 +445,99 @@ test("təchizatçı müraciəti və sifariş sənədi mobil ekrana uyğunlaşır
   const overflow = await page.evaluate(() =>
     Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("müqayisəli kommersiya təklifi mobil və desktopda qəbul axınını tamamlayır", async ({ page }, testInfo) => {
+  const proposal = {
+    id: "proposal-layout",
+    documentNumber: "KT-2026-001001",
+    rfqId: "rfq-layout",
+    rfqTitle: "Villa üçün fasad materialları",
+    selectedOfferId: "offer-two",
+    customerId: "customer-layout",
+    version: 1,
+    status: "issued",
+    currency: "AZN",
+    subtotal: 12500,
+    discountAmount: 500,
+    deliveryAmount: 250,
+    vatMode: "excluded",
+    vatRate: 18,
+    vatAmount: 2205,
+    totalAmount: 14455,
+    validUntil: "2026-08-17",
+    paymentTerms: "Bank köçürməsi ilə, proforma əsasında",
+    deliveryTerms: "Bakı daxilində 3 iş günü",
+    warrantyTerms: "İstehsalçı zəmanəti",
+    note: "Stok sifariş təsdiqində yenidən yoxlanılır.",
+    customer: {
+      companyName: "Test İnşaat MMC",
+      contactName: "Müştəri nümayəndəsi",
+      phone: "+994 50 000 00 00",
+      email: "customer@example.test",
+      city: "Bakı"
+    },
+    supplier: {
+      name: "Seçilmiş Təchizatçı MMC",
+      leadTime: "3 iş günü",
+      delivery: "Daxildir",
+      warranty: "12 ay"
+    },
+    items: [
+      { title: "Fasad boyası 15 L", quantity: "40 vedrə", specs: ["Silikon əsaslı", "Ağ"] },
+      { title: "Fasad astarı 15 L", quantity: "20 vedrə", specs: ["Xarici işlər üçün"] }
+    ],
+    comparisons: [
+      { id: "offer-one", supplier: "Təchizatçı A", price: "13 100 AZN", leadTime: "2 gün", delivery: "Ayrıca", warranty: "12 ay", selected: false },
+      { id: "offer-two", supplier: "Seçilmiş Təchizatçı MMC", price: "12 500 AZN", leadTime: "3 gün", delivery: "Daxildir", warranty: "12 ay", selected: true },
+      { id: "offer-three", supplier: "Təchizatçı C", price: "12 900 AZN", leadTime: "5 gün", delivery: "Daxildir", warranty: "6 ay", selected: false }
+    ],
+    issuedAt: "2026-08-03T08:00:00.000Z",
+    createdAt: "2026-08-03T08:00:00.000Z"
+  };
+
+  await page.route("**/api/auth?action=session", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ authenticated: true, user: { id: "customer-layout", role: "customer", name: "Müştəri" } })
+  }));
+  await page.route("**/api/proposals**", async (route) => {
+    if (route.request().method() === "PATCH") {
+      proposal.status = "accepted";
+      proposal.orderId = "ord-layout-proposal";
+      proposal.orderNumber = 1007;
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { proposal, order: { id: proposal.orderId, orderNumber: proposal.orderNumber } } })
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: proposal })
+    });
+  });
+  page.on("dialog", (dialog) => dialog.accept());
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    proposal.status = "issued";
+    delete proposal.orderId;
+    delete proposal.orderNumber;
+    await page.setViewportSize(viewport);
+    await page.goto("/proposal-detail.html?proposal=proposal-layout", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-proposal-document]")).toBeVisible();
+    await expect(page.locator("[data-proposal-comparisons] tr")).toHaveCount(3);
+    await expect(page.locator("[data-proposal-total]")).toContainText("14");
+    await expect(page.locator("[data-proposal-accept]")).toBeVisible();
+    const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow, `proposal ${viewport.width}: horizontal overflow`).toBeLessThanOrEqual(0);
+    await page.locator("[data-proposal-accept]").click();
+    await expect(page.locator("[data-proposal-order-link]")).toBeVisible();
+    await expect(page.locator("[data-proposal-order-link]")).toContainText("Sifariş #1007");
+    await testInfo.attach(`proposal-${viewport.width}.png`, {
+      body: await page.screenshot({ fullPage: true, animations: "disabled" }),
+      contentType: "image/png"
+    });
+  }
 });

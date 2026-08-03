@@ -170,6 +170,16 @@
       method: "PATCH",
       body: JSON.stringify({ id, status })
     }),
+    proposals: (rfqId = "") => request(`/api/proposals?limit=500${rfqId ? `&rfqId=${encodeURIComponent(rfqId)}` : ""}`),
+    proposal: (id) => request(`/api/proposals?id=${encodeURIComponent(id)}`),
+    createProposal: (data) => request("/api/proposals", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+    updateProposal: (id, status) => request("/api/proposals", {
+      method: "PATCH",
+      body: JSON.stringify({ id, status })
+    }),
     tenders: () => request("/api/tenders?limit=500"),
     saveTender: (data, update = false) => request("/api/tenders", { method: update ? "PATCH" : "POST", body: JSON.stringify(data) }),
     deleteTender: (id) => request("/api/tenders", { method: "DELETE", body: JSON.stringify({ id }) }),

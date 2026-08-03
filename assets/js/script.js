@@ -376,6 +376,18 @@ const initPrivacyConsent = () => {
   const choice = readPrivacyChoice();
   renderStatus(choice);
   if (choice) return;
+  const privatePages = new Set([
+    "admin",
+    "checkout",
+    "customer-cabinet",
+    "login",
+    "order-detail",
+    "price-import",
+    "proposal-detail",
+    "rfq-dashboard",
+    "supplier-portal"
+  ]);
+  if (privatePages.has(document.body.dataset.page || "")) return;
   const notice = document.createElement("aside");
   notice.className = "pwa-controls glass";
   notice.dataset.privacyConsent = "";

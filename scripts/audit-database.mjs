@@ -17,6 +17,7 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'package' AND status = 'active') AS packages,
     (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
     (SELECT count(*)::int FROM orders) AS orders,
+    (SELECT count(*)::int FROM commercial_proposals) AS commercial_proposals,
     (SELECT count(*)::int FROM delivery_quotes WHERE status = 'accepted') AS accepted_delivery_quotes,
     (SELECT count(*)::int FROM procurement_requests) AS procurement_requests,
     (SELECT count(*)::int FROM procurement_requests WHERE status = 'pending') AS pending_procurement_requests,
@@ -136,6 +137,20 @@ const [integrity] = await query(`
       JOIN orders o ON o.id = document.order_id
       WHERE document.document_type = 'proforma_invoice'
         AND (o.has_pending_price OR o.total_amount IS NULL)) AS invalid_proforma_documents,
+    (SELECT count(*)::int FROM commercial_proposals proposal
+      WHERE proposal.status = 'accepted'
+        AND NOT EXISTS (
+          SELECT 1 FROM orders orders
+          WHERE orders.commercial_proposal_id = proposal.id
+        )) AS accepted_proposals_without_order,
+    (SELECT count(*)::int FROM orders orders
+      JOIN commercial_proposals proposal ON proposal.id = orders.commercial_proposal_id
+      WHERE abs(orders.total_amount - proposal.total_amount) > 0.01
+        OR abs(orders.discount_amount - proposal.discount_amount) > 0.01
+        OR abs(orders.delivery_amount - proposal.delivery_amount) > 0.01
+        OR abs(orders.vat_amount - proposal.vat_amount) > 0.01
+        OR orders.vat_mode <> proposal.vat_mode
+        OR orders.currency <> proposal.currency) AS proposal_order_financial_mismatch,
     (SELECT count(*)::int FROM supplier_applications
       WHERE status = 'approved'
         AND (company_id IS NULL OR supplier_id IS NULL OR user_id IS NULL)) AS incomplete_supplier_approvals,
@@ -358,10 +373,17 @@ const [integrity] = await query(`
           OR license_type NOT IN ('own', 'supplier', 'official', 'licensed')
           OR NULLIF(source_url, '') IS NULL
         )) AS invalid_external_media,
-    (SELECT count(*)::int FROM backup_verifications
-      WHERE status = 'verified'
-        AND (schema_migrations <> 23 OR NULLIF(checksum_sha256, '') IS NULL)
-    ) AS invalid_backup_verifications
+    COALESCE((
+      SELECT CASE
+        WHEN verification.schema_migrations = 25
+          AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
+        ELSE 1
+      END
+      FROM backup_verifications verification
+      WHERE verification.status = 'verified'
+      ORDER BY verification.created_at DESC
+      LIMIT 1
+    ), 1)::int AS invalid_backup_verifications
 `);
 
 const [schema] = await query(`
@@ -375,6 +397,7 @@ const [schema] = await query(`
     to_regclass('public.order_items') IS NOT NULL AS order_items_ready,
     to_regclass('public.order_status_history') IS NOT NULL AS order_history_ready,
     to_regclass('public.order_documents') IS NOT NULL AS order_documents_ready,
+    to_regclass('public.commercial_proposals') IS NOT NULL AS commercial_proposals_ready,
     to_regclass('public.order_fulfillments') IS NOT NULL AS order_fulfillments_ready,
     to_regclass('public.supplier_purchase_orders') IS NOT NULL AS supplier_purchase_orders_ready,
     to_regclass('public.supplier_purchase_order_items') IS NOT NULL AS supplier_purchase_order_items_ready,
@@ -421,6 +444,10 @@ const [schema] = await query(`
     to_regclass('public.price_review_requests_one_pending_idx') IS NOT NULL AS price_review_scope_ready,
     to_regclass('public.orders_offer_unique') IS NOT NULL
       AND to_regclass('public.orders_rfq_unique') IS NOT NULL AS rfq_order_scope_ready,
+    to_regclass('public.orders_commercial_proposal_unique') IS NOT NULL
+      AND to_regclass('public.commercial_proposals_rfq_time_idx') IS NOT NULL
+      AND to_regclass('public.commercial_proposals_customer_status_idx') IS NOT NULL
+      AS commercial_proposal_scope_ready,
     to_regclass('public.orders_tender_unique') IS NOT NULL
       AND to_regclass('public.orders_tender_bid_unique') IS NOT NULL AS tender_order_scope_ready,
     to_regclass('public.tender_bids_one_accepted_per_tender_idx') IS NOT NULL AS tender_selection_ready,
