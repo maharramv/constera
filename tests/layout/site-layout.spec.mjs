@@ -39,6 +39,12 @@ const primaryViewports = [
 
 const rounded = (value) => Math.round(value * 10) / 10;
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.CONSTERA_STATIC_PREVIEW = true;
+  });
+});
+
 for (const viewport of primaryViewports) {
   test(`ümumi header bütün səhifələrdə sabitdir: ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport);

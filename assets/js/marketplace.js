@@ -1326,7 +1326,7 @@ const renderCatalog = () => {
   };
 
   const loadServerPage = async (append = false) => {
-    if (!window.ConstEraAPI?.catalog) return;
+    if (window.CONSTERA_STATIC_PREVIEW || !window.ConstEraAPI?.catalog) return;
     const requestId = ++serverRequest;
     const page = append ? serverPage + 1 : 1;
     const filters = {
@@ -2068,7 +2068,18 @@ const renderProductDetail = () => {
     const priceDelta = newestPrice && previousPrice && Number(previousPrice.amount) > 0
       ? ((Number(newestPrice.amount) - Number(previousPrice.amount)) / Number(previousPrice.amount)) * 100
       : null;
-    const relatedProducts = Array.isArray(item.relatedProducts) ? item.relatedProducts : [];
+    const explicitRelatedProducts = Array.isArray(item.relatedProducts) ? item.relatedProducts : [];
+    const fallbackRelatedProducts = marketplace.products
+      .filter((candidate) => candidate.id !== item.id && (
+        candidate.subcategory === item.subcategory || candidate.category === item.category
+      ))
+      .sort((left, right) => {
+        const leftSubcategoryMatch = left.subcategory === item.subcategory ? 1 : 0;
+        const rightSubcategoryMatch = right.subcategory === item.subcategory ? 1 : 0;
+        return rightSubcategoryMatch - leftSubcategoryMatch || compareSourceQuality(left, right, "product");
+      })
+      .slice(0, 4);
+    const relatedProducts = explicitRelatedProducts.length ? explicitRelatedProducts : fallbackRelatedProducts;
     const verifiedDate = item.priceVerifiedAt && Number.isFinite(Date.parse(item.priceVerifiedAt))
       ? new Date(item.priceVerifiedAt).toLocaleDateString("az-AZ")
       : "Yoxlanmayıb";
@@ -2419,7 +2430,7 @@ const renderProductDetail = () => {
   };
 
   if (product) paintProduct(product);
-  if (productId && window.ConstEraAPI?.product) {
+  if (productId && !window.CONSTERA_STATIC_PREVIEW && window.ConstEraAPI?.product) {
     window.ConstEraAPI.product(productId)
       .then((result) => paintProduct(result.data))
       .catch(() => {

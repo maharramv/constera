@@ -41,6 +41,10 @@
       root.hidden = true;
       return;
     }
+    if (window.CONSTERA_STATIC_PREVIEW) {
+      root.innerHTML = '<div class="market-section-heading"><div><p class="eyebrow">Müştəri rəyləri</p><h2>Yoxlanılmış təcrübə</h2></div></div><p class="admin-import-status">Rəylər canlı bazaya qoşulduqda göstərilir.</p>';
+      return;
+    }
     const render = async () => {
       try {
         const result = await api.reviews(targetType, targetId);
