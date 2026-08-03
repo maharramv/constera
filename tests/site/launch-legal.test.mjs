@@ -17,6 +17,13 @@ test("məxfilik, şərtlər, çatdırılma və əlaqə səhifələri Azərbaycan
   assert.match(read("delivery-returns.html"), /Qaytarma və dəyişdirmə/);
 });
 
+test("məxfilik seçimi mobil məzmunu örtməyən axın panelində göstərilir", () => {
+  const script = read("assets/js/script.js");
+  assert.match(script, /notice\.className = "pwa-controls privacy-consent glass"/);
+  assert.match(script, /main\.prepend\(notice\)/);
+  assert.match(script, /position: "relative"/);
+});
+
 test("bütün açıq kommersiya formaları versiyalanan hüquqi razılıq göndərir", () => {
   for (const file of ["checkout.html", "rfq.html", "suppliers.html", "index.html", "contact.html"]) {
     const html = read(file);

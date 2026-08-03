@@ -389,15 +389,25 @@ const initPrivacyConsent = () => {
   ]);
   if (privatePages.has(document.body.dataset.page || "")) return;
   const notice = document.createElement("aside");
-  notice.className = "pwa-controls glass";
+  notice.className = "pwa-controls privacy-consent glass";
   notice.dataset.privacyConsent = "";
   notice.setAttribute("aria-label", "Məxfilik seçimi");
+  Object.assign(notice.style, {
+    position: "relative",
+    inset: "auto",
+    width: "min(1240px, calc(100% - 32px))",
+    maxWidth: "none",
+    margin: "16px auto 0",
+    borderRadius: "8px"
+  });
   notice.innerHTML = `
     <span>Analitika yalnız icazənizlə işləyir. <a href="privacy.html">Məxfilik siyasəti</a></span>
     <button class="button button-outline" type="button" data-consent-choice="essential" title="Yalnız zəruri yaddaş">Zəruri</button>
     <button class="button button-secondary" type="button" data-consent-choice="analytics">İcazə ver</button>
   `;
-  document.body.appendChild(notice);
+  const main = document.querySelector("main");
+  if (main) main.prepend(notice);
+  else document.body.appendChild(notice);
 };
 
 const initServiceWorker = () => {
