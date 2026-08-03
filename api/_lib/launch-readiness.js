@@ -130,11 +130,19 @@ export const buildLaunchReadiness = ({
     }),
     check({
       key: "logistics",
-      label: "Çatdırılma tarifləri",
+      label: "Çatdırılma zonaları",
       detail: `${count(metrics.logisticsZones)} aktiv logistika zonası`,
       ready: count(metrics.logisticsZones) > 0,
       target: "b2b",
       action: "Logistikanı aç"
+    }),
+    check({
+      key: "verified_logistics_tariffs",
+      label: "Təsdiqlənmiş çatdırılma tarifləri",
+      detail: `${count(metrics.verifiedLogisticsZones)} zona daşıyıcı mənbəsi və etibarlılıq müddəti ilə təsdiqlənib`,
+      ready: count(metrics.verifiedLogisticsZones) > 0,
+      target: "b2b",
+      action: "Tarifləri təsdiqlə"
     }),
     check({
       key: "payment",

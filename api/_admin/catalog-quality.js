@@ -139,9 +139,40 @@ export default withApiErrors(async (req, res) => {
   if (!["super_admin", "admin"].includes(user.role)) {
     throw new ApiError(403, "permission_denied", "Keyfiyyət probleminin vəziyyətini yalnız administrator dəyişə bilər.");
   }
-  const id = text(body.id, { field: "Problem ID-si", required: true, max: 160 });
   const action = oneOf(body.action, ["ignore", "reopen", "resolve"], "resolve", "Keyfiyyət əməliyyatı");
   const status = action === "ignore" ? "ignored" : action === "reopen" ? "open" : "resolved";
+  const issueIds = [...new Set((Array.isArray(body.issueIds) ? body.issueIds : [])
+    .map((id) => text(id, { max: 160 }))
+    .filter(Boolean))];
+  if (issueIds.length) {
+    if (issueIds.length > 200) throw new ApiError(400, "quality_batch_too_large", "Bir dəfəyə maksimum 200 keyfiyyət qeydi yenilənə bilər.");
+    assertCriticalTwoFactor(user);
+    const currentRows = await query(
+      "SELECT id FROM catalog_quality_issues WHERE id = ANY($1::text[])",
+      [issueIds]
+    );
+    if (currentRows.length !== issueIds.length) {
+      throw new ApiError(404, "quality_issue_not_found", "Seçilmiş keyfiyyət qeydlərindən biri tapılmadı; heç bir qeyd dəyişdirilmədi.");
+    }
+    const rows = await query(
+      `UPDATE catalog_quality_issues
+          SET status = $2,
+              resolved_at = CASE WHEN $2 = 'resolved' THEN now() ELSE NULL END,
+              last_checked_at = now()
+        WHERE id = ANY($1::text[])
+        RETURNING id`,
+      [issueIds, status]
+    );
+    await recordAudit({
+      actorId: user.id,
+      action: `${action}_batch`,
+      entityType: "catalog_quality_issue",
+      entityId: "batch",
+      details: { ids: rows.map((row) => row.id), count: rows.length, status }
+    });
+    return sendJson(res, 200, { ok: true, data: await loadQualityCenter(200) });
+  }
+  const id = text(body.id, { field: "Problem ID-si", required: true, max: 160 });
   const rows = await query(
     `UPDATE catalog_quality_issues
         SET status = $2,

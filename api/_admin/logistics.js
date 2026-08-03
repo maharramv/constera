@@ -1,7 +1,7 @@
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { calculateDeliveryQuote, listLogisticsZones, mapLogisticsZone } from "../_lib/logistics.js";
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { entityId, oneOf, parsePriceAmount, text } from "../_lib/validation.js";
 
 const adminRoles = ["super_admin", "admin"];
@@ -23,6 +23,27 @@ const parseAmount = (value, field, fallback = 0) => {
   return amount;
 };
 
+const optionalHttpsUrl = (value, field) => {
+  const source = text(value, { max: 2_000 });
+  if (!source) return null;
+  try {
+    const url = new URL(source);
+    if (url.protocol !== "https:" || url.username || url.password) throw new Error();
+    return url.toString();
+  } catch {
+    throw new ApiError(400, "invalid_logistics_rate_source", `${field} təhlükəsiz HTTPS ünvanı olmalıdır.`);
+  }
+};
+
+const optionalDate = (value, field) => {
+  const source = text(value, { max: 20 });
+  if (!source) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(source) || !Number.isFinite(Date.parse(`${source}T00:00:00Z`))) {
+    throw new ApiError(400, "invalid_logistics_rate_date", `${field} düzgün deyil.`);
+  }
+  return source;
+};
+
 const normalizeZone = (body) => {
   const cities = (Array.isArray(body.cities) ? body.cities : String(body.cities || "").split(/[,;]/))
     .map((city) => text(city, { max: 120 }))
@@ -30,6 +51,22 @@ const normalizeZone = (body) => {
     .slice(0, 100);
   const etaMinDays = parseInteger(body.etaMinDays, 1, 0, 365, "Minimum çatdırılma müddəti");
   const etaMaxDays = parseInteger(body.etaMaxDays, 3, etaMinDays, 365, "Maksimum çatdırılma müddəti");
+  const rateStatus = oneOf(body.rateStatus, ["estimate", "verified", "expired"], "estimate", "Tarif statusu");
+  const rateSourceUrl = optionalHttpsUrl(body.rateSourceUrl, "Tarif mənbəyi");
+  const rateValidUntil = optionalDate(body.rateValidUntil, "Tarifin etibarlılıq tarixi");
+  const rateNote = text(body.rateNote, { max: 1_000 });
+  if (rateStatus === "verified") {
+    if (!rateSourceUrl || !rateValidUntil || !rateNote) {
+      throw new ApiError(
+        400,
+        "logistics_rate_evidence_required",
+        "Təsdiqlənmiş tarif üçün daşıyıcı mənbəyi, gələcək etibarlılıq tarixi və yoxlama qeydi tələb olunur."
+      );
+    }
+    if (rateValidUntil < new Date().toISOString().slice(0, 10)) {
+      throw new ApiError(409, "logistics_rate_expired", "Müddəti bitmiş logistika tarifi təsdiqlənə bilməz.");
+    }
+  }
   return {
     id: entityId(body.id, "log-zone"),
     name: text(body.name, { field: "Zona adı", required: true, max: 160 }),
@@ -44,7 +81,11 @@ const normalizeZone = (body) => {
     etaMinDays,
     etaMaxDays,
     priority: parseInteger(body.priority, 100, 0, 100_000, "Prioritet"),
-    active: body.active !== false && String(body.active) !== "false"
+    active: body.active !== false && String(body.active) !== "false",
+    rateStatus,
+    rateSourceUrl,
+    rateValidUntil,
+    rateNote
   };
 };
 
@@ -81,13 +122,16 @@ export default withApiErrors(async (req, res) => {
         etaMaxDays: quote.etaMaxDays,
         zone: quote.zone ? { id: quote.zone.id, name: quote.zone.name } : null,
         breakdown: quote.breakdown,
-        note: "Məbləğ ConstEra-nın idarə olunan platforma tarifi üzrə hesablanmış təxmini logistika qiymətidir."
+        note: quote.breakdown.tariffType === "verified_partner_tariff"
+          ? "Məbləğ mənbə və etibarlılıq müddəti yoxlanmış daşıyıcı tarifi üzrə hesablanıb."
+          : "Məbləğ ConstEra-nın idarə olunan platforma tarifi üzrə hesablanmış təxmini logistika qiymətidir."
       }
     });
   }
 
   const user = await requireRole(req, adminRoles);
   if (req.method === "DELETE") {
+    assertCriticalTwoFactor(user);
     const id = text(body.id || req.query.id, { field: "Zona ID-si", required: true, max: 160 });
     const rows = await query(
       "UPDATE logistics_zones SET active = false, updated_at = now() WHERE id = $1 RETURNING id",
@@ -99,20 +143,26 @@ export default withApiErrors(async (req, res) => {
   }
 
   let source = body;
+  let previousZone = null;
   if (req.method === "PATCH") {
     const id = text(body.id || req.query.id, { field: "Zona ID-si", required: true, max: 160 });
     const existingRows = await query("SELECT * FROM logistics_zones WHERE id = $1 LIMIT 1", [id]);
     if (!existingRows[0]) throw new ApiError(404, "logistics_zone_not_found", "Logistika zonası tapılmadı.");
-    const existing = mapLogisticsZone(existingRows[0]);
-    source = { ...existing, ...body, id };
+    previousZone = mapLogisticsZone(existingRows[0]);
+    source = { ...previousZone, ...body, id };
   }
   const zone = normalizeZone(source);
+  if (zone.rateStatus === "verified" || previousZone?.rateStatus === "verified") assertCriticalTwoFactor(user);
   const rows = await query(
     `INSERT INTO logistics_zones (
        id, name, cities, base_fee, per_supplier_fee, per_unit_fee,
-       minimum_fee, free_above, eta_min_days, eta_max_days, priority, active, updated_at
+       minimum_fee, free_above, eta_min_days, eta_max_days, priority, active,
+       rate_status, rate_source_url, rate_verified_at, rate_verified_by,
+       rate_valid_until, rate_note, updated_at
      ) VALUES (
-       $1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11, $12, now()
+       $1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+       $13, $14, CASE WHEN $13 = 'verified' THEN now() ELSE NULL END,
+       CASE WHEN $13 = 'verified' THEN $15 ELSE NULL END, $16, $17, now()
      )
      ON CONFLICT (id) DO UPDATE SET
        name = EXCLUDED.name,
@@ -126,19 +176,27 @@ export default withApiErrors(async (req, res) => {
        eta_max_days = EXCLUDED.eta_max_days,
        priority = EXCLUDED.priority,
        active = EXCLUDED.active,
+       rate_status = EXCLUDED.rate_status,
+       rate_source_url = EXCLUDED.rate_source_url,
+       rate_verified_at = EXCLUDED.rate_verified_at,
+       rate_verified_by = EXCLUDED.rate_verified_by,
+       rate_valid_until = EXCLUDED.rate_valid_until,
+       rate_note = EXCLUDED.rate_note,
        updated_at = now()
      RETURNING *`,
     [
       zone.id, zone.name, JSON.stringify(zone.cities), zone.baseFee,
       zone.perSupplierFee, zone.perUnitFee, zone.minimumFee, zone.freeAbove,
-      zone.etaMinDays, zone.etaMaxDays, zone.priority, zone.active
+      zone.etaMinDays, zone.etaMaxDays, zone.priority, zone.active,
+      zone.rateStatus, zone.rateSourceUrl, user.id, zone.rateValidUntil, zone.rateNote
     ]
   );
   await recordAudit({
     actorId: user.id,
     action: req.method === "POST" ? "create" : "update",
     entityType: "logistics_zone",
-    entityId: zone.id
+    entityId: zone.id,
+    details: { rateStatus: zone.rateStatus, rateValidUntil: zone.rateValidUntil }
   });
   return sendJson(res, req.method === "POST" ? 201 : 200, {
     ok: true,

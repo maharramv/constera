@@ -163,7 +163,7 @@
                     <h3>Qiymət yenilənmə nəzarəti</h3>
                     <p class="admin-v2-quality-summary" data-admin-price-monitor-summary>Qiymət baxış növbəsi yüklənir.</p>
                   </div>
-                  <button class="table-action" type="button" data-admin-price-monitor-scan>İndi yoxla</button>
+                  <div class="admin-actions"><button class="table-action" type="button" data-admin-price-monitor-remind-due>Vaxtı çatanları xatırlat</button><button class="table-action" type="button" data-admin-price-monitor-scan>İndi yoxla</button></div>
                 </div>
                 <div class="admin-v2-kpi-grid" data-admin-price-monitor-kpis></div>
                 <div class="table-wrap">
@@ -199,6 +199,17 @@
             </p>
             <div class="admin-v2-kpi-grid" data-launch-kpis></div>
             <div class="launch-section-grid" data-launch-sections></div>
+
+            <section class="admin-v2-section launch-release-section">
+              <div class="admin-v2-section-heading">
+                <div>
+                  <h3>Bugünkü əməliyyat planı</h3>
+                  <p class="admin-v2-quality-summary">Avtomatik yoxlamalar və insan sübutu tələb edən addımlar ayrı göstərilir.</p>
+                </div>
+                <div class="admin-actions"><span class="data-badge" data-launch-daily-count>0 iş</span><button class="table-action" type="button" data-launch-export-daily>Planı endir</button><button class="button button-secondary" type="button" data-launch-run-daily>Gündəlik yoxlamaları başlat</button></div>
+              </div>
+              <div class="launch-release-queue admin-v2-compact-list" data-launch-daily-plan></div>
+            </section>
 
             <section class="admin-v2-section launch-priority-section">
               <div class="admin-v2-section-heading">
@@ -246,6 +257,7 @@
                   Stoklu və aktual real təkliflər yüklənir.
                 </p>
                 <div class="launch-pilot-result" data-launch-pilot-result></div>
+                <div class="admin-v2-compact-list" data-launch-pilot-history></div>
               </section>
 
               <section class="admin-v2-section">
@@ -257,6 +269,13 @@
                 </div>
                 <div class="admin-v2-kpi-grid" data-launch-operations></div>
                 <div class="admin-v2-integration-list" data-launch-providers></div>
+              </section>
+
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading">
+                  <div><h3>Google və kataloq yayımı</h3><p class="admin-v2-quality-summary">Məxfilik razılığı, sitemap və satış feed-i üzrə hazırlıq.</p></div>
+                </div>
+                <div class="admin-v2-integration-list" data-launch-marketing></div>
               </section>
 
               <section class="admin-v2-section">
@@ -1026,6 +1045,10 @@
                     <label class="admin-field"><span>Prioritet</span><input name="priority" type="number" min="0" value="100" /></label>
                     <label class="admin-field"><span>Minimum gün</span><input name="etaMinDays" type="number" min="0" value="1" /></label>
                     <label class="admin-field"><span>Maksimum gün</span><input name="etaMaxDays" type="number" min="0" value="3" /></label>
+                    <label class="admin-field"><span>Tarif statusu</span><select name="rateStatus"><option value="estimate">Platforma təxmini</option><option value="verified">Daşıyıcı tərəfindən təsdiqlənib</option><option value="expired">Müddəti bitib</option></select></label>
+                    <label class="admin-field"><span>Etibarlıdır</span><input name="rateValidUntil" type="date" /></label>
+                    <label class="admin-field admin-field-wide"><span>Daşıyıcı tarif mənbəyi</span><input name="rateSourceUrl" type="url" placeholder="https://..." /></label>
+                    <label class="admin-field admin-field-wide"><span>Tarif yoxlama qeydi</span><input name="rateNote" maxlength="1000" placeholder="Kommersiya təklifi, müqavilə və ya tarif sənədi" /></label>
                   </div>
                   <div class="admin-actions"><button class="button button-primary" type="submit">Zonanı saxla</button><button class="button button-outline" type="button" data-admin-logistics-clear>Formu təmizlə</button></div>
                 </form>
@@ -1137,6 +1160,7 @@
             <form class="admin-form" data-admin-v2-media-rights-form>
               <div class="admin-v2-section-heading">
                 <div><h3>Media hüququna baxış</h3><p class="admin-v2-quality-summary">Qərar audit jurnalına yazılır və təsdiq üçün administrator 2FA-sı tələb olunur.</p></div>
+                <div class="admin-actions"><span class="data-badge" data-admin-v2-media-selected>0 seçilib</span><button class="table-action" type="button" data-admin-v2-media-select-pending>Gözləyənləri seç</button><button class="table-action" type="button" data-admin-v2-media-selection-clear>Seçimi sil</button></div>
               </div>
               <div class="admin-form-grid">
                 <label class="admin-field admin-field-wide"><span>Media</span><select name="id" required data-admin-v2-media-rights-select></select></label>
@@ -1146,7 +1170,7 @@
                 <label class="admin-field admin-field-wide"><span>İcazə və ya lisenziya qeydi</span><input name="licenseNote" maxlength="1000" placeholder="Müqavilə, məktub və ya media kitabxanası istinadı" /></label>
                 <label class="admin-field admin-field-wide"><span>Yoxlama qeydi</span><textarea name="rightsReviewNote" rows="2" maxlength="1000" placeholder="Yoxlanmış sübutu və qərarın əsasını qeyd et"></textarea></label>
               </div>
-              <div class="admin-actions"><button class="button button-primary" type="submit">Hüquq qərarını saxla</button></div>
+              <div class="admin-actions"><button class="button button-primary" type="submit">Bir media üçün saxla</button><button class="button button-secondary" type="button" data-admin-v2-media-rights-batch>Seçilənlərə tətbiq et</button></div>
             </form>
             <section class="admin-v2-section admin-v2-section-wide media-bulk-section">
               <div class="admin-v2-section-heading">

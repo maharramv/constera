@@ -1,11 +1,14 @@
-import { criticalAdminTwoFactorRequired, requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, criticalAdminTwoFactorRequired, requireRole } from "../_lib/auth.js";
+import { runCatalogQualityScan } from "../_lib/catalog-quality.js";
 import { backupDeliveryReadiness } from "../_lib/cloud-backup.js";
-import { query } from "../_lib/db.js";
+import { query, recordAudit } from "../_lib/db.js";
+import { googleMarketingReadiness } from "../_lib/google-marketing.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { buildLaunchReadiness, buildSupplierOnboarding } from "../_lib/launch-readiness.js";
 import { calculateDeliveryQuote } from "../_lib/logistics.js";
 import { providerConfigurationStatus, providerReadiness } from "../_lib/provider-adapters.js";
 import { productionMonitorAlertReadiness } from "../_lib/production-monitor.js";
+import { remindDuePriceReviews, runPriceFreshnessScan } from "../_lib/price-monitor.js";
 import { backupVerificationState, buildReleaseQueue } from "../_lib/release-queue.js";
 import { oneOf, text } from "../_lib/validation.js";
 
@@ -58,7 +61,8 @@ export const loadLaunchCenter = async () => {
     qualityIssueRows,
     stagingRows,
     searchInsightRows,
-    backupVerificationRows
+    backupVerificationRows,
+    pilotAuditRows
   ] = await Promise.all([
     query(
       `WITH real_products AS (
@@ -154,6 +158,9 @@ export const loadLaunchCenter = async () => {
            WHERE active = true AND last_status = 'completed'
              AND last_run_at >= now() - interval '48 hours')::int AS healthy_feeds,
          (SELECT count(*) FROM logistics_zones WHERE active = true)::int AS logistics_zones,
+         (SELECT count(*) FROM logistics_zones
+           WHERE active = true AND rate_status = 'verified'
+             AND rate_valid_until >= current_date)::int AS verified_logistics_zones,
          (SELECT count(*) FROM users
            WHERE status = 'active' AND role IN ('super_admin', 'admin'))::int AS privileged_users,
          (SELECT count(*) FROM users
@@ -164,6 +171,9 @@ export const loadLaunchCenter = async () => {
              AND risk_level IN ('high', 'critical')
              AND succeeded = false)::int AS critical_security_events,
          (SELECT count(*) FROM orders)::int AS orders,
+         (SELECT count(*) FROM rfqs)::int AS rfqs,
+         (SELECT count(*) FROM offers)::int AS rfq_offers,
+         (SELECT count(*) FROM commercial_proposals)::int AS commercial_proposals,
          (SELECT count(*) FROM orders WHERE payment_status = 'paid')::int AS paid_orders,
          (SELECT count(*) FROM orders WHERE status = 'completed')::int AS completed_orders,
          (SELECT count(*) FROM electronic_invoices WHERE status = 'issued')::int AS issued_invoices,
@@ -426,11 +436,22 @@ export const loadLaunchCenter = async () => {
       `SELECT status, created_at, table_count, record_count, checksum_sha256
          FROM backup_verifications
         ORDER BY created_at DESC
-        LIMIT 1`
+       LIMIT 1`
+    ),
+    query(
+      `SELECT audit.id, audit.details, audit.created_at,
+              users.name AS actor_name
+         FROM audit_logs audit
+         LEFT JOIN users ON users.id = audit.actor_id
+        WHERE audit.entity_type = 'launch_pilot'
+          AND audit.action = 'validate'
+        ORDER BY audit.created_at DESC
+        LIMIT 12`
     )
   ]);
 
   const providers = providerReadiness();
+  const marketing = googleMarketingReadiness();
   const monitoring = { externalAlert: productionMonitorAlertReadiness() };
   const backup = backupDeliveryReadiness();
   const metricsRow = metricRows[0] || {};
@@ -443,10 +464,14 @@ export const loadLaunchCenter = async () => {
     onboardedSuppliers: number(metricsRow.onboarded_suppliers),
     healthyFeeds: number(metricsRow.healthy_feeds),
     logisticsZones: number(metricsRow.logistics_zones),
+    verifiedLogisticsZones: number(metricsRow.verified_logistics_zones),
     privilegedUsers: number(metricsRow.privileged_users),
     adminsWithTwoFactor: number(metricsRow.admins_with_two_factor),
     criticalSecurityEvents: number(metricsRow.critical_security_events),
     orders: number(metricsRow.orders),
+    rfqs: number(metricsRow.rfqs),
+    rfqOffers: number(metricsRow.rfq_offers),
+    commercialProposals: number(metricsRow.commercial_proposals),
     paidOrders: number(metricsRow.paid_orders),
     completedOrders: number(metricsRow.completed_orders),
     issuedInvoices: number(metricsRow.issued_invoices),
@@ -487,6 +512,7 @@ export const loadLaunchCenter = async () => {
   const readiness = buildLaunchReadiness({
     metrics,
     providers,
+    marketing,
     backup: { ...backup, recentVerified: backupVerification.ready },
     monitoring,
     pilotCandidate: pilotCandidates[0] || null
@@ -508,6 +534,7 @@ export const loadLaunchCenter = async () => {
     staging,
     searches,
     providers,
+    marketing,
     backup: latestBackup,
     criticalTwoFactorEnforced: metrics.criticalTwoFactorEnforced
   });
@@ -526,6 +553,7 @@ export const loadLaunchCenter = async () => {
       latest: latestBackup
     },
     releaseQueue,
+    marketing,
     catalogControl: {
       qualityIssues,
       staging,
@@ -547,12 +575,24 @@ export const loadLaunchCenter = async () => {
       licensedMediaCount: number(row.licensed_media_count),
       onboarding: buildSupplierOnboarding(row)
     })).sort((left, right) =>
-      Number(left.onboarding.readyForPilot) - Number(right.onboarding.readyForPilot)
-      || left.onboarding.score - right.onboarding.score
+      Number(right.onboarding.readyForPilot) - Number(left.onboarding.readyForPilot)
+      || right.onboarding.score - left.onboarding.score
       || left.name.localeCompare(right.name, "az")
     ),
     pilotCandidates,
     pilotSelections,
+    pilotHistory: pilotAuditRows.map((row) => ({
+      id: row.id,
+      actor: row.actor_name || "Sistem",
+      ready: Boolean(row.details?.ready),
+      productId: row.details?.productId || "",
+      sku: row.details?.sku || "",
+      productName: row.details?.productName || "",
+      blockerCount: number(row.details?.blockerCount),
+      tariffType: row.details?.tariffType || "",
+      paymentMethod: row.details?.paymentMethod || "",
+      createdAt: row.created_at
+    })),
     readyFulfillments: readyFulfillmentRows.map((row) => ({
       id: row.id,
       orderId: row.order_id,
@@ -752,6 +792,12 @@ const validatePilot = async (body) => {
       required: true
     },
     {
+      key: "logistics_tariff",
+      label: deliveryMode === "pickup" ? "Götürmə üçün tarif tələb olunmur" : "Logistika tarifi mənbə ilə təsdiqlidir",
+      ready: deliveryMode === "pickup" || delivery.zone?.rateStatus === "verified",
+      required: true
+    },
+    {
       key: "payment",
       label: "Seçilmiş ödəniş üsulu hazırdır",
       ready: paymentReady,
@@ -786,6 +832,8 @@ const validatePilot = async (body) => {
       mode: deliveryMode,
       city,
       zone: delivery.zone?.name || "",
+      rateStatus: delivery.zone?.rateStatus || "request",
+      rateValidUntil: delivery.zone?.rateValidUntil || null,
       amount: delivery.amount,
       currency: delivery.currency,
       etaMinDays: delivery.etaMinDays,
@@ -801,7 +849,7 @@ const validatePilot = async (body) => {
 };
 
 export default withApiErrors(async (req, res) => {
-  await requireRole(req, roles);
+  const user = await requireRole(req, roles);
   if (req.method === "GET") {
     return sendJson(res, 200, { ok: true, data: await loadLaunchCenter() });
   }
@@ -809,9 +857,38 @@ export default withApiErrors(async (req, res) => {
   assertMethod(req, ["POST"]);
   assertSameOrigin(req);
   const body = await readJson(req, 30_000);
-  const action = oneOf(body.action, ["validate-pilot"], "validate-pilot", "Əməliyyat");
+  const action = oneOf(body.action, ["validate-pilot", "run-daily-checks"], "validate-pilot", "Əməliyyat");
   if (action === "validate-pilot") {
-    return sendJson(res, 200, { ok: true, data: await validatePilot(body) });
+    const result = await validatePilot(body);
+    await recordAudit({
+      actorId: user.id,
+      action: "validate",
+      entityType: "launch_pilot",
+      entityId: result.product.id,
+      details: {
+        productId: result.product.id,
+        offerId: result.product.offerId,
+        sku: result.product.sku,
+        productName: result.product.name,
+        ready: result.ready,
+        blockerCount: result.checks.filter((item) => item.required && !item.ready).length,
+        tariffType: result.delivery.breakdown?.tariffType || "",
+        paymentMethod: result.paymentMethod,
+        writePerformed: false
+      }
+    });
+    return sendJson(res, 200, { ok: true, data: result });
+  }
+  if (action === "run-daily-checks") {
+    assertCriticalTwoFactor(user);
+    const [prices, quality] = await Promise.all([
+      runPriceFreshnessScan({ actorId: user.id, notify: true }),
+      runCatalogQualityScan({ probeLinks: false, linkLimit: 0 })
+    ]);
+    const reminders = await remindDuePriceReviews();
+    const result = { prices, reminders, quality };
+    await recordAudit({ actorId: user.id, action: "daily_checks", entityType: "launch_operations", details: result });
+    return sendJson(res, 200, { ok: true, data: { run: result, launch: await loadLaunchCenter() } });
   }
   throw new ApiError(400, "invalid_launch_action", "Buraxılış əməliyyatı dəstəklənmir.");
 });

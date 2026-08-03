@@ -5,6 +5,7 @@ const qualityLabels = {
   unknown_stock: "Stoku dəqiqləşdirilməyən məhsullar",
   offer_unknown_stock: "Stoku dəqiqləşdirilməyən təkliflər",
   missing_source: "Mənbəsi çatışmayan məhsullar",
+  missing_licensed_media: "İstifadə hüququ təsdiqlənməyən media",
   stale_price: "Yenidən təsdiqlənməli qiymətlər",
   duplicate_sku: "Təkrarlanan SKU-lar",
   broken_image: "Açılmayan məhsul şəkilləri",
@@ -34,7 +35,10 @@ const queueItem = ({
   severity = "medium",
   target = "launch",
   action = "Aç",
-  external = false
+  external = false,
+  workstream = "operations",
+  owner = "Administrator",
+  due = ""
 }) => ({
   key,
   label,
@@ -43,7 +47,10 @@ const queueItem = ({
   severity,
   target,
   action,
-  external: Boolean(external)
+  external: Boolean(external),
+  workstream,
+  owner,
+  due: due || (external ? "external" : ["critical", "high"].includes(severity) ? "today" : "week")
 });
 
 export const backupVerificationState = (backup, now = Date.now()) => {
@@ -66,6 +73,7 @@ export const buildReleaseQueue = ({
   staging = [],
   searches = [],
   providers = {},
+  marketing = {},
   backup = null,
   criticalTwoFactorEnforced = false
 } = {}) => {
@@ -83,7 +91,8 @@ export const buildReleaseQueue = ({
       value,
       severity: issue.severity || "medium",
       target: "trust",
-      action: "Keyfiyyəti aç"
+      action: "Keyfiyyəti aç",
+      workstream: "catalog"
     }));
   }
 
@@ -96,7 +105,8 @@ export const buildReleaseQueue = ({
       value,
       severity: item.invalidCount ? "high" : "medium",
       target: "system",
-      action: "Yoxlama sahəsini aç"
+      action: "Yoxlama sahəsini aç",
+      workstream: "catalog"
     }));
   }
 
@@ -108,7 +118,8 @@ export const buildReleaseQueue = ({
     value: attributeGap,
     severity: "medium",
     target: "trust",
-    action: "Standartlaşdırmanı aç"
+    action: "Standartlaşdırmanı aç",
+    workstream: "catalog"
   }));
 
   const mediaGap = Math.max(0, count(metrics.realProducts) - count(metrics.licensedMediaProducts));
@@ -119,7 +130,8 @@ export const buildReleaseQueue = ({
     value: mediaGap,
     severity: "high",
     target: "media",
-    action: "Media mərkəzini aç"
+    action: "Media mərkəzini aç",
+    workstream: "media"
   }));
 
   push(queueItem({
@@ -129,7 +141,8 @@ export const buildReleaseQueue = ({
     value: metrics.pendingPriceReviews,
     severity: "high",
     target: "trust",
-    action: "Qiymət monitorunu aç"
+    action: "Qiymət monitorunu aç",
+    workstream: "pricing"
   }));
 
   const supplierGap = Math.max(0, count(metrics.activeSuppliers) - count(metrics.onboardedSuppliers));
@@ -140,7 +153,8 @@ export const buildReleaseQueue = ({
     value: supplierGap,
     severity: "high",
     target: "operations",
-    action: "Qoşulmanı aç"
+    action: "Qoşulmanı aç",
+    workstream: "suppliers"
   }));
 
   const zeroResultSearches = searches.reduce((sum, item) => sum + count(item.zeroResults), 0);
@@ -151,7 +165,8 @@ export const buildReleaseQueue = ({
     value: zeroResultSearches,
     severity: "medium",
     target: "launch",
-    action: "Axtarışları göstər"
+    action: "Axtarışları göstər",
+    workstream: "catalog"
   }));
 
   const unprotectedAdmins = Math.max(0, count(metrics.privilegedUsers) - count(metrics.adminsWithTwoFactor));
@@ -164,7 +179,8 @@ export const buildReleaseQueue = ({
     value: unprotectedAdmins || (criticalTwoFactorEnforced ? 0 : 1),
     severity: unprotectedAdmins ? "critical" : "high",
     target: "system",
-    action: "Təhlükəsizliyi aç"
+    action: "Təhlükəsizliyi aç",
+    workstream: "security"
   }));
 
   const backupState = backupVerificationState(backup);
@@ -178,7 +194,8 @@ export const buildReleaseQueue = ({
       value: 1,
       severity: "critical",
       target: "backup",
-      action: "Backup-ı yoxla"
+      action: "Backup-ı yoxla",
+      workstream: "operations"
     }));
   }
 
@@ -198,7 +215,69 @@ export const buildReleaseQueue = ({
       severity: "info",
       target: key === "logistics" || key === "electronicInvoice" ? "operations" : "system",
       action: "İnteqrasiyanı aç",
-      external: true
+      external: true,
+      workstream: "integrations",
+      owner: "Biznes sahibi"
+    }));
+  }
+
+  if (count(metrics.logisticsZones) > 0 && count(metrics.verifiedLogisticsZones) === 0) {
+    push(queueItem({
+      key: "logistics:verified_tariff",
+      label: "Mənbə ilə təsdiqlənmiş çatdırılma tarifi",
+      detail: `${count(metrics.logisticsZones)} aktiv zona hazırda yalnız platforma təxminidir. Daşıyıcı təklifi, mənbə və etibarlılıq müddəti əlavə edilməlidir.`,
+      value: count(metrics.logisticsZones),
+      severity: "high",
+      target: "b2b",
+      action: "Tarifləri təsdiqlə",
+      external: true,
+      workstream: "logistics",
+      owner: "Logistika rəhbəri"
+    }));
+  }
+
+  if (!marketing.analytics) {
+    push(queueItem({
+      key: "marketing:analytics",
+      label: "Google Analytics 4 server inteqrasiyası",
+      detail: "Measurement ID və Measurement Protocol sirri Vercel mühitinə əlavə edilməlidir.",
+      value: 1,
+      severity: "info",
+      target: "launch",
+      action: "Statusa bax",
+      external: true,
+      workstream: "marketing",
+      owner: "Marketinq rəhbəri"
+    }));
+  }
+
+  if (!marketing.searchConsole) {
+    push(queueItem({
+      key: "marketing:search_console",
+      label: "Google Search Console təsdiqi",
+      detail: "Təsdiq tokeni Vercel mühitinə əlavə edilməli və sitemap təqdim olunmalıdır.",
+      value: 1,
+      severity: "info",
+      target: "launch",
+      action: "Statusa bax",
+      external: true,
+      workstream: "marketing",
+      owner: "SEO məsulu"
+    }));
+  }
+
+  if (!count(metrics.orders) || !count(metrics.commercialProposals)) {
+    push(queueItem({
+      key: "commerce:real_pilot",
+      label: "Real RFQ-dan sifarişə pilot axını",
+      detail: `${count(metrics.rfqs)} RFQ · ${count(metrics.commercialProposals)} kommersiya təklifi · ${count(metrics.orders)} sifariş. Real müştəri və təchizatçı ilə bir pilot tamamlanmalıdır.`,
+      value: 1,
+      severity: "high",
+      target: "requests",
+      action: "Sorğuları aç",
+      external: true,
+      workstream: "commerce",
+      owner: "Satış rəhbəri"
     }));
   }
 
@@ -209,13 +288,23 @@ export const buildReleaseQueue = ({
     || left.label.localeCompare(right.label, "az")
   );
 
+  const today = items.filter((item) => item.due === "today" && !item.external);
+  const week = items.filter((item) => item.due === "week" && !item.external);
+  const external = items.filter((item) => item.external);
   return {
     items,
+    dailyPlan: {
+      today: today.slice(0, 10),
+      thisWeek: week.slice(0, 10),
+      waitingForEvidence: external.slice(0, 10)
+    },
     summary: {
       total: items.length,
       critical: items.filter((item) => item.severity === "critical").length,
       high: items.filter((item) => item.severity === "high").length,
-      external: items.filter((item) => item.external).length
+      external: external.length,
+      today: today.length,
+      thisWeek: week.length
     }
   };
 };

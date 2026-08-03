@@ -28,6 +28,21 @@ test("buraxılış növbəsi kritik təhlükəsizlik və real kataloq boşluqlar
   assert.equal(queue.summary.critical, 1);
   assert.equal(queue.items.find((item) => item.key === "catalog:licensed_media").value, 80);
   assert.equal(queue.items.find((item) => item.key === "search:zero_results").value, 2);
+  assert.ok(queue.summary.today > 0);
+  assert.ok(queue.dailyPlan.today.every((item) => item.external === false));
+});
+
+test("təsdiqlənməmiş tarif və Google qurulması xarici sübut növbəsinə ayrılır", () => {
+  const queue = buildReleaseQueue({
+    metrics: { logisticsZones: 3, verifiedLogisticsZones: 0, orders: 1, commercialProposals: 1 },
+    providers: { payment: true, electronicInvoice: true, logistics: true, email: true, whatsapp: true },
+    marketing: { analytics: false, searchConsole: false },
+    backup: { status: "verified", createdAt: new Date().toISOString() },
+    criticalTwoFactorEnforced: true
+  });
+  assert.equal(queue.items.find((item) => item.key === "logistics:verified_tariff").external, true);
+  assert.equal(queue.items.find((item) => item.key === "marketing:analytics").owner, "Marketinq rəhbəri");
+  assert.ok(queue.dailyPlan.waitingForEvidence.length >= 3);
 });
 
 test("yeddi gündən köhnə backup yoxlaması buraxılışı bloklayan növbəyə düşür", () => {

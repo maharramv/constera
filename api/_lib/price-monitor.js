@@ -120,3 +120,34 @@ export const remindPriceReview = async (requestId) => {
   );
   return { request: item, notifiedUsers };
 };
+
+export const remindDuePriceReviews = async ({ limit = 200 } = {}) => {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 500));
+  const items = await query(
+    `SELECT request.id, request.product_id, request.supplier_id, request.reason, request.due_at,
+            product.name, product.sku
+       FROM price_review_requests request
+       JOIN products product ON product.id = request.product_id
+      WHERE request.status = 'pending'
+        AND request.due_at <= now()
+        AND (request.last_reminded_at IS NULL OR request.last_reminded_at <= now() - interval '24 hours')
+      ORDER BY request.due_at, request.requested_at
+      LIMIT $1`,
+    [safeLimit]
+  );
+  if (!items.length) return { remindedRequests: 0, notifiedUsers: 0 };
+  const notifiedUsers = await notifySupplierUsers(
+    items,
+    "price_review_due_reminder",
+    "ConstEra qiymət yeniləmə vaxtını xatırladır",
+    (supplierItems) => `${supplierItems.length} məhsulun qiymət və stok təsdiq müddəti çatıb.`
+  );
+  await query(
+    `UPDATE price_review_requests
+        SET reminder_count = reminder_count + 1,
+            last_reminded_at = now(), updated_at = now()
+      WHERE id = ANY($1::text[]) AND status = 'pending'`,
+    [items.map((item) => item.id)]
+  );
+  return { remindedRequests: items.length, notifiedUsers };
+};

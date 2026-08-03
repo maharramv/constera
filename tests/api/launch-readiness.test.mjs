@@ -28,6 +28,7 @@ test("məcburi hazırlıq tamamlandıqda yalnız könüllü inteqrasiyalar xəb�
       onboardedSuppliers: 1,
       healthyFeeds: 0,
       logisticsZones: 1,
+      verifiedLogisticsZones: 1,
       privilegedUsers: 1,
       adminsWithTwoFactor: 1,
       criticalTwoFactorEnforced: true,

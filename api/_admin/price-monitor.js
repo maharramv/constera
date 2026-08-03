@@ -1,7 +1,7 @@
 import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
-import { remindPriceReview, runPriceFreshnessScan } from "../_lib/price-monitor.js";
+import { remindDuePriceReviews, remindPriceReview, runPriceFreshnessScan } from "../_lib/price-monitor.js";
 import { oneOf, text } from "../_lib/validation.js";
 
 const loadMonitor = async () => {
@@ -77,6 +77,12 @@ export default withApiErrors(async (req, res) => {
       throw new ApiError(403, "permission_denied", "Qiymət statuslarını yalnız administrator yeniləyə bilər.");
     }
     assertCriticalTwoFactor(user);
+    const action = oneOf(body.action, ["scan", "remind-due"], "scan", "Qiymət monitoru əməliyyatı");
+    if (action === "remind-due") {
+      const reminder = await remindDuePriceReviews();
+      await recordAudit({ actorId: user.id, action: "remind_due", entityType: "price_monitor", details: reminder });
+      return sendJson(res, 200, { ok: true, data: { reminder, monitor: await loadMonitor() } });
+    }
     const result = await runPriceFreshnessScan({ actorId: user.id, notify: true });
     await recordAudit({ actorId: user.id, action: "scan", entityType: "price_monitor", details: result });
     return sendJson(res, 200, { ok: true, data: { scan: result, monitor: await loadMonitor() } });

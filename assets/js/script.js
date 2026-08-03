@@ -514,6 +514,7 @@ const initAnalytics = () => {
           eventId,
           visitorId,
           sessionId,
+          consent: "analytics",
           path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
           entityType: options.entityType || "",
           entityId: options.entityId || "",

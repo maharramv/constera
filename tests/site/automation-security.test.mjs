@@ -86,6 +86,8 @@ test("kritik kataloq, müqavilə, ödəniş və logistika yazmaları administrat
   assert.match(read("api/_admin/catalog-quality.js"), /assertCriticalTwoFactor\(user\)/);
   assert.match(read("api/_admin/catalog-staging.js"), /assertCriticalTwoFactor\(user\)/);
   assert.match(read("api/_admin/operations-center.js"), /assertCriticalTwoFactor\(user\)/);
+  assert.match(read("api/_admin/logistics.js"), /previousZone\?\.rateStatus === "verified"/);
+  assert.match(read("api/_admin/logistics.js"), /req\.method === "DELETE"[\s\S]+assertCriticalTwoFactor\(user\)/);
   assert.match(read("api/_admin/integrations.js"), /create-shipment[\s\S]+assertCriticalTwoFactor\(user\)/);
   assert.match(read("api/_admin/support.js"), /approve-refund[\s\S]+assertCriticalTwoFactor\(user\)/);
 });

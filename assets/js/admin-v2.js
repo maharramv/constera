@@ -28,7 +28,8 @@
     logisticsZones: [],
     procurementRequests: [],
     twoFactorSetupToken: "",
-    recoveryCodes: []
+    recoveryCodes: [],
+    selectedMediaIds: new Set()
   };
 
   const qs = (selector, root = document) => root.querySelector(selector);
@@ -435,9 +436,9 @@
     setText("[data-admin-logistics-count]", `${state.logisticsZones.filter((zone) => zone.active).length} zona`);
     const zoneList = qs("[data-admin-logistics-zones]");
     if (zoneList) zoneList.innerHTML = state.logisticsZones.map((zone) => `<article class="cabinet-item">
-      <header><strong>${escapeHtml(zone.name)}</strong><span class="mini-badge">${zone.active ? "Aktiv" : "Arxiv"}</span></header>
+      <header><strong>${escapeHtml(zone.name)}</strong><span class="mini-badge">${zone.rateStatus === "verified" ? "Tarif təsdiqlidir" : zone.rateStatus === "expired" ? "Tarifin vaxtı bitib" : "Təxmini tarif"}</span></header>
       <span>${escapeHtml(zone.cities.join(", ") || "Bütün Azərbaycan")} · ${zone.etaMinDays}-${zone.etaMaxDays} gün</span>
-      <p>${Number(zone.baseFee).toLocaleString("az-AZ", { style: "currency", currency: "AZN" })} baza · ${zone.freeAbove === null ? "pulsuz hədd yoxdur" : `${Number(zone.freeAbove).toLocaleString("az-AZ")} AZN-dən pulsuz`}</p>
+      <p>${Number(zone.baseFee).toLocaleString("az-AZ", { style: "currency", currency: "AZN" })} baza · ${zone.freeAbove === null ? "pulsuz hədd yoxdur" : `${Number(zone.freeAbove).toLocaleString("az-AZ")} AZN-dən pulsuz`}${zone.rateValidUntil ? ` · ${formatDate(zone.rateValidUntil)} tarixinədək` : ""}</p>
       <div class="cabinet-item-actions"><button class="table-action" type="button" data-admin-logistics-edit="${escapeHtml(zone.id)}">Düzəlt</button></div>
     </article>`).join("") || "<p>Logistika zonası yoxdur.</p>";
 
@@ -711,10 +712,12 @@
       if (state.media.some((item) => item.id === selected)) rightsSelect.value = selected;
       fillMediaRightsForm(rightsSelect.value);
     }
+    state.selectedMediaIds = new Set([...state.selectedMediaIds].filter((id) => state.media.some((item) => item.id === id)));
+    setText("[data-admin-v2-media-selected]", `${state.selectedMediaIds.size} seçilib`);
     grid.innerHTML = state.media.map((item) => `<article>
       <div class="admin-v2-media-preview">${item.contentType.startsWith("image/") ? `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.altText || item.filename)}" loading="lazy" />` : '<span>PDF</span>'}</div>
       <div><strong>${item.isPrimary ? "Əsas · " : ""}${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${escapeHtml(licenseLabels[item.licenseType] || item.licenseType)} · ${item.provider === "external" ? "Xarici URL" : `${Math.round(item.sizeBytes / 1024)} KB`} · ${formatDate(item.createdAt)}</small><small>${escapeHtml(rightsLabels[item.rightsStatus] || item.rightsStatus)}${item.rightsVerifiedAt ? ` · ${formatDate(item.rightsVerifiedAt, true)}` : ""}</small></div>
-      <div class="admin-v2-row-actions"><button class="table-action" type="button" data-media-review="${escapeHtml(item.id)}">Hüquqa bax</button><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button>${item.contentType.startsWith("image/") && item.entityId && !item.isPrimary ? `<button class="table-action" type="button" data-media-primary="${escapeHtml(item.id)}">Əsas et</button>` : ""}<button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
+      <div class="admin-v2-row-actions"><label class="admin-checkbox-field"><input type="checkbox" data-media-select="${escapeHtml(item.id)}" ${state.selectedMediaIds.has(item.id) ? "checked" : ""} /><span>Seç</span></label><button class="table-action" type="button" data-media-review="${escapeHtml(item.id)}">Hüquqa bax</button><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button>${item.contentType.startsWith("image/") && item.entityId && !item.isPrimary ? `<button class="table-action" type="button" data-media-primary="${escapeHtml(item.id)}">Əsas et</button>` : ""}<button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
     </article>`).join("") || "<p>Yüklənmiş media yoxdur.</p>";
   };
 
@@ -957,6 +960,25 @@
       setButtonBusy(button, false);
     }
   });
+  qs("[data-admin-price-monitor-remind-due]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    if (!window.confirm("Vaxtı çatmış və son 24 saatda xatırladılmamış qiymətlər üzrə təchizatçılara bildiriş göndərilsin?")) return;
+    setButtonBusy(button, true, "Göndərilir...");
+    try {
+      const result = await api.remindDuePrices();
+      state.priceMonitor = result.data.monitor;
+      renderPriceMonitor();
+      setStatus(
+        "[data-admin-price-monitor-status]",
+        `${result.data.reminder.remindedRequests} qiymət yoxlaması üzrə ${result.data.reminder.notifiedUsers} təchizatçı hesabına bildiriş yaradıldı.`,
+        "success"
+      );
+    } catch (error) {
+      setStatus("[data-admin-price-monitor-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
   qs("[data-admin-price-monitor-items]")?.addEventListener("click", async (event) => {
     const remindButton = event.target.closest("[data-price-review-remind]");
     const cancelButton = event.target.closest("[data-price-review-cancel]");
@@ -1129,7 +1151,11 @@
       freeAbove: zone.freeAbove ?? "",
       priority: zone.priority,
       etaMinDays: zone.etaMinDays,
-      etaMaxDays: zone.etaMaxDays
+      etaMaxDays: zone.etaMaxDays,
+      rateStatus: zone.rateStatus,
+      rateSourceUrl: zone.rateSourceUrl || "",
+      rateValidUntil: zone.rateValidUntil ? String(zone.rateValidUntil).slice(0, 10) : "",
+      rateNote: zone.rateNote || ""
     }).forEach(([name, value]) => {
       if (logisticsForm.elements[name]) logisticsForm.elements[name].value = value;
     });
@@ -1571,6 +1597,21 @@
       }
     }
   });
+  qs("[data-admin-v2-media]")?.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-media-select]");
+    if (!checkbox) return;
+    if (checkbox.checked) state.selectedMediaIds.add(checkbox.dataset.mediaSelect);
+    else state.selectedMediaIds.delete(checkbox.dataset.mediaSelect);
+    setText("[data-admin-v2-media-selected]", `${state.selectedMediaIds.size} seçilib`);
+  });
+  qs("[data-admin-v2-media-select-pending]")?.addEventListener("click", () => {
+    state.selectedMediaIds = new Set(state.media.filter((item) => item.rightsStatus === "pending").slice(0, 50).map((item) => item.id));
+    renderMedia();
+  });
+  qs("[data-admin-v2-media-selection-clear]")?.addEventListener("click", () => {
+    state.selectedMediaIds.clear();
+    renderMedia();
+  });
   qs("[data-admin-v2-media-rights-select]")?.addEventListener("change", (event) => {
     fillMediaRightsForm(event.currentTarget.value);
   });
@@ -1595,6 +1636,34 @@
       });
       await loadMedia();
       setStatus("[data-admin-v2-media-status]", "Media hüququ qərarı audit izi ilə saxlanıldı.", "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-media-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-v2-media-rights-batch]")?.addEventListener("click", async (event) => {
+    const ids = [...state.selectedMediaIds];
+    const form = qs("[data-admin-v2-media-rights-form]");
+    if (!form || !ids.length) {
+      setStatus("[data-admin-v2-media-status]", "Toplu qərar üçün media kartlarından ən azı birini seç.", "warning");
+      return;
+    }
+    const fields = Object.fromEntries(new FormData(form).entries());
+    if (!window.confirm(`${ids.length} media üçün eyni hüquq sübutu və qərarı tətbiq edilsin?`)) return;
+    const button = event.currentTarget;
+    setButtonBusy(button, true, "Saxlanır...");
+    try {
+      await api.reviewMediaRightsBatch(ids, {
+        licenseType: fields.licenseType,
+        licenseNote: fields.licenseNote,
+        rightsStatus: fields.rightsStatus,
+        rightsExpiresOn: fields.rightsExpiresOn,
+        rightsReviewNote: fields.rightsReviewNote
+      });
+      state.selectedMediaIds.clear();
+      await loadMedia();
+      setStatus("[data-admin-v2-media-status]", `${ids.length} media hüququ audit izi ilə yeniləndi.`, "success");
     } catch (error) {
       setStatus("[data-admin-v2-media-status]", error.message, "error");
     } finally {

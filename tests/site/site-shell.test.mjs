@@ -24,6 +24,18 @@ test("render edilmiş səhifələr xarici font bağlantısı yaratmır", () => {
   });
 });
 
+test("Search Console təsdiqi yalnız ana səhifəyə təhlükəsiz tokenlə əlavə olunur", () => {
+  const previous = process.env.GOOGLE_SEARCH_CONSOLE_VERIFICATION;
+  process.env.GOOGLE_SEARCH_CONSOLE_VERIFICATION = "valid_verification-token_12345";
+  try {
+    assert.match(render("index.html"), /name="google-site-verification" content="valid_verification-token_12345"/);
+    assert.doesNotMatch(render("catalog.html"), /google-site-verification/);
+  } finally {
+    if (previous === undefined) delete process.env.GOOGLE_SEARCH_CONSOLE_VERIFICATION;
+    else process.env.GOOGLE_SEARCH_CONSOLE_VERIFICATION = previous;
+  }
+});
+
 test("ictimai səhifələr eyni footer şablonundan istifadə edir", () => {
   const excluded = new Set(["admin.html", "login.html"]);
   let referenceFooter = "";

@@ -394,7 +394,7 @@ const [integrity] = await query(`
         )) AS invalid_verified_media_rights,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 26
+        WHEN verification.schema_migrations = 27
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END

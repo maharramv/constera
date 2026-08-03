@@ -116,6 +116,10 @@
       method: "POST",
       body: JSON.stringify({ action: "validate-pilot", ...data })
     }),
+    runLaunchDailyChecks: () => request("/api/launch-center", {
+      method: "POST",
+      body: JSON.stringify({ action: "run-daily-checks" })
+    }),
     updateInventory: (items, supplierId = "") => request("/api/inventory", {
       method: "PATCH",
       body: JSON.stringify({ items, supplierId })
@@ -197,6 +201,10 @@
       body: JSON.stringify({ action: "register-external", ...data })
     }),
     updateMedia: (data) => request("/api/media", { method: "PATCH", body: JSON.stringify(data) }),
+    reviewMediaRightsBatch: (ids, data) => request("/api/media", {
+      method: "PATCH",
+      body: JSON.stringify({ action: "review-rights-batch", ids, ...data })
+    }),
     deleteMedia: (id) => request("/api/media", { method: "DELETE", body: JSON.stringify({ id }) }),
     notifications: () => request("/api/notifications?limit=200"),
     myNotifications: () => request("/api/notifications?scope=mine&limit=100"),
@@ -319,6 +327,10 @@
       body: JSON.stringify({ action: "remediate", issueIds })
     }),
     updateCatalogQuality: (data) => request("/api/catalog-quality", { method: "PATCH", body: JSON.stringify(data) }),
+    updateCatalogQualityBatch: (issueIds, action) => request("/api/catalog-quality", {
+      method: "PATCH",
+      body: JSON.stringify({ issueIds, action })
+    }),
     supplierPerformance: () => request("/api/supplier-performance"),
     supplierFeeds: (supplierId = "") => request(`/api/supplier-feeds?limit=100${supplierId ? `&supplierId=${encodeURIComponent(supplierId)}` : ""}`),
     saveSupplierFeed: (data, update = false) => request("/api/supplier-feeds", {
@@ -344,6 +356,10 @@
     trackEvent: (data) => request("/api/events", { method: "POST", body: JSON.stringify(data) }),
     priceMonitor: () => request("/api/price-monitor"),
     scanPriceMonitor: () => request("/api/price-monitor", { method: "POST", body: "{}" }),
+    remindDuePrices: () => request("/api/price-monitor", {
+      method: "POST",
+      body: JSON.stringify({ action: "remind-due" })
+    }),
     updatePriceReview: (id, action, note = "") => request("/api/price-monitor", {
       method: "PATCH",
       body: JSON.stringify({ id, action, note })

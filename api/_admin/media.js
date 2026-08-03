@@ -423,6 +423,65 @@ export default withApiErrors(async (req, res) => {
   }
 
   if (req.method === "PATCH") {
+    if (body.action === "review-rights-batch") {
+      if (!privileged) throw new ApiError(403, "permission_denied", "Media hüququnu yalnız administrator yoxlaya bilər.");
+      assertCriticalTwoFactor(user);
+      const ids = [...new Set((Array.isArray(body.ids) ? body.ids : [])
+        .map((id) => text(id, { max: 160 }))
+        .filter(Boolean))];
+      if (!ids.length || ids.length > 50) {
+        throw new ApiError(400, "invalid_media_batch", "Toplu hüquq baxışı üçün 1-50 media seçilməlidir.");
+      }
+      const currentRows = await query(
+        "SELECT * FROM media_assets WHERE id = ANY($1::text[]) AND status = 'active' ORDER BY created_at",
+        [ids]
+      );
+      if (currentRows.length !== ids.length) {
+        throw new ApiError(404, "media_batch_not_found", "Seçilmiş media qeydlərindən biri tapılmadı.");
+      }
+      const licenseType = oneOf(body.licenseType, licenseTypes, "unspecified", "İstifadə hüququ");
+      const licenseNote = text(body.licenseNote, { max: 1_000 });
+      if (body.rightsStatus === "verified" && licenseType !== "own" && !licenseNote) {
+        throw new ApiError(400, "media_license_note_required", "Toplu təsdiq üçün icazə, müqavilə və ya rəsmi media qeydi tələb olunur.");
+      }
+      const reviews = currentRows.map((current) => validateMediaRightsReview({
+        ...body,
+        licenseType,
+        sourceUrl: current.source_url,
+        provider: current.provider
+      }));
+      if (reviews[0].rightsStatus === "verified") {
+        await Promise.all(currentRows.filter((item) => item.provider === "external").map(async (current) => {
+          const publicSource = await validatePublicUrl(current.source_url);
+          if (!publicSource.ok) {
+            throw new ApiError(409, "unsafe_media_source", `${current.filename}: media mənbəyi qəbul edilmədi: ${publicSource.reason}.`);
+          }
+        }));
+      }
+      const review = reviews[0];
+      const rows = await query(
+        `UPDATE media_assets
+            SET license_type = $2,
+                license_note = $3,
+                rights_status = $4,
+                rights_verified_by = CASE WHEN $4 = 'verified' THEN $5 ELSE NULL END,
+                rights_verified_at = CASE WHEN $4 = 'verified' THEN now() ELSE NULL END,
+                rights_expires_on = $6,
+                rights_review_note = $7,
+                updated_at = now()
+          WHERE id = ANY($1::text[]) AND status = 'active'
+          RETURNING *`,
+        [ids, licenseType, licenseNote || null, review.rightsStatus, user.id, review.rightsExpiresOn, review.rightsReviewNote]
+      );
+      await recordAudit({
+        actorId: user.id,
+        action: "review_rights_batch",
+        entityType: "media",
+        entityId: "batch",
+        details: { ids, count: rows.length, licenseType, rightsStatus: review.rightsStatus, rightsExpiresOn: review.rightsExpiresOn }
+      });
+      return sendJson(res, 200, { ok: true, data: rows.map(mapMedia) });
+    }
     const id = text(body.id || req.query.id, { field: "Media ID-si", required: true, max: 160 });
     const current = (await query("SELECT * FROM media_assets WHERE id = $1 AND status = 'active' LIMIT 1", [id]))[0];
     if (!current) throw new ApiError(404, "media_not_found", "Media faylı tapılmadı.");

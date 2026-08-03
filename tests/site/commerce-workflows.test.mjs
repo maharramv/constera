@@ -187,6 +187,8 @@ test("məhsul təklifləri təchizatçı müqayisəsi və seçilmiş snapshot il
 
 test("logistika tarifi və şirkətdaxili satınalma təsdiqi sifariş mərhələsini qoruyur", () => {
   const migration = read("db/migrations/019_b2b_procurement_logistics.sql");
+  const launchOperationsMigration = read("db/migrations/027_launch_operations.sql");
+  const migrationRunner = read("scripts/migrate-database.mjs");
   const logistics = read("api/_lib/logistics.js");
   const procurement = read("api/_admin/procurement.js");
   const orders = read("api/_admin/orders.js");
@@ -195,6 +197,13 @@ test("logistika tarifi və şirkətdaxili satınalma təsdiqi sifariş mərhəl�
 
   assert.match(migration, /CREATE TABLE IF NOT EXISTS logistics_zones/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS procurement_requests/);
+  assert.match(launchOperationsMigration, /rate_status/);
+  assert.match(launchOperationsMigration, /rate_source_url/);
+  assert.match(launchOperationsMigration, /rate_valid_until/);
+  assert.match(migrationRunner, /constera_schema_migrations/);
+  assert.match(migrationRunner, /--confirm-existing-schema/);
+  assert.match(migrationRunner, /sql\.transaction/);
+  assert.match(migrationRunner, /checksum_sha256/);
   assert.match(logistics, /tariffType: "platform_estimate"/);
   assert.match(procurement, /self_approval_forbidden/);
   assert.match(procurement, /user\.role !== "super_admin"/);
@@ -389,7 +398,7 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
-  assert.match(backup, /constera-cloud-backup-v10/);
+  assert.match(backup, /constera-cloud-backup-v11/);
   assert.match(backup, /commercialProposals/);
   assert.match(backup, /policyConsents/);
   assert.doesNotMatch(backup, /password_hash/);

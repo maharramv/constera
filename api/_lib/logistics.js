@@ -14,6 +14,14 @@ const fold = (value) => String(value || "")
 
 const money = (value) => Math.round(Number(value || 0) * 100) / 100;
 
+const dateKey = (value) => {
+  if (!value) return "";
+  const source = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(source)) return source.slice(0, 10);
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString().slice(0, 10) : "";
+};
+
 export const mapLogisticsZone = (row) => ({
   id: row.id,
   name: row.name,
@@ -27,6 +35,16 @@ export const mapLogisticsZone = (row) => ({
   etaMaxDays: Number(row.eta_max_days || 0),
   priority: Number(row.priority || 0),
   active: Boolean(row.active),
+  rateStatus: row.rate_status === "verified"
+    && dateKey(row.rate_valid_until)
+    && dateKey(row.rate_valid_until) < new Date().toISOString().slice(0, 10)
+    ? "expired"
+    : row.rate_status || "estimate",
+  rateSourceUrl: row.rate_source_url || "",
+  rateVerifiedAt: row.rate_verified_at || null,
+  rateVerifiedBy: row.rate_verified_by || null,
+  rateValidUntil: dateKey(row.rate_valid_until) || null,
+  rateNote: row.rate_note || "",
   updatedAt: row.updated_at
 });
 
@@ -93,6 +111,7 @@ export const calculateDeliveryQuoteFromZones = ({
   const raw = Math.max(zone.minimumFee, zone.baseFee + supplierFee + quantityFee);
   const freeDelivery = zone.freeAbove !== null && safeSubtotal !== null && safeSubtotal >= zone.freeAbove;
   const amount = freeDelivery ? 0 : money(raw);
+  const tariffType = zone.rateStatus === "verified" ? "verified_partner_tariff" : "platform_estimate";
   return {
     zone,
     amount,
@@ -100,7 +119,9 @@ export const calculateDeliveryQuoteFromZones = ({
     etaMinDays: zone.etaMinDays,
     etaMaxDays: zone.etaMaxDays,
     breakdown: {
-      tariffType: "platform_estimate",
+      tariffType,
+      rateValidUntil: zone.rateValidUntil,
+      rateSourceUrl: zone.rateSourceUrl,
       baseFee: zone.baseFee,
       supplierFee: money(supplierFee),
       quantityFee: money(quantityFee),

@@ -93,6 +93,7 @@
     media: "media",
     contract: "operations",
     logistics: "b2b",
+    logistics_tariff: "b2b",
     payment: "overview",
     invoice: "operations"
   };
@@ -205,6 +206,18 @@
     if (priorityCount) priorityCount.textContent = `${priorities.length} addım`;
 
     const releaseQueue = data.releaseQueue || { items: [], summary: {} };
+    const dailyPlan = releaseQueue.dailyPlan || {};
+    const dailyItems = [...(dailyPlan.today || []), ...(dailyPlan.thisWeek || []).slice(0, 4)];
+    const daily = qs("[data-launch-daily-plan]");
+    if (daily) daily.innerHTML = dailyItems.map((item) => `
+      <article data-severity="${escapeHtml(item.severity || "medium")}">
+        <span>${Number(item.value || 0).toLocaleString("az-AZ")}</span>
+        <div><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.owner || "Administrator")} · ${item.due === "today" ? "bu gün" : "bu həftə"} · ${escapeHtml(item.detail)}</small></div>
+        <button class="table-action" type="button" data-launch-target="${escapeHtml(item.target || "launch")}">${escapeHtml(item.action || "Aç")}</button>
+      </article>
+    `).join("") || "<p>Bu gün üçün daxili əməliyyat qalmayıb. Xarici sübut növbəsini izləyin.</p>";
+    const dailyCount = qs("[data-launch-daily-count]");
+    if (dailyCount) dailyCount.textContent = `${Number(releaseQueue.summary?.today || 0)} bu gün · ${Number(releaseQueue.summary?.external || 0)} sübut gözləyir`;
     const queue = qs("[data-launch-queue]");
     if (queue) queue.innerHTML = (releaseQueue.items || []).map((item) => `
       <article data-severity="${escapeHtml(item.severity || "medium")}">
@@ -236,6 +249,14 @@
     if (providers) providers.innerHTML = Object.entries(data.providers || {}).map(([key, ready]) => `
       <div><span>${escapeHtml(providerLabels[key] || key)}</span><strong class="${ready ? "is-ready" : "is-pending"}">${ready ? "Hazır" : "Qurulmayıb"}</strong></div>
     `).join("");
+
+    const marketing = qs("[data-launch-marketing]");
+    if (marketing) marketing.innerHTML = `
+      <div><span>Google Analytics 4</span><strong class="${data.marketing?.analytics ? "is-ready" : "is-pending"}">${data.marketing?.analytics ? "Server inteqrasiyası hazırdır" : "Vercel açarları tələb olunur"}</strong></div>
+      <div><span>Google Search Console</span><strong class="${data.marketing?.searchConsole ? "is-ready" : "is-pending"}">${data.marketing?.searchConsole ? "Təsdiq meta-teqi hazırdır" : "Təsdiq tokeni tələb olunur"}</strong></div>
+      <div><span>Google Merchant feed</span><a class="source-link" href="${escapeHtml(data.marketing?.merchantFeedUrl || "/api/merchant-feed")}" target="_blank" rel="noopener noreferrer">Feed-i aç</a></div>
+      <div><span>Sitemap</span><a class="source-link" href="${escapeHtml(data.marketing?.sitemapUrl || "/sitemap.xml")}" target="_blank" rel="noopener noreferrer">Sitemap-i aç</a></div>
+    `;
 
     const sales = data.sales || {};
     const dailySales = sales.daily || [];
@@ -373,6 +394,11 @@
     `).join("") || "<p>Provayderə göndərilməyə hazır sifariş icrası yoxdur.</p>";
     const fulfillmentCount = qs("[data-launch-fulfillment-count]");
     if (fulfillmentCount) fulfillmentCount.textContent = `${fulfillments.length} göndəriş`;
+
+    const pilotHistory = qs("[data-launch-pilot-history]");
+    if (pilotHistory) pilotHistory.innerHTML = (data.pilotHistory || []).slice(0, 6).map((item) => `
+      <article><div><strong>${escapeHtml(item.productName || item.sku || "Pilot yoxlaması")}</strong><small>${escapeHtml(item.actor)} · ${escapeHtml(formatDate(item.createdAt))} · ${Number(item.blockerCount || 0)} blok</small></div><span class="status-pill ${item.ready ? "is-success" : "is-danger"}">${item.ready ? "Keçib" : "Bloklanıb"}</span></article>
+    `).join("") || "<p>Pilot yoxlaması tarixçəsi hələ yoxdur.</p>";
   };
 
   const renderPilotResult = () => {
@@ -479,6 +505,24 @@
     );
   };
 
+  const exportDailyPlan = () => {
+    const queue = state.launch?.releaseQueue;
+    if (!queue) return;
+    const rows = [["deadline", "workstream", "owner", "severity", "count", "task", "detail", "external_evidence"]];
+    for (const item of queue.items || []) rows.push([
+      item.due,
+      item.workstream,
+      item.owner,
+      item.severity,
+      item.value,
+      item.label,
+      item.detail,
+      item.external ? "yes" : "no"
+    ]);
+    downloadCsv(datedFilename("constera-daily-launch-plan"), rows);
+    setStatus("[data-launch-status]", "Gündəlik əməliyyat planı endirildi.", "success");
+  };
+
   qs("[data-launch-refresh]")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     setBusy(button, true, "Yenilənir...");
@@ -492,6 +536,27 @@
   });
   qs("[data-launch-export-report]")?.addEventListener("click", exportLaunchReport);
   qs("[data-launch-export-media]")?.addEventListener("click", exportPilotMediaTemplate);
+  qs("[data-launch-export-daily]")?.addEventListener("click", exportDailyPlan);
+  qs("[data-launch-run-daily]")?.addEventListener("click", async (event) => {
+    if (!window.confirm("Qiymət köhnəlməsi, təchizatçı xatırlatmaları və kataloq keyfiyyəti indi yoxlanılsın? Əməliyyat audit jurnalına yazılacaq.")) return;
+    const button = event.currentTarget;
+    setBusy(button, true, "Yoxlanılır...");
+    try {
+      const result = await api.runLaunchDailyChecks();
+      state.launch = result.data.launch;
+      renderLaunch();
+      setStatus(
+        "[data-launch-status]",
+        `${result.data.run.prices.createdRequests} yeni qiymət yoxlaması · ${result.data.run.reminders.remindedRequests} xatırlatma · ${result.data.run.quality.openIssues} açıq keyfiyyət qeydi.`,
+        "success"
+      );
+      window.dispatchEvent(new CustomEvent("constera:admin-refresh"));
+    } catch (error) {
+      setStatus("[data-launch-status]", error.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  });
   qs("[data-launch-supplier-select]")?.addEventListener("change", (event) => {
     state.selectedSupplierId = event.target.value;
     renderSupplierWizard();

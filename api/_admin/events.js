@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSessionUser, hashOpaque, requireRole } from "../_lib/auth.js";
 import { query } from "../_lib/db.js";
+import { forwardGoogleAnalyticsEvent } from "../_lib/google-marketing.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { oneOf, parseLimit, text } from "../_lib/validation.js";
 
@@ -62,6 +63,7 @@ export default withApiErrors(async (req, res) => {
   );
   if (Number(recent[0]?.count || 0) >= 60) throw new ApiError(429, "analytics_rate_limited", "Analitika hadisəsi limiti dolub.");
   const user = await getSessionUser(req);
+  const payload = cleanPayload(body.payload);
   const rows = await query(
     `INSERT INTO analytics_events (
        id, event_type, user_id, visitor_hash, session_hash,
@@ -74,9 +76,29 @@ export default withApiErrors(async (req, res) => {
       text(body.path, { max: 500 }) || null,
       text(body.entityType, { max: 80 }) || null,
       text(body.entityId, { max: 160 }) || null,
-      JSON.stringify(cleanPayload(body.payload)),
+      JSON.stringify(payload),
       hashOpaque(`${visitorHash}:${eventId}`)
     ]
   );
-  return sendJson(res, rows[0] ? 201 : 200, { ok: true, data: { accepted: Boolean(rows[0]) } });
+  let googleForwarded = false;
+  if (rows[0]) {
+    try {
+      const google = await forwardGoogleAnalyticsEvent({
+        consent: body.consent,
+        visitorHash,
+        eventType,
+        path: text(body.path, { max: 500 }) || "/",
+        entityType: text(body.entityType, { max: 80 }),
+        entityId: text(body.entityId, { max: 160 }),
+        payload
+      });
+      googleForwarded = google.forwarded;
+    } catch {
+      // Xarici analitika nasazlığı ConstEra-nın öz hadisə qeydini dayandırmır.
+    }
+  }
+  return sendJson(res, rows[0] ? 201 : 200, {
+    ok: true,
+    data: { accepted: Boolean(rows[0]), googleForwarded }
+  });
 });

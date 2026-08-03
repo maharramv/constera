@@ -23,6 +23,11 @@
     output.textContent = message;
     output.dataset.type = type;
   };
+  const selectedQualityIds = new Set();
+  const renderSelectedQualityCount = () => {
+    const node = root.querySelector("[data-quality-selected-count]");
+    if (node) node.textContent = `${selectedQualityIds.size} seçilib`;
+  };
   const scoreRow = (card) => `<tr><td><strong>${esc(card.supplier)}</strong><small>${esc(card.region)}</small></td><td>${card.score} · ${esc(card.grade)}</td><td>${card.metrics.dataQuality}%</td><td>${card.metrics.onTime}%</td><td>${card.metrics.response}%</td><td>${card.metrics.reviewAverage || 0} / 5</td><td>${card.metrics.openQualityIssues}</td></tr>`;
 
   const load = async () => {
@@ -38,6 +43,9 @@
     const cases = support.cases || [];
     const pending = reviews.reviews || [];
     const issues = quality.issues || [];
+    for (const id of selectedQualityIds) {
+      if (!issues.some((issue) => issue.id === id)) selectedQualityIds.delete(id);
+    }
     const cards = performance.scorecards || [];
     const readiness = integrations.readiness || {};
     const stages = analytics.funnel?.stages || [];
@@ -77,8 +85,8 @@
           <div class="enterprise-admin-list">${cases.slice(0, 40).map((item) => `<article><div><strong>#${item.caseNumber} · ${esc(label(item.type))} · ${esc(item.subject)}</strong><span>${esc(item.customerName)} · ${esc(label(item.status))}${item.requestedAmount !== null ? ` · ${money(item.requestedAmount)}` : ""}</span></div><div class="admin-actions"><button class="table-action" data-case-action="${esc(item.id)}" data-action="status">Həll et</button>${["refund", "return"].includes(item.type) && !item.refund ? `<button class="table-action" data-case-action="${esc(item.id)}" data-action="approve-refund">Məbləği təsdiqlə</button>` : ""}${item.refund && item.refund.status !== "completed" ? `<button class="table-action" data-case-action="${esc(item.id)}" data-action="complete-refund">Ödənişi tamamla</button>` : ""}</div></article>`).join("") || '<p class="admin-import-status">Açıq müraciət yoxdur.</p>'}</div>
         </section>
         <section class="admin-v2-section admin-v2-section-wide">
-          <div class="admin-v2-section-heading"><h3>Kataloq keyfiyyət robotu</h3><span class="data-badge">${issues.length} aktiv qeyd</span></div>
-          <div class="enterprise-admin-list">${issues.slice(0, 50).map((issue) => `<article><div><strong>${esc(issue.sku || issue.supplierName || issue.entityId)} · ${esc(issue.severity)}</strong><span>${esc(issue.productName || issue.type)} · ${esc(issue.detail)}</span></div><div class="admin-actions"><a class="table-action" href="product-detail.html?product=${encodeURIComponent(issue.productId || "")}">Aç</a><button class="table-action" data-quality-action="${esc(issue.id)}" data-action="resolve">Həll edildi</button><button class="table-action" data-quality-action="${esc(issue.id)}" data-action="ignore">Nəzərə alma</button></div></article>`).join("") || '<p class="admin-import-status">Aktiv problem yoxdur.</p>'}</div>
+          <div class="admin-v2-section-heading"><div><h3>Kataloq keyfiyyət robotu</h3><span class="data-badge">${issues.length} aktiv qeyd</span></div><div class="admin-actions"><span class="data-badge" data-quality-selected-count>${selectedQualityIds.size} seçilib</span><button class="table-action" type="button" data-quality-select-page>Cari siyahını seç</button><button class="table-action" type="button" data-quality-clear-selection>Seçimi sil</button><button class="table-action" type="button" data-quality-bulk-action="resolve">Seçilənləri həll et</button><button class="table-action" type="button" data-quality-bulk-action="ignore">Seçilənləri nəzərə alma</button></div></div>
+          <div class="enterprise-admin-list">${issues.slice(0, 50).map((issue) => `<article><label class="admin-checkbox-field"><input type="checkbox" data-quality-select="${esc(issue.id)}" ${selectedQualityIds.has(issue.id) ? "checked" : ""} /><span>Seç</span></label><div><strong>${esc(issue.sku || issue.supplierName || issue.entityId)} · ${esc(issue.severity)}</strong><span>${esc(issue.productName || issue.type)} · ${esc(issue.detail)}</span></div><div class="admin-actions"><a class="table-action" href="product-detail.html?product=${encodeURIComponent(issue.productId || "")}">Aç</a><button class="table-action" data-quality-action="${esc(issue.id)}" data-action="resolve">Həll edildi</button><button class="table-action" data-quality-action="${esc(issue.id)}" data-action="ignore">Nəzərə alma</button></div></article>`).join("") || '<p class="admin-import-status">Aktiv problem yoxdur.</p>'}</div>
         </section>
         <section class="admin-v2-section admin-v2-section-wide">
           <div class="admin-v2-section-heading"><h3>Təchizatçı reytinqi</h3><span class="data-badge">${cards.length} profil</span></div>
@@ -95,7 +103,24 @@
     const review = event.target.closest("[data-review-moderate]");
     const support = event.target.closest("[data-case-action]");
     const quality = event.target.closest("[data-quality-action]");
-    if (!scan && !remediate && !attributes && !review && !support && !quality) return;
+    const selectPage = event.target.closest("[data-quality-select-page]");
+    const clearSelection = event.target.closest("[data-quality-clear-selection]");
+    const bulkQuality = event.target.closest("[data-quality-bulk-action]");
+    if (selectPage) {
+      root.querySelectorAll("[data-quality-select]").forEach((checkbox) => {
+        checkbox.checked = true;
+        selectedQualityIds.add(checkbox.dataset.qualitySelect);
+      });
+      renderSelectedQualityCount();
+      return;
+    }
+    if (clearSelection) {
+      selectedQualityIds.clear();
+      root.querySelectorAll("[data-quality-select]").forEach((checkbox) => { checkbox.checked = false; });
+      renderSelectedQualityCount();
+      return;
+    }
+    if (!scan && !remediate && !attributes && !review && !support && !quality && !bulkQuality) return;
     let completedMessage = "";
     try {
       setStatus("Əməliyyat icra olunur...");
@@ -130,11 +155,31 @@
         await api.updateSupportCase(payload);
       }
       if (quality) await api.updateCatalogQuality({ id: quality.dataset.qualityAction, action: quality.dataset.action });
+      if (bulkQuality) {
+        const ids = [...selectedQualityIds];
+        if (!ids.length) {
+          setStatus("Toplu qərar üçün ən azı bir keyfiyyət qeydi seç.", "warning");
+          return;
+        }
+        const decision = bulkQuality.dataset.qualityBulkAction;
+        if (!window.confirm(`${ids.length} qeyd ${decision === "resolve" ? "həll edilmiş" : "nəzərə alınmayan"} kimi işarələnsin? Real məlumat dəyişdirilməyəcək.`)) return;
+        await api.updateCatalogQualityBatch(ids, decision);
+        selectedQualityIds.clear();
+        completedMessage = `${ids.length} keyfiyyət qeydinin statusu audit izi ilə yeniləndi.`;
+      }
       await load();
       if (completedMessage) setStatus(completedMessage, "success");
     } catch (error) {
       setStatus(error.message, "error");
     }
+  });
+
+  root.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-quality-select]");
+    if (!checkbox) return;
+    if (checkbox.checked) selectedQualityIds.add(checkbox.dataset.qualitySelect);
+    else selectedQualityIds.delete(checkbox.dataset.qualitySelect);
+    renderSelectedQualityCount();
   });
 
   root.addEventListener("submit", async (event) => {

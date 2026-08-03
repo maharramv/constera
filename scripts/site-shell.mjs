@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeGoogleVerificationToken } from "../api/_lib/google-marketing.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const readTemplate = (name) => readFileSync(`${scriptDirectory}/../templates/${name}`, "utf8").trim();
@@ -90,6 +91,13 @@ const ensurePwaMetadata = (html) => {
   }
   return tags.length ? html.replace(/<\/head>/i, `${tags.join("\n")}\n  </head>`) : html;
 };
+const ensureSearchConsoleMetadata = (html, pageName) => {
+  if (pageName !== "home" || /name=["']google-site-verification["']/i.test(html)) return html;
+  const token = normalizeGoogleVerificationToken();
+  return token
+    ? html.replace(/<\/head>/i, `    <meta name="google-site-verification" content="${token}" />\n  </head>`)
+    : html;
+};
 const shouldRenderFooter = (pageName) => !["admin", "login"].includes(pageName);
 
 export const renderSitePage = (source, options = {}) => {
@@ -110,7 +118,7 @@ export const renderSitePage = (source, options = {}) => {
     html = html.replace(footerPattern, "");
   }
 
-  return ensurePwaMetadata(html);
+  return ensureSearchConsoleMetadata(ensurePwaMetadata(html), pageName);
 };
 
 export const siteShellTemplateFiles = Object.freeze([

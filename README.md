@@ -137,6 +137,14 @@ npm run db:scan-quality
 npm run db:smoke
 ```
 
+Miqrator tətbiq edilmiş faylları `constera_schema_migrations` reyestrində checksum ilə saxlayır və hər yeni faylı ayrıca transaction-da icra edir. Köhnə, artıq qurulmuş bazaya reyestr ilk dəfə əlavə edilirsə, əvvəlcə sxemi yoxla və son tətbiq edilmiş faylı açıq baseline et; bu əməliyyat köhnə SQL-i yenidən icra etmir:
+
+```bash
+npm run db:migrate -- --baseline-through=026_supplier_launch_controls.sql --confirm-existing-schema --only=027_launch_operations.sql
+```
+
+Planı bazanı dəyişmədən görmək üçün eyni əmrə `--dry-run` əlavə et.
+
 5. `login.html` səhifəsində “İlk super administratoru yarat” bölməsini bir dəfə doldur. İlk istifadəçi yarandıqdan sonra quraşdırma endpoint-i avtomatik bağlanır.
 
 Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır.
@@ -166,6 +174,6 @@ Təsdiqli qiymət yalnız mənbə URL-i və mənbə adı olan məhsulda göstər
 
 Qiymət və stok sifarişdən əvvəl təchizatçı tərəfindən yenidən təsdiqlənməlidir. Mənbə fotosu brauzerdə açılmadıqda interfeys qırıq şəkil əvəzinə lokal əlçatan əvəzedici göstərir. Mənbəsiz mövqelər silinmir: gələcək təchizatçı məlumatı üçün taksonomiya strukturu kimi mənbəli nəticələrdən sonra saxlanılır.
 
-Birinci tərəf istifadə analitikası yalnız ziyarətçi `Analitikaya icazə ver` seçdikdən sonra visitor/session identifikatoru yaradır. `Yalnız zəruri` rejimində giriş, səbət, təhlükəsizlik və məxfilik seçimi işləyir, analitika sorğusu göndərilmir.
+Birinci tərəf istifadə analitikası yalnız ziyarətçi `Analitikaya icazə ver` seçdikdən sonra visitor/session identifikatoru yaradır. `Yalnız zəruri` rejimində giriş, səbət, təhlükəsizlik və məxfilik seçimi işləyir, analitika sorğusu göndərilmir. `GOOGLE_ANALYTICS_MEASUREMENT_ID` və `GOOGLE_ANALYTICS_API_SECRET` qurulduqda razılıqlı hadisələr şəxsi açarları brauzerə çıxarmadan GA4 Measurement Protocol-a ötürülür. `GOOGLE_SEARCH_CONSOLE_VERIFICATION` production build zamanı yalnız ana səhifəyə təhlükəsiz təsdiq meta-teqi əlavə edir; Merchant Center üçün mənbə `/api/merchant-feed`, sitemap isə `/sitemap.xml` ünvanındadır.
 
 Onlayn kart ödənişi provayder müqaviləsi və açarları olmadan imitasiya edilmir. Adapter hazırdır, lakin kart seçimi yalnız `PAYMENT_WEBHOOK_URL` və `PAYMENT_WEBHOOK_SECRET` production mühitində düzgün qurulduqda aktiv olur.

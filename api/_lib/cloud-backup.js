@@ -3,8 +3,8 @@ import { gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v10";
-const SCHEMA_MIGRATIONS = 26;
+const BACKUP_VERSION = "constera-cloud-backup-v11";
+const SCHEMA_MIGRATIONS = 27;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
