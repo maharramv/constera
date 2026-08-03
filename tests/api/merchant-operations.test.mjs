@@ -64,7 +64,12 @@ test("müqavilə sənədsiz və vaxtı bitmiş halda aktivləşməyə hazır say
   const ready = contractActivationReadiness({
     documentUrl: "https://files.example.test/contract.pdf",
     startsOn: "2020-01-01",
-    endsOn: "2999-12-31"
+    endsOn: "2999-12-31",
+    legalConfirmed: true,
+    companyId: "company-1",
+    taxId: "1234567890",
+    contact: "sales@example.test",
+    supplierUserCount: 1
   });
   assert.equal(ready.ready, true);
 });

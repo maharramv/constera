@@ -145,7 +145,7 @@ export const buildCatalogStructuralIssues = (products, offers) => {
         product.id,
         "missing_licensed_media",
         mediaSeverity,
-        "Şəkil üçün sahiblik, təchizatçı icazəsi və ya rəsmi/lisenziyalı media qeydi yoxdur."
+        "Şəkil üçün istifadə hüququ ayrıca yoxlanılmayıb və təsdiqlənməyib."
       ));
     }
     if (!product.source_url) issues.push(issue("product", product.id, "missing_source", "high", "Məhsul mənbəsi göstərilməyib."));
@@ -208,6 +208,8 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
                      AND media.status = 'active'
                      AND media.content_type LIKE 'image/%'
                      AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                     AND media.rights_status = 'verified'
+                     AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
                 ) AS has_licensed_media
            FROM products product
           WHERE product.status = 'active'
@@ -570,6 +572,12 @@ const applySafeFieldFixes = async (rows, actorId) => {
       after,
       actorId
     });
+    await query(
+      `UPDATE catalog_quality_issues
+          SET status = 'resolved', resolved_at = now(), last_checked_at = now()
+        WHERE id = $1 AND status = 'open'`,
+      [row.id]
+    );
     count += 1;
   }
   return count;

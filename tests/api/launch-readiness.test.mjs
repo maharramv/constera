@@ -55,8 +55,10 @@ test("məcburi hazırlıq tamamlandıqda yalnız könüllü inteqrasiyalar xəb�
   );
 });
 
-test("təchizatçı pilot hazırlığı profil, hesab, müqavilə, təklif və media tələb edir", () => {
+test("təchizatçı pilot hazırlığı şirkət, profil, hesab, müqavilə, təklif və media tələb edir", () => {
   const incomplete = buildSupplierOnboarding({
+    company_id: "company-1",
+    tax_id: "1234567890",
     website: "https://supplier.example",
     contact: "sales@example.test",
     supplier_user_count: 1,
@@ -72,6 +74,8 @@ test("təchizatçı pilot hazırlığı profil, hesab, müqavilə, təklif və m
   );
 
   const ready = buildSupplierOnboarding({
+    company_id: "company-1",
+    tax_id: "1234567890",
     website: "https://supplier.example",
     contact: "sales@example.test",
     supplier_user_count: 1,

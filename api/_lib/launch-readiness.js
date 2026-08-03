@@ -262,6 +262,11 @@ export const buildLaunchReadiness = ({
 export const buildSupplierOnboarding = (row = {}) => {
   const requiredChecks = [
     {
+      key: "company",
+      label: "Şirkət və VÖEN",
+      ready: Boolean(row.company_id && String(row.tax_id || "").trim())
+    },
+    {
       key: "profile",
       label: "Profil və əlaqə",
       ready: Boolean(String(row.contact || "").trim() && String(row.website || "").startsWith("https://"))

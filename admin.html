@@ -1113,7 +1113,7 @@
                 <label class="admin-field"><span>Qeyd ID-si</span><input name="entityId" placeholder="product-..." /></label>
                 <label class="admin-field"><span>Alternativ mətn</span><input name="altText" placeholder="Məhsulun görünüşü" /></label>
                 <label class="admin-field"><span>Mənbə URL-i</span><input name="sourceUrl" type="url" placeholder="https://istehsalci.az/..." /></label>
-                <label class="admin-field"><span>İstifadə hüququ</span><select name="licenseType"><option value="unspecified">Dəqiqləşdirilməyib</option><option value="own">ConstEra-ya məxsus</option><option value="supplier">Təchizatçı təqdim edib</option><option value="official">Rəsmi istehsalçı mediası</option><option value="licensed">Lisenziyalı media</option></select></label>
+                <label class="admin-field"><span>İstifadə hüququ</span><select name="licenseType"><option value="unspecified">Dəqiqləşdirilməyib</option><option value="reference">Mənbə referansı</option><option value="own">ConstEra-ya məxsus</option><option value="supplier">Təchizatçı təqdim edib</option><option value="official">Rəsmi istehsalçı mediası</option><option value="licensed">Lisenziyalı media</option></select></label>
                 <label class="admin-field"><span>Hüquq qeydi</span><input name="licenseNote" maxlength="1000" placeholder="İcazə və ya müqavilə qeydi" /></label>
                 <label class="admin-field admin-checkbox-field"><input name="isPrimary" type="checkbox" /><span>İlk şəkli əsas media et</span></label>
               </div>
@@ -1121,18 +1121,32 @@
               <p class="admin-import-status" data-admin-v2-media-status>JPEG və PNG brauzerdə WebP-yə optimallaşdırılır. Hər fayl maksimum 3 MB.</p>
             </form>
             <form class="admin-form" data-admin-v2-external-media-form>
-              <div class="admin-v2-section-heading"><h3>Rəsmi və ya lisenziyalı şəkil URL-i</h3></div>
+              <div class="admin-v2-section-heading"><h3>Xarici şəkil və mənbə referansı</h3></div>
               <div class="admin-form-grid">
                 <label class="admin-field admin-field-wide"><span>Birbaşa şəkil URL-i</span><input name="url" type="url" required placeholder="https://cdn.istehsalci.az/mehsul.webp" /></label>
                 <label class="admin-field admin-field-wide"><span>Rəsmi mənbə səhifəsi</span><input name="sourceUrl" type="url" required placeholder="https://istehsalci.az/mehsul" /></label>
                 <label class="admin-field"><span>Əlaqəli bölmə</span><select name="entityType"><option value="product">Məhsul</option><option value="supplier">Təchizatçı</option><option value="service">Xidmət</option><option value="package">Paket</option><option value="rental">İcarə</option></select></label>
                 <label class="admin-field"><span>Qeyd ID-si</span><input name="entityId" required placeholder="product-..." /></label>
                 <label class="admin-field"><span>Alternativ mətn</span><input name="altText" required placeholder="Məhsulun rəsmi görünüşü" /></label>
-                <label class="admin-field"><span>İstifadə hüququ</span><select name="licenseType"><option value="official">Rəsmi istehsalçı mediası</option><option value="supplier">Təchizatçı təqdim edib</option><option value="licensed">Lisenziyalı media</option><option value="own">ConstEra-ya məxsus</option></select></label>
+                <label class="admin-field"><span>İstifadə hüququ</span><select name="licenseType"><option value="reference">Mənbə referansı, təsdiq gözləyir</option><option value="official">Rəsmi istehsalçı mediası</option><option value="supplier">Təchizatçı təqdim edib</option><option value="licensed">Lisenziyalı media</option><option value="own">ConstEra-ya məxsus</option></select></label>
                 <label class="admin-field admin-field-wide"><span>Hüquq qeydi</span><input name="licenseNote" maxlength="1000" placeholder="İcazə, müqavilə və ya rəsmi media kitabxanası qeydi" /></label>
                 <label class="admin-field admin-checkbox-field"><input name="isPrimary" type="checkbox" /><span>Məhsulun əsas şəkli et</span></label>
               </div>
               <div class="admin-actions"><button class="button button-secondary" type="submit">URL-i yoxla və qeyd et</button></div>
+            </form>
+            <form class="admin-form" data-admin-v2-media-rights-form>
+              <div class="admin-v2-section-heading">
+                <div><h3>Media hüququna baxış</h3><p class="admin-v2-quality-summary">Qərar audit jurnalına yazılır və təsdiq üçün administrator 2FA-sı tələb olunur.</p></div>
+              </div>
+              <div class="admin-form-grid">
+                <label class="admin-field admin-field-wide"><span>Media</span><select name="id" required data-admin-v2-media-rights-select></select></label>
+                <label class="admin-field"><span>Hüquq növü</span><select name="licenseType"><option value="reference">Mənbə referansı</option><option value="own">ConstEra-ya məxsus</option><option value="supplier">Təchizatçı təqdim edib</option><option value="official">Rəsmi istehsalçı mediası</option><option value="licensed">Lisenziyalı media</option><option value="unspecified">Dəqiqləşdirilməyib</option></select></label>
+                <label class="admin-field"><span>Qərar</span><select name="rightsStatus"><option value="pending">Yoxlama gözləyir</option><option value="verified">Təsdiqlənib</option><option value="rejected">Rədd edilib</option><option value="expired">Müddəti bitib</option></select></label>
+                <label class="admin-field"><span>Hüquq müddəti</span><input name="rightsExpiresOn" type="date" /></label>
+                <label class="admin-field admin-field-wide"><span>İcazə və ya lisenziya qeydi</span><input name="licenseNote" maxlength="1000" placeholder="Müqavilə, məktub və ya media kitabxanası istinadı" /></label>
+                <label class="admin-field admin-field-wide"><span>Yoxlama qeydi</span><textarea name="rightsReviewNote" rows="2" maxlength="1000" placeholder="Yoxlanmış sübutu və qərarın əsasını qeyd et"></textarea></label>
+              </div>
+              <div class="admin-actions"><button class="button button-primary" type="submit">Hüquq qərarını saxla</button></div>
             </form>
             <section class="admin-v2-section admin-v2-section-wide media-bulk-section">
               <div class="admin-v2-section-heading">
@@ -1191,9 +1205,10 @@
                   <label class="admin-field"><span>Bitmə</span><input name="endsOn" type="date" /></label>
                   <label class="admin-field"><span>Sənəd URL-i</span><input name="documentUrl" type="url" placeholder="https://..." /></label>
                   <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="2" maxlength="2000"></textarea></label>
+                  <label class="admin-field admin-field-wide"><span>Hüquqi yoxlama qeydi</span><textarea name="legalConfirmationNote" rows="2" maxlength="1000" placeholder="İmzalanmış sənədi, səlahiyyətli şəxsi və yoxlama tarixini qeyd et"></textarea></label>
                   <label class="admin-field admin-checkbox-field">
                     <input name="legalConfirmed" type="checkbox" />
-                    <span>Sənəd və kommersiya şərtləri səlahiyyətli şəxs tərəfindən təsdiqlənib</span>
+                    <span>İmzalanmış sənəd və kommersiya şərtləri səlahiyyətli şəxs tərəfindən yoxlanılıb</span>
                   </label>
                   <div class="admin-actions"><button class="button button-primary" type="submit">Müqaviləni saxla</button><button class="button button-outline" type="button" data-contract-clear>Təmizlə</button></div>
                 </form>

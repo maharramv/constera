@@ -75,6 +75,7 @@
     whatsapp: "WhatsApp"
   };
   const supplierStepTargets = {
+    company: "users",
     profile: "suppliers",
     account: "users",
     contract: "operations",
@@ -420,8 +421,8 @@
       return;
     }
     const rows = [[
-      "supplier_id", "supplier_name", "website", "contact", "onboarding_score",
-      "profile_ready", "account_ready", "contract_ready", "offer_ready",
+      "supplier_id", "supplier_name", "website", "contact", "company_id", "tax_id", "onboarding_score",
+      "company_ready", "profile_ready", "account_ready", "contract_ready", "offer_ready",
       "media_ready", "feed_ready", "next_required_step"
     ]];
     for (const supplier of data.suppliers || []) {
@@ -432,7 +433,10 @@
         supplier.name,
         supplier.website,
         supplier.contact,
+        supplier.companyId,
+        supplier.taxId,
         Number(supplier.onboarding?.score || 0),
+        checks.get("company")?.ready ? "ready" : "missing",
         checks.get("profile")?.ready ? "ready" : "missing",
         checks.get("account")?.ready ? "ready" : "missing",
         checks.get("contract")?.ready ? "ready" : "missing",
@@ -649,7 +653,8 @@
   };
   const parseBoolean = (value) => ["1", "true", "yes", "beli", "hə", "he", "esas"].includes(fold(value));
   const normalizeLicense = (value) => {
-    const key = fold(value || "official");
+    const key = fold(value || "reference");
+    if (["reference", "referans", "menbe"].includes(key)) return "reference";
     if (["official", "resmi", "istehsalci"].includes(key)) return "official";
     if (["supplier", "techizatci"].includes(key)) return "supplier";
     if (["licensed", "lisenziyali", "lisenziya"].includes(key)) return "licensed";
@@ -772,7 +777,7 @@
       setStatus("[data-media-bulk-status]", "Əvvəlcə uyğun sətirləri ön baxışda yoxla.", "warning");
       return;
     }
-    if (!window.confirm(`${queue.length} rəsmi media URL-i təhlükəsizlik yoxlamasından keçirilərək bazaya yazılsın?`)) return;
+    if (!window.confirm(`${queue.length} media referansı təhlükəsizlik yoxlamasından keçirilərək hüquq baxışına göndərilsin?`)) return;
     setBusy(button, true, "Qeyd edilir...");
     let cursor = 0;
     let succeeded = 0;
@@ -793,7 +798,7 @@
             isPrimary: item.isPrimary
           });
           item.status = "success";
-          item.message = "Təhlükəsizlik və şəkil formatı təsdiqləndi";
+          item.message = "Şəkil yoxlanıldı, istifadə hüququ baxışı gözləyir";
           succeeded += 1;
         } catch (error) {
           item.status = "failed";
@@ -808,7 +813,7 @@
       await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
       setStatus(
         "[data-media-bulk-status]",
-        `${succeeded} media qeydə alındı, ${failed} sətir uğursuz oldu.`,
+        `${succeeded} media hüquq baxışına göndərildi, ${failed} sətir uğursuz oldu.`,
         failed ? "warning" : "success"
       );
       window.dispatchEvent(new CustomEvent("constera:media-updated"));

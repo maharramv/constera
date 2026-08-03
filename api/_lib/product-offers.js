@@ -11,8 +11,23 @@ export const productOfferFields = `offer.id, offer.product_id, offer.supplier_id
     SELECT 1 FROM supplier_contracts contract
      WHERE contract.supplier_id = offer.supplier_id
        AND contract.status = 'active'
+       AND contract.legal_confirmed = true
        AND contract.starts_on <= current_date
        AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+       AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+       AND supplier.website ~ '^https://'
+       AND EXISTS (
+         SELECT 1 FROM companies company
+          WHERE company.id = supplier.company_id
+            AND company.status = 'active'
+            AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+       )
+       AND EXISTS (
+         SELECT 1 FROM users supplier_user
+          WHERE supplier_user.company_id = supplier.company_id
+            AND supplier_user.role = 'supplier'
+            AND supplier_user.status = 'active'
+       )
   ) AS has_active_contract,
   EXISTS (
     SELECT 1 FROM media_assets media
@@ -21,6 +36,8 @@ export const productOfferFields = `offer.id, offer.product_id, offer.supplier_id
        AND media.status = 'active'
        AND media.content_type LIKE 'image/%'
        AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+       AND media.rights_status = 'verified'
+       AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
        AND media.url ~ '^https://'
   ) AS has_licensed_media`;
 
@@ -34,8 +51,8 @@ export const mapProductOffer = (row) => {
       && Date.now() - Date.parse(priceVerifiedAt) <= 30 * 86_400_000
   );
   const commercialIssues = [];
-  if (!row.has_active_contract) commercialIssues.push("Təchizatçı müqaviləsi aktiv deyil");
-  if (!row.has_licensed_media) commercialIssues.push("Lisenziyalı məhsul fotosu yoxdur");
+  if (!row.has_active_contract) commercialIssues.push("Təchizatçı hüquqi profili və müqaviləsi hazır deyil");
+  if (!row.has_licensed_media) commercialIssues.push("İstifadə hüququ təsdiqli məhsul fotosu yoxdur");
   if (row.price_status !== "confirmed" || unitPrice === null || unitPrice <= 0 || row.currency !== "AZN") {
     commercialIssues.push("Təsdiqli AZN qiyməti yoxdur");
   }

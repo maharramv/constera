@@ -680,15 +680,41 @@
     form.elements.id.value = "";
   };
 
+  const fillMediaRightsForm = (id = "") => {
+    const form = qs("[data-admin-v2-media-rights-form]");
+    if (!form) return;
+    const item = state.media.find((entry) => entry.id === (id || form.elements.id.value)) || state.media[0];
+    if (!item) {
+      form.reset();
+      form.querySelector('button[type="submit"]').disabled = true;
+      return;
+    }
+    form.querySelector('button[type="submit"]').disabled = false;
+    form.elements.id.value = item.id;
+    form.elements.licenseType.value = item.licenseType || "unspecified";
+    form.elements.licenseNote.value = item.licenseNote || "";
+    form.elements.rightsStatus.value = item.rightsStatus || "pending";
+    form.elements.rightsExpiresOn.value = item.rightsExpiresOn ? String(item.rightsExpiresOn).slice(0, 10) : "";
+    form.elements.rightsReviewNote.value = item.rightsReviewNote || "";
+  };
+
   const renderMedia = () => {
     const grid = qs("[data-admin-v2-media]");
     if (!grid) return;
     setText("[data-admin-v2-media-count]", `${state.media.length} fayl`);
-    const licenseLabels = { own: "ConstEra", supplier: "Təchizatçı", official: "Rəsmi media", licensed: "Lisenziyalı", unspecified: "Hüquq qeyd edilməyib" };
+    const licenseLabels = { own: "ConstEra", supplier: "Təchizatçı", official: "Rəsmi media", licensed: "Lisenziyalı", reference: "Mənbə referansı", unspecified: "Hüquq qeyd edilməyib" };
+    const rightsLabels = { pending: "Hüquq yoxlaması gözləyir", verified: "İstifadə hüququ təsdiqlənib", rejected: "İstifadə hüququ rədd edilib", expired: "İstifadə hüququ bitib" };
+    const rightsSelect = qs("[data-admin-v2-media-rights-select]");
+    if (rightsSelect) {
+      const selected = rightsSelect.value;
+      rightsSelect.innerHTML = state.media.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.filename)} · ${escapeHtml(rightsLabels[item.rightsStatus] || item.rightsStatus)}</option>`).join("");
+      if (state.media.some((item) => item.id === selected)) rightsSelect.value = selected;
+      fillMediaRightsForm(rightsSelect.value);
+    }
     grid.innerHTML = state.media.map((item) => `<article>
       <div class="admin-v2-media-preview">${item.contentType.startsWith("image/") ? `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.altText || item.filename)}" loading="lazy" />` : '<span>PDF</span>'}</div>
-      <div><strong>${item.isPrimary ? "Əsas · " : ""}${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${escapeHtml(licenseLabels[item.licenseType] || item.licenseType)} · ${item.provider === "external" ? "Xarici URL" : `${Math.round(item.sizeBytes / 1024)} KB`} · ${formatDate(item.createdAt)}</small></div>
-      <div class="admin-v2-row-actions"><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button>${item.contentType.startsWith("image/") && item.entityId && !item.isPrimary ? `<button class="table-action" type="button" data-media-primary="${escapeHtml(item.id)}">Əsas et</button>` : ""}<button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
+      <div><strong>${item.isPrimary ? "Əsas · " : ""}${escapeHtml(item.filename)}</strong><small>${escapeHtml(item.entityType)}${item.entityId ? ` · ${escapeHtml(item.entityId)}` : ""}</small><small>${escapeHtml(licenseLabels[item.licenseType] || item.licenseType)} · ${item.provider === "external" ? "Xarici URL" : `${Math.round(item.sizeBytes / 1024)} KB`} · ${formatDate(item.createdAt)}</small><small>${escapeHtml(rightsLabels[item.rightsStatus] || item.rightsStatus)}${item.rightsVerifiedAt ? ` · ${formatDate(item.rightsVerifiedAt, true)}` : ""}</small></div>
+      <div class="admin-v2-row-actions"><button class="table-action" type="button" data-media-review="${escapeHtml(item.id)}">Hüquqa bax</button><button class="table-action" type="button" data-media-copy="${escapeHtml(item.url)}">URL-ni köçür</button>${item.contentType.startsWith("image/") && item.entityId && !item.isPrimary ? `<button class="table-action" type="button" data-media-primary="${escapeHtml(item.id)}">Əsas et</button>` : ""}<button class="table-action is-danger" type="button" data-media-delete="${escapeHtml(item.id)}">Sil</button></div>
     </article>`).join("") || "<p>Yüklənmiş media yoxdur.</p>";
   };
 
@@ -1505,7 +1531,7 @@
       });
       form.reset();
       await loadMedia();
-      setStatus("[data-admin-v2-media-status]", "Şəkil URL-i, mənbə və istifadə hüququ yoxlanılaraq qeydə alındı.", "success");
+      setStatus("[data-admin-v2-media-status]", "Şəkil və mənbə yoxlanıldı; istifadə hüququ ayrıca baxış üçün gözləməyə alındı.", "success");
     } catch (error) {
       setStatus("[data-admin-v2-media-status]", error.message, "error");
     } finally {
@@ -1513,9 +1539,14 @@
     }
   });
   qs("[data-admin-v2-media]")?.addEventListener("click", async (event) => {
+    const review = event.target.closest("[data-media-review]");
     const copy = event.target.closest("[data-media-copy]");
     const primary = event.target.closest("[data-media-primary]");
     const remove = event.target.closest("[data-media-delete]");
+    if (review) {
+      fillMediaRightsForm(review.dataset.mediaReview);
+      qs("[data-admin-v2-media-rights-form]")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     if (copy) {
       await navigator.clipboard.writeText(copy.dataset.mediaCopy).catch(() => null);
       setStatus("[data-admin-v2-media-status]", "Media URL-i mübadilə buferinə köçürüldü.", "success");
@@ -1538,6 +1569,36 @@
       } catch (error) {
         setStatus("[data-admin-v2-media-status]", error.message, "error");
       }
+    }
+  });
+  qs("[data-admin-v2-media-rights-select]")?.addEventListener("change", (event) => {
+    fillMediaRightsForm(event.currentTarget.value);
+  });
+  qs("[data-admin-v2-media-rights-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const fields = Object.fromEntries(new FormData(form).entries());
+    setButtonBusy(button, true, "Saxlanır...");
+    try {
+      await api.updateMedia({
+        id: fields.id,
+        licenseType: fields.licenseType,
+        licenseNote: fields.licenseNote
+      });
+      await api.updateMedia({
+        id: fields.id,
+        action: "review-rights",
+        rightsStatus: fields.rightsStatus,
+        rightsExpiresOn: fields.rightsExpiresOn,
+        rightsReviewNote: fields.rightsReviewNote
+      });
+      await loadMedia();
+      setStatus("[data-admin-v2-media-status]", "Media hüququ qərarı audit izi ilə saxlanıldı.", "success");
+    } catch (error) {
+      setStatus("[data-admin-v2-media-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
     }
   });
 

@@ -135,6 +135,7 @@ test("məhsul səhifəsi qalereya, qiymət tarixçəsi və əlaqəli məhsullar 
   assert.match(productsApi, /relatedProducts/);
   assert.match(productsApi, /documents:/);
   assert.match(productsApi, /license_type IN \('own', 'supplier', 'official', 'licensed'\)/);
+  assert.match(productsApi, /rights_status = 'verified'/);
   assert.match(productsApi, /confirmedPriceChanged/);
   assert.match(marketplace, /detail-gallery-thumbs/);
   assert.match(marketplace, /Qiymət tarixçəsi/);
@@ -388,7 +389,7 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const packageJson = JSON.parse(read("package.json"));
   const vercelConfig = JSON.parse(read("vercel.json"));
 
-  assert.match(backup, /constera-cloud-backup-v9/);
+  assert.match(backup, /constera-cloud-backup-v10/);
   assert.match(backup, /commercialProposals/);
   assert.match(backup, /policyConsents/);
   assert.doesNotMatch(backup, /password_hash/);

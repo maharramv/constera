@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { backupDeliveryReadiness, verifyCloudBackup } from "../_lib/cloud-backup.js";
+import { validatePublicUrl } from "../_lib/catalog-quality.js";
 import { calculateSettlementAmounts, settlementTransitionAllowed } from "../_lib/commercial-operations.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -38,13 +39,27 @@ const optionalHttpsUrl = (value, field) => {
   }
 };
 
-export const contractActivationReadiness = ({ documentUrl, startsOn, endsOn } = {}) => {
+export const contractActivationReadiness = ({
+  documentUrl,
+  startsOn,
+  endsOn,
+  legalConfirmed = false,
+  companyId,
+  taxId,
+  contact,
+  supplierUserCount = 0
+} = {}) => {
   const today = new Date().toISOString().slice(0, 10);
   const missing = [];
+  if (!companyId) missing.push("Təchizatçının şirkət profili");
+  if (!String(taxId || "").trim()) missing.push("Şirkətin VÖEN-i");
+  if (!String(contact || "").trim()) missing.push("Rəsmi əlaqə məlumatı");
+  if (Number(supplierUserCount || 0) < 1) missing.push("Aktiv təchizatçı hesabı");
   if (!documentUrl) missing.push("İmzalanmış müqavilə sənədi");
   if (!startsOn) missing.push("Başlanğıc tarixi");
   else if (startsOn > today) missing.push("Başlanğıc tarixi hələ çatmayıb");
   if (endsOn && endsOn < today) missing.push("Müqavilənin müddəti bitib");
+  if (!legalConfirmed) missing.push("Səlahiyyətli şəxsin hüquqi təsdiqi");
   return {
     ready: missing.length === 0,
     missing
@@ -63,12 +78,22 @@ const mapContract = (row) => ({
   endsOn: row.ends_on,
   documentUrl: row.document_url || "",
   note: row.note || "",
+  legalConfirmed: Boolean(row.legal_confirmed),
+  legalConfirmedBy: row.legal_confirmed_by || null,
+  legalConfirmedByName: row.legal_confirmed_by_name || "",
+  legalConfirmedAt: row.legal_confirmed_at || null,
+  legalConfirmationNote: row.legal_confirmation_note || "",
   activatedAt: row.activated_at,
   updatedAt: row.updated_at,
   activationReadiness: contractActivationReadiness({
     documentUrl: row.document_url,
     startsOn: row.starts_on,
-    endsOn: row.ends_on
+    endsOn: row.ends_on,
+    legalConfirmed: row.legal_confirmed,
+    companyId: row.company_id,
+    taxId: row.tax_id,
+    contact: row.contact,
+    supplierUserCount: row.supplier_user_count
   })
 });
 
@@ -108,9 +133,17 @@ const loadOperations = async () => {
   ] = await Promise.all([
     query("SELECT id, name FROM suppliers WHERE status <> 'Arxiv' ORDER BY name"),
     query(
-      `SELECT contract.*, supplier.name AS supplier_name
+      `SELECT contract.*, supplier.name AS supplier_name,
+              supplier.company_id, supplier.contact, company.tax_id,
+              reviewer.name AS legal_confirmed_by_name,
+              (SELECT count(*) FROM users supplier_user
+                WHERE supplier_user.company_id = supplier.company_id
+                  AND supplier_user.role = 'supplier'
+                  AND supplier_user.status = 'active')::int AS supplier_user_count
          FROM supplier_contracts contract
          JOIN suppliers supplier ON supplier.id = contract.supplier_id
+         LEFT JOIN companies company ON company.id = supplier.company_id
+         LEFT JOIN users reviewer ON reviewer.id = contract.legal_confirmed_by
         ORDER BY contract.updated_at DESC
         LIMIT 300`
     ),
@@ -254,10 +287,22 @@ const saveContract = async (user, body) => {
   const id = entityId(body.id, "sct");
   const supplierId = text(body.supplierId, { field: "Təchizatçı", required: true, max: 160 });
   const supplier = (await query(
-    "SELECT id FROM suppliers WHERE id = $1 AND status <> 'Arxiv' LIMIT 1",
+    `SELECT supplier.id, supplier.name, supplier.company_id, supplier.contact,
+            company.tax_id,
+            (SELECT count(*) FROM users supplier_user
+              WHERE supplier_user.company_id = supplier.company_id
+                AND supplier_user.role = 'supplier'
+                AND supplier_user.status = 'active')::int AS supplier_user_count
+       FROM suppliers supplier
+       LEFT JOIN companies company ON company.id = supplier.company_id
+      WHERE supplier.id = $1 AND supplier.status <> 'Arxiv'
+      LIMIT 1`,
     [supplierId]
   ))[0];
   if (!supplier) throw new ApiError(404, "supplier_not_found", "Təchizatçı tapılmadı.");
+  const existingContract = body.id
+    ? (await query("SELECT * FROM supplier_contracts WHERE id = $1 LIMIT 1", [id]))[0]
+    : null;
   const status = oneOf(body.status, contractStatuses, "draft", "Müqavilə statusu");
   const startsOn = dateValue(body.startsOn, "Başlanğıc tarixi");
   const endsOn = body.endsOn ? dateValue(body.endsOn, "Bitmə tarixi") : null;
@@ -265,19 +310,30 @@ const saveContract = async (user, body) => {
     throw new ApiError(400, "validation_error", "Bitmə tarixi başlanğıc tarixindən əvvəl ola bilməz.");
   }
   const documentUrl = optionalHttpsUrl(body.documentUrl, "Müqavilə sənədi");
+  const legalConfirmed = body.legalConfirmed === true || ["true", "on", "1"].includes(String(body.legalConfirmed));
+  const legalConfirmationNote = text(body.legalConfirmationNote, { max: 1_000 });
   if (status === "active") {
-    const readiness = contractActivationReadiness({ documentUrl, startsOn, endsOn });
-    const legalConfirmed = body.legalConfirmed === true || ["true", "on", "1"].includes(String(body.legalConfirmed));
-    if (!readiness.ready || !legalConfirmed) {
-      const missing = [
-        ...readiness.missing,
-        ...(!legalConfirmed ? ["Səlahiyyətli şəxsin hüquqi təsdiqi"] : [])
-      ];
+    const readiness = contractActivationReadiness({
+      documentUrl,
+      startsOn,
+      endsOn,
+      legalConfirmed,
+      companyId: supplier.company_id,
+      taxId: supplier.tax_id,
+      contact: supplier.contact,
+      supplierUserCount: supplier.supplier_user_count
+    });
+    if (!legalConfirmationNote) readiness.missing.push("Hüquqi yoxlama qeydi");
+    if (!readiness.ready || !legalConfirmationNote) {
       throw new ApiError(
         409,
         "contract_activation_requirements",
-        `Müqavilə aktivləşdirilə bilməz: ${missing.join(", ")}.`
+        `Müqavilə aktivləşdirilə bilməz: ${readiness.missing.join(", ")}.`
       );
+    }
+    const publicDocument = await validatePublicUrl(documentUrl);
+    if (!publicDocument.ok) {
+      throw new ApiError(409, "unsafe_contract_document", `Müqavilə sənədi qəbul edilmədi: ${publicDocument.reason}.`);
     }
     await query(
       `UPDATE supplier_contracts
@@ -286,15 +342,22 @@ const saveContract = async (user, body) => {
       [supplierId, id]
     );
   }
+  const persistedLegalConfirmation = status === "active" || Boolean(existingContract?.legal_confirmed);
+  const persistedLegalNote = status === "active"
+    ? legalConfirmationNote
+    : existingContract?.legal_confirmation_note || null;
   const rows = await query(
     `INSERT INTO supplier_contracts (
        id, supplier_id, contract_number, status, commission_rate,
        payment_terms_days, starts_on, ends_on, document_url, note,
-       created_by, reviewed_by, activated_at, updated_at
+       created_by, reviewed_by, activated_at, legal_confirmed,
+       legal_confirmed_by, legal_confirmed_at, legal_confirmation_note, updated_at
      ) VALUES (
        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
        $11, CASE WHEN $4 = 'active' THEN $11 ELSE NULL END,
-       CASE WHEN $4 = 'active' THEN now() ELSE NULL END, now()
+       CASE WHEN $4 = 'active' THEN now() ELSE NULL END, $12,
+       CASE WHEN $12 THEN $11 ELSE NULL END,
+       CASE WHEN $12 THEN now() ELSE NULL END, $13, now()
      )
      ON CONFLICT (id) DO UPDATE SET
        supplier_id = EXCLUDED.supplier_id,
@@ -311,6 +374,16 @@ const saveContract = async (user, body) => {
          WHEN EXCLUDED.status = 'active' THEN COALESCE(supplier_contracts.activated_at, now())
          ELSE supplier_contracts.activated_at
        END,
+       legal_confirmed = EXCLUDED.legal_confirmed,
+       legal_confirmed_by = CASE
+         WHEN EXCLUDED.status = 'active' THEN $11
+         ELSE supplier_contracts.legal_confirmed_by
+       END,
+       legal_confirmed_at = CASE
+         WHEN EXCLUDED.status = 'active' THEN now()
+         ELSE supplier_contracts.legal_confirmed_at
+       END,
+       legal_confirmation_note = COALESCE(EXCLUDED.legal_confirmation_note, supplier_contracts.legal_confirmation_note),
        updated_at = now()
      RETURNING *`,
     [
@@ -324,7 +397,9 @@ const saveContract = async (user, body) => {
       endsOn,
       documentUrl,
       text(body.note, { max: 2_000 }) || null,
-      user.id
+      user.id,
+      persistedLegalConfirmation,
+      persistedLegalNote
     ]
   );
   await recordAudit({
@@ -332,9 +407,22 @@ const saveContract = async (user, body) => {
     action: body.id ? "update" : "create",
     entityType: "supplier_contract",
     entityId: id,
-    details: { supplierId, status, commissionRate: Number(rows[0].commission_rate) }
+    details: {
+      supplierId,
+      status,
+      commissionRate: Number(rows[0].commission_rate),
+      legalConfirmed: Boolean(rows[0].legal_confirmed)
+    }
   });
-  return mapContract({ ...rows[0], supplier_name: body.supplierName || "" });
+  return mapContract({
+    ...rows[0],
+    supplier_name: supplier.name,
+    company_id: supplier.company_id,
+    tax_id: supplier.tax_id,
+    contact: supplier.contact,
+    supplier_user_count: supplier.supplier_user_count,
+    legal_confirmed_by_name: rows[0].legal_confirmed ? user.name : ""
+  });
 };
 
 const generateSettlement = async (user, body) => {
@@ -347,6 +435,7 @@ const generateSettlement = async (user, body) => {
   const contract = (await query(
     `SELECT * FROM supplier_contracts
       WHERE supplier_id = $1 AND status = 'active'
+        AND legal_confirmed = true
         AND starts_on <= $3::date
         AND (ends_on IS NULL OR ends_on >= $2::date)
       ORDER BY activated_at DESC NULLS LAST

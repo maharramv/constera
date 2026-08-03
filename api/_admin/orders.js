@@ -278,6 +278,8 @@ export default withApiErrors(async (req, res) => {
                  AND media.status = 'active'
                  AND media.content_type LIKE 'image/%'
                  AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                 AND media.rights_status = 'verified'
+                 AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
                  AND media.url ~ '^https://'
                ORDER BY media.is_primary DESC, media.created_at DESC
                LIMIT 1

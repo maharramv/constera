@@ -74,6 +74,7 @@
       <td data-label="Müddət">${date(item.startsOn)}<small>${item.endsOn ? date(item.endsOn) : "Müddətsiz"}</small></td>
       <td data-label="Vəziyyət">
         <span class="status-pill" data-status="${escapeHtml(item.status)}">${escapeHtml(statusLabels[item.status] || item.status)}</span>
+        <small>${item.legalConfirmed ? `Hüquqi təsdiq · ${date(item.legalConfirmedAt, true)}` : "Hüquqi təsdiq gözləyir"}</small>
         ${item.status !== "active" && !item.activationReadiness?.ready
           ? `<small>${escapeHtml((item.activationReadiness?.missing || []).join(" · "))}</small>`
           : ""}
@@ -167,9 +168,9 @@
     if (!button) return;
     const item = state.data.contracts.find((contract) => contract.id === button.dataset.contractEdit);
     if (!item) return;
-    ["id", "supplierId", "contractNumber", "status", "commissionRate", "paymentTermsDays", "startsOn", "endsOn", "documentUrl", "note"]
+    ["id", "supplierId", "contractNumber", "status", "commissionRate", "paymentTermsDays", "startsOn", "endsOn", "documentUrl", "note", "legalConfirmationNote"]
       .forEach((name) => { contractForm.elements[name].value = item[name] || ""; });
-    contractForm.elements.legalConfirmed.checked = false;
+    contractForm.elements.legalConfirmed.checked = Boolean(item.legalConfirmed);
     contractForm.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   settlementForm.addEventListener("submit", async (event) => {

@@ -4,7 +4,7 @@ import { hashOpaque, hashPassword, verifyPassword } from "../../api/_lib/auth.js
 import { ApiError, assertSameOrigin } from "../../api/_lib/http.js";
 import { matrixToObjects, parseCsv, readAliased } from "../../api/_lib/imports.js";
 import { categoryPublicId, categoryStorageId, parsePriceAmount, safeMediaUrl, safeUrl, slugify, stableItemSlug } from "../../api/_lib/validation.js";
-import { hasExpectedSignature, validateExternalMediaLicense } from "../../api/_admin/media.js";
+import { hasExpectedSignature, validateExternalMediaLicense, validateMediaRightsReview } from "../../api/_admin/media.js";
 import { parseInventorySource } from "../../api/_admin/inventory.js";
 import { parseOrderQuantity } from "../../api/_admin/orders.js";
 import { calculateSettlementAmounts, settlementTransitionAllowed } from "../../api/_lib/commercial-operations.js";
@@ -111,6 +111,31 @@ test("xarici media yalnız hüquq və rəsmi HTTPS mənbəyi ilə qəbul olunur"
     }),
     ApiError
   );
+});
+
+test("media referansı ayrıca hüquq sübutu olmadan təsdiqlənmir", () => {
+  assert.throws(
+    () => validateMediaRightsReview({
+      rightsStatus: "verified",
+      rightsReviewNote: "Rəsmi məhsul səhifəsi yoxlanıldı",
+      licenseType: "reference",
+      sourceUrl: "https://manufacturer.example/product",
+      provider: "external"
+    }),
+    (error) => error instanceof ApiError && error.code === "media_rights_evidence_required"
+  );
+  assert.deepEqual(validateMediaRightsReview({
+    rightsStatus: "verified",
+    rightsReviewNote: "Təchizatçı müqaviləsinin media əlavəsi yoxlanıldı",
+    rightsExpiresOn: "2999-12-31",
+    licenseType: "supplier",
+    sourceUrl: "https://supplier.example/product",
+    provider: "external"
+  }), {
+    rightsStatus: "verified",
+    rightsReviewNote: "Təchizatçı müqaviləsinin media əlavəsi yoxlanıldı",
+    rightsExpiresOn: "2999-12-31"
+  });
 });
 
 test("inventar idxalı CSV və JSON fayllarını eyni başlıqlara normallaşdırır", () => {

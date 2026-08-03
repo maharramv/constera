@@ -11,6 +11,8 @@ const licensedImageExpression = `(SELECT media.url
    AND media.status = 'active'
    AND media.content_type LIKE 'image/%'
    AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+   AND media.rights_status = 'verified'
+   AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
    AND media.url ~ '^https://'
  ORDER BY media.is_primary DESC, media.created_at DESC
  LIMIT 1)`;
@@ -24,9 +26,24 @@ const commerceReadyExpression = `EXISTS (
     JOIN supplier_contracts contract
       ON contract.supplier_id = offer.supplier_id
      AND contract.status = 'active'
+     AND contract.legal_confirmed = true
      AND contract.starts_on <= current_date
      AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
    WHERE offer.product_id = p.id
+     AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+     AND supplier.website ~ '^https://'
+     AND EXISTS (
+       SELECT 1 FROM companies company
+        WHERE company.id = supplier.company_id
+          AND company.status = 'active'
+          AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+     )
+     AND EXISTS (
+       SELECT 1 FROM users supplier_user
+        WHERE supplier_user.company_id = supplier.company_id
+          AND supplier_user.role = 'supplier'
+          AND supplier_user.status = 'active'
+     )
      AND offer.status = 'active'
      AND offer.price_status = 'confirmed'
      AND offer.unit_price > 0

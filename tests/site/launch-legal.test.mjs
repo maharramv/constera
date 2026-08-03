@@ -68,4 +68,6 @@ test("kommersiya yoxlamasından keçməyən təklif rezerv, PO və Offer sxemi y
   assert.match(purchaseOrders, /snapshot->>'commercialReady'/);
   assert.match(marketplace, /item\.commerceReady !== true[\s\S]*"@type": "Offer"/);
   assert.match(catalog, /license_type IN \('own', 'supplier', 'official', 'licensed'\)/);
+  assert.match(catalog, /rights_status = 'verified'/);
+  assert.match(catalog, /contract\.legal_confirmed = true/);
 });

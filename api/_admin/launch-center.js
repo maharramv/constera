@@ -17,7 +17,7 @@ const number = (value) => Math.max(0, Number(value || 0));
 const mapPilotCandidate = (row) => {
   if (!row) return null;
   const missing = [
-    ...(!row.has_active_contract ? [{ key: "contract", label: "Aktiv müqavilə" }] : []),
+    ...(!row.has_active_contract ? [{ key: "contract", label: "Hüquqi profil və aktiv müqavilə" }] : []),
     ...(!row.has_licensed_media ? [{ key: "media", label: "Media istifadə hüququ" }] : [])
   ];
   return {
@@ -76,13 +76,36 @@ export const loadLaunchCenter = async () => {
             AND media.entity_type = 'product'
             AND media.content_type LIKE 'image/%'
             AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+            AND media.rights_status = 'verified'
+            AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
             AND media.url ~ '^https://'
        ),
        eligible_offers AS (
          SELECT offer.*
            FROM product_offers offer
            JOIN products product ON product.id = offer.product_id AND product.status = 'active'
+           JOIN suppliers supplier ON supplier.id = offer.supplier_id AND supplier.status <> 'Arxiv'
+           JOIN supplier_contracts contract
+             ON contract.supplier_id = offer.supplier_id
+            AND contract.status = 'active'
+            AND contract.legal_confirmed = true
+            AND contract.starts_on <= current_date
+            AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
           WHERE offer.status = 'active'
+            AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+            AND supplier.website ~ '^https://'
+            AND EXISTS (
+              SELECT 1 FROM companies company
+               WHERE company.id = supplier.company_id
+                 AND company.status = 'active'
+                 AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+            )
+            AND EXISTS (
+              SELECT 1 FROM users supplier_user
+               WHERE supplier_user.company_id = supplier.company_id
+                 AND supplier_user.role = 'supplier'
+                 AND supplier_user.status = 'active'
+            )
             AND offer.price_status = 'confirmed'
             AND offer.unit_price > 0
             AND offer.price_verified_at >= now() - interval '30 days'
@@ -95,20 +118,31 @@ export const loadLaunchCenter = async () => {
            JOIN supplier_contracts contract
              ON contract.supplier_id = supplier.id
             AND contract.status = 'active'
+            AND contract.legal_confirmed = true
             AND contract.starts_on <= current_date
             AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+           JOIN companies company
+             ON company.id = supplier.company_id
+            AND company.status = 'active'
+            AND NULLIF(trim(company.tax_id), '') IS NOT NULL
            JOIN eligible_offers offer ON offer.supplier_id = supplier.id
            JOIN licensed_products media ON media.product_id = offer.product_id
           WHERE supplier.status <> 'Arxiv'
+            AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+            AND supplier.website ~ '^https://'
+            AND EXISTS (
+              SELECT 1 FROM users supplier_user
+               WHERE supplier_user.company_id = supplier.company_id
+                 AND supplier_user.role = 'supplier'
+                 AND supplier_user.status = 'active'
+            )
        )
        SELECT
          (SELECT count(*) FROM real_products)::int AS real_products,
          (SELECT count(*) FROM real_products product
-           WHERE product.price_status = 'confirmed'
-             AND product.price_amount > 0
-             AND product.price_verified_at >= now() - interval '30 days'
-             AND product.stock_quantity IS NOT NULL
-             AND product.source_url ~ '^https://'
+           WHERE EXISTS (
+               SELECT 1 FROM eligible_offers offer WHERE offer.product_id = product.id
+             )
              AND EXISTS (
                SELECT 1 FROM licensed_products media WHERE media.product_id = product.id
              ))::int AS eligible_products,
@@ -158,6 +192,7 @@ export const loadLaunchCenter = async () => {
            WHERE product.source_url ~ '^https://')::int AS sourced_products,
          (SELECT count(*) FROM supplier_contracts contract
            WHERE contract.status = 'active'
+             AND contract.legal_confirmed = true
              AND contract.starts_on <= current_date
              AND (contract.ends_on IS NULL OR contract.ends_on >= current_date))::int AS active_contracts,
          (SELECT count(*) FROM supplier_feeds WHERE active = true)::int AS configured_feeds,
@@ -166,6 +201,7 @@ export const loadLaunchCenter = async () => {
     query(
       `SELECT supplier.id, supplier.name, supplier.website, supplier.contact,
               supplier.status, supplier.region, supplier.response_time,
+              supplier.company_id, company.tax_id,
               (SELECT count(*) FROM users
                 WHERE users.company_id = supplier.company_id
                   AND users.role = 'supplier'
@@ -173,6 +209,7 @@ export const loadLaunchCenter = async () => {
               (SELECT count(*) FROM supplier_contracts contract
                 WHERE contract.supplier_id = supplier.id
                   AND contract.status = 'active'
+                  AND contract.legal_confirmed = true
                   AND contract.starts_on <= current_date
                   AND (contract.ends_on IS NULL OR contract.ends_on >= current_date))::int AS active_contract_count,
               (SELECT count(*) FROM supplier_feeds feed
@@ -202,9 +239,12 @@ export const loadLaunchCenter = async () => {
                   AND media.status = 'active'
                   AND media.content_type LIKE 'image/%'
                   AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                  AND media.rights_status = 'verified'
+                  AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
                 WHERE product.supplier_id = supplier.id
                   AND product.status = 'active')::int AS licensed_media_count
          FROM suppliers supplier
+         LEFT JOIN companies company ON company.id = supplier.company_id
         WHERE supplier.status <> 'Arxiv'
         ORDER BY supplier.name`
     ),
@@ -219,8 +259,23 @@ export const loadLaunchCenter = async () => {
                 SELECT 1 FROM supplier_contracts contract
                  WHERE contract.supplier_id = supplier.id
                    AND contract.status = 'active'
+                   AND contract.legal_confirmed = true
                    AND contract.starts_on <= current_date
                    AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+                   AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+                   AND supplier.website ~ '^https://'
+                   AND EXISTS (
+                     SELECT 1 FROM companies company
+                      WHERE company.id = supplier.company_id
+                        AND company.status = 'active'
+                        AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+                   )
+                   AND EXISTS (
+                     SELECT 1 FROM users supplier_user
+                      WHERE supplier_user.company_id = supplier.company_id
+                        AND supplier_user.role = 'supplier'
+                        AND supplier_user.status = 'active'
+                   )
               ) AS has_active_contract,
               media.url IS NOT NULL AS has_licensed_media
          FROM product_offers offer
@@ -234,6 +289,8 @@ export const loadLaunchCenter = async () => {
               AND asset.status = 'active'
               AND asset.content_type LIKE 'image/%'
               AND asset.license_type IN ('own', 'supplier', 'official', 'licensed')
+              AND asset.rights_status = 'verified'
+              AND (asset.rights_expires_on IS NULL OR asset.rights_expires_on >= current_date)
               AND asset.url ~ '^https://'
             ORDER BY asset.is_primary DESC, asset.created_at DESC
             LIMIT 1
@@ -479,6 +536,8 @@ export const loadLaunchCenter = async () => {
       name: row.name,
       website: row.website || "",
       contact: row.contact || "",
+      companyId: row.company_id || null,
+      taxId: row.tax_id || "",
       status: row.status,
       region: row.region || "",
       responseTime: row.response_time || "",
@@ -556,8 +615,23 @@ const loadPilotSelection = async (productId, offerId = "") => {
               SELECT 1 FROM supplier_contracts contract
                WHERE contract.supplier_id = supplier.id
                  AND contract.status = 'active'
+                 AND contract.legal_confirmed = true
                  AND contract.starts_on <= current_date
                  AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+                 AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+                 AND supplier.website ~ '^https://'
+                 AND EXISTS (
+                   SELECT 1 FROM companies company
+                    WHERE company.id = supplier.company_id
+                      AND company.status = 'active'
+                      AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+                 )
+                 AND EXISTS (
+                   SELECT 1 FROM users supplier_user
+                    WHERE supplier_user.company_id = supplier.company_id
+                      AND supplier_user.role = 'supplier'
+                      AND supplier_user.status = 'active'
+                 )
             ) AS has_active_contract,
             EXISTS (
               SELECT 1 FROM media_assets media
@@ -566,6 +640,8 @@ const loadPilotSelection = async (productId, offerId = "") => {
                  AND media.status = 'active'
                  AND media.content_type LIKE 'image/%'
                  AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+                 AND media.rights_status = 'verified'
+                 AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
                  AND media.url ~ '^https://'
             ) AS has_licensed_media
        FROM products product
@@ -665,7 +741,7 @@ const validatePilot = async (body) => {
     },
     {
       key: "contract",
-      label: "Təchizatçı müqaviləsi aktivdir",
+      label: "Təchizatçı hüquqi profili və müqaviləsi hazırdır",
       ready: Boolean(selected.has_active_contract),
       required: true
     },

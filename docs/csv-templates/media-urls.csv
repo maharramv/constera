@@ -1,2 +1,2 @@
 sku,image_url,source_url,alt_text,license_type,license_note,is_primary
-MƏHSUL-SKU,https://cdn.example.az/product.webp,https://example.az/product,Məhsulun rəsmi görünüşü,official,,true
+MƏHSUL-SKU,https://cdn.example.az/product.webp,https://example.az/product,Məhsulun mənbə görünüşü,reference,Açıq mənbə referansı; istifadə hüququ təsdiq gözləyir,true

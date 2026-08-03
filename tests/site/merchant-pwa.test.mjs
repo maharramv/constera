@@ -15,6 +15,8 @@ test("Merchant feed yalnız təsdiqli qiymət, stok, mənbə və hüquqlu media 
   assert.match(handler, /price_verified_at >= now\(\) - interval '30 days'/);
   assert.match(handler, /stock_quantity IS NOT NULL/);
   assert.match(handler, /license_type IN \('own', 'supplier', 'official', 'licensed'\)/);
+  assert.match(handler, /rights_status = 'verified'/);
+  assert.match(handler, /contract\.legal_confirmed = true/);
   assert.match(gateway, /"merchant-feed"/);
   assert.match(vercel, /\/api\/merchant-feed/);
   assert.match(analytics, /commission_revenue/);

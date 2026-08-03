@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { del, put } from "@vercel/blob";
-import { requireRole } from "../_lib/auth.js";
+import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { validatePublicUrl } from "../_lib/catalog-quality.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -9,8 +9,9 @@ import { oneOf, parseLimit, text } from "../_lib/validation.js";
 const entityTypes = ["product", "supplier", "service", "package", "rental", "general"];
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"]);
 const externalImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
-const licenseTypes = ["own", "supplier", "official", "licensed", "unspecified"];
-const externalLicenseTypes = ["own", "supplier", "official", "licensed"];
+const licenseTypes = ["own", "supplier", "official", "licensed", "reference", "unspecified"];
+const externalLicenseTypes = ["own", "supplier", "official", "licensed", "reference"];
+const rightsStatuses = ["pending", "verified", "rejected", "expired"];
 
 export const hasExpectedSignature = (buffer, contentType) => {
   if (contentType === "image/jpeg") return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
@@ -45,6 +46,11 @@ const mapMedia = (row) => ({
   sourceUrl: row.source_url || "",
   licenseType: row.license_type || "unspecified",
   licenseNote: row.license_note || "",
+  rightsStatus: row.rights_status || "pending",
+  rightsVerifiedBy: row.rights_verified_by || null,
+  rightsVerifiedAt: row.rights_verified_at || null,
+  rightsExpiresOn: row.rights_expires_on || null,
+  rightsReviewNote: row.rights_review_note || "",
   checksum: row.checksum_sha256 || "",
   isPrimary: Boolean(row.is_primary),
   status: row.status,
@@ -90,7 +96,7 @@ export const validateExternalMediaLicense = ({ sourceUrl, licenseType, licenseNo
   const normalizedLicenseType = oneOf(
     requestedLicenseType,
     externalLicenseTypes,
-    "official",
+    "reference",
     "İstifadə hüququ"
   );
   const normalizedLicenseNote = text(licenseNote, { max: 1_000 });
@@ -105,6 +111,47 @@ export const validateExternalMediaLicense = ({ sourceUrl, licenseType, licenseNo
     sourceUrl: normalizedSourceUrl,
     licenseType: normalizedLicenseType,
     licenseNote: normalizedLicenseNote || null
+  };
+};
+
+export const validateMediaRightsReview = ({
+  rightsStatus,
+  rightsReviewNote,
+  rightsExpiresOn,
+  licenseType,
+  sourceUrl,
+  provider
+} = {}) => {
+  const normalizedStatus = oneOf(rightsStatus, rightsStatuses, "pending", "Media hüququ statusu");
+  const normalizedNote = text(rightsReviewNote, { max: 1_000 });
+  if (normalizedStatus !== "pending" && !normalizedNote) {
+    throw new ApiError(400, "media_rights_note_required", "Hüquq qərarı üçün yoxlama qeydi tələb olunur.");
+  }
+  if (normalizedStatus === "verified" && !["own", "supplier", "official", "licensed"].includes(licenseType)) {
+    throw new ApiError(
+      409,
+      "media_rights_evidence_required",
+      "Referans və ya hüququ dəqiqləşdirilməmiş media təsdiqlənə bilməz. Əvvəl istifadə hüququ növünü yenilə."
+    );
+  }
+  if (normalizedStatus === "verified" && provider === "external" && !String(sourceUrl || "").startsWith("https://")) {
+    throw new ApiError(409, "media_source_required", "Xarici media hüququ üçün HTTPS mənbə səhifəsi tələb olunur.");
+  }
+  let normalizedExpiry = null;
+  if (rightsExpiresOn) {
+    const value = String(rightsExpiresOn).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(`${value}T00:00:00Z`))) {
+      throw new ApiError(400, "invalid_media_rights_expiry", "Media hüququnun bitmə tarixi düzgün deyil.");
+    }
+    if (normalizedStatus === "verified" && value < new Date().toISOString().slice(0, 10)) {
+      throw new ApiError(409, "expired_media_rights", "Müddəti bitmiş media hüququ təsdiqlənə bilməz.");
+    }
+    normalizedExpiry = value;
+  }
+  return {
+    rightsStatus: normalizedStatus,
+    rightsReviewNote: normalizedNote || null,
+    rightsExpiresOn: normalizedExpiry
   };
 };
 
@@ -349,10 +396,10 @@ export default withApiErrors(async (req, res) => {
       `INSERT INTO media_assets (
          id, owner_id, entity_type, entity_id, filename, pathname, url,
          content_type, size_bytes, provider, alt_text, source_url, license_type,
-         license_note, checksum_sha256, is_primary, updated_at
+         license_note, checksum_sha256, is_primary, rights_status, updated_at
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, 'external', $10,
-         $11, $12, $13, NULL, false, now()
+         $11, $12, $13, NULL, false, 'pending', now()
        )
        RETURNING *`,
       [
@@ -382,6 +429,46 @@ export default withApiErrors(async (req, res) => {
     if (!privileged && current.owner_id !== user.id) {
       throw new ApiError(403, "permission_denied", "Bu faylı yeniləmək icazəsi yoxdur.");
     }
+    if (body.action === "review-rights") {
+      if (!privileged) throw new ApiError(403, "permission_denied", "Media hüququnu yalnız administrator yoxlaya bilər.");
+      assertCriticalTwoFactor(user);
+      const review = validateMediaRightsReview({
+        ...body,
+        licenseType: current.license_type,
+        sourceUrl: current.source_url,
+        provider: current.provider
+      });
+      if (review.rightsStatus === "verified" && current.provider === "external") {
+        const publicSource = await validatePublicUrl(current.source_url);
+        if (!publicSource.ok) {
+          throw new ApiError(409, "unsafe_media_source", `Media mənbəyi qəbul edilmədi: ${publicSource.reason}.`);
+        }
+      }
+      const rows = await query(
+        `UPDATE media_assets
+            SET rights_status = $2,
+                rights_verified_by = CASE WHEN $2 = 'verified' THEN $3 ELSE NULL END,
+                rights_verified_at = CASE WHEN $2 = 'verified' THEN now() ELSE NULL END,
+                rights_expires_on = $4,
+                rights_review_note = $5,
+                updated_at = now()
+          WHERE id = $1
+          RETURNING *`,
+        [id, review.rightsStatus, user.id, review.rightsExpiresOn, review.rightsReviewNote]
+      );
+      await recordAudit({
+        actorId: user.id,
+        action: "review_rights",
+        entityType: "media",
+        entityId: id,
+        details: {
+          previousStatus: current.rights_status || "pending",
+          rightsStatus: review.rightsStatus,
+          rightsExpiresOn: review.rightsExpiresOn
+        }
+      });
+      return sendJson(res, 200, { ok: true, data: mapMedia(rows[0]) });
+    }
     const entityType = oneOf(body.entityType ?? current.entity_type, entityTypes, "general", "Media tipi");
     const entityIdValue = text(body.entityId ?? current.entity_id, { max: 160 }) || null;
     const shouldRemainPrimary = body.isPrimary === undefined
@@ -395,10 +482,21 @@ export default withApiErrors(async (req, res) => {
     if (current.provider === "external" && licenseType === "unspecified") {
       throw new ApiError(400, "external_media_license_required", "Xarici media üçün istifadə hüququ təsdiqlənməlidir.");
     }
+    const licenseNote = text(body.licenseNote ?? current.license_note, { max: 1_000 });
+    if (["supplier", "licensed"].includes(licenseType) && !licenseNote) {
+      throw new ApiError(400, "media_license_note_required", "Təchizatçı və lisenziyalı media üçün icazə qeydi tələb olunur.");
+    }
+    const sourceUrl = optionalHttpsUrl(body.sourceUrl ?? current.source_url);
+    const rightsReset = licenseType !== current.license_type || sourceUrl !== (current.source_url || null);
     const rows = await query(
       `UPDATE media_assets
           SET entity_type = $2, entity_id = $3, alt_text = $4,
               source_url = $5, license_type = $6, license_note = $7,
+              rights_status = CASE WHEN $8 THEN 'pending' ELSE rights_status END,
+              rights_verified_by = CASE WHEN $8 THEN NULL ELSE rights_verified_by END,
+              rights_verified_at = CASE WHEN $8 THEN NULL ELSE rights_verified_at END,
+              rights_expires_on = CASE WHEN $8 THEN NULL ELSE rights_expires_on END,
+              rights_review_note = CASE WHEN $8 THEN NULL ELSE rights_review_note END,
               is_primary = false, updated_at = now()
         WHERE id = $1
         RETURNING *`,
@@ -407,9 +505,10 @@ export default withApiErrors(async (req, res) => {
         entityType,
         entityIdValue,
         text(body.altText ?? current.alt_text, { max: 240 }) || null,
-        optionalHttpsUrl(body.sourceUrl ?? current.source_url),
+        sourceUrl,
         licenseType,
-        text(body.licenseNote ?? current.license_note, { max: 1_000 }) || null
+        licenseNote || null,
+        rightsReset
       ]
     );
     if (shouldRemainPrimary) {
@@ -421,7 +520,12 @@ export default withApiErrors(async (req, res) => {
       action: "update",
       entityType: "media",
       entityId: id,
-      details: { entityType, entityId: entityIdValue, isPrimary: Boolean(rows[0].is_primary) }
+      details: {
+        entityType,
+        entityId: entityIdValue,
+        isPrimary: Boolean(rows[0].is_primary),
+        rightsReset
+      }
     });
     return sendJson(res, 200, { ok: true, data: mapMedia(rows[0]) });
   }
@@ -460,10 +564,10 @@ export default withApiErrors(async (req, res) => {
     `INSERT INTO media_assets (
        id, owner_id, entity_type, entity_id, filename, pathname, url,
        content_type, size_bytes, alt_text, source_url, license_type,
-       license_note, checksum_sha256, is_primary, updated_at
+       license_note, checksum_sha256, is_primary, rights_status, updated_at
      ) VALUES (
        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-       $11, $12, $13, $14, false, now()
+       $11, $12, $13, $14, false, 'pending', now()
      )
      RETURNING *`,
     [

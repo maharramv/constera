@@ -50,14 +50,22 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM supplier_feed_changes) AS supplier_feed_changes,
     (SELECT count(*)::int FROM supplier_contracts) AS supplier_contracts,
     (SELECT count(*)::int FROM supplier_contracts WHERE status = 'active') AS active_supplier_contracts,
+    (SELECT count(*)::int FROM supplier_contracts
+      WHERE status = 'active' AND legal_confirmed = true) AS legally_confirmed_supplier_contracts,
     (SELECT count(*)::int FROM supplier_settlements) AS supplier_settlements,
     (SELECT count(*)::int FROM delivery_tracking_events) AS delivery_tracking_events,
     (SELECT count(*)::int FROM security_events) AS security_events,
     (SELECT count(*)::int FROM backup_verifications) AS backup_verifications,
     (SELECT count(*)::int FROM media_assets WHERE status = 'active' AND is_primary = true) AS primary_media_assets,
     (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active' AND rights_status = 'pending') AS pending_media_rights,
+    (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active' AND rights_status = 'rejected') AS rejected_media_rights,
+    (SELECT count(*)::int FROM media_assets
       WHERE status = 'active' AND content_type LIKE 'image/%'
-        AND license_type IN ('own', 'supplier', 'official', 'licensed')) AS licensed_media_assets,
+        AND license_type IN ('own', 'supplier', 'official', 'licensed')
+        AND rights_status = 'verified'
+        AND (rights_expires_on IS NULL OR rights_expires_on >= current_date)) AS licensed_media_assets,
     (SELECT count(*)::int FROM web_push_subscriptions WHERE status = 'active') AS active_push_subscriptions
 `);
 
@@ -370,12 +378,23 @@ const [integrity] = await query(`
       WHERE status = 'active' AND provider = 'external'
         AND (
           url !~ '^https://'
-          OR license_type NOT IN ('own', 'supplier', 'official', 'licensed')
+          OR license_type NOT IN ('own', 'supplier', 'official', 'licensed', 'reference')
           OR NULLIF(source_url, '') IS NULL
         )) AS invalid_external_media,
+    (SELECT count(*)::int FROM supplier_contracts
+      WHERE status = 'active' AND legal_confirmed <> true) AS active_contracts_without_legal_confirmation,
+    (SELECT count(*)::int FROM media_assets
+      WHERE status = 'active' AND rights_status = 'verified'
+        AND (
+          rights_verified_by IS NULL
+          OR rights_verified_at IS NULL
+          OR NULLIF(trim(rights_review_note), '') IS NULL
+          OR license_type NOT IN ('own', 'supplier', 'official', 'licensed')
+          OR (rights_expires_on IS NOT NULL AND rights_expires_on < current_date)
+        )) AS invalid_verified_media_rights,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 25
+        WHEN verification.schema_migrations = 26
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END
@@ -457,7 +476,9 @@ const [schema] = await query(`
     to_regclass('public.procurement_requests_company_idx') IS NOT NULL AS procurement_scope_ready,
     to_regclass('public.supplier_purchase_orders_supplier_idx') IS NOT NULL AS purchase_order_scope_ready,
     to_regclass('public.supplier_contracts_one_active_idx') IS NOT NULL AS supplier_contract_scope_ready,
-    to_regclass('public.media_assets_one_primary_idx') IS NOT NULL AS media_primary_scope_ready
+    to_regclass('public.media_assets_one_primary_idx') IS NOT NULL AS media_primary_scope_ready,
+    to_regclass('public.supplier_contracts_legal_status_idx') IS NOT NULL AS supplier_legal_scope_ready,
+    to_regclass('public.media_assets_rights_review_idx') IS NOT NULL AS media_rights_scope_ready
 `);
 
 const minimums = {
