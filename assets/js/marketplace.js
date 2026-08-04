@@ -5680,11 +5680,49 @@ const initAiSmeta = () => {
     { key: "roof", title: "Dam örtüyü və aksesuarları", unit: "m²", category: "Dam", keywords: ["dam", "profnastil", "membran", "kirəmit"], scopes: ["shell", "turnkey"], confidence: "Aşağı" }
   ];
 
+  const workflowPhaseRules = [
+    { phase: "Bünövrə və konstruksiya", terms: ["beton", "sement", "armatur", "metal", "profil", "blok", "kərpic", "hörgü", "bünövrə", "konstruksiya"] },
+    { phase: "Qapalı kontur", terms: ["dam", "fasad", "izolyasiya", "membran", "pəncərə", "qapı", "şüşə", "xps", "eps", "daş yun"] },
+    { phase: "MEP sistemləri", terms: ["elektrik", "kabel", "avtomat", "santexnika", "boru", "fitinq", "hvac", "havalandırma", "kondisioner", "yanğın"] },
+    { phase: "Tamamlama", terms: ["boya", "suvaq", "şpaklyovka", "gips", "kafel", "keramoqranit", "döşəmə", "laminat", "parket", "yapışdırıcı", "dekor"] }
+  ];
+  const estimatePhase = (row) => {
+    const source = normalize(`${row?.category || ""} ${row?.title || ""}`);
+    return workflowPhaseRules.find((rule) => rule.terms.some((term) => source.includes(normalize(term))))?.phase || "Ümumi";
+  };
+  const enrichWorkflowRow = (row) => {
+    const phase = row?.phase || estimatePhase(row);
+    const criticality = row?.criticality
+      || (["Bünövrə və konstruksiya", "MEP sistemləri"].includes(phase) ? "Yüksək" : phase === "Qapalı kontur" ? "Orta" : "Normal");
+    return {
+      ...row,
+      phase,
+      criticality,
+      included: row?.included !== false,
+      products: Array.isArray(row?.products) ? row.products : []
+    };
+  };
+  const workflowStatusFor = (estimate) => {
+    if (estimate?.rfqId || estimate?.cloudRfqId) return "converted";
+    if (estimate?.workflowStatus) return estimate.workflowStatus;
+    if (estimate?.aiApprovalStatus === "approved") return "approved";
+    if (estimate?.aiApprovalStatus === "rejected") return "rejected";
+    if (estimate?.aiProvider) return "review_pending";
+    return "draft";
+  };
+  const normalizeEstimateWorkflow = (estimate) => ({
+    ...estimate,
+    workflowStatus: workflowStatusFor(estimate),
+    sourceType: estimate?.sourceType || "calculator",
+    sourceFileName: estimate?.sourceFileName || "",
+    rows: (Array.isArray(estimate?.rows) ? estimate.rows : []).map(enrichWorkflowRow)
+  });
+
   const numberFormat = new Intl.NumberFormat("az-AZ", {
     maximumFractionDigits: 1
   });
-  const readEstimates = () => storage.read(estimateKey);
-  const writeEstimates = (items) => storage.write(estimateKey, items.slice(0, 25));
+  const readEstimates = () => storage.read(estimateKey).map(normalizeEstimateWorkflow);
+  const writeEstimates = (items) => storage.write(estimateKey, items.map(normalizeEstimateWorkflow).slice(0, 25));
   const asNumber = (value, fallback = 0) => {
     const number = Number(value);
     return Number.isFinite(number) && number > 0 ? number : fallback;
@@ -5733,13 +5771,13 @@ const initAiSmeta = () => {
         const rawQty = area * base * floorFactor * scopeFactor * complexityFactor * roomSensitive * wetSensitive * (finishSensitive ? levelFactor : 1);
         const qtyWithWaste = rawQty * wasteFactor;
         const quantity = rule.key === "rebar" ? Math.max(rawQty, 0.1) : Math.ceil(rawQty);
-        return {
+        return enrichWorkflowRow({
           ...rule,
           baseQuantity: rule.key === "rebar" ? Math.round(quantity * 10) / 10 : quantity,
           quantity: rule.key === "rebar" ? Math.round(Math.max(qtyWithWaste, 0.1) * 10) / 10 : Math.ceil(qtyWithWaste),
           wastePercent,
           products: recommendProducts(rule)
-        };
+        });
       })
       .filter((row) => row.quantity > 0);
   };
@@ -5782,6 +5820,9 @@ const initAiSmeta = () => {
       note: String(data.get("note") || "").trim(),
       riskReserve,
       rows,
+      workflowStatus: "draft",
+      sourceType: "calculator",
+      sourceFileName: "",
       createdAt: new Date().toISOString()
     };
   };
@@ -5827,8 +5868,71 @@ const initAiSmeta = () => {
     const result = await window.ConstEraAPI.catalogEstimate(estimateCatalogRows(estimate));
     return applyCatalogPricing(estimate, result.data || {});
   };
+  const compactEstimateProduct = (product) => product?.id ? {
+    id: product.id,
+    name: product.name || product.title || "Məhsul",
+    brand: product.brand || "",
+    price: product.price || "Sorğu əsasında",
+    offerId: product.offerId || "",
+    sourceLabel: product.sourceLabel || "",
+    sourceUrl: product.sourceUrl || ""
+  } : null;
+  const estimatePayloadForCloud = (estimate) => ({
+    ...estimate,
+    aiSources: (estimate.aiSources || []).slice(0, 20),
+    rows: (estimate.rows || []).slice(0, 120).map((row) => {
+      const selected = compactEstimateProduct(row.catalog?.selected);
+      const products = [...new Map([
+        selected,
+        ...(row.products || []).map(compactEstimateProduct)
+      ].filter(Boolean).map((product) => [product.id, product])).values()].slice(0, 3);
+      return {
+        key: row.key,
+        title: row.title,
+        category: row.category,
+        phase: row.phase,
+        criticality: row.criticality,
+        included: row.included !== false,
+        quantity: row.quantity,
+        baseQuantity: row.baseQuantity,
+        unit: row.unit,
+        confidence: row.confidence,
+        reasoning: row.reasoning || "",
+        keywords: (row.keywords || []).slice(0, 8),
+        products,
+        catalog: row.catalog ? {
+          selected,
+          matchedBy: row.catalog.matchedBy || "",
+          packageCount: row.catalog.packageCount ?? null,
+          packageSize: row.catalog.packageSize ?? null,
+          lineTotal: row.catalog.lineTotal ?? null,
+          pricingConfidence: row.catalog.pricingConfidence || "request"
+        } : null
+      };
+    }),
+    catalogPricing: estimate.catalogPricing ? {
+      ...estimate.catalogPricing,
+      rows: undefined,
+      unresolvedRows: (estimate.catalogPricing.unresolvedRows || []).slice(0, 30)
+    } : null
+  });
+  const persistEstimate = async (estimate) => {
+    if (!cloudUser || !window.ConstEraAPI?.saveEstimate || workflowStatusFor(estimate) === "converted") return null;
+    return window.ConstEraAPI.saveEstimate({
+      id: estimate.id,
+      title: estimate.projectLabel,
+      payload: estimatePayloadForCloud(estimate),
+      workflowStatus: workflowStatusFor(estimate),
+      sourceType: estimate.sourceType || "calculator",
+      sourceFileName: estimate.sourceFileName || "",
+      aiRunId: estimate.aiRunId || ""
+    });
+  };
   const estimateToRfq = (estimate, legalAccepted) => {
-    const items = (estimate.rows || []).slice(0, 20).map((row) => {
+    const selectedRows = (estimate.rows || []).filter((row) => row.included !== false);
+    if (!selectedRows.length) throw new Error("RFQ üçün ən azı bir material mövqeyi seçilməlidir.");
+    if (selectedRows.length > 20) throw new Error("Bir RFQ-də maksimum 20 material mövqeyi seçilə bilər.");
+    const items = selectedRows.map((row) => {
       const selected = row.catalog?.selected || null;
       const packageCount = Number(row.catalog?.packageCount);
       const usePackage = Boolean(selected?.id && Number.isFinite(packageCount) && packageCount > 0);
@@ -5844,7 +5948,9 @@ const initAiSmeta = () => {
         specs: [
           selected?.id ? `Smeta mövqeyi: ${row.title}` : "Kataloq uyğunluğu tapılmayıb",
           `İlkin tələb: ${formatQty(row.quantity)} ${row.unit}`,
-          `Etibar: ${row.confidence || "Orta"}`
+          `Etibar: ${row.confidence || "Orta"}`,
+          `Satınalma mərhələsi: ${row.phase || "Ümumi"}`,
+          `Kritiklik: ${row.criticality || "Normal"}`
         ]
       };
     });
@@ -5853,6 +5959,7 @@ const initAiSmeta = () => {
       id: `rfq-${Date.now()}`,
       type: "custom",
       sourceId: estimate.id,
+      estimateId: estimate.id,
       status: "Yeni",
       supplierId: "",
       supplier: "Açıq sorğu",
@@ -5877,10 +5984,73 @@ const initAiSmeta = () => {
     storage.write("constera-rfq-drafts", [rfq, ...drafts].slice(0, 30));
     return rfq;
   };
+  const submitEstimateRfq = async (estimate, legalAccepted, button) => {
+    if (!legalAccepted) throw new Error("Sorğu yaratmaq üçün istifadə şərtləri və məxfilik siyasəti ilə razılaş.");
+    if (estimate.aiProvider && !["approved", "not_required"].includes(estimate.aiApprovalStatus)) {
+      throw new Error("AI smetası insan tərəfindən təsdiqlənmədən RFQ-yə çevrilə bilməz.");
+    }
+    let approvedEstimate = estimate;
+    if (!estimate.aiProvider && workflowStatusFor(estimate) !== "approved") {
+      approvedEstimate = { ...estimate, workflowStatus: "approved" };
+      currentEstimate = approvedEstimate;
+      writeEstimates([approvedEstimate, ...readEstimates().filter((item) => item.id !== approvedEstimate.id)]);
+      if (cloudUser) await persistEstimate(approvedEstimate);
+    }
+    const rfq = estimateToRfq(approvedEstimate, legalAccepted);
+    if (cloudUser?.role !== "customer" || !window.ConstEraAPI?.createRfq) {
+      if (status) status.innerHTML = `Sorğu qaralaması yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
+      return { estimate: approvedEstimate, rfq, cloud: false };
+    }
+    if (button) button.disabled = true;
+    try {
+      const result = await window.ConstEraAPI.createRfq({
+        type: rfq.type,
+        sourceId: rfq.sourceId,
+        estimateId: rfq.estimateId,
+        product: rfq.product,
+        quantity: rfq.quantity,
+        company: cloudUser.companyName || cloudUser.name,
+        contact: cloudUser.email,
+        city: rfq.city,
+        priority: rfq.priority,
+        budget: rfq.budget,
+        deliveryMode: rfq.deliveryMode,
+        usage: rfq.usage,
+        note: rfq.note,
+        items: rfq.items,
+        aiRunId: rfq.aiRunId,
+        legalAccepted: rfq.legalAccepted,
+        sourcePath: rfq.sourcePath
+      });
+      const convertedEstimate = {
+        ...approvedEstimate,
+        workflowStatus: "converted",
+        rfqId: result.data.id,
+        cloudRfqId: result.data.id,
+        convertedAt: new Date().toISOString()
+      };
+      currentEstimate = convertedEstimate;
+      writeEstimates([convertedEstimate, ...readEstimates().filter((item) => item.id !== convertedEstimate.id)]);
+      const drafts = storage.read("constera-rfq-drafts").map((draft) =>
+        draft.id === rfq.id ? { ...draft, cloudId: result.data.id, cloudSyncedAt: new Date().toISOString() } : draft
+      );
+      storage.write("constera-rfq-drafts", drafts);
+      renderEstimate(convertedEstimate, false);
+      renderHistory();
+      window.ConstEraTrack?.("rfq_created", { entityType: "rfq", entityId: result.data.id, payload: { source: "estimate" } });
+      if (status) status.innerHTML = `${escapeHtml(result.data.itemCount || rfq.items.length)} material mövqeyi ilə sorğu yaradıldı. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
+      return { estimate: convertedEstimate, rfq, cloud: true, result };
+    } finally {
+      if (button?.isConnected) button.disabled = false;
+    }
+  };
   const exportEstimate = (estimate) => {
     if (!estimate) return;
-    const headers = ["kateqoriya", "material", "baza miqdar", "ehtiyatli miqdar", "vahid", "etibar", "ehtiyat %", "seçilmiş kataloq məhsulu", "paket sayı", "məbləğ", "tövsiyə olunan məhsullar"];
+    const headers = ["satınalma mərhələsi", "kritiklik", "rfq seçimi", "kateqoriya", "material", "baza miqdar", "ehtiyatli miqdar", "vahid", "etibar", "ehtiyat %", "seçilmiş kataloq məhsulu", "paket sayı", "məbləğ", "tövsiyə olunan məhsullar"];
     const rows = estimate.rows.map((row) => [
+      row.phase || "Ümumi",
+      row.criticality || "Normal",
+      row.included === false ? "xeyr" : "bəli",
       row.category,
       row.title,
       formatQty(row.baseQuantity || row.quantity),
@@ -5935,6 +6105,18 @@ const initAiSmeta = () => {
       : "-";
     const aiSources = Array.isArray(estimate.aiSources) ? estimate.aiSources : [];
     const aiWarnings = Array.isArray(estimate.aiWarnings) ? estimate.aiWarnings : [];
+    const includedRows = (estimate.rows || []).filter((row) => row.included !== false);
+    const phaseCounts = [...new Set((estimate.rows || []).map((row) => row.phase || "Ümumi"))]
+      .map((phase) => ({ phase, count: estimate.rows.filter((row) => (row.phase || "Ümumi") === phase && row.included !== false).length }))
+      .filter((item) => item.count > 0);
+    const workflowLabels = {
+      draft: "Redaktə edilir",
+      review_pending: "İnsan təsdiqi gözləyir",
+      approved: "RFQ üçün təsdiqlənib",
+      rejected: "Yenidən işlənməlidir",
+      converted: "RFQ yaradılıb"
+    };
+    const workflowStatus = workflowStatusFor(estimate);
     output.hidden = false;
     output.innerHTML = `
       <div class="market-section-heading">
@@ -5942,7 +6124,17 @@ const initAiSmeta = () => {
           <p class="eyebrow">${estimate.aiProvider ? "AI + qayda əsaslı nəticə" : "Qayda əsaslı ilkin nəticə"}</p>
           <h2>${escapeHtml(estimate.projectLabel)} · ${escapeHtml(estimate.area)} m²</h2>
         </div>
-        <span class="data-badge">${escapeHtml(estimate.scopeLabel)}</span>
+        <span class="data-badge">${escapeHtml(estimate.sourceFileName || estimate.scopeLabel)}</span>
+      </div>
+      <div class="ai-smeta-workflow" data-workflow-status="${escapeAttr(workflowStatus)}">
+        <span><strong>1</strong>Sənəd</span>
+        <span><strong>2</strong>Kataloq uyğunluğu</span>
+        <span class="${["approved", "converted"].includes(workflowStatus) ? "is-complete" : "is-current"}"><strong>3</strong>${escapeHtml(workflowLabels[workflowStatus] || workflowStatus)}</span>
+        <span class="${workflowStatus === "converted" ? "is-complete" : ""}"><strong>4</strong>RFQ</span>
+      </div>
+      <div class="ai-smeta-phase-strip">
+        ${phaseCounts.map((item) => `<span>${escapeHtml(item.phase)} <strong>${escapeHtml(item.count)}</strong></span>`).join("")}
+        <span>Seçilmiş <strong>${escapeHtml(includedRows.length)} / ${escapeHtml(estimate.rows.length)}</strong></span>
       </div>
       <div class="ai-smeta-summary">
         ${estimate.catalogPricing ? `
@@ -5968,6 +6160,9 @@ const initAiSmeta = () => {
           ${estimate.catalogPricing.unresolvedRows.map((row) => escapeHtml(row.title)).join(" · ")}
         </p>
       ` : ""}
+      ${includedRows.length > 20 ? `
+        <p class="admin-import-status" data-type="warning"><strong>RFQ limiti:</strong> ${escapeHtml(includedRows.length)} mövqedən maksimum 20-si seçilməlidir.</p>
+      ` : ""}
       ${estimate.aiProvider ? `
         <div class="admin-v2-section-heading admin-import-status" data-type="${aiApprovalStatus === "approved" ? "success" : aiApprovalStatus === "rejected" ? "error" : "warning"}">
           <div>
@@ -5988,14 +6183,25 @@ const initAiSmeta = () => {
       ` : ""}
       ${estimate.aiSummary ? `<p class="admin-import-status" data-type="success">${escapeHtml(estimate.aiSummary)}</p>` : ""}
       <div class="ai-smeta-table">
-        ${estimate.rows.map((row) => `
-          <article class="ai-smeta-row">
+        ${estimate.rows.map((row, rowIndex) => `
+          <article class="ai-smeta-row ${row.included === false ? "is-excluded" : ""}" data-ai-smeta-row="${escapeAttr(rowIndex)}">
             <div>
-              <span class="status-pill">${escapeHtml(row.category)}</span>
+              <div class="ai-smeta-row-flags">
+                <label class="ai-smeta-row-select">
+                  <input type="checkbox" data-ai-smeta-row-include data-row-index="${escapeAttr(rowIndex)}" ${row.included === false ? "" : "checked"} ${workflowStatus === "converted" ? "disabled" : ""} />
+                  <span>RFQ-yə daxil et</span>
+                </label>
+                <span class="status-pill">${escapeHtml(row.phase || "Ümumi")}</span>
+                <span class="status-pill">${escapeHtml(row.criticality || "Normal")}</span>
+              </div>
               <h3>${escapeHtml(row.title)}</h3>
-              <p>Baza: ${formatQty(row.baseQuantity || row.quantity)} ${escapeHtml(row.unit)} · ehtiyatla: ${formatQty(row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)}${row.catalog?.lineTotal !== null && row.catalog?.lineTotal !== undefined
+              <p>${escapeHtml(row.category)} · baza: ${formatQty(row.baseQuantity || row.quantity)} ${escapeHtml(row.unit)} · etibar: ${escapeHtml(row.confidence)}${row.catalog?.lineTotal !== null && row.catalog?.lineTotal !== undefined
                 ? ` · ${formatMoney(row.catalog.lineTotal)} · ${escapeHtml(row.catalog.packageCount)} paket`
                 : " · Qiymət sorğusu ilə dəqiqləşdirilməlidir"}</p>
+              <div class="ai-smeta-row-editor">
+                <label><span>Miqdar</span><input type="number" min="0.001" step="0.001" inputmode="decimal" value="${escapeAttr(row.quantity)}" data-ai-smeta-row-quantity data-row-index="${escapeAttr(rowIndex)}" ${workflowStatus === "converted" ? "disabled" : ""} /></label>
+                <label><span>Vahid</span><input type="text" maxlength="40" value="${escapeAttr(row.unit)}" data-ai-smeta-row-unit data-row-index="${escapeAttr(rowIndex)}" ${workflowStatus === "converted" ? "disabled" : ""} /></label>
+              </div>
             </div>
             <div class="ai-smeta-products">
               ${row.products.length ? row.products.map((product) => `
@@ -6013,7 +6219,9 @@ const initAiSmeta = () => {
         <span><a href="terms.html">İstifadə şərtləri</a> və <a href="privacy.html">məxfilik siyasəti</a> ilə razıyam.</span>
       </label>
       <div class="admin-actions">
+        ${estimate.aiProvider && aiApprovalStatus === "pending" ? `<button class="button button-primary" type="button" data-ai-smeta-approve-rfq="${escapeAttr(estimate.id)}">Təsdiqlə və RFQ yarat</button>` : ""}
         <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}" ${aiActionLocked ? "disabled title=\"Əvvəl AI nəticəsini yoxlayıb təsdiqlə\"" : ""}>Sorğu qaralaması yarat</button>
+        <button class="button button-secondary" type="button" data-ai-smeta-reprice="${escapeAttr(estimate.id)}" ${workflowStatus === "converted" ? "disabled" : ""}>Qiymətləri yenilə</button>
         <button class="button button-secondary" type="button" data-ai-smeta-cart="${escapeAttr(estimate.id)}" ${aiActionLocked ? "disabled title=\"Əvvəl AI nəticəsini yoxlayıb təsdiqlə\"" : ""}>Qiymətlənənləri səbətə əlavə et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV-yə ixrac et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-print>PDF üçün çap et</button>
@@ -6061,15 +6269,18 @@ const initAiSmeta = () => {
             || currentEstimate.rows[index]
             || {};
           const quantity = Number(row.quantity);
-          return {
+          return enrichWorkflowRow({
             ...fallback,
             title: String(row.title || fallback.title || `Material ${index + 1}`),
             category: String(row.category || fallback.category || "Material"),
             unit: String(row.unit || fallback.unit || "ədəd"),
             quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : fallback.quantity || 1,
             confidence: String(row.confidence || fallback.confidence || "Orta"),
+            phase: String(row.phase || fallback.phase || estimatePhase({ title: row.title, category: row.category })),
+            criticality: String(row.criticality || fallback.criticality || ""),
+            included: fallback.key ? fallback.included !== false : index < 20,
             products: Array.isArray(fallback.products) ? fallback.products : []
-          };
+          });
         }).filter((row) => row.title);
         currentEstimate = {
           ...currentEstimate,
@@ -6085,6 +6296,7 @@ const initAiSmeta = () => {
           aiSources: Array.isArray(result.data?.sources) ? result.data.sources : [],
           aiWarnings: Array.isArray(result.data?.warnings) ? result.data.warnings : [],
           aiApprovalStatus: String(result.data?.approval?.status || "pending"),
+          workflowStatus: "review_pending",
           aiSummary: String(providerEstimate.summary || providerEstimate.note || "Xarici AI miqdarları və layihə risklərini yoxladı.").slice(0, 1_000)
         };
         let catalogRefreshError = "";
@@ -6108,11 +6320,7 @@ const initAiSmeta = () => {
     }
     if (cloudUser && window.ConstEraAPI?.saveEstimate) {
       try {
-        await window.ConstEraAPI.saveEstimate({
-          id: currentEstimate.id,
-          title: `${currentEstimate.projectLabel} · ${currentEstimate.area} m²`,
-          payload: currentEstimate
-        });
+        await persistEstimate(currentEstimate);
         if (status) status.textContent = `${currentEstimate.rows.length} material qrupu hazırlandı və Neon kabinetində saxlandı.`;
       } catch (error) {
         if (status) status.textContent = `Smeta lokal saxlandı. Neon: ${error.message}`;
@@ -6158,14 +6366,21 @@ const initAiSmeta = () => {
         ...base,
         id: `smeta-import-${Date.now()}`,
         projectLabel: `${file.name} sənədindən smeta`,
-        rows: (parsed.data.rows || []).map((row) => ({ ...row, products: recommendProducts(row) })),
+        rows: (parsed.data.rows || []).map((row, index) => enrichWorkflowRow({
+          ...row,
+          included: index < 20,
+          products: recommendProducts(row)
+        })),
         note: [base.note, `Mənbə faylı: ${file.name}`].filter(Boolean).join(" · "),
+        sourceType: String(parsed.data.sourceType || "document"),
+        sourceFileName: file.name,
         aiProvider: Boolean(parsed.data.requiresAi),
         aiRunId: String(parsed.data.aiRunId || ""),
         aiConfidence: Number(parsed.data.confidence || 0),
         aiSources: Array.isArray(parsed.data.sources) ? parsed.data.sources : [],
         aiWarnings: Array.isArray(parsed.data.warnings) ? parsed.data.warnings : [],
-        aiApprovalStatus: String(parsed.data.approval?.status || (parsed.data.requiresAi ? "pending" : "not_required"))
+        aiApprovalStatus: String(parsed.data.approval?.status || (parsed.data.requiresAi ? "pending" : "not_required")),
+        workflowStatus: parsed.data.requiresAi ? "review_pending" : "draft"
       };
       let catalogImportError = "";
       if (window.ConstEraAPI?.catalogEstimate) {
@@ -6180,7 +6395,7 @@ const initAiSmeta = () => {
       renderHistory();
       window.ConstEraTrack?.("estimate_created", { entityType: "estimate", entityId: currentEstimate.id, payload: { source: parsed.data.sourceType, rows: currentEstimate.rows.length } });
       if (cloudUser && window.ConstEraAPI?.saveEstimate) {
-        await window.ConstEraAPI.saveEstimate({ id: currentEstimate.id, title: currentEstimate.projectLabel, payload: currentEstimate });
+        await persistEstimate(currentEstimate);
       }
       if (status) status.textContent = catalogImportError
         ? `${currentEstimate.rows.length} material sətri idxal edildi. Kataloq qiymətləndirilmədi: ${catalogImportError}`
@@ -6197,7 +6412,117 @@ const initAiSmeta = () => {
     currentEstimate = readEstimates().find((estimate) => estimate.id === button.dataset.aiSmetaOpen) || null;
     if (currentEstimate) renderEstimate(currentEstimate);
   });
+  output.addEventListener("change", async (event) => {
+    const target = event.target.closest("[data-ai-smeta-row-include], [data-ai-smeta-row-quantity], [data-ai-smeta-row-unit]");
+    if (!target || !currentEstimate || workflowStatusFor(currentEstimate) === "converted") return;
+    const rowIndex = Number(target.dataset.rowIndex);
+    if (!Number.isInteger(rowIndex) || !currentEstimate.rows[rowIndex]) return;
+    const rows = currentEstimate.rows.map((row) => ({ ...row }));
+    const row = rows[rowIndex];
+    let pricingChanged = false;
+    if (target.matches("[data-ai-smeta-row-include]")) {
+      const nextIncluded = Boolean(target.checked);
+      const nextCount = rows.filter((item, index) => index === rowIndex ? nextIncluded : item.included !== false).length;
+      if (nextIncluded && nextCount > 20) {
+        target.checked = false;
+        if (status) status.textContent = "Bir RFQ üçün maksimum 20 material mövqeyi seçilə bilər.";
+        return;
+      }
+      row.included = nextIncluded;
+    } else if (target.matches("[data-ai-smeta-row-quantity]")) {
+      const quantity = Number(target.value);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        if (status) status.textContent = "Material miqdarı sıfırdan böyük olmalıdır.";
+        renderEstimate(currentEstimate, false);
+        return;
+      }
+      row.quantity = quantity;
+      row.catalog = null;
+      pricingChanged = true;
+    } else {
+      const unit = String(target.value || "").trim().slice(0, 40);
+      if (!unit) {
+        renderEstimate(currentEstimate, false);
+        return;
+      }
+      row.unit = unit;
+      row.catalog = null;
+      pricingChanged = true;
+    }
+    currentEstimate = {
+      ...currentEstimate,
+      rows,
+      ...(pricingChanged ? { catalogPricing: null } : {}),
+      humanEditedAt: new Date().toISOString()
+    };
+    writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+    renderEstimate(currentEstimate, false);
+    renderHistory();
+    try {
+      await persistEstimate(currentEstimate);
+      if (status) status.textContent = pricingChanged
+        ? "Düzəliş saxlandı. Məbləği yeniləmək üçün qiymətləri yenilə."
+        : "RFQ üçün material seçimi saxlandı.";
+    } catch (error) {
+      if (status) status.textContent = `Düzəliş lokal saxlandı. Neon: ${error.message}`;
+    }
+  });
   output.addEventListener("click", async (event) => {
+    const repriceButton = event.target.closest("[data-ai-smeta-reprice]");
+    if (repriceButton) {
+      const estimate = readEstimates().find((item) => item.id === repriceButton.dataset.aiSmetaReprice) || currentEstimate;
+      if (!estimate || !window.ConstEraAPI?.catalogEstimate) return;
+      repriceButton.disabled = true;
+      try {
+        if (status) status.textContent = "Seçilmiş miqdarlar real kataloqla yenidən qiymətləndirilir...";
+        currentEstimate = await enrichEstimateWithCatalog(estimate);
+        writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+        await persistEstimate(currentEstimate);
+        renderEstimate(currentEstimate, false);
+        renderHistory();
+        if (status) status.textContent = `${currentEstimate.catalogPricing.pricedRows} mövqe təsdiqli qiymətlə yeniləndi.`;
+      } catch (error) {
+        if (status) status.textContent = error.message || "Kataloq qiymətləri yenilənmədi.";
+      } finally {
+        if (repriceButton.isConnected) repriceButton.disabled = false;
+      }
+      return;
+    }
+    const approveRfqButton = event.target.closest("[data-ai-smeta-approve-rfq]");
+    if (approveRfqButton) {
+      const estimate = readEstimates().find((item) => item.id === approveRfqButton.dataset.aiSmetaApproveRfq) || currentEstimate;
+      const legalAccepted = Boolean(output.querySelector("[data-ai-smeta-legal]")?.checked);
+      if (!estimate?.aiRunId || !window.ConstEraAPI?.reviewAiRun) {
+        if (status) status.textContent = "AI nəticəsinin audit nömrəsi tapılmadı.";
+        return;
+      }
+      if (!legalAccepted) {
+        if (status) status.textContent = "Təsdiq və RFQ üçün istifadə şərtləri ilə razılaş.";
+        output.querySelector("[data-ai-smeta-legal]")?.focus();
+        return;
+      }
+      approveRfqButton.disabled = true;
+      try {
+        const response = await window.ConstEraAPI.reviewAiRun(
+          estimate.aiRunId,
+          "approve",
+          "İstifadəçi smetanı yoxladı və RFQ yaradılmasını təsdiqlədi."
+        );
+        currentEstimate = {
+          ...estimate,
+          aiApprovalStatus: response.data?.approvalStatus || "approved",
+          workflowStatus: "approved"
+        };
+        writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+        await persistEstimate(currentEstimate);
+        await submitEstimateRfq(currentEstimate, true, approveRfqButton);
+      } catch (error) {
+        if (status) status.textContent = error.message || "Smeta təsdiqlənmədi və RFQ yaradılmadı.";
+      } finally {
+        if (approveRfqButton.isConnected) approveRfqButton.disabled = false;
+      }
+      return;
+    }
     const reviewButton = event.target.closest("[data-ai-smeta-review]");
     if (reviewButton) {
       const decision = reviewButton.dataset.aiSmetaReview;
@@ -6214,17 +6539,14 @@ const initAiSmeta = () => {
         const response = await window.ConstEraAPI.reviewAiRun(reviewButton.dataset.runId, decision, note || "");
         currentEstimate = {
           ...(currentEstimate || {}),
-          aiApprovalStatus: response.data?.approvalStatus || (decision === "approve" ? "approved" : "rejected")
+          aiApprovalStatus: response.data?.approvalStatus || (decision === "approve" ? "approved" : "rejected"),
+          workflowStatus: decision === "approve" ? "approved" : "rejected"
         };
         writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
         renderEstimate(currentEstimate, false);
         renderHistory();
         if (cloudUser && window.ConstEraAPI?.saveEstimate) {
-          await window.ConstEraAPI.saveEstimate({
-            id: currentEstimate.id,
-            title: currentEstimate.projectLabel,
-            payload: currentEstimate
-          });
+          await persistEstimate(currentEstimate);
         }
         if (status) status.textContent = decision === "approve"
           ? "AI qaralaması təsdiqləndi. İndi sorğu və səbət əməliyyatları açıqdır."
@@ -6249,7 +6571,7 @@ const initAiSmeta = () => {
     const cartButton = event.target.closest("[data-ai-smeta-cart]");
     if (cartButton) {
       const estimate = readEstimates().find((item) => item.id === cartButton.dataset.aiSmetaCart) || currentEstimate;
-      const selected = (estimate?.rows || []).map((row) => ({
+      const selected = (estimate?.rows || []).filter((row) => row.included !== false).map((row) => ({
         product: row.catalog?.selected,
         quantity: Number(row.catalog?.packageCount || row.quantity || 1)
       })).filter((item) => item.product?.id && Number.isFinite(item.quantity) && item.quantity > 0);
@@ -6270,47 +6592,12 @@ const initAiSmeta = () => {
     const estimate = readEstimates().find((item) => item.id === rfqButton.dataset.aiSmetaRfq) || currentEstimate;
     if (!estimate) return;
     const legalAccepted = Boolean(output.querySelector("[data-ai-smeta-legal]")?.checked);
-    if (!legalAccepted) {
-      if (status) status.textContent = "Sorğu yaratmaq üçün istifadə şərtləri və məxfilik siyasəti ilə razılaş.";
-      output.querySelector("[data-ai-smeta-legal]")?.focus();
-      return;
+    try {
+      await submitEstimateRfq(estimate, legalAccepted, rfqButton);
+    } catch (error) {
+      if (status) status.textContent = error.message || "Smeta RFQ-yə çevrilmədi.";
+      if (!legalAccepted) output.querySelector("[data-ai-smeta-legal]")?.focus();
     }
-    const rfq = estimateToRfq(estimate, legalAccepted);
-    if (cloudUser?.role === "customer" && window.ConstEraAPI?.createRfq) {
-      rfqButton.disabled = true;
-      try {
-        const result = await window.ConstEraAPI.createRfq({
-          type: rfq.type,
-          sourceId: rfq.sourceId,
-          product: rfq.product,
-          quantity: rfq.quantity,
-          company: cloudUser.companyName || cloudUser.name,
-          contact: cloudUser.email,
-          city: rfq.city,
-          priority: rfq.priority,
-          budget: rfq.budget,
-          deliveryMode: rfq.deliveryMode,
-          usage: rfq.usage,
-          note: rfq.note,
-          items: rfq.items,
-          aiRunId: rfq.aiRunId,
-          legalAccepted: rfq.legalAccepted,
-          sourcePath: rfq.sourcePath
-        });
-        const drafts = storage.read("constera-rfq-drafts").map((draft) =>
-          draft.id === rfq.id ? { ...draft, cloudId: result.data.id, cloudSyncedAt: new Date().toISOString() } : draft
-        );
-        storage.write("constera-rfq-drafts", drafts);
-        window.ConstEraTrack?.("rfq_created", { entityType: "rfq", entityId: result.data.id, payload: { source: "estimate" } });
-        if (status) status.innerHTML = `${escapeHtml(result.data.itemCount || rfq.items.length)} material mövqeyi ilə sorğu Neon bazasında yaradıldı. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
-      } catch (error) {
-        if (status) status.innerHTML = `Sorğu lokal qaralama kimi saxlandı. ${escapeHtml(error.message)} <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
-      } finally {
-        rfqButton.disabled = false;
-      }
-      return;
-    }
-    if (status) status.innerHTML = `Sorğu qaralaması yaradıldı: ${escapeHtml(rfq.product)}. <a class="source-link" href="rfq-dashboard.html">Sorğu panelində aç</a>`;
   });
 
   const connectEstimateAccount = async () => {
@@ -7329,6 +7616,10 @@ const initCustomerCabinet = () => {
         id: payload.id,
         title: payload.projectLabel || "Smeta",
         payload,
+        workflowStatus: payload.workflowStatus || (payload.rfqId ? "converted" : payload.aiProvider ? "review_pending" : "draft"),
+        sourceType: payload.sourceType || "calculator",
+        sourceFileName: payload.sourceFileName || "",
+        rfqId: payload.rfqId || null,
         createdAt: payload.createdAt,
         updatedAt: payload.createdAt
       })),
@@ -7356,6 +7647,13 @@ const initCustomerCabinet = () => {
     shipped: "Çatdırılır",
     completed: "Tamamlanıb",
     cancelled: "Ləğv edilib"
+  };
+  const estimateWorkflowLabels = {
+    draft: "Redaktə edilir",
+    review_pending: "Təsdiq gözləyir",
+    approved: "Təsdiqlənib",
+    rejected: "Rədd edilib",
+    converted: "RFQ yaradılıb"
   };
   const renderProductMiniCards = (products, emptyTitle) => products.length ? products.map((product) => `
     <article class="cabinet-product-card">
@@ -7430,11 +7728,16 @@ const initCustomerCabinet = () => {
     }).join("") : empty("Qiymət sorğusu yoxdur.", "Kataloqdan və ya ağıllı smetadan ilk qiymət sorğunu yarat.");
     estimateList.innerHTML = state.estimates.length ? state.estimates.slice(0, 20).map((entry) => {
       const estimate = entry.payload || entry;
+      const workflowStatus = entry.workflowStatus || estimate.workflowStatus || (entry.rfqId || estimate.rfqId ? "converted" : "draft");
+      const rfqId = entry.rfqId || estimate.rfqId || "";
       return `
       <article class="cabinet-item">
-        <header><strong>${escapeHtml(entry.title || estimate.projectLabel || "Smeta")} · ${escapeHtml(estimate.area || 0)} m²</strong><span class="mini-badge">${escapeHtml(estimate.rows?.length || 0)} qrup</span></header>
-        <p>${escapeHtml(estimate.scopeLabel || "İş həcmi")} · ${escapeHtml(estimate.finishLabel || "Səviyyə")} · ehtiyat ${escapeHtml(estimate.wastePercent || estimate.riskReserve || 0)}%</p>
+        <header><strong>${escapeHtml(entry.title || estimate.projectLabel || "Smeta")} · ${escapeHtml(estimate.area || 0)} m²</strong><span class="mini-badge">${escapeHtml(estimateWorkflowLabels[workflowStatus] || workflowStatus)}</span></header>
+        <p>${escapeHtml(estimate.rows?.filter((row) => row.included !== false).length || 0)} seçilmiş mövqe · ${escapeHtml(entry.sourceFileName || estimate.sourceFileName || estimate.scopeLabel || "Parametrlərdən hesablanıb")}</p>
         <span>${entry.updatedAt || estimate.createdAt ? new Date(entry.updatedAt || estimate.createdAt).toLocaleString("az-AZ") : "Tarix yoxdur"}</span>
+        <div class="cabinet-item-actions">
+          ${rfqId ? `<a class="table-action" href="rfq-dashboard.html?rfq=${encodeURIComponent(rfqId)}">RFQ-ni aç</a>` : `<a class="table-action" href="ai-smeta.html">Smetanı aç</a>`}
+        </div>
       </article>`;
     }).join("") : empty("Smeta yoxdur.", "Ağıllı smeta modulunda ilk hesablamanı hazırla.");
     favoriteGrid.innerHTML = renderProductMiniCards(favorites, "Seçilmiş məhsul yoxdur.");
@@ -7466,9 +7769,10 @@ const initCustomerCabinet = () => {
   });
 
   exportEstimatesButton?.addEventListener("click", () => {
-    const estimates = state.estimates.map((entry) => entry.payload || entry);
-    const headers = ["id", "layihə", "sahə", "mərtəbə", "otaq", "yaş zona", "iş həcmi", "səviyyə", "material qrupu", "tarix"];
-    const csv = [headers.join(","), ...estimates.map((estimate) => [
+    const headers = ["id", "layihə", "sahə", "mərtəbə", "otaq", "yaş zona", "iş həcmi", "səviyyə", "material qrupu", "seçilmiş mövqe", "vəziyyət", "mənbə", "rfq", "tarix"];
+    const csv = [headers.join(","), ...state.estimates.map((entry) => {
+      const estimate = entry.payload || entry;
+      return [
       estimate.id,
       estimate.projectLabel,
       estimate.area,
@@ -7478,8 +7782,13 @@ const initCustomerCabinet = () => {
       estimate.scopeLabel,
       estimate.finishLabel,
       estimate.rows?.length || 0,
+      estimate.rows?.filter((row) => row.included !== false).length || 0,
+      entry.workflowStatus || estimate.workflowStatus || "draft",
+      entry.sourceFileName || estimate.sourceFileName || entry.sourceType || estimate.sourceType,
+      entry.rfqId || estimate.rfqId,
       estimate.createdAt
-    ].map(escapeCsvValue).join(","))].join("\n");
+      ].map(escapeCsvValue).join(",");
+    })].join("\n");
     downloadTextFile(`constera-kabinet-smeta-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
   });
 

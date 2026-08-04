@@ -5,6 +5,7 @@ import { categoryPublicId, entityId, oneOf, parsePriceAmount, text } from "../_l
 
 const projectStatuses = ["planning", "estimating", "procurement", "active", "completed", "archived"];
 const projectTypes = ["apartment", "villa", "office", "commercial", "industrial", "landscape", "other"];
+const estimateWorkflowStatuses = ["draft", "review_pending", "approved", "rejected"];
 
 const mapProduct = (row) => ({
   id: row.id,
@@ -166,6 +167,14 @@ const readCabinet = async (user) => {
       id: row.id,
       title: row.title,
       payload: row.payload || {},
+      workflowStatus: row.workflow_status || "draft",
+      sourceType: row.source_type || "",
+      sourceFileName: row.source_file_name || "",
+      aiRunId: row.ai_run_id || null,
+      rfqId: row.rfq_id || null,
+      version: Number(row.version || 1),
+      approvedAt: row.approved_at || null,
+      convertedAt: row.converted_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     })),
@@ -252,20 +261,96 @@ export default withApiErrors(async (req, res) => {
     await recordAudit({ actorId: user.id, action: "upsert", entityType: "customer_project", entityId: id, details: { status } });
   } else if (action === "save-estimate") {
     const payload = body.payload && typeof body.payload === "object" && !Array.isArray(body.payload) ? body.payload : {};
-    const encoded = JSON.stringify(payload);
-    if (Buffer.byteLength(encoded, "utf8") > 100_000) throw new ApiError(413, "estimate_too_large", "Smeta məlumatı maksimum 100 KB ola bilər.");
     const id = entityId(body.id || payload.id, "estimate");
     const title = text(body.title || payload.projectLabel, { field: "Smeta adı", required: true, max: 240 });
+    const aiRunId = text(body.aiRunId || payload.aiRunId, { max: 160 }) || null;
+    const sourceType = text(body.sourceType || payload.sourceType || "calculator", { max: 80 }) || "calculator";
+    const sourceFileName = text(body.sourceFileName || payload.sourceFileName, { max: 240 }) || null;
+    const inferredStatus = aiRunId
+      ? payload.aiApprovalStatus === "approved"
+        ? "approved"
+        : payload.aiApprovalStatus === "rejected"
+          ? "rejected"
+          : "review_pending"
+      : "draft";
+    const workflowStatus = oneOf(
+      body.workflowStatus || payload.workflowStatus,
+      estimateWorkflowStatuses,
+      inferredStatus,
+      "Smeta iş axını"
+    );
+    if (aiRunId) {
+      const aiRows = await query(
+        `SELECT id, feature, status, approval_status
+           FROM ai_runs
+          WHERE id = $1 AND user_id = $2 AND expires_at > now()
+          LIMIT 1`,
+        [aiRunId, user.id]
+      );
+      const aiRun = aiRows[0];
+      if (!aiRun) throw new ApiError(404, "estimate_ai_run_not_found", "Smetaya bağlı AI nəticəsi tapılmadı və ya istifadə müddəti bitib.");
+      if (!["estimate_review", "estimate_document"].includes(aiRun.feature)) {
+        throw new ApiError(409, "estimate_ai_feature_mismatch", "Bu AI nəticəsi smeta analizinə aid deyil.");
+      }
+      if (aiRun.status !== "completed") {
+        throw new ApiError(409, "estimate_ai_run_incomplete", "Smetaya bağlı AI analizi hələ tamamlanmayıb.");
+      }
+      if (workflowStatus === "approved" && aiRun.approval_status !== "approved") {
+        throw new ApiError(409, "estimate_ai_not_approved", "AI smetası insan tərəfindən təsdiqlənməyib.");
+      }
+      if (workflowStatus === "rejected" && aiRun.approval_status !== "rejected") {
+        throw new ApiError(409, "estimate_ai_not_rejected", "AI smetası üçün rədd qərarı qeydə alınmayıb.");
+      }
+    } else if (["review_pending", "rejected"].includes(workflowStatus)) {
+      throw new ApiError(400, "estimate_ai_run_required", "Bu smeta vəziyyəti üçün AI nəticəsinin audit nömrəsi tələb olunur.");
+    }
+    const storedPayload = {
+      ...payload,
+      id,
+      workflowStatus,
+      sourceType,
+      sourceFileName: sourceFileName || "",
+      aiRunId: aiRunId || ""
+    };
+    const encoded = JSON.stringify(storedPayload);
+    if (Buffer.byteLength(encoded, "utf8") > 100_000) throw new ApiError(413, "estimate_too_large", "Smeta məlumatı maksimum 100 KB ola bilər.");
     const rows = await query(
-      `INSERT INTO customer_estimates (id, customer_id, title, payload, updated_at)
-       VALUES ($1, $2, $3, $4::jsonb, now())
-       ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, payload = EXCLUDED.payload, updated_at = now()
+      `INSERT INTO customer_estimates (
+         id, customer_id, title, payload, workflow_status, source_type,
+         source_file_name, ai_run_id, approved_at, updated_at
+       ) VALUES (
+         $1, $2, $3, $4::jsonb, $5, $6, $7, $8,
+         CASE WHEN $5 = 'approved' THEN now() ELSE NULL END, now()
+       )
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         payload = EXCLUDED.payload,
+         workflow_status = CASE
+           WHEN customer_estimates.workflow_status = 'converted' THEN 'converted'
+           ELSE EXCLUDED.workflow_status
+         END,
+         source_type = EXCLUDED.source_type,
+         source_file_name = EXCLUDED.source_file_name,
+         ai_run_id = EXCLUDED.ai_run_id,
+         approved_at = CASE
+           WHEN customer_estimates.workflow_status = 'converted' THEN customer_estimates.approved_at
+           WHEN EXCLUDED.workflow_status = 'approved' THEN coalesce(customer_estimates.approved_at, now())
+           ELSE NULL
+         END,
+         version = customer_estimates.version + 1,
+         updated_at = now()
        WHERE customer_estimates.customer_id = EXCLUDED.customer_id
-       RETURNING id`,
-      [id, user.id, title, encoded]
+       RETURNING id, workflow_status, version, rfq_id`,
+      [id, user.id, title, encoded, workflowStatus, sourceType, sourceFileName, aiRunId]
     );
     if (!rows[0]) throw new ApiError(403, "estimate_forbidden", "Bu smetanı dəyişmək icazəsi yoxdur.");
-    await recordAudit({ actorId: user.id, action: "upsert", entityType: "customer_estimate", entityId: id });
+    await recordAudit({
+      actorId: user.id,
+      action: "upsert",
+      entityType: "customer_estimate",
+      entityId: id,
+      details: { workflowStatus: rows[0].workflow_status, version: Number(rows[0].version), aiRunId, sourceType }
+    });
   } else if (action === "sync-estimates") {
     const sourceEstimates = Array.isArray(body.estimates) ? body.estimates.slice(0, 20) : [];
     const estimates = sourceEstimates.map((source) => {

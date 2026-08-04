@@ -37,6 +37,9 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM supplier_applications WHERE status = 'pending') AS pending_supplier_applications,
     (SELECT count(*)::int FROM price_review_requests WHERE status = 'pending') AS pending_price_reviews,
     (SELECT count(*)::int FROM users WHERE status = 'active') AS active_users,
+    (SELECT count(*)::int FROM customer_estimates) AS customer_estimates,
+    (SELECT count(*)::int FROM customer_estimates WHERE workflow_status = 'approved') AS approved_estimates,
+    (SELECT count(*)::int FROM customer_estimates WHERE workflow_status = 'converted') AS converted_estimates,
     (SELECT count(*)::int FROM catalog_import_runs) AS scraper_runs,
     (SELECT count(*)::int FROM catalog_import_items WHERE review_status = 'pending') AS scraper_pending,
     (SELECT count(*)::int FROM support_cases) AS support_cases,
@@ -392,6 +395,19 @@ const [integrity] = await query(`
           OR license_type NOT IN ('own', 'supplier', 'official', 'licensed')
           OR (rights_expires_on IS NOT NULL AND rights_expires_on < current_date)
         )) AS invalid_verified_media_rights,
+    (SELECT count(*)::int FROM customer_estimates estimate
+      WHERE estimate.workflow_status = 'converted'
+        AND (
+          estimate.rfq_id IS NULL
+          OR NOT EXISTS (
+            SELECT 1 FROM rfqs rfq
+            WHERE rfq.id = estimate.rfq_id AND rfq.estimate_id = estimate.id
+          )
+        )) AS invalid_estimate_conversions,
+    (SELECT count(*)::int FROM customer_estimates estimate
+      JOIN ai_runs run ON run.id = estimate.ai_run_id
+      WHERE estimate.workflow_status = 'approved'
+        AND run.approval_status <> 'approved') AS approved_estimates_without_ai_approval,
     COALESCE((
       SELECT CASE
         WHEN verification.schema_migrations = 29
@@ -482,7 +498,11 @@ const [schema] = await query(`
     to_regclass('public.supplier_contracts_legal_status_idx') IS NOT NULL AS supplier_legal_scope_ready,
     to_regclass('public.media_assets_rights_review_idx') IS NOT NULL AS media_rights_scope_ready,
     to_regclass('public.ai_runs_pending_review_idx') IS NOT NULL AS ai_review_scope_ready,
-    to_regclass('public.rfqs_ai_run_idx') IS NOT NULL AS ai_rfq_scope_ready
+    to_regclass('public.rfqs_ai_run_idx') IS NOT NULL AS ai_rfq_scope_ready,
+    to_regclass('public.rfqs_estimate_unique') IS NOT NULL
+      AND to_regclass('public.customer_estimates_workflow_idx') IS NOT NULL
+      AND to_regclass('public.customer_estimates_ai_run_unique') IS NOT NULL
+      AS ai_estimate_workflow_ready
 `);
 
 const minimums = {

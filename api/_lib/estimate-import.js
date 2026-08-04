@@ -1,4 +1,5 @@
 import readXlsxFile from "read-excel-file/node";
+import { enrichEstimateWorkflowRow } from "./estimate-workflow.js";
 import { ApiError } from "./http.js";
 import { firstWorksheetMatrix, normalizeXlsxForImport, parseCsv } from "./imports.js";
 
@@ -56,7 +57,7 @@ const normalizeMatrix = (matrix) => {
     const category = String(indexes.category >= 0 ? row[indexes.category] ?? "" : "").trim() || "Sənəddən idxal";
     const sku = String(indexes.sku >= 0 ? row[indexes.sku] ?? "" : "").trim();
     const words = title.toLocaleLowerCase("az").split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2);
-    return {
+    return enrichEstimateWorkflowRow({
       key: slug(sku || title, index),
       title,
       quantity,
@@ -67,8 +68,8 @@ const normalizeMatrix = (matrix) => {
       confidence: "Sənəddən",
       keywords: [...new Set([title, sku, ...words].filter(Boolean))].slice(0, 12),
       products: []
-    };
-  }).filter(Boolean).slice(0, 500);
+    });
+  }).filter(Boolean).slice(0, 120);
   if (!rows.length) throw new ApiError(400, "estimate_rows_missing", "Faylda müsbət miqdarlı material sətri tapılmadı.");
   return rows;
 };

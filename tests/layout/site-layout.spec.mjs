@@ -391,12 +391,15 @@ test("AI smeta sənəddən çoxməhsullu RFQ-yə mobil və desktop axını göst
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize(viewport);
     await page.goto("/ai-smeta.html", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("AI Mərhələ 3 · Sənəddən RFQ-yə")).toBeVisible();
+    await expect(page.getByText("AI Mərhələ 5 · Sənəddən satınalmaya")).toBeVisible();
     await page.locator('[data-ai-smeta-form] [name="city"]').fill("Bakı");
     await page.locator('[data-ai-smeta-form] button[type="submit"]').click();
     await expect(page.locator("[data-ai-smeta-output]")).toBeVisible();
     await expect(page.locator("[data-ai-smeta-output]")).toContainText("real məhsul uyğunluğu");
     await expect(page.locator("[data-ai-smeta-output]")).toContainText("Yoxlanmış təchizatçı");
+    await expect(page.locator("[data-ai-smeta-row-include]").first()).toBeVisible();
+    await expect(page.locator("[data-ai-smeta-row-quantity]").first()).toBeVisible();
+    await expect(page.locator("[data-ai-smeta-output]")).toContainText("Bünövrə və konstruksiya");
     await page.locator("[data-ai-smeta-legal]").check();
     await page.locator("[data-ai-smeta-rfq]").click();
     const rfqItemCount = await page.evaluate(() => {

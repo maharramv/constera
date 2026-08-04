@@ -10,6 +10,7 @@ import {
   openAiConfiguration
 } from "./openai.js";
 import { generateProviderEstimate } from "./provider-adapters.js";
+import { enrichEstimateWorkflowRow } from "./estimate-workflow.js";
 
 const allRoles = ["super_admin", "admin", "sales", "supplier", "customer"];
 const elevatedRoles = ["super_admin", "admin"];
@@ -108,7 +109,7 @@ const sourceCatalog = (estimate) => {
   return [...sources.values()].slice(0, 300);
 };
 
-const sanitizeRow = (row, index) => ({
+const sanitizeRow = (row, index) => enrichEstimateWorkflowRow({
   key: text(row?.key || `material-${index + 1}`, 120),
   title: text(row?.title || `Material ${index + 1}`, 240),
   category: text(row?.category || "Material", 160),
@@ -204,7 +205,7 @@ export const normalizeAiEstimate = ({ estimate, fallbackEstimate = {}, allowedSo
       || fallbackRows[index]
       || {};
     const score = confidenceScore(row?.confidence, confidenceScore(fallback?.confidence));
-    return {
+    return enrichEstimateWorkflowRow({
       key: text(row?.key || fallback?.key || `material-${index + 1}`, 120),
       title: text(row?.title || fallback?.title || `Material ${index + 1}`, 240),
       quantity: number(row?.quantity, number(fallback?.quantity, 1, 0.001), 0.001, 1_000_000_000),
@@ -221,7 +222,7 @@ export const normalizeAiEstimate = ({ estimate, fallbackEstimate = {}, allowedSo
       sourceIds: unique((Array.isArray(row?.sourceIds) ? row.sourceIds : [])
         .map((id) => text(id, 160))
         .filter((id) => allowed.has(id)), 10)
-    };
+    });
   }).filter((row) => row.title && row.quantity > 0);
   if (!rows.length) throw new ApiError(502, "invalid_ai_estimate", "AI smeta material sətirlərini qaytarmadı.");
 
@@ -1007,6 +1008,19 @@ export const reviewAiRun = async ({ user, runId, decision, note = "" }) => {
       WHERE id = $1
       RETURNING *`,
     [runId, status, user.id, reviewNote]
+  );
+  await query(
+    `UPDATE customer_estimates
+        SET workflow_status = $2,
+            approved_at = CASE WHEN $2 = 'approved' THEN now() ELSE NULL END,
+            payload = jsonb_set(
+              jsonb_set(payload, '{workflowStatus}', to_jsonb($2::text), true),
+              '{aiApprovalStatus}', to_jsonb($3::text), true
+            ),
+            version = version + 1,
+            updated_at = now()
+      WHERE ai_run_id = $1 AND workflow_status <> 'converted'`,
+    [runId, status, status]
   );
   await recordAudit({
     actorId: user.id,
