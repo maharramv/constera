@@ -320,7 +320,7 @@ test("kataloq köməkçisi mobil və desktop görünüşdə işləyir", async ({
     await page.setViewportSize(viewport);
     await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
     await page.locator("[data-catalog-assistant-form] input").fill("120 m² ev tikintisi, real foto və qiymət");
-    await page.locator("[data-catalog-assistant-form]").getByRole("button", { name: "Uyğun seçimləri tap" }).click();
+    await page.locator("[data-catalog-ai-submit]").click();
     await expect(page.locator("[data-catalog-assistant-result]")).toBeVisible();
     await expect(page.locator("[data-catalog-assistant-result]")).toContainText("Tikinti materialları");
     await expect.poll(() => page.locator("[data-assistant-search]").count()).toBeGreaterThanOrEqual(4);

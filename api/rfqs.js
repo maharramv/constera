@@ -10,6 +10,34 @@ import { email, oneOf, parseLimit, stringList, text } from "./_lib/validation.js
 const statuses = ["Yeni", "Baxılır", "Təklif gözləyir", "Təklif alındı", "Bağlandı", "Ləğv edildi"];
 const rfqTypes = ["product", "service", "package", "rental", "custom"];
 
+const prepareRfqItems = ({ body, type, title, quantity }) => {
+  const requested = Array.isArray(body.items) && body.items.length
+    ? body.items.slice(0, 20)
+    : [{ kind: type, itemId: body.sourceId, title, quantityText: quantity, specs: body.specs }];
+  return requested.map((item, index) => {
+    const itemKind = oneOf(item?.kind || item?.type, rfqTypes, type || "custom", `Sorğu sətri ${index + 1}`);
+    const itemTitle = text(item?.title || (index === 0 ? title : ""), {
+      field: `Sorğu sətri ${index + 1}`,
+      required: true,
+      max: 300
+    });
+    const unit = text(item?.unit, { max: 40 });
+    const quantityText = text(
+      item?.quantityText || [item?.quantity, unit].filter((value) => value !== undefined && value !== "").join(" ") || (index === 0 ? quantity : ""),
+      { field: `${itemTitle} miqdarı`, required: true, max: 160 }
+    );
+    return {
+      id: `rfi-${randomUUID()}`,
+      kind: itemKind,
+      item_id: text(item?.productId || item?.itemId || (index === 0 ? body.sourceId : ""), { max: 160 }) || null,
+      title: itemTitle,
+      quantity_text: quantityText,
+      unit: unit || null,
+      specs: stringList(item?.specs)
+    };
+  });
+};
+
 export default withApiErrors(async (req, res) => {
   if (req.method === "GET") {
     const user = await requireRole(req);
@@ -138,7 +166,6 @@ export default withApiErrors(async (req, res) => {
     throw new ApiError(429, "rfq_rate_limited", "Bir saat ərzində sorğu limiti dolub. Bir qədər sonra yenidən yoxla.");
   }
   const id = `rfq-${randomUUID()}`;
-  const itemId = `rfi-${randomUUID()}`;
   const type = oneOf(body.type, rfqTypes, "custom", "Sorğu tipi");
   const title = text(body.product || body.title, { field: "Sorğu mövzusu", required: true, max: 300 });
   const quantity = text(body.quantity, { field: "Miqdar", required: true, max: 160 });
@@ -157,22 +184,42 @@ export default withApiErrors(async (req, res) => {
   const supplierId = text(body.supplierId, { max: 160 }) || null;
   const needDate = text(body.needDate, { max: 10 }) || null;
   if (needDate && !/^\d{4}-\d{2}-\d{2}$/.test(needDate)) throw new ApiError(400, "validation_error", "Tələb tarixi düzgün deyil.");
+  const items = prepareRfqItems({ body, type, title, quantity });
+  const aiRunId = text(body.aiRunId, { max: 160 }) || null;
+  if (aiRunId) {
+    if (!session) throw new ApiError(401, "authentication_required", "AI qaralamasını sorğuya bağlamaq üçün hesaba daxil ol.");
+    const approvedRuns = await query(
+      `SELECT id FROM ai_runs
+        WHERE id = $1 AND user_id = $2 AND feature = 'rfq_draft'
+          AND status = 'completed' AND approval_status = 'approved' AND expires_at > now()
+        LIMIT 1`,
+      [aiRunId, session.id]
+    );
+    if (!approvedRuns[0]) {
+      throw new ApiError(409, "ai_rfq_not_approved", "AI RFQ qaralaması təsdiqlənməyib və ya istifadə müddəti bitib.");
+    }
+  }
 
   await query(
     `WITH new_rfq AS (
        INSERT INTO rfqs (
          id, customer_id, supplier_id, rfq_type, title, company_name,
          contact, contact_name, email, phone, city, address,
-         priority, need_date, budget, delivery_mode, usage_text, note, submission_hash
+         priority, need_date, budget, delivery_mode, usage_text, note, submission_hash, ai_run_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6,
          $7, $8, $9, $10, $11, $12,
-         $13, $14, $15, $16, $17, $18, $23
+         $13, $14, $15, $16, $17, $18, $19, $20
        )
        RETURNING id
      )
-     INSERT INTO rfq_items (id, rfq_id, item_kind, item_id, title, quantity_text, specs)
-     SELECT $19, new_rfq.id, $4, $20, $5, $21, $22::jsonb FROM new_rfq`,
+     INSERT INTO rfq_items (id, rfq_id, item_kind, item_id, title, quantity_text, unit, specs)
+     SELECT item.id, new_rfq.id, item.kind, item.item_id, item.title, item.quantity_text,
+            item.unit, coalesce(item.specs, '[]'::jsonb)
+       FROM new_rfq
+       CROSS JOIN LATERAL jsonb_to_recordset($21::jsonb) AS item(
+         id text, kind text, item_id text, title text, quantity_text text, unit text, specs jsonb
+       )`,
     [
       id,
       session?.id || null,
@@ -192,11 +239,9 @@ export default withApiErrors(async (req, res) => {
       text(body.deliveryMode, { max: 200 }) || null,
       text(body.usage, { max: 600 }) || null,
       text(body.note, { max: 3_000 }) || null,
-      itemId,
-      text(body.sourceId, { max: 160 }) || null,
-      quantity,
-      JSON.stringify(stringList(body.specs)),
-      submissionHash
+      submissionHash,
+      aiRunId,
+      JSON.stringify(items)
     ]
   );
   await recordPolicyConsent({
@@ -207,7 +252,13 @@ export default withApiErrors(async (req, res) => {
     sourcePath: text(body.sourcePath, { max: 500 })
   });
   await syncRfqLead(id);
-  await recordAudit({ actorId: session?.id || null, action: "create", entityType: "rfq", entityId: id, details: { type, supplierId } });
+  await recordAudit({
+    actorId: session?.id || null,
+    action: "create",
+    entityType: "rfq",
+    entityId: id,
+    details: { type, supplierId, itemCount: items.length, aiRunId }
+  });
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
   const notification = {
     subject: "Yeni qiymət sorğusu",
@@ -227,5 +278,5 @@ export default withApiErrors(async (req, res) => {
       channel: "in_app"
     })));
   }
-  return sendJson(res, 201, { ok: true, data: { id, status: "Yeni", cloud: true } });
+  return sendJson(res, 201, { ok: true, data: { id, status: "Yeni", cloud: true, itemCount: items.length, aiRunId } });
 });

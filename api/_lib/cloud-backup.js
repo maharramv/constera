@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v12";
-const SCHEMA_MIGRATIONS = 28;
+const BACKUP_VERSION = "constera-cloud-backup-v13";
+const SCHEMA_MIGRATIONS = 29;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -161,6 +161,7 @@ const restoreReferences = Object.freeze([
   ["priceHistory", "product_id", "products"],
   ["tenderLots", "tender_id", "tenders"],
   ["tenderBids", "tender_id", "tenders"],
+  ["rfqs", "ai_run_id", "aiRuns"],
   ["rfqItems", "rfq_id", "rfqs"],
   ["offers", "rfq_id", "rfqs"],
   ["commercialProposals", "rfq_id", "rfqs"],

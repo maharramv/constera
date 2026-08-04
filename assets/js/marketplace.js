@@ -852,6 +852,7 @@ const renderCatalog = () => {
   const assistantForm = document.querySelector("[data-catalog-assistant-form]");
   const assistantResult = document.querySelector("[data-catalog-assistant-result]");
   const assistantStatus = document.querySelector("[data-catalog-assistant-status]");
+  const assistantSubmit = document.querySelector("[data-catalog-ai-submit]");
 
   if (!productGrid || !categoryList || !brandSelect || !searchInput) return;
 
@@ -1432,7 +1433,48 @@ const renderCatalog = () => {
     `;
   };
 
-  assistantForm?.addEventListener("submit", (event) => {
+  let latestAiCatalogAdvice = null;
+  const renderAiCatalogAdvice = () => {
+    if (!assistantResult || !latestAiCatalogAdvice) return;
+    const advice = latestAiCatalogAdvice.advice || {};
+    const approvalStatus = latestAiCatalogAdvice.approval?.status || "pending";
+    const sourceMap = new Map((latestAiCatalogAdvice.sources || []).map((source) => [source.id, source]));
+    const confidence = Number.isFinite(Number(advice.confidence))
+      ? `${Math.round(Number(advice.confidence) * 100)}%`
+      : "-";
+    assistantResult.hidden = false;
+    assistantResult.innerHTML = `
+      <div class="catalog-ai-summary">
+        <strong>AI kataloq məsləhəti · ${escapeHtml(confidence)} etibar</strong>
+        <small>${escapeHtml(advice.summary || "Uyğun seçimlər hazırlandı.")}</small>
+        ${(advice.warnings || []).length ? `<small>Yoxlanmalı: ${(advice.warnings || []).map((item) => escapeHtml(item)).join(" · ")}</small>` : ""}
+        ${(advice.questions || []).length ? `<small>Dəqiqləşdir: ${(advice.questions || []).map((item) => escapeHtml(item)).join(" · ")}</small>` : ""}
+      </div>
+      <div>
+        <div class="catalog-ai-recommendations">
+          ${(advice.recommendations || []).map((recommendation) => {
+            const source = sourceMap.get(recommendation.productId) || {};
+            const quantity = Number(recommendation.suggestedQuantity || 0);
+            return `
+              <article class="catalog-ai-recommendation">
+                <strong>${escapeHtml(source.title || recommendation.title || recommendation.productId)}</strong>
+                <span>${escapeHtml(source.brand || "Brend göstərilməyib")} · ${escapeHtml(source.price || "Sorğu əsasında")}</span>
+                <small>${escapeHtml(recommendation.reason || "Uyğunluq kataloq məlumatına əsasən seçilib.")}</small>
+                ${quantity > 0 ? `<small>Təklif edilən miqdar: ${escapeHtml(quantity)} ${escapeHtml(recommendation.suggestedUnit || "ədəd")}</small>` : ""}
+                ${approvalStatus === "approved" ? `<div class="catalog-assistant-options"><a class="table-action" href="product-detail.html?product=${encodeURIComponent(recommendation.productId)}">Məhsula bax</a><a class="table-action" href="rfq.html?product=${encodeURIComponent(recommendation.productId)}">RFQ yarat</a></div>` : ""}
+              </article>
+            `;
+          }).join("")}
+        </div>
+        <div class="catalog-assistant-options">
+          ${approvalStatus === "pending" ? `<button class="button button-primary" type="button" data-ai-catalog-review data-run-id="${escapeAttr(latestAiCatalogAdvice.runId || "")}">Yoxladım, seçimləri təsdiqlə</button>` : ""}
+          <span class="status-pill">${approvalStatus === "approved" ? "Təsdiqlənib" : approvalStatus === "rejected" ? "Rədd edilib" : "Təsdiq gözləyir"}</span>
+        </div>
+      </div>
+    `;
+  };
+
+  assistantForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const prompt = assistantForm.elements.prompt.value.trim();
     const analysis = window.ConstEraCatalogAssistant?.analyze(prompt);
@@ -1448,12 +1490,51 @@ const renderCatalog = () => {
     } else if (assistantStatus) {
       assistantStatus.textContent = "Uyğun xidmət və icarə bölmələri hazırlandı.";
     }
+    if (!window.ConstEraAPI?.aiCatalogAdvice) return;
+    if (assistantSubmit) assistantSubmit.disabled = true;
+    try {
+      if (assistantStatus) assistantStatus.textContent = "Kataloqdakı real məhsullar AI ilə uyğunlaşdırılır...";
+      const response = await window.ConstEraAPI.aiCatalogAdvice({
+        prompt,
+        hints: (analysis.searches || []).map((item) => item.query)
+      });
+      latestAiCatalogAdvice = response.data || null;
+      renderAiCatalogAdvice();
+      if (assistantStatus) assistantStatus.textContent = "AI seçimi hazırdır. Məhsul əməliyyatlarını açmaq üçün nəticəni yoxlayıb təsdiqlə.";
+    } catch (error) {
+      if (assistantStatus) assistantStatus.textContent = error.code === "authentication_required"
+        ? "Qayda əsaslı seçim tətbiq edildi. AI məsləhəti üçün hesabına daxil ol."
+        : `Qayda əsaslı seçim tətbiq edildi. AI məsləhəti alınmadı: ${error.message}`;
+    } finally {
+      if (assistantSubmit) assistantSubmit.disabled = false;
+    }
   });
-  assistantResult?.addEventListener("click", (event) => {
+  assistantResult?.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-assistant-search]");
-    if (!button) return;
-    applyAssistantSearch(button.dataset.assistantSearch || "", button.dataset.assistantSource || "all");
-    if (assistantStatus) assistantStatus.textContent = `Kataloq filtri tətbiq edildi: ${button.dataset.assistantSearch}.`;
+    if (button) {
+      applyAssistantSearch(button.dataset.assistantSearch || "", button.dataset.assistantSource || "all");
+      if (assistantStatus) assistantStatus.textContent = `Kataloq filtri tətbiq edildi: ${button.dataset.assistantSearch}.`;
+      return;
+    }
+    const reviewButton = event.target.closest("[data-ai-catalog-review]");
+    if (!reviewButton || !window.ConstEraAPI?.reviewAiRun) return;
+    reviewButton.disabled = true;
+    try {
+      const response = await window.ConstEraAPI.reviewAiRun(
+        reviewButton.dataset.runId,
+        "approve",
+        "İstifadəçi kataloq tövsiyələrini yoxladı və təsdiqlədi."
+      );
+      latestAiCatalogAdvice = {
+        ...latestAiCatalogAdvice,
+        approval: { ...latestAiCatalogAdvice.approval, status: response.data?.approvalStatus || "approved" }
+      };
+      renderAiCatalogAdvice();
+      if (assistantStatus) assistantStatus.textContent = "AI seçimləri təsdiqləndi. Məhsul və RFQ keçidləri açıldı.";
+    } catch (error) {
+      if (assistantStatus) assistantStatus.textContent = error.message || "AI seçimi təsdiqlənmədi.";
+      reviewButton.disabled = false;
+    }
   });
 
   categoryList.addEventListener("click", (event) => {
@@ -3907,7 +3988,14 @@ const initRfq = () => {
   const output = document.querySelector("[data-rfq-output]");
   const productSelect = document.querySelector("[data-product-select]");
   const supplierSelect = document.querySelector("[data-rfq-supplier-select]");
+  const aiPrompt = document.querySelector("[data-rfq-ai-prompt]");
+  const aiGenerate = document.querySelector("[data-rfq-ai-generate]");
+  const aiResult = document.querySelector("[data-rfq-ai-result]");
+  const aiStatus = document.querySelector("[data-rfq-ai-status]");
   if (!form || !output || !productSelect) return;
+
+  let latestAiRfq = null;
+  let approvedAiRfqDraft = null;
 
   const serviceOptions = (marketplace.serviceCategories || [])
     .map((category) => {
@@ -3992,6 +4080,127 @@ const initRfq = () => {
   productSelect.addEventListener("change", updateRentalRequestFields);
   updateRentalRequestFields();
 
+  const renderAiRfqDraft = () => {
+    if (!aiResult || !latestAiRfq) return;
+    const draft = latestAiRfq.draft || {};
+    const approvalStatus = latestAiRfq.approval?.status || "pending";
+    const confidence = Number.isFinite(Number(draft.confidence))
+      ? `${Math.round(Number(draft.confidence) * 100)}%`
+      : "-";
+    aiResult.hidden = false;
+    aiResult.innerHTML = `
+      <div>
+        <strong>${escapeHtml(draft.title || "RFQ qaralaması")} · ${escapeHtml(confidence)} etibar</strong>
+        <p class="admin-import-status">${escapeHtml(draft.summary || "Məlumatları yoxla və formaya tətbiq et.")}</p>
+      </div>
+      <div class="rfq-ai-item-list">
+        ${(draft.items || []).map((item) => `
+          <article class="rfq-ai-item">
+            <strong>${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(item.quantity)} ${escapeHtml(item.unit || "ədəd")}</span>
+            ${(item.specs || []).length ? `<small>${item.specs.map((spec) => escapeHtml(spec)).join(" · ")}</small>` : ""}
+          </article>
+        `).join("")}
+      </div>
+      ${(draft.warnings || []).length ? `<p class="admin-import-status" data-type="warning"><strong>Yoxlanmalı:</strong> ${draft.warnings.map((warning) => escapeHtml(warning)).join(" · ")}</p>` : ""}
+      <div class="admin-actions">
+        ${approvalStatus === "pending" ? `<button class="button button-primary" type="button" data-rfq-ai-approve data-run-id="${escapeAttr(latestAiRfq.runId || "")}">Yoxladım və formaya tətbiq et</button>` : ""}
+        <span class="status-pill">${approvalStatus === "approved" ? "Təsdiqlənib və tətbiq edilib" : approvalStatus === "rejected" ? "Rədd edilib" : "İnsan təsdiqi gözləyir"}</span>
+      </div>
+    `;
+  };
+
+  const setSelectIfAvailable = (select, value) => {
+    if (!select || !value) return;
+    if ([...select.options].some((option) => option.value === value)) select.value = value;
+  };
+
+  const applyAiRfqDraft = (draft) => {
+    const firstItem = draft?.items?.[0];
+    if (!firstItem) return;
+    const productValue = firstItem.productId ? `product:${firstItem.productId}` : "";
+    if (productValue && [...productSelect.options].some((option) => option.value === productValue)) {
+      productSelect.value = productValue;
+      if (form.elements.customProduct) form.elements.customProduct.value = "";
+    } else {
+      productSelect.value = "";
+      if (form.elements.customProduct) form.elements.customProduct.value = firstItem.title || draft.title || "";
+    }
+    if (form.elements.quantity) form.elements.quantity.value = `${firstItem.quantity} ${firstItem.unit || "ədəd"}`;
+    setSelectIfAvailable(form.elements.priority, draft.priority);
+    setSelectIfAvailable(form.elements.budget, draft.budget);
+    setSelectIfAvailable(form.elements.deliveryMode, draft.deliveryMode);
+    if (form.elements.needDate && draft.needDate) form.elements.needDate.value = draft.needDate;
+    if (form.elements.usage && draft.usage) form.elements.usage.value = draft.usage;
+    if (form.elements.note) {
+      form.elements.note.value = [draft.note, ...(draft.warnings || []).map((warning) => `Yoxlanmalı: ${warning}`)]
+        .filter(Boolean)
+        .join("\n");
+    }
+    approvedAiRfqDraft = draft;
+    updateRentalRequestFields();
+  };
+
+  aiGenerate?.addEventListener("click", async () => {
+    const prompt = String(aiPrompt?.value || "").trim();
+    if (prompt.length < 8) {
+      if (aiStatus) aiStatus.textContent = "Ehtiyacı ən azı 8 simvolla təsvir et.";
+      aiPrompt?.focus();
+      return;
+    }
+    if (!window.ConstEraAPI?.aiRfqDraft) return;
+    const selectedValue = String(productSelect.value || "");
+    const [selectedType, selectedId] = selectedValue.split(":");
+    latestAiRfq = null;
+    approvedAiRfqDraft = null;
+    aiGenerate.disabled = true;
+    try {
+      if (aiStatus) aiStatus.textContent = "Real kataloq məhsulları seçilir və RFQ qaralaması hazırlanır...";
+      const response = await window.ConstEraAPI.aiRfqDraft({
+        prompt,
+        productIds: selectedType === "product" && selectedId ? [selectedId] : [],
+        city: form.elements.city?.value || "",
+        needDate: form.elements.needDate?.value || "",
+        budget: form.elements.budget?.value || "",
+        deliveryMode: form.elements.deliveryMode?.value || "",
+        priority: form.elements.priority?.value || "Normal",
+        usage: form.elements.usage?.value || ""
+      });
+      latestAiRfq = response.data || null;
+      renderAiRfqDraft();
+      if (aiStatus) aiStatus.textContent = "Qaralama hazırdır. Formaya köçürməzdən əvvəl bütün material sətirlərini yoxla.";
+    } catch (error) {
+      if (aiStatus) aiStatus.textContent = error.code === "authentication_required"
+        ? "AI RFQ üçün əvvəl hesabına daxil ol. Mövcud formanı əl ilə istifadə edə bilərsən."
+        : error.message || "AI RFQ qaralaması hazırlanmadı.";
+    } finally {
+      aiGenerate.disabled = false;
+    }
+  });
+
+  aiResult?.addEventListener("click", async (event) => {
+    const approveButton = event.target.closest("[data-rfq-ai-approve]");
+    if (!approveButton || !latestAiRfq || !window.ConstEraAPI?.reviewAiRun) return;
+    approveButton.disabled = true;
+    try {
+      const response = await window.ConstEraAPI.reviewAiRun(
+        approveButton.dataset.runId,
+        "approve",
+        "İstifadəçi RFQ qaralamasını yoxladı və formaya tətbiq etdi."
+      );
+      latestAiRfq = {
+        ...latestAiRfq,
+        approval: { ...latestAiRfq.approval, status: response.data?.approvalStatus || "approved" }
+      };
+      applyAiRfqDraft(latestAiRfq.draft);
+      renderAiRfqDraft();
+      if (aiStatus) aiStatus.textContent = "AI qaralaması təsdiqləndi və formaya tətbiq edildi. Əlaqə məlumatlarını tamamlayıb göndər.";
+    } catch (error) {
+      if (aiStatus) aiStatus.textContent = error.message || "AI RFQ qaralaması təsdiqlənmədi.";
+      approveButton.disabled = false;
+    }
+  });
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(form);
@@ -4012,6 +4221,16 @@ const initRfq = () => {
     const rentalNote = selectedType === "rental"
       ? [`Ünvan: ${address}`, `İcarə müddəti: ${rentalDuration}`, `Operator: ${operatorPreference || "sorğuda dəqiqləşsin"}`].join("\n")
       : "";
+    const submittedTitle = selectedProduct?.name || selectedService?.title || selectedPackage?.title || selectedRental?.name || data.get("customProduct");
+    const aiItems = approvedAiRfqDraft?.items?.length
+      ? approvedAiRfqDraft.items.map((item, index) => index === 0 ? {
+        ...item,
+        kind: selectedType || (item.productId ? "product" : "custom"),
+        productId: selectedId || item.productId || "",
+        title: submittedTitle || item.title,
+        quantityText: data.get("quantity")
+      } : { ...item, kind: item.productId ? "product" : "custom" })
+      : [];
     const rfq = {
       id: `rfq-${Date.now()}`,
       type: selectedType || "custom",
@@ -4020,8 +4239,10 @@ const initRfq = () => {
       supplierId: selectedSupplierId,
       supplier: selectedSupplier?.name || "Açıq sorğu",
       priority: data.get("priority") || "Normal",
-      product: selectedProduct?.name || selectedService?.title || selectedPackage?.title || selectedRental?.name || data.get("customProduct"),
+      product: submittedTitle,
       quantity: data.get("quantity"),
+      items: aiItems,
+      aiRunId: approvedAiRfqDraft ? latestAiRfq?.runId || "" : "",
       needDate: data.get("needDate"),
       budget: data.get("budget"),
       deliveryMode: data.get("deliveryMode"),

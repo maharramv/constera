@@ -1,7 +1,14 @@
 import { requireRole } from "../_lib/auth.js";
-import { generateAiEstimate, readAiDashboard, reviewAiRun } from "../_lib/ai-foundation.js";
+import {
+  generateAiCatalogAdvice,
+  generateAiEstimate,
+  generateAiRfqDraft,
+  readAiDashboard,
+  reviewAiRun
+} from "../_lib/ai-foundation.js";
+import { searchAiCatalogCandidates } from "../_lib/ai-catalog.js";
 import { assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
-import { oneOf, text } from "../_lib/validation.js";
+import { oneOf, stringList, text } from "../_lib/validation.js";
 
 export default withApiErrors(async (req, res) => {
   assertMethod(req, ["GET", "POST", "PATCH"]);
@@ -25,13 +32,37 @@ export default withApiErrors(async (req, res) => {
     return sendJson(res, 200, { ok: true, data });
   }
 
-  const result = await generateAiEstimate({
-    user,
-    feature: oneOf(body.feature, ["estimate_review"], "estimate_review", "AI funksiyası"),
-    input: body.input && typeof body.input === "object" ? body.input : {},
-    deterministicEstimate: body.deterministicEstimate && typeof body.deterministicEstimate === "object"
-      ? body.deterministicEstimate
-      : {}
-  });
+  const feature = oneOf(
+    body.feature,
+    ["estimate_review", "catalog_enrichment", "rfq_draft"],
+    "estimate_review",
+    "AI funksiyası"
+  );
+  const input = body.input && typeof body.input === "object" ? body.input : {};
+  let result;
+  if (feature === "estimate_review") {
+    result = await generateAiEstimate({
+      user,
+      feature,
+      input,
+      deterministicEstimate: body.deterministicEstimate && typeof body.deterministicEstimate === "object"
+        ? body.deterministicEstimate
+        : {}
+    });
+  } else {
+    const prompt = text(input.prompt, {
+      field: feature === "rfq_draft" ? "RFQ ehtiyacı" : "Kataloq ehtiyacı",
+      required: true,
+      min: 8,
+      max: feature === "rfq_draft" ? 4_000 : 2_000
+    });
+    const hints = stringList(input.hints, 10);
+    const productIds = stringList(input.productIds, 30);
+    const candidates = await searchAiCatalogCandidates({ prompt, hints, productIds });
+    const normalizedInput = { ...input, prompt, hints, productIds };
+    result = feature === "catalog_enrichment"
+      ? await generateAiCatalogAdvice({ user, input: normalizedInput, candidates })
+      : await generateAiRfqDraft({ user, input: normalizedInput, candidates });
+  }
   return sendJson(res, 200, { ok: true, data: result });
 });

@@ -394,7 +394,7 @@ const [integrity] = await query(`
         )) AS invalid_verified_media_rights,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 28
+        WHEN verification.schema_migrations = 29
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END
@@ -481,7 +481,8 @@ const [schema] = await query(`
     to_regclass('public.media_assets_one_primary_idx') IS NOT NULL AS media_primary_scope_ready,
     to_regclass('public.supplier_contracts_legal_status_idx') IS NOT NULL AS supplier_legal_scope_ready,
     to_regclass('public.media_assets_rights_review_idx') IS NOT NULL AS media_rights_scope_ready,
-    to_regclass('public.ai_runs_pending_review_idx') IS NOT NULL AS ai_review_scope_ready
+    to_regclass('public.ai_runs_pending_review_idx') IS NOT NULL AS ai_review_scope_ready,
+    to_regclass('public.rfqs_ai_run_idx') IS NOT NULL AS ai_rfq_scope_ready
 `);
 
 const minimums = {

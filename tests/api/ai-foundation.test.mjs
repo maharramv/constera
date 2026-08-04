@@ -3,10 +3,19 @@ import assert from "node:assert/strict";
 import {
   assertAiFeatureAccess,
   estimateAiCost,
+  normalizeAiCatalogAdvice,
   normalizeAiEstimate,
-  prepareAiEstimateRequest
+  normalizeAiRfqDraft,
+  prepareAiCatalogAdviceRequest,
+  prepareAiEstimateRequest,
+  prepareAiRfqDraftRequest
 } from "../../api/_lib/ai-foundation.js";
-import { createOpenAiEstimate, openAiConfiguration } from "../../api/_lib/openai.js";
+import {
+  createOpenAiCatalogAdvice,
+  createOpenAiEstimate,
+  createOpenAiRfqDraft,
+  openAiConfiguration
+} from "../../api/_lib/openai.js";
 
 const withEnvironment = async (values, callback) => {
   const previous = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
@@ -24,12 +33,10 @@ const withEnvironment = async (values, callback) => {
   }
 };
 
-test("AI rol siyasəti smeta istifadəçisini qəbul edir, kataloq zənginləşdirməsini məhdudlaşdırır", () => {
+test("AI rol siyasəti smeta, kataloq məsləhəti və RFQ qaralamasını müştəri üçün açır", () => {
   assert.equal(assertAiFeatureAccess({ role: "customer" }, "estimate_review").requiresApproval, true);
-  assert.throws(
-    () => assertAiFeatureAccess({ role: "customer" }, "catalog_enrichment"),
-    (error) => error.code === "ai_permission_denied"
-  );
+  assert.equal(assertAiFeatureAccess({ role: "customer" }, "catalog_enrichment").requiresApproval, true);
+  assert.equal(assertAiFeatureAccess({ role: "customer" }, "rfq_draft").requiresApproval, true);
 });
 
 test("AI konteksti xam obyekt əvəzinə məhdud layihə və təsdiqli mənbə siyahısı yaradır", () => {
@@ -79,6 +86,66 @@ test("AI nəticəsi yalnız icazəli mənbələri saxlayır və etibarı lokalla
   assert.equal(normalized.estimate.rows[0].confidence, "Yüksək");
   assert.deepEqual(normalized.estimate.rows[0].sourceIds, ["prd-paint"]);
   assert.equal(normalized.sources.length, 1);
+});
+
+test("AI kataloq məsləhəti yalnız serverin verdiyi real məhsulları saxlayır", () => {
+  const prepared = prepareAiCatalogAdviceRequest({
+    input: { prompt: "Daxili divar üçün 15 litr boya", hints: ["daxili boya"] },
+    candidates: [{
+      id: "prd-penguin",
+      name: "Penguin daxili boya 15 L",
+      brand: "Penguin",
+      price: "72.90 AZN",
+      priceAmount: 72.9,
+      priceStatus: "confirmed",
+      sourceUrl: "https://example.com/penguin"
+    }]
+  });
+  const normalized = normalizeAiCatalogAdvice({
+    advice: {
+      summary: "Bir uyğun məhsul seçildi.",
+      confidence: 0.9,
+      questions: [],
+      warnings: [],
+      recommendations: [
+        { productId: "uydurma", reason: "Uyğun görünür", fitScore: 1, suggestedQuantity: 1, suggestedUnit: "ədəd" },
+        { productId: "prd-penguin", reason: "Həcm uyğundur", fitScore: 0.86, suggestedQuantity: 2, suggestedUnit: "vedrə" }
+      ]
+    },
+    allowedSources: prepared.sources
+  });
+  assert.equal(normalized.output.recommendations.length, 1);
+  assert.equal(normalized.output.recommendations[0].productId, "prd-penguin");
+  assert.equal(normalized.sources[0].price, "72.90 AZN");
+});
+
+test("AI RFQ normallaşdırması kataloq adını qoruyur və sərbəst mövqeyə icazə verir", () => {
+  const prepared = prepareAiRfqDraftRequest({
+    input: { prompt: "100 kisə sement və çatdırılma", city: "Bakı" },
+    candidates: [{ id: "prd-cement", name: "Norm Sement CEM II 40 kq", brand: "Norm" }]
+  });
+  const normalized = normalizeAiRfqDraft({
+    draft: {
+      title: "Villa materialları",
+      summary: "İki mövqe hazırlandı.",
+      confidence: 0.77,
+      priority: "Təcili",
+      needDate: "2026-09-01",
+      budget: "",
+      deliveryMode: "Çatdırılma lazımdır",
+      usage: "Villa tikintisi",
+      note: "Marka alternativləri ayrıca göstərilsin.",
+      warnings: ["Armatur diametri dəqiqləşməlidir."],
+      items: [
+        { productId: "prd-cement", title: "Dəyişdirilmiş ad", quantity: 100, unit: "kisə", specs: ["40 kq"] },
+        { productId: "invented", title: "Armatur 12 mm", quantity: 2, unit: "ton", specs: ["A500C"] }
+      ]
+    },
+    allowedSources: prepared.sources
+  });
+  assert.equal(normalized.output.items[0].title, "Norm Sement CEM II 40 kq");
+  assert.equal(normalized.output.items[1].productId, "");
+  assert.equal(normalized.output.priority, "Təcili");
 });
 
 test("OpenAI Responses sorğusu store=false və sərt JSON Schema ilə göndərilir", async () => {
@@ -138,6 +205,61 @@ test("OpenAI Responses sorğusu store=false və sərt JSON Schema ilə göndəri
       assert.equal(requestBody.max_output_tokens, 1400);
       assert.equal(result.usage.totalTokens, 200);
       assert.equal(result.estimate.rows[0].title, "Sement");
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("OpenAI kataloq və RFQ funksiyaları ayrı sərt sxemlərdən istifadə edir", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    await withEnvironment({ OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456" }, async () => {
+      const schemaNames = [];
+      globalThis.fetch = async (_url, options) => {
+        const requestBody = JSON.parse(options.body);
+        schemaNames.push(requestBody.text.format.name);
+        const isCatalog = requestBody.text.format.name === "constera_catalog_advice";
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "completed",
+            model: "gpt-5.4-mini",
+            output_text: JSON.stringify(isCatalog ? {
+              summary: "Seçim hazırdır.",
+              confidence: 0.8,
+              questions: [],
+              warnings: [],
+              recommendations: [{
+                productId: "prd-1",
+                reason: "Uyğundur.",
+                fitScore: 0.8,
+                suggestedQuantity: 1,
+                suggestedUnit: "ədəd"
+              }]
+            } : {
+              title: "Material sorğusu",
+              summary: "Qaralama hazırdır.",
+              confidence: 0.8,
+              priority: "Normal",
+              needDate: "",
+              budget: "",
+              deliveryMode: "",
+              usage: "",
+              note: "",
+              warnings: [],
+              items: [{ productId: "prd-1", title: "Məhsul", quantity: 1, unit: "ədəd", specs: [] }]
+            }),
+            usage: { input_tokens: 20, output_tokens: 30, total_tokens: 50 }
+          })
+        };
+      };
+      const catalog = await createOpenAiCatalogAdvice({ requestId: "air-catalog", context: { allowedProducts: [] } });
+      const rfq = await createOpenAiRfqDraft({ requestId: "air-rfq", context: { allowedProducts: [] } });
+      assert.deepEqual(schemaNames, ["constera_catalog_advice", "constera_rfq_draft"]);
+      assert.equal(catalog.advice.recommendations[0].productId, "prd-1");
+      assert.equal(rfq.draft.items[0].title, "Məhsul");
     });
   } finally {
     globalThis.fetch = originalFetch;

@@ -2,7 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { assertCriticalTwoFactor } from "./auth.js";
 import { query, recordAudit } from "./db.js";
 import { ApiError } from "./http.js";
-import { createOpenAiEstimate, openAiConfiguration } from "./openai.js";
+import {
+  createOpenAiCatalogAdvice,
+  createOpenAiEstimate,
+  createOpenAiRfqDraft,
+  openAiConfiguration
+} from "./openai.js";
 import { generateProviderEstimate } from "./provider-adapters.js";
 
 const allRoles = ["super_admin", "admin", "sales", "supplier", "customer"];
@@ -11,7 +16,7 @@ const elevatedRoles = ["super_admin", "admin"];
 export const AI_FEATURE_POLICIES = Object.freeze({
   estimate_review: Object.freeze({ roles: allRoles, requiresApproval: true, label: "Smeta yoxlaması" }),
   estimate_document: Object.freeze({ roles: allRoles, requiresApproval: true, label: "Smeta sənədinin oxunması" }),
-  catalog_enrichment: Object.freeze({ roles: ["super_admin", "admin", "supplier"], requiresApproval: true, label: "Kataloq zənginləşdirilməsi" }),
+  catalog_enrichment: Object.freeze({ roles: allRoles, requiresApproval: true, label: "AI kataloq məsləhətçisi" }),
   rfq_draft: Object.freeze({ roles: allRoles, requiresApproval: true, label: "RFQ qaralaması" })
 });
 
@@ -231,6 +236,190 @@ export const normalizeAiEstimate = ({ estimate, fallbackEstimate = {}, allowedSo
   };
 };
 
+const sanitizeCatalogCandidate = (candidate) => ({
+  id: text(candidate?.id, 160),
+  title: text(candidate?.name || candidate?.title, 240),
+  sku: text(candidate?.sku, 160),
+  brand: text(candidate?.brand, 160),
+  category: text(candidate?.category, 160),
+  subcategory: text(candidate?.subcategory, 200),
+  package: text(candidate?.package, 160),
+  origin: text(candidate?.origin, 160),
+  price: text(candidate?.price || "Sorğu əsasında", 160),
+  priceAmount: candidate?.priceAmount === null || candidate?.priceAmount === undefined
+    ? null
+    : number(candidate.priceAmount, 0, 0),
+  priceCurrency: text(candidate?.priceCurrency || "AZN", 12),
+  priceStatus: text(candidate?.priceStatus || "request", 40),
+  priceVerifiedAt: text(candidate?.priceVerifiedAt, 40),
+  availability: text(candidate?.availability || "Sorğu əsasında", 160),
+  stockQuantity: candidate?.stockQuantity === null || candidate?.stockQuantity === undefined
+    ? null
+    : number(candidate.stockQuantity, 0, 0),
+  sourceLabel: text(candidate?.sourceLabel || candidate?.brand || "ConstEra kataloqu", 160),
+  sourceUrl: httpsUrl(candidate?.sourceUrl),
+  specs: unique((Array.isArray(candidate?.specs) ? candidate.specs : []).map((item) => text(item, 240)), 12)
+});
+
+const catalogSource = (candidate) => ({
+  id: candidate.id,
+  title: candidate.title,
+  label: candidate.sourceLabel,
+  url: candidate.sourceUrl,
+  sku: candidate.sku,
+  brand: candidate.brand,
+  category: candidate.category,
+  subcategory: candidate.subcategory,
+  package: candidate.package,
+  price: candidate.price,
+  priceAmount: candidate.priceAmount,
+  priceCurrency: candidate.priceCurrency,
+  priceStatus: candidate.priceStatus,
+  priceVerifiedAt: candidate.priceVerifiedAt,
+  availability: candidate.availability,
+  stockQuantity: candidate.stockQuantity,
+  origin: candidate.origin,
+  specs: candidate.specs
+});
+
+const prepareCatalogProducts = (candidates) => (Array.isArray(candidates) ? candidates : [])
+  .slice(0, 24)
+  .map(sanitizeCatalogCandidate)
+  .filter((candidate) => candidate.id && candidate.title);
+
+const assertPreparedSize = (context, maximum = 120_000) => {
+  const requestBytes = Buffer.byteLength(JSON.stringify(context), "utf8");
+  if (requestBytes > maximum) {
+    throw new ApiError(413, "ai_request_too_large", "AI sorğusunun həcmi icazə verilən limiti keçir.");
+  }
+  return requestBytes;
+};
+
+export const prepareAiCatalogAdviceRequest = ({ input = {}, candidates = [] }) => {
+  const allowedProducts = prepareCatalogProducts(candidates);
+  if (!allowedProducts.length) {
+    throw new ApiError(404, "ai_catalog_candidates_not_found", "Sorğuya uyğun mənbəli kataloq namizədi tapılmadı.");
+  }
+  const context = {
+    request: {
+      prompt: text(input.prompt, 2_000),
+      hints: unique((Array.isArray(input.hints) ? input.hints : []).map((item) => text(item, 160)), 10)
+    },
+    allowedProducts
+  };
+  return {
+    context,
+    document: null,
+    sources: allowedProducts.map(catalogSource),
+    requestBytes: assertPreparedSize(context)
+  };
+};
+
+export const normalizeAiCatalogAdvice = ({ advice, allowedSources = [] }) => {
+  const allowed = new Map(allowedSources.map((source) => [source.id, source]));
+  const seen = new Set();
+  const recommendations = (Array.isArray(advice?.recommendations) ? advice.recommendations : [])
+    .slice(0, 16)
+    .map((recommendation) => {
+      const productId = text(recommendation?.productId, 160);
+      const source = allowed.get(productId);
+      if (!source || seen.has(productId)) return null;
+      seen.add(productId);
+      return {
+        productId,
+        title: source.title,
+        reason: text(recommendation?.reason, 600),
+        fitScore: confidenceScore(recommendation?.fitScore, 0.5),
+        suggestedQuantity: number(recommendation?.suggestedQuantity, 0, 0, 1_000_000_000),
+        suggestedUnit: text(recommendation?.suggestedUnit, 40)
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+  if (!recommendations.length) {
+    throw new ApiError(502, "invalid_ai_catalog_advice", "AI icazəli kataloq məhsullarından seçim qaytarmadı.");
+  }
+  const sources = recommendations.map((recommendation) => allowed.get(recommendation.productId));
+  return {
+    output: {
+      summary: text(advice?.summary || "Uyğun kataloq seçimləri hazırlandı. Nəticə istifadəçi təsdiqi gözləyir.", 1_000),
+      confidence: confidenceScore(advice?.confidence, recommendations.reduce((sum, item) => sum + item.fitScore, 0) / recommendations.length),
+      questions: unique((Array.isArray(advice?.questions) ? advice.questions : []).map((item) => text(item, 400)), 8),
+      warnings: unique((Array.isArray(advice?.warnings) ? advice.warnings : []).map((item) => text(item, 400)), 12),
+      recommendations
+    },
+    confidence: confidenceScore(advice?.confidence, 0.5),
+    sources,
+    warnings: unique((Array.isArray(advice?.warnings) ? advice.warnings : []).map((item) => text(item, 400)), 12)
+  };
+};
+
+export const prepareAiRfqDraftRequest = ({ input = {}, candidates = [] }) => {
+  const allowedProducts = prepareCatalogProducts(candidates);
+  const context = {
+    request: {
+      prompt: text(input.prompt, 4_000),
+      city: text(input.city, 160),
+      needDate: text(input.needDate, 10),
+      budget: text(input.budget, 160),
+      deliveryMode: text(input.deliveryMode, 200),
+      priority: text(input.priority || "Normal", 80),
+      usage: text(input.usage, 600)
+    },
+    allowedProducts
+  };
+  return {
+    context,
+    document: null,
+    sources: allowedProducts.map(catalogSource),
+    requestBytes: assertPreparedSize(context)
+  };
+};
+
+const RFQ_PRIORITIES = new Set(["Normal", "Təcili", "Tender", "Qiymət müqayisəsi"]);
+
+export const normalizeAiRfqDraft = ({ draft, allowedSources = [] }) => {
+  const allowed = new Map(allowedSources.map((source) => [source.id, source]));
+  const items = (Array.isArray(draft?.items) ? draft.items : [])
+    .slice(0, 20)
+    .map((item, index) => {
+      const requestedId = text(item?.productId, 160);
+      const source = allowed.get(requestedId);
+      const productId = source ? requestedId : "";
+      const title = source?.title || text(item?.title || `Sorğu mövqeyi ${index + 1}`, 240);
+      return {
+        productId,
+        title,
+        quantity: number(item?.quantity, 1, 0.001, 1_000_000_000),
+        unit: text(item?.unit || "ədəd", 40),
+        specs: unique((Array.isArray(item?.specs) ? item.specs : []).map((spec) => text(spec, 300)), 20)
+      };
+    })
+    .filter((item) => item.title && item.quantity > 0);
+  if (!items.length) throw new ApiError(502, "invalid_ai_rfq_draft", "AI RFQ üçün material sətri qaytarmadı.");
+  const sourceIds = unique(items.map((item) => item.productId), 20);
+  const warnings = unique((Array.isArray(draft?.warnings) ? draft.warnings : []).map((item) => text(item, 400)), 12);
+  const confidence = confidenceScore(draft?.confidence, 0.5);
+  return {
+    output: {
+      title: text(draft?.title || items[0].title, 300),
+      summary: text(draft?.summary || "RFQ qaralaması hazırlandı. Göndərməzdən əvvəl məlumatları yoxla.", 1_000),
+      confidence,
+      priority: RFQ_PRIORITIES.has(draft?.priority) ? draft.priority : "Normal",
+      needDate: /^\d{4}-\d{2}-\d{2}$/.test(String(draft?.needDate || "")) ? String(draft.needDate) : "",
+      budget: text(draft?.budget, 160),
+      deliveryMode: text(draft?.deliveryMode, 200),
+      usage: text(draft?.usage, 600),
+      note: text(draft?.note, 3_000),
+      warnings,
+      items
+    },
+    confidence,
+    sources: sourceIds.map((id) => allowed.get(id)).filter(Boolean),
+    warnings
+  };
+};
+
 export const estimateAiCost = (usage) => {
   const inputRate = boundedRate("AI_INPUT_USD_PER_1M");
   const outputRate = boundedRate("AI_OUTPUT_USD_PER_1M");
@@ -318,13 +507,19 @@ const purgeExpiredRuns = async () => {
   await query("DELETE FROM ai_runs WHERE expires_at <= now()");
 };
 
-export const generateAiEstimate = async ({ user, feature = "estimate_review", input = {}, deterministicEstimate = {} }) => {
+const runGovernedAiGeneration = async ({
+  user,
+  feature,
+  prepared,
+  promptVersion,
+  readiness,
+  generate,
+  normalize
+}) => {
   const policy = assertAiFeatureAccess(user, feature);
-  const readiness = aiReadiness();
-  if (!readiness.ready) throw new ApiError(503, "ai_not_configured", "AI smeta provayderi hələ qoşulmayıb.");
+  if (!readiness?.ready) throw new ApiError(503, "ai_not_configured", "AI provayderi hələ qoşulmayıb.");
   await purgeExpiredRuns();
 
-  const prepared = prepareAiEstimateRequest({ feature, input, deterministicEstimate });
   const limits = aiLimits();
   const reservedTokens = tokenReservation(prepared.requestBytes, limits);
   await reserveUsage(user.id, reservedTokens, limits);
@@ -349,43 +544,22 @@ export const generateAiEstimate = async ({ user, feature = "estimate_review", in
       `INSERT INTO ai_runs (
          id, user_id, company_id, feature, provider, model, status, input_hash, prompt_version,
          request_bytes, reserved_tokens, requires_approval, approval_status, expires_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, 'running', $7, 'estimate-v1', $8, $9, $10, $11, $12)`,
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'running', $7, $8, $9, $10, $11, $12, $13)`,
       [
         runId, user.id, user.companyId || null, feature, readiness.provider, readiness.model,
-        inputHash, prepared.requestBytes, reservedTokens, policy.requiresApproval,
+        inputHash, promptVersion, prepared.requestBytes, reservedTokens, policy.requiresApproval,
         policy.requiresApproval ? "pending" : "not_required", expiresAt
       ]
     );
     runCreated = true;
 
-    const providerResult = readiness.provider === "openai"
-      ? await createOpenAiEstimate({
-        requestId: runId,
-        feature,
-        context: prepared.context,
-        document: prepared.document
-      })
-      : {
-        provider: "webhook",
-        model: "xarici-webhook",
-        estimate: await generateProviderEstimate({
-          requestId: runId,
-          input: prepared.context.projectInput,
-          deterministicEstimate: prepared.context.deterministicEstimate
-        }),
-        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
-      };
+    const providerResult = await generate(runId);
 
     billableTokens = Math.max(0, Number(providerResult.usage?.totalTokens || 0));
-
-    const normalized = normalizeAiEstimate({
-      estimate: providerResult.estimate,
-      fallbackEstimate: deterministicEstimate,
-      allowedSources: prepared.sources
-    });
+    const normalized = normalize(providerResult);
     const usage = providerResult.usage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
     const cost = estimateAiCost(usage);
-    const responseBytes = Buffer.byteLength(JSON.stringify(normalized.estimate), "utf8");
+    const responseBytes = Buffer.byteLength(JSON.stringify(normalized.output), "utf8");
     await settleUsage(user.id, reservedTokens, usage.totalTokens);
     usageSettled = true;
     await query(
@@ -398,7 +572,7 @@ export const generateAiEstimate = async ({ user, feature = "estimate_review", in
       [
         runId, providerResult.provider, providerResult.model, responseBytes,
         usage.inputTokens, usage.outputTokens, usage.totalTokens, cost,
-        normalized.estimate.confidence, JSON.stringify(normalized.sources), JSON.stringify(normalized.estimate)
+        normalized.confidence, JSON.stringify(normalized.sources), JSON.stringify(normalized.output)
       ]
     );
     await recordAudit({
@@ -410,10 +584,10 @@ export const generateAiEstimate = async ({ user, feature = "estimate_review", in
     });
     return {
       runId,
-      estimate: normalized.estimate,
-      confidence: normalized.estimate.confidence,
+      output: normalized.output,
+      confidence: normalized.confidence,
       sources: normalized.sources,
-      warnings: normalized.estimate.warnings,
+      warnings: normalized.warnings,
       provider: providerResult.provider,
       model: providerResult.model,
       usage,
@@ -439,6 +613,97 @@ export const generateAiEstimate = async ({ user, feature = "estimate_review", in
     }
     throw error;
   }
+};
+
+export const generateAiEstimate = async ({ user, feature = "estimate_review", input = {}, deterministicEstimate = {} }) => {
+  const readiness = aiReadiness();
+  const prepared = prepareAiEstimateRequest({ feature, input, deterministicEstimate });
+  const result = await runGovernedAiGeneration({
+    user,
+    feature,
+    prepared,
+    promptVersion: "estimate-v1",
+    readiness,
+    generate: async (runId) => readiness.provider === "openai"
+      ? createOpenAiEstimate({
+        requestId: runId,
+        feature,
+        context: prepared.context,
+        document: prepared.document
+      })
+      : {
+        provider: "webhook",
+        model: "xarici-webhook",
+        estimate: await generateProviderEstimate({
+          requestId: runId,
+          input: prepared.context.projectInput,
+          deterministicEstimate: prepared.context.deterministicEstimate
+        }),
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+      },
+    normalize: (providerResult) => {
+      const normalized = normalizeAiEstimate({
+        estimate: providerResult.estimate,
+        fallbackEstimate: deterministicEstimate,
+        allowedSources: prepared.sources
+      });
+      return {
+        output: normalized.estimate,
+        confidence: normalized.estimate.confidence,
+        sources: normalized.sources,
+        warnings: normalized.estimate.warnings
+      };
+    }
+  });
+  const { output, ...metadata } = result;
+  return { ...metadata, estimate: output };
+};
+
+const directOpenAiReadiness = () => {
+  const configuration = openAiConfiguration();
+  return {
+    ready: configuration.ready,
+    provider: configuration.ready ? "openai" : "none",
+    model: configuration.ready ? configuration.model : null
+  };
+};
+
+export const generateAiCatalogAdvice = async ({ user, input = {}, candidates = [] }) => {
+  const feature = "catalog_enrichment";
+  const prepared = prepareAiCatalogAdviceRequest({ input, candidates });
+  const result = await runGovernedAiGeneration({
+    user,
+    feature,
+    prepared,
+    promptVersion: "catalog-advice-v1",
+    readiness: directOpenAiReadiness(),
+    generate: (runId) => createOpenAiCatalogAdvice({ requestId: runId, context: prepared.context }),
+    normalize: (providerResult) => normalizeAiCatalogAdvice({
+      advice: providerResult.advice,
+      allowedSources: prepared.sources
+    })
+  });
+  const { output, ...metadata } = result;
+  return { ...metadata, advice: output };
+};
+
+export const generateAiRfqDraft = async ({ user, input = {}, candidates = [] }) => {
+  const feature = "rfq_draft";
+  const prepared = prepareAiRfqDraftRequest({ input, candidates });
+  const result = await runGovernedAiGeneration({
+    user,
+    feature,
+    prepared,
+    promptVersion: "rfq-draft-v1",
+    readiness: directOpenAiReadiness(),
+    generate: (runId) => createOpenAiRfqDraft({ requestId: runId, context: prepared.context }),
+    normalize: (providerResult) => normalizeAiRfqDraft({
+      draft: providerResult.draft,
+      allowedSources: prepared.sources
+    })
+  });
+  const { output, ...metadata } = result;
+  return { ...metadata, draft: output };
 };
 
 const usageSnapshot = (row, limits) => ({

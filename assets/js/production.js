@@ -288,6 +288,14 @@
       method: "POST",
       body: JSON.stringify({ feature: "estimate_review", input, deterministicEstimate })
     }),
+    aiCatalogAdvice: (input) => request("/api/ai", {
+      method: "POST",
+      body: JSON.stringify({ feature: "catalog_enrichment", input })
+    }),
+    aiRfqDraft: (input) => request("/api/ai", {
+      method: "POST",
+      body: JSON.stringify({ feature: "rfq_draft", input })
+    }),
     aiDashboard: (scope = "mine") => request(`/api/ai?scope=${encodeURIComponent(scope)}&limit=50`),
     reviewAiRun: (runId, decision, note = "") => request("/api/ai", {
       method: "PATCH",

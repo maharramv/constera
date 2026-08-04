@@ -67,6 +67,23 @@
 
         <section class="section rfq-layout">
           <form class="rfq-form glass" data-rfq-form>
+            <div class="rfq-ai-builder rfq-wide" aria-labelledby="rfq-ai-title">
+              <div>
+                <p class="eyebrow">AI Mərhələ 2</p>
+                <h2 id="rfq-ai-title">Ehtiyacı yaz, yoxlanılan çoxməhsullu RFQ qaralaması al.</h2>
+                <p class="admin-import-status">AI yalnız ConstEra kataloqundakı real məhsulları mənbə kimi seçir. Qiymət və stok uydurulmur.</p>
+              </div>
+              <label for="rfq-ai-prompt">
+                <span class="field-label">Layihə və material ehtiyacı</span>
+                <textarea id="rfq-ai-prompt" data-rfq-ai-prompt rows="4" maxlength="4000" placeholder="məsələn: Bakıdakı 120 m² villa üçün sement, armatur və suvaq materialları; çatdırılma lazımdır"></textarea>
+              </label>
+              <div class="admin-actions">
+                <button class="button button-primary" type="button" data-rfq-ai-generate>AI qaralaması hazırla</button>
+                <a class="button button-outline" href="login.html?next=rfq.html">Hesaba daxil ol</a>
+              </div>
+              <div class="rfq-ai-result" data-rfq-ai-result hidden></div>
+              <p class="admin-import-status" data-rfq-ai-status role="status" aria-live="polite"></p>
+            </div>
             <label class="form-field">
               <span class="field-label">Məhsul / paket / xidmət / avadanlıq</span>
               <select name="product" data-product-select></select>
