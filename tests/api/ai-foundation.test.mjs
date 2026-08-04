@@ -5,14 +5,18 @@ import {
   estimateAiCost,
   normalizeAiCatalogAdvice,
   normalizeAiEstimate,
+  normalizeAiOfferComparison,
   normalizeAiRfqDraft,
   prepareAiCatalogAdviceRequest,
   prepareAiEstimateRequest,
+  prepareAiOfferComparisonRequest,
   prepareAiRfqDraftRequest
 } from "../../api/_lib/ai-foundation.js";
+import { parseLeadTimeDays, rankRfqOffers } from "../../api/_lib/ai-offer-comparison.js";
 import {
   createOpenAiCatalogAdvice,
   createOpenAiEstimate,
+  createOpenAiOfferComparison,
   createOpenAiRfqDraft,
   openAiConfiguration
 } from "../../api/_lib/openai.js";
@@ -37,6 +41,11 @@ test("AI rol siyasəti smeta, kataloq məsləhəti və RFQ qaralamasını müşt
   assert.equal(assertAiFeatureAccess({ role: "customer" }, "estimate_review").requiresApproval, true);
   assert.equal(assertAiFeatureAccess({ role: "customer" }, "catalog_enrichment").requiresApproval, true);
   assert.equal(assertAiFeatureAccess({ role: "customer" }, "rfq_draft").requiresApproval, true);
+  assert.equal(assertAiFeatureAccess({ role: "customer" }, "offer_comparison").requiresApproval, true);
+  assert.throws(
+    () => assertAiFeatureAccess({ role: "supplier" }, "offer_comparison"),
+    (error) => error?.code === "ai_permission_denied"
+  );
 });
 
 test("AI konteksti xam obyekt əvəzinə məhdud layihə və təsdiqli mənbə siyahısı yaradır", () => {
@@ -146,6 +155,86 @@ test("AI RFQ normallaşdırması kataloq adını qoruyur və sərbəst mövqeyə
   assert.equal(normalized.output.items[0].title, "Norm Sement CEM II 40 kq");
   assert.equal(normalized.output.items[1].productId, "");
   assert.equal(normalized.output.priority, "Təcili");
+});
+
+test("RFQ təklifləri qiymət, müddət, şərt və təchizatçı göstəricisi ilə deterministik sıralanır", () => {
+  assert.equal(parseLeadTimeDays("2-3 həftə"), 21);
+  assert.equal(parseLeadTimeDays("36 saat"), 2);
+  const ranked = rankRfqOffers({
+    offers: [
+      {
+        id: "off-a", supplier_id: "sup-a", supplier_name: "A Təchizatçı",
+        price_amount: 1_000, price_text: "1000 AZN", currency: "AZN",
+        lead_time: "2 gün", delivery: "Daxildir", warranty: "12 ay", note: "Stok təsdiqlənsin", status: "submitted"
+      },
+      {
+        id: "off-b", supplier_id: "sup-b", supplier_name: "B Təchizatçı",
+        price_amount: 980, price_text: "980 USD", currency: "USD",
+        lead_time: "1 gün", delivery: "", warranty: "", note: "", status: "submitted"
+      },
+      {
+        id: "off-c", supplier_id: "sup-c", supplier_name: "C Təchizatçı",
+        price_amount: 1_040, price_text: "1040 AZN", currency: "AZN",
+        lead_time: "7 gün", delivery: "Daxildir", warranty: "6 ay", note: "", status: "submitted"
+      }
+    ],
+    performanceBySupplier: new Map([
+      ["sup-a", { score: 88, grade: "A" }],
+      ["sup-b", { score: 95, grade: "A+" }],
+      ["sup-c", { score: 65, grade: "C" }]
+    ])
+  });
+  assert.equal(ranked.recommendedOfferId, "off-a");
+  assert.equal(ranked.offers.find((offer) => offer.id === "off-b").eligible, false);
+  assert.match(ranked.warnings.join(" "), /Fərqli valyuta/);
+});
+
+test("AI təklif müqayisəsi yalnız serverin icazə verdiyi təklifləri və faktları saxlayır", () => {
+  const prepared = prepareAiOfferComparisonRequest({
+    comparison: {
+      rfq: { id: "rfq-1", title: "Sement təchizatı", status: "Təklif alındı", acceptedOfferId: "" },
+      items: [{ id: "item-1", title: "Sement", quantity: "100 kisə" }],
+      deterministicRecommendedOfferId: "off-a",
+      warnings: ["Çatdırılma şərtini yoxla."],
+      offers: [
+        {
+          id: "off-a", supplierId: "sup-a", supplier: "A Təchizatçı", priceAmount: 1_000,
+          price: "1000 AZN", currency: "AZN", leadTime: "2 gün", delivery: "Daxildir",
+          warranty: "12 ay", status: "submitted", eligible: true, deterministicScore: 91,
+          deterministicRank: 1, strengths: ["Ən aşağı qiymət"], risks: []
+        },
+        {
+          id: "off-b", supplierId: "sup-b", supplier: "B Təchizatçı", priceAmount: 1_100,
+          price: "1100 AZN", currency: "AZN", leadTime: "1 gün", delivery: "Ayrıca",
+          warranty: "", status: "submitted", eligible: true, deterministicScore: 80,
+          deterministicRank: 2, strengths: ["Qısa müddət"], risks: ["Zəmanət göstərilməyib"]
+        }
+      ]
+    }
+  });
+  const normalized = normalizeAiOfferComparison({
+    comparison: {
+      summary: "A təklifi balanslıdır.",
+      confidence: 0.84,
+      decision: "recommend",
+      recommendedOfferId: "invented-offer",
+      warnings: [],
+      questions: ["Stoku təsdiqləyin."],
+      rankedOffers: [
+        { offerId: "invented-offer", score: 1, reason: "Uydurma", strengths: [], risks: [] },
+        { offerId: "off-a", score: 0.9, reason: "Qiymət və şərtlər balanslıdır.", strengths: ["Uyğundur"], risks: [] }
+      ]
+    },
+    allowedSources: prepared.sources,
+    lockedOfferId: prepared.lockedOfferId,
+    deterministicRecommendedOfferId: prepared.deterministicRecommendedOfferId,
+    deterministicWarnings: prepared.warnings
+  });
+  assert.equal(normalized.output.recommendedOfferId, "off-a");
+  assert.equal(normalized.output.rankedOffers.length, 2);
+  assert.equal(normalized.output.rankedOffers[0].price, "1000 AZN");
+  assert.equal(normalized.sources.every((source) => source.rfqId === "rfq-1"), true);
+  assert.match(normalized.output.warnings.join(" "), /deterministik seçimlə əvəz edildi/);
 });
 
 test("OpenAI Responses sorğusu store=false və sərt JSON Schema ilə göndərilir", async () => {
@@ -320,6 +409,51 @@ test("OpenAI kataloq və RFQ funksiyaları ayrı sərt sxemlərdən istifadə ed
       assert.deepEqual(schemaNames, ["constera_catalog_advice", "constera_rfq_draft"]);
       assert.equal(catalog.advice.recommendations[0].productId, "prd-1");
       assert.equal(rfq.draft.items[0].title, "Məhsul");
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("OpenAI təklif müqayisəsi yalnız offerId əsaslı sərt sxem qaytarır", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    await withEnvironment({ OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456" }, async () => {
+      let requestBody;
+      globalThis.fetch = async (_url, options) => {
+        requestBody = JSON.parse(options.body);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "completed",
+            model: "gpt-5.4-mini",
+            output_text: JSON.stringify({
+              summary: "İki təklif müqayisə edildi.",
+              confidence: 0.82,
+              decision: "recommend",
+              recommendedOfferId: "off-a",
+              warnings: [],
+              questions: [],
+              rankedOffers: [{
+                offerId: "off-a",
+                score: 0.87,
+                reason: "Qiymət və müddət balanslıdır.",
+                strengths: ["Qiymət uyğundur"],
+                risks: []
+              }]
+            }),
+            usage: { input_tokens: 30, output_tokens: 40, total_tokens: 70 }
+          })
+        };
+      };
+      const result = await createOpenAiOfferComparison({
+        requestId: "air-offer-comparison",
+        context: { rfq: { id: "rfq-1" }, allowedOffers: [{ id: "off-a" }] }
+      });
+      assert.equal(requestBody.text.format.name, "constera_offer_comparison");
+      assert.equal(requestBody.text.format.strict, true);
+      assert.equal(result.comparison.recommendedOfferId, "off-a");
     });
   } finally {
     globalThis.fetch = originalFetch;

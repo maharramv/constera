@@ -53,11 +53,12 @@
       <main>
         <section class="market-hero section compact-hero">
           <div class="market-hero-copy">
-            <p class="eyebrow">Sorğu paneli</p>
-            <h1>Sorğuları vəziyyət, tip və tarix üzrə idarə et.</h1>
+            <p class="eyebrow">AI Mərhələ 4 · Satınalma qərarı</p>
+            <h1>Sorğuları və təchizatçı təkliflərini bir qərar axınında idarə et.</h1>
             <p class="hero-text">
-              Hesabına aid sorğuları Neon bazasından idarə et, təchizatçı təkliflərini müqayisə et
-              və qalib təklifi təsdiqlə. Lokal nüsxə əlaqə kəsildikdə ehtiyat kimi qalır.
+              Hesabına aid sorğuları Neon bazasından idarə et, real təklifləri qiymət, müddət,
+              kommersiya şərtləri və təchizatçı performansı üzrə müqayisə et. AI yalnız tövsiyə verir;
+              qalib təklif insan təsdiqindən sonra seçilir.
             </p>
           </div>
           <div class="admin-stat-grid" data-rfq-dashboard-stats></div>
@@ -193,6 +194,7 @@
                 <h2 data-rfq-summary-title>Seçilmiş sorğu</h2>
               </div>
               <div class="admin-actions">
+                <button class="button button-primary" type="button" data-rfq-ai-compare hidden>AI ilə müqayisə et</button>
                 <button class="button button-primary" type="button" data-rfq-create-proposal hidden>Kommersiya təklifi hazırla</button>
                 <a class="button button-outline" href="proposal-detail.html" data-rfq-open-proposal hidden>Son təklifi aç</a>
                 <button class="button button-secondary" type="button" data-rfq-copy-summary>Xülasəni kopyala</button>
@@ -263,6 +265,7 @@
               </p>
             </form>
             <div class="rfq-print-sheet" data-rfq-summary-content></div>
+            <section class="rfq-ai-comparison" data-rfq-ai-comparison hidden aria-live="polite"></section>
             <p class="admin-import-status" data-rfq-summary-status>
               Sorğu cədvəlindən “Aktı aç” düyməsini seç.
             </p>

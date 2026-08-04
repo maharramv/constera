@@ -59,7 +59,7 @@ const mapScorecard = (row) => {
   };
 };
 
-export const loadSupplierPerformance = async ({ companyId = "", supplierId = "" } = {}) => {
+export const loadSupplierPerformance = async ({ companyId = "", supplierId = "", supplierIds = [] } = {}) => {
   const values = [];
   const where = ["supplier.status <> 'Arxiv'"];
   if (companyId) {
@@ -69,6 +69,13 @@ export const loadSupplierPerformance = async ({ companyId = "", supplierId = "" 
   if (supplierId) {
     values.push(supplierId);
     where.push(`supplier.id = $${values.length}`);
+  }
+  const selectedSupplierIds = [...new Set((Array.isArray(supplierIds) ? supplierIds : [])
+    .map((id) => String(id || "").trim())
+    .filter(Boolean))].slice(0, 100);
+  if (selectedSupplierIds.length) {
+    values.push(selectedSupplierIds);
+    where.push(`supplier.id = ANY($${values.length}::text[])`);
   }
   const rows = await query(
     `SELECT supplier.id, supplier.name, supplier.region,

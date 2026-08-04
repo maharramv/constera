@@ -296,6 +296,10 @@
       method: "POST",
       body: JSON.stringify({ feature: "rfq_draft", input })
     }),
+    aiOfferComparison: (rfqId) => request("/api/ai", {
+      method: "POST",
+      body: JSON.stringify({ feature: "offer_comparison", input: { rfqId } })
+    }),
     aiDashboard: (scope = "mine") => request(`/api/ai?scope=${encodeURIComponent(scope)}&limit=50`),
     reviewAiRun: (runId, decision, note = "") => request("/api/ai", {
       method: "PATCH",

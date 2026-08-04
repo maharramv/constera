@@ -4318,6 +4318,8 @@ const renderRfqDashboard = () => {
   const summaryStatus = document.querySelector("[data-rfq-summary-status]");
   const copySummaryButton = document.querySelector("[data-rfq-copy-summary]");
   const printSummaryButton = document.querySelector("[data-rfq-print-summary]");
+  const aiCompareButton = document.querySelector("[data-rfq-ai-compare]");
+  const aiComparisonResult = document.querySelector("[data-rfq-ai-comparison]");
   const createProposalButton = document.querySelector("[data-rfq-create-proposal]");
   const openProposalLink = document.querySelector("[data-rfq-open-proposal]");
   const proposalForm = document.querySelector("[data-rfq-proposal-form]");
@@ -4332,6 +4334,8 @@ const renderRfqDashboard = () => {
   let latestSummaryText = "";
   let cloudDrafts = null;
   let cloudUser = null;
+  let aiProviderReady = false;
+  const aiOfferComparisons = new Map();
 
   const typeLabels = {
     product: "Məhsul",
@@ -4552,6 +4556,77 @@ const renderRfqDashboard = () => {
     textarea.remove();
     return copied;
   };
+  const canUseAiComparison = (draft) => cloudDrafts !== null
+    && ["super_admin", "admin", "sales", "customer"].includes(cloudUser?.role)
+    && (draft.offers || []).filter((offer) => offer.status !== "withdrawn").length >= 2;
+  const renderAiOfferComparison = (draft) => {
+    if (!aiComparisonResult) return;
+    const state = aiOfferComparisons.get(draft.id);
+    if (!state?.comparison) {
+      aiComparisonResult.hidden = true;
+      aiComparisonResult.innerHTML = "";
+      return;
+    }
+    const comparison = state.comparison;
+    const approvalStatus = state.approval?.status || state.approvalStatus || "pending";
+    const recommended = (comparison.rankedOffers || [])
+      .find((offer) => offer.offerId === comparison.recommendedOfferId);
+    const accepted = (draft.offers || []).find((offer) => offer.status === "accepted");
+    const canAwardRecommended = approvalStatus === "approved"
+      && recommended
+      && !comparison.locked
+      && !accepted
+      && ["super_admin", "admin", "sales", "customer"].includes(cloudUser?.role);
+    const confidence = Number.isFinite(Number(comparison.confidence))
+      ? `${Math.round(Number(comparison.confidence) * 100)}%`
+      : "-";
+    aiComparisonResult.hidden = false;
+    aiComparisonResult.innerHTML = `
+      <div class="rfq-ai-comparison-head">
+        <div>
+          <p class="eyebrow">AI satınalma analizi</p>
+          <h3>${recommended ? `${escapeHtml(recommended.supplier)} tövsiyə olunur` : "Əlavə məlumat tələb olunur"}</h3>
+          <p>${escapeHtml(comparison.summary || "Təkliflər müqayisə edildi.")}</p>
+        </div>
+        <div class="rfq-ai-confidence" aria-label="AI nəticəsinin etibar göstəricisi">
+          <strong>${escapeHtml(confidence)}</strong>
+          <span>etibar</span>
+        </div>
+      </div>
+      <div class="rfq-ai-rank-list">
+        ${(comparison.rankedOffers || []).map((offer, index) => `
+          <article class="rfq-ai-rank-row ${offer.offerId === comparison.recommendedOfferId ? "is-recommended" : ""}">
+            <div class="rfq-ai-rank-number">${index + 1}</div>
+            <div class="rfq-ai-rank-main">
+              <strong>${escapeHtml(offer.supplier || "Təchizatçı")}</strong>
+              <span>${escapeHtml(offer.price || "Sorğu əsasında")} · ${escapeHtml(offer.leadTime || "müddət göstərilməyib")}</span>
+              <small>${escapeHtml(offer.reason || "Kommersiya şərtlərinə əsasən qiymətləndirilib.")}</small>
+            </div>
+            <div class="rfq-ai-rank-score">
+              <strong>${Math.round(Number(offer.score || 0) * 100)}</strong>
+              <span>AI balı</span>
+              <small>${Math.round(Number(offer.deterministicScore || 0))} fakt balı</small>
+            </div>
+            <div class="rfq-ai-rank-facts">
+              ${(offer.strengths || []).length ? `<p><strong>Üstünlük:</strong> ${(offer.strengths || []).map((item) => escapeHtml(item)).join(" · ")}</p>` : ""}
+              ${(offer.risks || []).length ? `<p data-type="warning"><strong>Risk:</strong> ${(offer.risks || []).map((item) => escapeHtml(item)).join(" · ")}</p>` : ""}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+      ${(comparison.warnings || []).length ? `<p class="admin-import-status" data-type="warning"><strong>Yoxlanmalı:</strong> ${(comparison.warnings || []).map((item) => escapeHtml(item)).join(" · ")}</p>` : ""}
+      ${(comparison.questions || []).length ? `<p class="admin-import-status"><strong>Təchizatçıdan soruş:</strong> ${(comparison.questions || []).map((item) => escapeHtml(item)).join(" · ")}</p>` : ""}
+      <div class="admin-actions rfq-ai-decision-actions">
+        ${approvalStatus === "pending" ? `
+          <button class="button button-primary" type="button" data-rfq-ai-review="approve" data-run-id="${escapeAttr(state.runId || "")}">Analizi təsdiqlə</button>
+          <button class="button button-outline" type="button" data-rfq-ai-review="reject" data-run-id="${escapeAttr(state.runId || "")}">Rədd et</button>
+        ` : ""}
+        ${canAwardRecommended ? `<button class="button button-primary" type="button" data-rfq-offer-select="${escapeAttr(recommended.offerId)}" data-rfq-offer-rfq="${escapeAttr(draft.id)}">Tövsiyə olunan təklifi seç</button>` : ""}
+        <span class="status-pill">${approvalStatus === "approved" ? "İnsan tərəfindən təsdiqlənib" : approvalStatus === "rejected" ? "Rədd edilib" : "İnsan təsdiqi gözləyir"}</span>
+      </div>
+      ${comparison.locked ? '<p class="admin-import-status">RFQ artıq qalib təklifə bağlanıb. Bu analiz məlumat xarakterlidir.</p>' : ""}
+    `;
+  };
   const renderSummaryPanel = (draft) => {
     if (!summaryPanel || !summaryContent || !draft) return;
     const offers = Array.isArray(draft.offers) ? draft.offers : [];
@@ -4567,6 +4642,13 @@ const renderRfqDashboard = () => {
     summaryPanel.hidden = false;
     if (proposalForm && proposalForm.elements.rfqId?.value !== draft.id) proposalForm.hidden = true;
     if (createProposalButton) createProposalButton.hidden = !canCreateProposal;
+    if (aiCompareButton) {
+      const canCompare = canUseAiComparison(draft);
+      aiCompareButton.hidden = !canCompare;
+      aiCompareButton.disabled = canCompare && !aiProviderReady;
+      aiCompareButton.textContent = aiOfferComparisons.has(draft.id) ? "AI müqayisəsini yenilə" : "AI ilə müqayisə et";
+      aiCompareButton.title = canCompare && !aiProviderReady ? "OpenAI bağlantısı hazır deyil" : "";
+    }
     if (openProposalLink) {
       openProposalLink.hidden = !latestProposal?.id;
       openProposalLink.href = latestProposal?.id
@@ -4620,8 +4702,14 @@ const renderRfqDashboard = () => {
         `}
       </div>
     `;
+    renderAiOfferComparison(draft);
     if (summaryStatus) {
-      summaryStatus.textContent = latestProposal
+      const aiState = aiOfferComparisons.get(draft.id);
+      summaryStatus.textContent = aiState?.comparison
+        ? aiState.approval?.status === "approved"
+          ? "AI müqayisəsi insan tərəfindən təsdiqlənib. Qərardan əvvəl qiymət və şərtləri son dəfə yoxla."
+          : "AI müqayisəsi hazırdır. Qalib seçimindən əvvəl nəticəni təsdiqlə və ya rədd et."
+        : latestProposal
         ? `${latestProposal.documentNumber} sənədi hazırdır. Açıb PDF kimi saxlaya və ya qəbul edə bilərsən.`
         : canCreateProposal
           ? "Təkliflər müqayisə edildi. İndi kommersiya təklifi yaradıb müştəriyə göndər."
@@ -4892,6 +4980,20 @@ const renderRfqDashboard = () => {
       if (submitButton) submitButton.disabled = false;
     }
   });
+  const refreshAiComparisonHistory = async () => {
+    if (!window.ConstEraAPI?.aiDashboard) return;
+    const response = await window.ConstEraAPI.aiDashboard("mine");
+    aiProviderReady = Boolean(response.data?.readiness?.structuredOutput);
+    for (const run of response.data?.runs || []) {
+      if (run.feature !== "offer_comparison" || !run.rfqId || !run.output || aiOfferComparisons.has(run.rfqId)) continue;
+      aiOfferComparisons.set(run.rfqId, {
+        runId: run.id,
+        comparison: run.output,
+        sources: run.sources || [],
+        approval: { required: true, status: run.approvalStatus || "pending" }
+      });
+    }
+  };
   const refreshCloudRfqs = async () => {
     if (!cloudUser || !window.ConstEraAPI?.rfqs) return;
     const result = await window.ConstEraAPI.rfqs();
@@ -4910,6 +5012,9 @@ const renderRfqDashboard = () => {
         return;
       }
       if (offerPanel) offerPanel.hidden = cloudUser.role === "customer";
+      await refreshAiComparisonHistory().catch(() => {
+        aiProviderReady = false;
+      });
       await refreshCloudRfqs();
       if (offerStatus && cloudUser.role !== "customer") {
         offerStatus.textContent = `${cloudUser.name} hesabı Neon təklif moduluna qoşuldu.`;
@@ -5037,7 +5142,53 @@ const renderRfqDashboard = () => {
     });
     render();
   });
-  summaryContent?.addEventListener("click", async (event) => {
+  summaryPanel?.addEventListener("click", async (event) => {
+    const compareButton = event.target.closest("[data-rfq-ai-compare]");
+    if (compareButton) {
+      const draft = getDrafts().find((item) => item.id === selectedSummaryId);
+      if (!draft || !window.ConstEraAPI?.aiOfferComparison || !canUseAiComparison(draft)) return;
+      compareButton.disabled = true;
+      if (summaryStatus) summaryStatus.textContent = "Təkliflərin real qiymətləri, şərtləri və təchizatçı göstəriciləri AI ilə müqayisə olunur...";
+      try {
+        const response = await window.ConstEraAPI.aiOfferComparison(draft.id);
+        aiOfferComparisons.set(draft.id, response.data || {});
+        renderSummaryPanel(draft);
+        if (summaryStatus) summaryStatus.textContent = "AI müqayisəsi hazırdır. Nəticəni yoxlayıb təsdiqlə və ya rədd et.";
+      } catch (error) {
+        if (summaryStatus) summaryStatus.textContent = error.message || "AI müqayisəsi hazırlanmadı.";
+        compareButton.disabled = !aiProviderReady;
+      }
+      return;
+    }
+    const reviewButton = event.target.closest("[data-rfq-ai-review]");
+    if (reviewButton && window.ConstEraAPI?.reviewAiRun) {
+      const draft = getDrafts().find((item) => item.id === selectedSummaryId);
+      const state = draft ? aiOfferComparisons.get(draft.id) : null;
+      if (!draft || !state) return;
+      const decision = reviewButton.dataset.rfqAiReview === "reject" ? "reject" : "approve";
+      reviewButton.disabled = true;
+      try {
+        const response = await window.ConstEraAPI.reviewAiRun(
+          reviewButton.dataset.runId,
+          decision,
+          decision === "approve"
+            ? "İstifadəçi təklif müqayisəsini və əsas faktları yoxlayıb təsdiqlədi."
+            : "İstifadəçi təklif müqayisəsini kommersiya qərarı üçün qəbul etmədi."
+        );
+        aiOfferComparisons.set(draft.id, {
+          ...state,
+          approval: { ...state.approval, status: response.data?.approvalStatus || (decision === "approve" ? "approved" : "rejected") }
+        });
+        renderSummaryPanel(draft);
+        if (summaryStatus) summaryStatus.textContent = decision === "approve"
+          ? "AI analizi təsdiqləndi. Tövsiyə olunan təklifi seçməzdən əvvəl kommersiya şərtlərini son dəfə yoxla."
+          : "AI analizi rədd edildi. Yeni müqayisə yarada və ya təklifləri əl ilə qiymətləndirə bilərsən.";
+      } catch (error) {
+        if (summaryStatus) summaryStatus.textContent = error.message || "AI qərarı saxlanmadı.";
+        reviewButton.disabled = false;
+      }
+      return;
+    }
     const button = event.target.closest("[data-rfq-offer-select]");
     if (!button) return;
     const draft = getDrafts().find((item) => item.id === button.dataset.rfqOfferRfq);

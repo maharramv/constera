@@ -3,6 +3,7 @@ import { requireRole } from "./_lib/auth.js";
 import { syncRfqLead } from "./_lib/crm.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "./_lib/http.js";
+import { queueNotification } from "./_lib/notifications.js";
 import { acceptRfqOffer } from "./_lib/offer-selection.js";
 import { oneOf, parsePriceAmount, text } from "./_lib/validation.js";
 

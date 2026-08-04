@@ -30,7 +30,8 @@
     estimate_review: "Smeta yoxlaması",
     estimate_document: "Smeta sənədi",
     catalog_enrichment: "Kataloq zənginləşdirilməsi",
-    rfq_draft: "RFQ qaralaması"
+    rfq_draft: "RFQ qaralaması",
+    offer_comparison: "Təklif müqayisəsi"
   };
   const approvalLabels = {
     pending: "Təsdiq gözləyir",

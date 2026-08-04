@@ -738,3 +738,114 @@ test("müqayisəli kommersiya təklifi mobil və desktopda qəbul axınını tam
     });
   }
 });
+
+test("AI təklif müqayisəsi mobil və desktop görünüşdə insan təsdiqini tələb edir", async ({ page }, testInfo) => {
+  const rfq = {
+    id: "rfq-ai-layout",
+    customer_id: "customer-layout",
+    rfq_type: "product",
+    title: "Sement təchizatı",
+    company_name: "Test İnşaat MMC",
+    contact: "Müştəri · +994 50 000 00 00",
+    city: "Bakı",
+    status: "Təklif alındı",
+    priority: "Qiymət müqayisəsi",
+    items: [{ id: "item-ai-layout", title: "Norm sement 40 kq", quantity: "100 kisə", specs: [] }],
+    offers: [
+      {
+        id: "offer-ai-a", supplierId: "supplier-a", supplier: "Təchizatçı A",
+        priceAmount: 1_000, price: "1000 AZN", currency: "AZN", leadTime: "2 gün",
+        delivery: "Daxildir", warranty: "12 ay", note: "Stok təsdiqlənsin", status: "submitted"
+      },
+      {
+        id: "offer-ai-b", supplierId: "supplier-b", supplier: "Təchizatçı B",
+        priceAmount: 1_080, price: "1080 AZN", currency: "AZN", leadTime: "1 gün",
+        delivery: "Ayrıca", warranty: "6 ay", note: "", status: "submitted"
+      }
+    ],
+    proposals: []
+  };
+  const comparisonResponse = {
+    runId: "air-layout-comparison",
+    comparison: {
+      summary: "A təklifi qiymət, çatdırılma və zəmanət balansına görə daha uyğundur.",
+      confidence: 0.86,
+      decision: "recommend",
+      recommendedOfferId: "offer-ai-a",
+      locked: false,
+      humanDecisionRequired: true,
+      warnings: ["Stok sifarişdən əvvəl təsdiqlənməlidir."],
+      questions: ["Qiymətin etibarlılıq müddəti neçə gündür?"],
+      rankedOffers: [
+        {
+          offerId: "offer-ai-a", supplierId: "supplier-a", supplier: "Təchizatçı A",
+          priceAmount: 1_000, price: "1000 AZN", currency: "AZN", leadTime: "2 gün",
+          delivery: "Daxildir", warranty: "12 ay", status: "submitted", supplierScore: 88,
+          deterministicScore: 91, score: 0.9, reason: "Ümumi kommersiya şərtləri daha balanslıdır.",
+          strengths: ["Ən aşağı qiymət", "Çatdırılma daxildir"], risks: ["Stok ayrıca təsdiqlənməlidir"]
+        },
+        {
+          offerId: "offer-ai-b", supplierId: "supplier-b", supplier: "Təchizatçı B",
+          priceAmount: 1_080, price: "1080 AZN", currency: "AZN", leadTime: "1 gün",
+          delivery: "Ayrıca", warranty: "6 ay", status: "submitted", supplierScore: 80,
+          deterministicScore: 82, score: 0.8, reason: "Müddət qısadır, lakin yekun xərc açıq deyil.",
+          strengths: ["Qısa müddət"], risks: ["Çatdırılma ayrıca hesablanır"]
+        }
+      ]
+    },
+    sources: [],
+    approval: { required: true, status: "pending" }
+  };
+
+  await page.route("**/api/auth?action=session", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ authenticated: true, user: { id: "customer-layout", role: "customer", name: "Müştəri" } })
+  }));
+  await page.route("**/api/rfqs?limit=500", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ok: true, data: [rfq] })
+  }));
+  await page.route("**/api/ai**", async (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { readiness: { structuredOutput: true }, runs: [] } })
+      });
+    }
+    if (route.request().method() === "PATCH") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { id: "air-layout-comparison", approvalStatus: "approved" } })
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: comparisonResponse })
+    });
+  });
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/rfq-dashboard.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-rfq-dashboard-rows] tr")).toHaveCount(1);
+    await page.locator("[data-rfq-summary]").click();
+    await expect(page.locator("[data-rfq-ai-compare]")).toBeVisible();
+    await page.locator("[data-rfq-ai-compare]").click();
+    await expect(page.locator("[data-rfq-ai-comparison]")).toBeVisible();
+    await expect(page.locator(".rfq-ai-rank-row")).toHaveCount(2);
+    await expect(page.locator("[data-rfq-offer-select]")).toHaveCount(0);
+    await page.locator('[data-rfq-ai-review="approve"]').click();
+    await expect(page.locator("[data-rfq-offer-select]")).toBeVisible();
+    const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow, `AI RFQ ${viewport.width}: horizontal overflow`).toBeLessThanOrEqual(0);
+    await testInfo.attach(`ai-offer-comparison-${viewport.width}.png`, {
+      body: await page.screenshot({ fullPage: true, animations: "disabled" }),
+      contentType: "image/png"
+    });
+  }
+});

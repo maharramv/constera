@@ -2,3 +2,147 @@
   border-color: rgba(15, 143, 111, 0.68);
   background: rgba(15, 143, 111, 0.12);
 }
+
+.rfq-ai-comparison {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+}
+
+.rfq-ai-comparison[hidden] {
+  display: none;
+}
+
+.rfq-ai-comparison-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 20px;
+  align-items: start;
+}
+
+.rfq-ai-comparison-head h3,
+.rfq-ai-comparison-head p {
+  margin: 0;
+}
+
+.rfq-ai-comparison-head h3 {
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+}
+
+.rfq-ai-comparison-head p:not(.eyebrow) {
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.rfq-ai-confidence {
+  display: grid;
+  place-items: center;
+  min-height: 82px;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+
+.rfq-ai-confidence strong {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  color: #f6d78d;
+}
+
+.rfq-ai-confidence span,
+.rfq-ai-rank-score :is(span, small) {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.rfq-ai-rank-list {
+  display: grid;
+}
+
+.rfq-ai-rank-row {
+  display: grid;
+  grid-template-columns: 34px minmax(180px, 1fr) 84px minmax(220px, 1.35fr);
+  gap: 14px;
+  align-items: start;
+  border-top: 1px solid var(--line);
+  padding: 16px 8px;
+}
+
+.rfq-ai-rank-row.is-recommended {
+  box-shadow: inset 3px 0 0 rgba(212, 166, 79, 0.82);
+  background: rgba(212, 166, 79, 0.07);
+}
+
+.rfq-ai-rank-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: #f6d78d;
+  font-weight: 800;
+}
+
+.rfq-ai-rank-main,
+.rfq-ai-rank-score,
+.rfq-ai-rank-facts {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rfq-ai-rank-main span,
+.rfq-ai-rank-main small,
+.rfq-ai-rank-facts p {
+  color: var(--muted);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.rfq-ai-rank-score {
+  text-align: center;
+}
+
+.rfq-ai-rank-score > strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.rfq-ai-rank-facts p {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.rfq-ai-rank-facts p[data-type="warning"] {
+  color: #f0b4a9;
+}
+
+@media (max-width: 760px) {
+  .rfq-ai-comparison-head {
+    grid-template-columns: minmax(0, 1fr) 76px;
+    gap: 12px;
+  }
+
+  .rfq-ai-confidence {
+    min-height: 72px;
+  }
+
+  .rfq-ai-rank-row {
+    grid-template-columns: 34px minmax(0, 1fr) 70px;
+    gap: 10px;
+    padding: 14px 4px;
+  }
+
+  .rfq-ai-rank-facts {
+    grid-column: 2 / -1;
+  }
+
+  .rfq-ai-decision-actions .button {
+    width: 100%;
+  }
+}

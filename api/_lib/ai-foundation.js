@@ -5,6 +5,7 @@ import { ApiError } from "./http.js";
 import {
   createOpenAiCatalogAdvice,
   createOpenAiEstimate,
+  createOpenAiOfferComparison,
   createOpenAiRfqDraft,
   openAiConfiguration
 } from "./openai.js";
@@ -12,12 +13,14 @@ import { generateProviderEstimate } from "./provider-adapters.js";
 
 const allRoles = ["super_admin", "admin", "sales", "supplier", "customer"];
 const elevatedRoles = ["super_admin", "admin"];
+const procurementRoles = ["super_admin", "admin", "sales", "customer"];
 
 export const AI_FEATURE_POLICIES = Object.freeze({
   estimate_review: Object.freeze({ roles: allRoles, requiresApproval: true, label: "Smeta yoxlaması" }),
   estimate_document: Object.freeze({ roles: allRoles, requiresApproval: true, label: "Smeta sənədinin oxunması" }),
   catalog_enrichment: Object.freeze({ roles: allRoles, requiresApproval: true, label: "AI kataloq məsləhətçisi" }),
-  rfq_draft: Object.freeze({ roles: allRoles, requiresApproval: true, label: "RFQ qaralaması" })
+  rfq_draft: Object.freeze({ roles: allRoles, requiresApproval: true, label: "RFQ qaralaması" }),
+  offer_comparison: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Təklif müqayisəsi" })
 });
 
 const boundedInteger = (name, fallback, minimum, maximum) => {
@@ -420,6 +423,178 @@ export const normalizeAiRfqDraft = ({ draft, allowedSources = [] }) => {
   };
 };
 
+const sanitizeComparisonOffer = (offer, rfqId) => ({
+  id: text(offer?.id, 160),
+  rfqId: text(rfqId, 160),
+  supplierId: text(offer?.supplierId, 160),
+  supplier: text(offer?.supplier || "Təchizatçı", 240),
+  supplierScore: number(offer?.supplierScore, 70, 0, 100),
+  supplierGrade: text(offer?.supplierGrade, 12),
+  supplierResponseTime: text(offer?.supplierResponseTime, 160),
+  priceAmount: offer?.priceAmount === null || offer?.priceAmount === undefined
+    ? null
+    : number(offer.priceAmount, 0, 0),
+  price: text(offer?.price || "Sorğu əsasında", 160),
+  currency: text(offer?.currency || "AZN", 12),
+  leadTime: text(offer?.leadTime, 160),
+  leadTimeDays: offer?.leadTimeDays === null || offer?.leadTimeDays === undefined
+    ? null
+    : number(offer.leadTimeDays, 0, 0, 36_500),
+  delivery: text(offer?.delivery, 300),
+  warranty: text(offer?.warranty, 200),
+  note: text(offer?.note, 2_000),
+  status: text(offer?.status || "submitted", 40),
+  completeness: number(offer?.completeness, 0, 0, 100),
+  eligible: Boolean(offer?.eligible),
+  deterministicScore: number(offer?.deterministicScore, 0, 0, 100),
+  deterministicRank: number(offer?.deterministicRank, 0, 0, 100),
+  strengths: unique((Array.isArray(offer?.strengths) ? offer.strengths : []).map((item) => text(item, 300)), 8),
+  risks: unique((Array.isArray(offer?.risks) ? offer.risks : []).map((item) => text(item, 300)), 10)
+});
+
+export const prepareAiOfferComparisonRequest = ({ comparison = {} }) => {
+  const rfqId = text(comparison?.rfq?.id, 160);
+  const allowedOffers = (Array.isArray(comparison?.offers) ? comparison.offers : [])
+    .slice(0, 30)
+    .map((offer) => sanitizeComparisonOffer(offer, rfqId))
+    .filter((offer) => offer.id && offer.supplier);
+  if (allowedOffers.length < 2) {
+    throw new ApiError(409, "offer_comparison_insufficient", "AI müqayisəsi üçün ən azı iki təchizatçı təklifi lazımdır.");
+  }
+  const lockedOfferId = text(comparison?.rfq?.acceptedOfferId, 160);
+  const deterministicRecommendedOfferId = text(comparison?.deterministicRecommendedOfferId, 160);
+  const context = {
+    rfq: {
+      id: rfqId,
+      type: text(comparison?.rfq?.type, 80),
+      title: text(comparison?.rfq?.title, 300),
+      company: text(comparison?.rfq?.company, 200),
+      city: text(comparison?.rfq?.city, 160),
+      address: text(comparison?.rfq?.address, 500),
+      priority: text(comparison?.rfq?.priority || "Normal", 80),
+      needDate: text(comparison?.rfq?.needDate, 40),
+      budget: text(comparison?.rfq?.budget, 160),
+      deliveryMode: text(comparison?.rfq?.deliveryMode, 200),
+      usage: text(comparison?.rfq?.usage, 600),
+      note: text(comparison?.rfq?.note, 3_000),
+      status: text(comparison?.rfq?.status, 80)
+    },
+    items: (Array.isArray(comparison?.items) ? comparison.items : []).slice(0, 20).map((item) => ({
+      id: text(item?.id, 160),
+      kind: text(item?.kind, 80),
+      itemId: text(item?.itemId, 160),
+      title: text(item?.title, 300),
+      quantity: text(item?.quantity, 160),
+      unit: text(item?.unit, 40),
+      specs: unique((Array.isArray(item?.specs) ? item.specs : []).map((spec) => text(spec, 300)), 20)
+    })),
+    lockedOfferId,
+    deterministicRecommendedOfferId,
+    deterministicWarnings: unique((Array.isArray(comparison?.warnings) ? comparison.warnings : [])
+      .map((item) => text(item, 400)), 12),
+    allowedOffers
+  };
+  return {
+    context,
+    document: null,
+    sources: allowedOffers,
+    lockedOfferId,
+    deterministicRecommendedOfferId,
+    warnings: context.deterministicWarnings,
+    requestBytes: assertPreparedSize(context, 180_000)
+  };
+};
+
+export const normalizeAiOfferComparison = ({
+  comparison,
+  allowedSources = [],
+  lockedOfferId = "",
+  deterministicRecommendedOfferId = "",
+  deterministicWarnings = []
+}) => {
+  const allowed = new Map(allowedSources.map((source) => [source.id, source]));
+  const aiRows = new Map();
+  const aiOrder = new Map();
+  (Array.isArray(comparison?.rankedOffers) ? comparison.rankedOffers : []).slice(0, 30).forEach((row, index) => {
+    const offerId = text(row?.offerId, 160);
+    if (!allowed.has(offerId) || aiRows.has(offerId)) return;
+    aiRows.set(offerId, row);
+    aiOrder.set(offerId, index);
+  });
+  const rankedOffers = [...allowed.values()]
+    .sort((left, right) => {
+      const leftOrder = aiOrder.has(left.id) ? aiOrder.get(left.id) : 1_000 + Number(left.deterministicRank || 0);
+      const rightOrder = aiOrder.has(right.id) ? aiOrder.get(right.id) : 1_000 + Number(right.deterministicRank || 0);
+      return leftOrder - rightOrder;
+    })
+    .map((source) => {
+      const aiRow = aiRows.get(source.id) || {};
+      return {
+        offerId: source.id,
+        supplierId: source.supplierId,
+        supplier: source.supplier,
+        priceAmount: source.priceAmount,
+        price: source.price,
+        currency: source.currency,
+        leadTime: source.leadTime,
+        delivery: source.delivery,
+        warranty: source.warranty,
+        status: source.status,
+        supplierScore: source.supplierScore,
+        deterministicScore: source.deterministicScore,
+        score: confidenceScore(aiRow?.score, Number(source.deterministicScore || 0) / 100),
+        reason: text(aiRow?.reason || "Qiymət, müddət, kommersiya şərtləri və təchizatçı performansı birlikdə qiymətləndirilib.", 800),
+        strengths: unique([
+          ...(Array.isArray(source.strengths) ? source.strengths : []),
+          ...(Array.isArray(aiRow?.strengths) ? aiRow.strengths.map((item) => text(item, 300)) : [])
+        ], 10),
+        risks: unique([
+          ...(Array.isArray(source.risks) ? source.risks : []),
+          ...(Array.isArray(aiRow?.risks) ? aiRow.risks.map((item) => text(item, 300)) : [])
+        ], 12)
+      };
+    });
+
+  const eligible = new Set(allowedSources.filter((source) => source.eligible).map((source) => source.id));
+  const requestedRecommendation = text(comparison?.recommendedOfferId, 160);
+  const fallbackRecommendation = eligible.has(deterministicRecommendedOfferId) ? deterministicRecommendedOfferId : "";
+  const recommendedOfferId = lockedOfferId && allowed.has(lockedOfferId)
+    ? lockedOfferId
+    : eligible.has(requestedRecommendation)
+      ? requestedRecommendation
+      : fallbackRecommendation;
+  const warnings = unique([
+    ...deterministicWarnings.map((item) => text(item, 400)),
+    ...(Array.isArray(comparison?.warnings) ? comparison.warnings.map((item) => text(item, 400)) : []),
+    requestedRecommendation && requestedRecommendation !== recommendedOfferId
+      ? "AI-nin icazəsiz və ya seçilə bilməyən təklif tövsiyəsi deterministik seçimlə əvəz edildi."
+      : ""
+  ], 16);
+  const decision = recommendedOfferId
+    ? comparison?.decision === "clarify" ? "clarify" : "recommend"
+    : "no_eligible_offer";
+  const confidence = confidenceScore(comparison?.confidence, rankedOffers.length
+    ? rankedOffers.reduce((sum, offer) => sum + offer.score, 0) / rankedOffers.length
+    : 0.3);
+  return {
+    output: {
+      summary: text(comparison?.summary || "Təchizatçı təklifləri müqayisə edildi. Qərardan əvvəl riskləri və kommersiya şərtlərini yoxla.", 1_200),
+      confidence,
+      decision,
+      recommendedOfferId,
+      locked: Boolean(lockedOfferId),
+      humanDecisionRequired: true,
+      warnings,
+      questions: unique((Array.isArray(comparison?.questions) ? comparison.questions : [])
+        .map((item) => text(item, 400)), 10),
+      rankedOffers
+    },
+    confidence,
+    sources: allowedSources,
+    warnings
+  };
+};
+
 export const estimateAiCost = (usage) => {
   const inputRate = boundedRate("AI_INPUT_USD_PER_1M");
   const outputRate = boundedRate("AI_OUTPUT_USD_PER_1M");
@@ -497,7 +672,11 @@ const runSummary = (row) => ({
   reviewedBy: row.reviewed_by || null,
   reviewedAt: row.reviewed_at || null,
   reviewNote: row.review_note || "",
+  rfqId: row.rfq_id || null,
   sources: Array.isArray(row.sources) ? row.sources : [],
+  ...(row.feature === "offer_comparison" ? {
+    output: row.output && typeof row.output === "object" ? row.output : {}
+  } : {}),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   expiresAt: row.expires_at
@@ -514,7 +693,8 @@ const runGovernedAiGeneration = async ({
   promptVersion,
   readiness,
   generate,
-  normalize
+  normalize,
+  entityId = null
 }) => {
   const policy = assertAiFeatureAccess(user, feature);
   if (!readiness?.ready) throw new ApiError(503, "ai_not_configured", "AI provayderi hələ qoşulmayıb.");
@@ -543,12 +723,12 @@ const runGovernedAiGeneration = async ({
     await query(
       `INSERT INTO ai_runs (
          id, user_id, company_id, feature, provider, model, status, input_hash, prompt_version,
-         request_bytes, reserved_tokens, requires_approval, approval_status, expires_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, 'running', $7, $8, $9, $10, $11, $12, $13)`,
+         request_bytes, reserved_tokens, requires_approval, approval_status, expires_at, rfq_id
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'running', $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         runId, user.id, user.companyId || null, feature, readiness.provider, readiness.model,
         inputHash, promptVersion, prepared.requestBytes, reservedTokens, policy.requiresApproval,
-        policy.requiresApproval ? "pending" : "not_required", expiresAt
+        policy.requiresApproval ? "pending" : "not_required", expiresAt, entityId
       ]
     );
     runCreated = true;
@@ -704,6 +884,29 @@ export const generateAiRfqDraft = async ({ user, input = {}, candidates = [] }) 
   });
   const { output, ...metadata } = result;
   return { ...metadata, draft: output };
+};
+
+export const generateAiOfferComparison = async ({ user, comparison = {} }) => {
+  const feature = "offer_comparison";
+  const prepared = prepareAiOfferComparisonRequest({ comparison });
+  const result = await runGovernedAiGeneration({
+    user,
+    feature,
+    prepared,
+    promptVersion: "offer-comparison-v1",
+    readiness: directOpenAiReadiness(),
+    entityId: prepared.context.rfq.id,
+    generate: (runId) => createOpenAiOfferComparison({ requestId: runId, context: prepared.context }),
+    normalize: (providerResult) => normalizeAiOfferComparison({
+      comparison: providerResult.comparison,
+      allowedSources: prepared.sources,
+      lockedOfferId: prepared.lockedOfferId,
+      deterministicRecommendedOfferId: prepared.deterministicRecommendedOfferId,
+      deterministicWarnings: prepared.warnings
+    })
+  });
+  const { output, ...metadata } = result;
+  return { ...metadata, comparison: output };
 };
 
 const usageSnapshot = (row, limits) => ({

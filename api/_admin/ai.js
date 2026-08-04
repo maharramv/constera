@@ -1,12 +1,15 @@
 import { requireRole } from "../_lib/auth.js";
 import {
+  assertAiFeatureAccess,
   generateAiCatalogAdvice,
   generateAiEstimate,
+  generateAiOfferComparison,
   generateAiRfqDraft,
   readAiDashboard,
   reviewAiRun
 } from "../_lib/ai-foundation.js";
 import { searchAiCatalogCandidates } from "../_lib/ai-catalog.js";
+import { loadRfqOfferComparison } from "../_lib/ai-offer-comparison.js";
 import { assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { oneOf, stringList, text } from "../_lib/validation.js";
 
@@ -34,7 +37,7 @@ export default withApiErrors(async (req, res) => {
 
   const feature = oneOf(
     body.feature,
-    ["estimate_review", "catalog_enrichment", "rfq_draft"],
+    ["estimate_review", "catalog_enrichment", "rfq_draft", "offer_comparison"],
     "estimate_review",
     "AI funksiyası"
   );
@@ -49,6 +52,11 @@ export default withApiErrors(async (req, res) => {
         ? body.deterministicEstimate
         : {}
     });
+  } else if (feature === "offer_comparison") {
+    assertAiFeatureAccess(user, feature);
+    const rfqId = text(input.rfqId, { field: "Qiymət sorğusu", required: true, max: 160 });
+    const comparison = await loadRfqOfferComparison({ user, rfqId });
+    result = await generateAiOfferComparison({ user, comparison });
   } else {
     const prompt = text(input.prompt, {
       field: feature === "rfq_draft" ? "RFQ ehtiyacı" : "Kataloq ehtiyacı",
