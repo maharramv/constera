@@ -4,6 +4,14 @@
   "installCommand": "npm ci && npm run verify:deploy",
   "buildCommand": "npm run build:static",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.constera.az" }],
+      "destination": "https://constera.az/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/api/account", "destination": "/api/admin?__route=account" },
     { "source": "/api/analytics", "destination": "/api/admin?__route=analytics" },

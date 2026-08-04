@@ -38,11 +38,11 @@
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
     "fflate": "^0.8.3",
-    "read-excel-file": "^9.3.2",
+    "read-excel-file": "^9.3.5",
     "web-push": "3.6.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "esbuild": "0.28.1"
   }
 }

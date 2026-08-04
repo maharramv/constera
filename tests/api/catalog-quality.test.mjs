@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCatalogStructuralIssues } from "../../api/_lib/catalog-quality.js";
+import {
+  buildCatalogStructuralIssues,
+  catalogLinkIssueTransition,
+  hasImageFileSignature
+} from "../../api/_lib/catalog-quality.js";
 
 const product = (overrides = {}) => ({
   id: "product-1",
@@ -39,4 +43,21 @@ test("RFQ məhsulunda təsdiqsiz media xəbərdarlıqdır, satışa hazır təkl
     saleIssues.find((item) => item.issueType === "missing_image")?.severity,
     "high"
   );
+});
+
+test("şəkil imzası yanlış MIME başlığından asılı olmadan təhlükəsiz tanınır", () => {
+  assert.equal(hasImageFileSignature(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0])), true);
+  assert.equal(hasImageFileSignature(new TextEncoder().encode("<svg viewBox='0 0 1 1'></svg>")), true);
+  assert.equal(hasImageFileSignature(new TextEncoder().encode("application data")), false);
+});
+
+test("uğurlu link yoxlaması bütün köhnə şəkil xəta tiplərini bağlayır", () => {
+  assert.deepEqual(catalogLinkIssueTransition("image", { ok: true }), {
+    activeIssueType: "broken_image_url",
+    resolvedIssueTypes: ["broken_image_url", "invalid_image_content"]
+  });
+  assert.deepEqual(catalogLinkIssueTransition("image", { ok: false, contentMismatch: true }), {
+    activeIssueType: "invalid_image_content",
+    resolvedIssueTypes: ["broken_image_url"]
+  });
 });

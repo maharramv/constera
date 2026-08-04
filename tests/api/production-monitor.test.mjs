@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  productionChecks,
   productionMonitorAlertReadiness,
+  runProductionMonitor,
   sendProductionMonitorAlert
 } from "../../api/_lib/production-monitor.js";
 
@@ -65,4 +67,49 @@ test("monitor xətası qorunan webhook-a məhdud JSON hadisəsi göndərir", asy
   assert.equal(payload.event, "production_monitor_failed");
   assert.equal(payload.origin, "https://constera.az");
   assert.equal(payload.message, "catalog contract failed");
+});
+
+test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruyur", async () => {
+  const paths = productionChecks.map((item) => item.path);
+  for (const path of ["www.constera.az", "/robots.txt", "/sitemap.xml", "/service-worker.js", "/assets/icons/site.webmanifest"]) {
+    assert.equal(paths.includes(path), true, path);
+  }
+  const homepage = productionChecks.find((item) => item.path === "/");
+  assert.deepEqual(Object.keys(homepage.headers), [
+    "content-security-policy",
+    "strict-transport-security",
+    "x-content-type-options",
+    "referrer-policy"
+  ]);
+
+  const originalFetch = global.fetch;
+  global.fetch = async (url) => {
+    const path = new URL(url).pathname;
+    const check = productionChecks.find((item) => item.url === url)
+      || productionChecks.find((item) => item.path.split("?")[0] === path);
+    const body = check?.json
+      ? JSON.stringify(path === "/api/health"
+        ? { ok: true, database: "ready" }
+        : path === "/api/catalog"
+          ? { data: { products: [] } }
+          : path === "/api/integrations"
+            ? { data: { readiness: {} } }
+            : { error: { code: "authentication_required" } })
+      : String(check?.includes || "ok");
+    const headers = new Headers({
+      "content-type": check?.json ? "application/json" : "text/plain",
+      "content-security-policy": "default-src 'self'; object-src 'none'",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "strict-origin-when-cross-origin"
+    });
+    if (check?.location) headers.set("location", check.location);
+    return new Response(body, { status: check?.status || 200, headers });
+  };
+  try {
+    const result = await runProductionMonitor({ origin: "https://constera.example.test" });
+    assert.equal(result.count, productionChecks.length);
+  } finally {
+    global.fetch = originalFetch;
+  }
 });

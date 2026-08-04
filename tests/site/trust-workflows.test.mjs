@@ -27,6 +27,7 @@ test("qaytarma, geri ödəniş və daxili qeydlərin qorunması tam axına daxil
   const client = read("assets/js/enterprise.js");
   const adminClient = read("assets/js/enterprise-admin.js");
   const support = read("api/_admin/support.js");
+  const smoke = read("scripts/smoke-trust.mjs");
   const migration = read("db/migrations/021_trust_analytics_quality.sql");
 
   assert.match(order, /data-order-support/);
@@ -34,6 +35,7 @@ test("qaytarma, geri ödəniş və daxili qeydlərin qorunması tam axına daxil
   assert.match(adminClient, /approve-refund/);
   assert.match(support, /refundPayment/);
   assert.match(support, /messages\.filter\(\(message\) => !message\.internalNote\)/);
+  assert.match(smoke, /approved\.payload\?\.error\?\.code === "critical_two_factor_required"/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS refund_transactions/);
 });
 

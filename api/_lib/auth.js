@@ -33,7 +33,12 @@ const parseCookies = (header) => String(header || "").split(";").reduce((cookies
   if (separator < 0) return cookies;
   const key = part.slice(0, separator).trim();
   const value = part.slice(separator + 1).trim();
-  if (key) cookies[key] = decodeURIComponent(value);
+  if (!key) return cookies;
+  try {
+    cookies[key] = decodeURIComponent(value);
+  } catch {
+    // Zədələnmiş cookie anonim sorğunu server xətasına çevirməməlidir.
+  }
   return cookies;
 }, {});
 

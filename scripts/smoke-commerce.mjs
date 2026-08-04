@@ -157,7 +157,9 @@ try {
         taxId: applicationTaxId,
         type: "Tikinti materialları təchizatçısı",
         focus: "Avtomatik yaradılan və sonda silinən test müraciəti",
-        region: "Bakı"
+        region: "Bakı",
+        legalAccepted: true,
+        sourcePath: "/suppliers.html#supplier-application"
       }))
     }, applicationResponse);
     applicationId = applicationResponse.payload?.data?.id || "";
@@ -359,6 +361,7 @@ try {
       await query("DELETE FROM crm_leads WHERE source_type = 'order' AND source_id = $1", [convertedOrderId]);
       await query("DELETE FROM orders WHERE id = $1", [convertedOrderId]);
     }
+    await query("DELETE FROM crm_leads WHERE source_type = 'rfq' AND source_id = $1", [smokeRfqId]);
     await query("DELETE FROM rfqs WHERE id = $1", [smokeRfqId]);
   }
   const guardedRfqId = `rfq-smoke-guard-${randomUUID()}`;
@@ -407,6 +410,7 @@ try {
       "DELETE FROM audit_logs WHERE entity_type = 'offer' AND entity_id IN ($1, $2)",
       [guardedWinnerId, guardedRejectedId]
     );
+    await query("DELETE FROM crm_leads WHERE source_type = 'rfq' AND source_id = $1", [guardedRfqId]);
     await query("DELETE FROM rfqs WHERE id = $1", [guardedRfqId]);
   }
   console.log(`Məlumat keyfiyyəti: ${quality.score}%, ${quality.summary.total} real qeyd, ${quality.summary.requestGroups} RFQ qrupu.`);
@@ -445,6 +449,8 @@ try {
       deliveryMode: "pickup",
       paymentMethod: "invoice",
       note: "Bu sifariş avtomatik yaradılır və dərhal silinir.",
+      legalAccepted: true,
+      sourcePath: "/checkout.html",
       items: [{ productId: product.id, quantity: 1, unit: product.package || "ədəd" }]
     }))
   }, orderResponse);

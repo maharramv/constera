@@ -283,6 +283,13 @@ try {
     report(errors, "vercel.json", "Install mərhələsi npm ci və birdəfəlik deployment yoxlamasını işlətməlidir.");
   }
   if (!vercelConfig.functions?.["api/*.js"]) report(errors, "vercel.json", "Vercel Functions konfiqurasiyası tapılmadı.");
+  if (!vercelConfig.redirects?.some((route) => (
+    route.permanent === true
+    && route.destination === "https://constera.az/:path*"
+    && route.has?.some((condition) => condition.type === "host" && condition.value === "www.constera.az")
+  ))) {
+    report(errors, "vercel.json", "www.constera.az əsas domenə daimi yönləndirilmir.");
+  }
   const securityHeaders = new Set((vercelConfig.headers || []).flatMap((rule) =>
     (rule.headers || []).map((header) => String(header.key || "").toLowerCase())));
   ["x-content-type-options", "x-frame-options", "referrer-policy", "permissions-policy", "strict-transport-security", "content-security-policy"]

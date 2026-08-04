@@ -68,9 +68,70 @@ let tenderOrderId = "";
 let bookingId = "";
 
 try {
-  const [stockProduct] = await query(
+  let [stockProduct] = await query(
+    `SELECT product.id, product.name, product.package_text, offer.supplier_id,
+            offer.id AS offer_id, offer.minimum_order, level.reserved_quantity
+       FROM product_offers offer
+       JOIN products product
+         ON product.id = offer.product_id
+        AND product.status = 'active'
+       JOIN suppliers supplier
+         ON supplier.id = offer.supplier_id
+        AND supplier.status <> 'Arxiv'
+       JOIN warehouses warehouse
+         ON warehouse.supplier_id = offer.supplier_id
+        AND warehouse.is_default = true
+        AND warehouse.status = 'active'
+       JOIN inventory_levels level
+         ON level.warehouse_id = warehouse.id
+        AND level.product_id = product.id
+      WHERE offer.status = 'active'
+        AND offer.price_status = 'confirmed'
+        AND offer.unit_price > 0
+        AND offer.currency = 'AZN'
+        AND offer.price_verified_at >= now() - interval '30 days'
+        AND offer.stock_quantity > 0
+        AND offer.source_url ~ '^https://'
+        AND level.stock_quantity - level.reserved_quantity >= GREATEST(COALESCE(offer.minimum_order, 1), 1)
+        AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+        AND supplier.website ~ '^https://'
+        AND EXISTS (
+          SELECT 1 FROM supplier_contracts contract
+           WHERE contract.supplier_id = offer.supplier_id
+             AND contract.status = 'active'
+             AND contract.legal_confirmed = true
+             AND contract.starts_on <= current_date
+             AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+        )
+        AND EXISTS (
+          SELECT 1 FROM companies company
+           WHERE company.id = supplier.company_id
+             AND company.status = 'active'
+             AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+        )
+        AND EXISTS (
+          SELECT 1 FROM users supplier_user
+           WHERE supplier_user.company_id = supplier.company_id
+             AND supplier_user.role = 'supplier'
+             AND supplier_user.status = 'active'
+        )
+        AND EXISTS (
+          SELECT 1 FROM media_assets media
+           WHERE media.entity_type = 'product'
+             AND media.entity_id = product.id
+             AND media.status = 'active'
+             AND media.content_type LIKE 'image/%'
+             AND media.license_type IN ('own', 'supplier', 'official', 'licensed')
+             AND media.rights_status = 'verified'
+             AND (media.rights_expires_on IS NULL OR media.rights_expires_on >= current_date)
+             AND media.url ~ '^https://'
+        )
+      ORDER BY offer.is_featured DESC, offer.updated_at DESC
+      LIMIT 1`
+  );
+  if (!stockProduct) [stockProduct] = await query(
     `SELECT product.id, product.name, product.package_text, product.supplier_id,
-            level.reserved_quantity
+            NULL::text AS offer_id, NULL::numeric AS minimum_order, level.reserved_quantity
        FROM products product
        JOIN warehouses warehouse
          ON warehouse.supplier_id = product.supplier_id
@@ -90,6 +151,7 @@ try {
     throw new Error("Məhsul stokunu əsas anbar səviyyəsi ilə sinxronlaşdırmaq mümkün olmadı.");
   }
   const reservedBefore = Number(stockProduct.reserved_quantity || 0);
+  const smokeQuantity = Math.max(1, Number(stockProduct.minimum_order || 1));
 
   const orderResponse = createResponse();
   await ordersHandler({
@@ -109,7 +171,14 @@ try {
       requiredApprovals: 1,
       budgetAmount: 10_000,
       costCenter: "SMOKE-B2B",
-      items: [{ productId: stockProduct.id, quantity: 1, unit: stockProduct.package_text || "ədəd" }]
+      legalAccepted: true,
+      sourcePath: "/checkout.html",
+      items: [{
+        productId: stockProduct.id,
+        offerId: stockProduct.offer_id || undefined,
+        quantity: smokeQuantity,
+        unit: stockProduct.package_text || "ədəd"
+      }]
     })
   }, orderResponse);
   orderId = orderResponse.payload?.data?.id || "";
@@ -119,129 +188,142 @@ try {
   if (
     orderResponse.statusCode !== 201
     || !orderId
-    || !fulfillment?.id
-    || !purchaseOrder?.id
-    || purchaseOrder.status !== "draft"
-    || reservation?.status !== "active"
     || orderResponse.payload?.data?.approvalStatus !== "pending"
     || !orderResponse.payload?.data?.procurement?.id
     || orderResponse.payload?.data?.deliveryQuote?.status !== "accepted"
   ) {
     throw new Error(`Rezervli sifariş yaradılmadı: HTTP ${orderResponse.statusCode}`);
   }
+  const hasCommercialOperations = Boolean(fulfillment?.id && purchaseOrder?.id && reservation?.id);
+  if (!hasCommercialOperations) {
+    if (
+      fulfillment
+      || purchaseOrder
+      || reservation
+      || orderResponse.payload?.data?.hasPendingPrice !== true
+      || stockProduct.offer_id
+    ) {
+      throw new Error("Kommersiya yoxlamasından keçməyən sifariş təhlükəsiz sorğu rejimində qalmadı.");
+    }
+    console.log("B2B qoruması: hazır real təklif olmadığı üçün sifariş rezerv və alt-sifariş yaratmadan sorğu rejimində qaldı.");
+  } else {
+    if (purchaseOrder.status !== "draft" || reservation.status !== "active" || !stockProduct.offer_id) {
+      throw new Error("Kommersiya hazır təklif üçün rezerv və alt-sifariş ardıcıl yaradılmadı.");
+    }
 
-  const blockedConfirmation = createResponse();
-  await ordersHandler({
-    method: "PATCH",
-    headers: requestHeaders(sessionToken),
-    query: {},
-    body: jsonBody({ id: orderId, status: "confirmed" })
-  }, blockedConfirmation);
-  if (
-    blockedConfirmation.statusCode !== 409
-    || blockedConfirmation.payload?.error?.code !== "procurement_approval_required"
-  ) {
-    throw new Error("Təsdiq gözləyən sifariş bloklanmadı.");
-  }
+    const blockedConfirmation = createResponse();
+    await ordersHandler({
+      method: "PATCH",
+      headers: requestHeaders(sessionToken),
+      query: {},
+      body: jsonBody({ id: orderId, status: "confirmed" })
+    }, blockedConfirmation);
+    if (
+      blockedConfirmation.statusCode !== 409
+      || blockedConfirmation.payload?.error?.code !== "procurement_approval_required"
+    ) {
+      throw new Error("Təsdiq gözləyən sifariş bloklanmadı.");
+    }
 
-  const procurementResponse = createResponse();
-  await procurementHandler({
-    method: "PATCH",
-    headers: requestHeaders(sessionToken),
-    query: {},
-    body: jsonBody({
-      id: orderResponse.payload.data.procurement.id,
-      action: "decide",
-      decision: "approved",
-      note: "Smoke-test satınalma təsdiqi"
-    })
-  }, procurementResponse);
-  if (
-    procurementResponse.statusCode !== 200
-    || procurementResponse.payload?.data?.status !== "approved"
-  ) {
-    throw new Error(`Satınalma təsdiqi uğursuz oldu: HTTP ${procurementResponse.statusCode}`);
-  }
-  const [issuedPurchaseOrder] = await query(
-    "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
-    [orderId]
-  );
-  if (issuedPurchaseOrder?.status !== "issued") {
-    throw new Error("Satınalma təsdiqindən sonra təchizatçı alt-sifarişi göndərilmədi.");
-  }
+    const procurementResponse = createResponse();
+    await procurementHandler({
+      method: "PATCH",
+      headers: requestHeaders(sessionToken),
+      query: {},
+      body: jsonBody({
+        id: orderResponse.payload.data.procurement.id,
+        action: "decide",
+        decision: "approved",
+        note: "Smoke-test satınalma təsdiqi"
+      })
+    }, procurementResponse);
+    if (
+      procurementResponse.statusCode !== 200
+      || procurementResponse.payload?.data?.status !== "approved"
+    ) {
+      throw new Error(`Satınalma təsdiqi uğursuz oldu: HTTP ${procurementResponse.statusCode}`);
+    }
+    const [issuedPurchaseOrder] = await query(
+      "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
+      [orderId]
+    );
+    if (issuedPurchaseOrder?.status !== "issued") {
+      throw new Error("Satınalma təsdiqindən sonra təchizatçı alt-sifarişi göndərilmədi.");
+    }
 
-  const confirmedOrder = createResponse();
-  await ordersHandler({
-    method: "PATCH",
-    headers: requestHeaders(sessionToken),
-    query: {},
-    body: jsonBody({ id: orderId, status: "confirmed", historyNote: "Smoke-test təsdiqi" })
-  }, confirmedOrder);
-  if (
-    confirmedOrder.statusCode !== 200
-    || confirmedOrder.payload?.data?.status !== "confirmed"
-    || confirmedOrder.payload?.data?.approvalStatus !== "approved"
-  ) {
-    throw new Error(`Təsdiqdən sonrakı sifariş keçidi uğursuz oldu: HTTP ${confirmedOrder.statusCode}`);
-  }
-  console.log("B2B: logistika təklifi, satınalma bloku və təsdiqdən sonrakı sifariş keçidi yoxlanıldı.");
+    const confirmedOrder = createResponse();
+    await ordersHandler({
+      method: "PATCH",
+      headers: requestHeaders(sessionToken),
+      query: {},
+      body: jsonBody({ id: orderId, status: "confirmed", historyNote: "Smoke-test təsdiqi" })
+    }, confirmedOrder);
+    if (
+      confirmedOrder.statusCode !== 200
+      || confirmedOrder.payload?.data?.status !== "confirmed"
+      || confirmedOrder.payload?.data?.approvalStatus !== "approved"
+    ) {
+      throw new Error(`Təsdiqdən sonrakı sifariş keçidi uğursuz oldu: HTTP ${confirmedOrder.statusCode}`);
+    }
+    console.log("B2B: logistika təklifi, satınalma bloku və təsdiqdən sonrakı sifariş keçidi yoxlanıldı.");
 
-  const acceptedResponse = createResponse();
-  await fulfillmentHandler({
-    method: "PATCH",
-    headers: requestHeaders(sessionToken),
-    query: {},
-    body: jsonBody({ id: fulfillment.id, status: "accepted", note: "Smoke-test qəbulu" })
-  }, acceptedResponse);
-  if (acceptedResponse.statusCode !== 200 || acceptedResponse.payload?.data?.status !== "accepted") {
-    throw new Error(`Fulfillment qəbulu uğursuz oldu: HTTP ${acceptedResponse.statusCode}`);
-  }
-  const [acceptedPurchaseOrder] = await query(
-    "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
-    [orderId]
-  );
-  if (acceptedPurchaseOrder?.status !== "accepted") {
-    throw new Error("Təchizatçı qəbulu alt-sifariş statusuna ötürülmədi.");
-  }
+    const acceptedResponse = createResponse();
+    await fulfillmentHandler({
+      method: "PATCH",
+      headers: requestHeaders(sessionToken),
+      query: {},
+      body: jsonBody({ id: fulfillment.id, status: "accepted", note: "Smoke-test qəbulu" })
+    }, acceptedResponse);
+    if (acceptedResponse.statusCode !== 200 || acceptedResponse.payload?.data?.status !== "accepted") {
+      throw new Error(`Fulfillment qəbulu uğursuz oldu: HTTP ${acceptedResponse.statusCode}`);
+    }
+    const [acceptedPurchaseOrder] = await query(
+      "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
+      [orderId]
+    );
+    if (acceptedPurchaseOrder?.status !== "accepted") {
+      throw new Error("Təchizatçı qəbulu alt-sifariş statusuna ötürülmədi.");
+    }
 
-  const cancelledResponse = createResponse();
-  await fulfillmentHandler({
-    method: "PATCH",
-    headers: requestHeaders(sessionToken),
-    query: {},
-    body: jsonBody({ id: fulfillment.id, status: "cancelled", note: "Smoke-test ləğvi" })
-  }, cancelledResponse);
-  const [releasedReservation] = await query(
-    "SELECT status FROM inventory_reservations WHERE order_id = $1 LIMIT 1",
-    [orderId]
-  );
-  const [levelAfter] = await query(
-    `SELECT level.reserved_quantity
-       FROM inventory_levels level
-       JOIN warehouses warehouse ON warehouse.id = level.warehouse_id
-      WHERE level.product_id = $1 AND warehouse.is_default = true
-      LIMIT 1`,
-    [stockProduct.id]
-  );
-  const [orderLead] = await query(
-    "SELECT stage FROM crm_leads WHERE source_type = 'order' AND source_id = $1",
-    [orderId]
-  );
-  const [cancelledPurchaseOrder] = await query(
-    "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
-    [orderId]
-  );
-  if (
-    cancelledResponse.statusCode !== 200
-    || cancelledResponse.payload?.data?.status !== "cancelled"
-    || releasedReservation?.status !== "released"
-    || Number(levelAfter?.reserved_quantity || 0) !== reservedBefore
-    || orderLead?.stage !== "lost"
-    || cancelledPurchaseOrder?.status !== "cancelled"
-  ) {
-    throw new Error("Fulfillment ləğvi rezervi buraxmadı və CRM mərhələsini yeniləmədi.");
+    const cancelledResponse = createResponse();
+    await fulfillmentHandler({
+      method: "PATCH",
+      headers: requestHeaders(sessionToken),
+      query: {},
+      body: jsonBody({ id: fulfillment.id, status: "cancelled", note: "Smoke-test ləğvi" })
+    }, cancelledResponse);
+    const [releasedReservation] = await query(
+      "SELECT status FROM inventory_reservations WHERE order_id = $1 LIMIT 1",
+      [orderId]
+    );
+    const [levelAfter] = await query(
+      `SELECT level.reserved_quantity
+         FROM inventory_levels level
+         JOIN warehouses warehouse ON warehouse.id = level.warehouse_id
+        WHERE level.product_id = $1 AND warehouse.is_default = true
+        LIMIT 1`,
+      [stockProduct.id]
+    );
+    const [orderLead] = await query(
+      "SELECT stage FROM crm_leads WHERE source_type = 'order' AND source_id = $1",
+      [orderId]
+    );
+    const [cancelledPurchaseOrder] = await query(
+      "SELECT status FROM supplier_purchase_orders WHERE order_id = $1 LIMIT 1",
+      [orderId]
+    );
+    if (
+      cancelledResponse.statusCode !== 200
+      || cancelledResponse.payload?.data?.status !== "cancelled"
+      || releasedReservation?.status !== "released"
+      || Number(levelAfter?.reserved_quantity || 0) !== reservedBefore
+      || orderLead?.stage !== "lost"
+      || cancelledPurchaseOrder?.status !== "cancelled"
+    ) {
+      throw new Error("Fulfillment ləğvi rezervi buraxmadı və CRM mərhələsini yeniləmədi.");
+    }
+    console.log("Fulfillment: stok atomik rezerv edildi, qəbul olundu və ləğvdə sərbəst buraxıldı.");
   }
-  console.log("Fulfillment: stok atomik rezerv edildi, qəbul olundu və ləğvdə sərbəst buraxıldı.");
 
   const supplierRows = await query("SELECT id FROM suppliers WHERE status <> 'Arxiv' ORDER BY id LIMIT 2");
   if (supplierRows.length < 2) throw new Error("Tender smoke testi üçün iki təchizatçı tapılmadı.");
@@ -347,7 +429,9 @@ try {
       endDate: dateOnly(endDate),
       quantity: 1,
       operatorPreference: "Operator ilə",
-      deliveryRequired: true
+      deliveryRequired: true,
+      legalAccepted: true,
+      sourcePath: "/rental-detail.html"
     })
   }, bookingResponse);
   bookingId = bookingResponse.payload?.data?.id || "";

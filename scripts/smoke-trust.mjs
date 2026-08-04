@@ -181,21 +181,30 @@ try {
     query: {},
     body: body({ id: supportId, action: "approve-refund", amount: 20 })
   });
-  const completed = await call(supportHandler, {
-    method: "PATCH",
-    headers: headers(adminToken, "127.0.0.242"),
-    query: {},
-    body: body({ id: supportId, action: "complete-refund" })
-  });
   if (
-    approved.statusCode !== 200
-    || completed.statusCode !== 200
-    || completed.payload?.data?.refund?.status !== "completed"
-    || completed.payload?.data?.orderPaymentStatus !== "refunded"
+    approved.statusCode === 403
+    && approved.payload?.error?.code === "critical_two_factor_required"
   ) {
-    throw new Error("Geri ödəniş təsdiqi və manual tamamlama axını uğursuz oldu.");
+    console.log("Dəstək qoruması: 2FA aktiv olmayan administrator üçün geri ödəniş bloklandı.");
+  } else {
+    if (approved.statusCode !== 200) {
+      throw new Error(`Geri ödəniş təsdiqi uğursuz oldu: HTTP ${approved.statusCode} ${approved.payload?.error?.code || ""}`);
+    }
+    const completed = await call(supportHandler, {
+      method: "PATCH",
+      headers: headers(adminToken, "127.0.0.242"),
+      query: {},
+      body: body({ id: supportId, action: "complete-refund" })
+    });
+    if (
+      completed.statusCode !== 200
+      || completed.payload?.data?.refund?.status !== "completed"
+      || completed.payload?.data?.orderPaymentStatus !== "refunded"
+    ) {
+      throw new Error("Geri ödəniş təsdiqi və manual tamamlama axını uğursuz oldu.");
+    }
+    console.log("Dəstək: qaytarma məbləği və geri ödəniş həyat dövrü yoxlanıldı.");
   }
-  console.log("Dəstək: qaytarma məbləği və geri ödəniş həyat dövrü yoxlanıldı.");
 
   const tracked = await call(eventsHandler, {
     method: "POST",

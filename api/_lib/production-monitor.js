@@ -2,6 +2,12 @@ const defaultOrigin = "https://constera.az";
 const minimumAlertSecretLength = 24;
 
 export const productionChecks = Object.freeze([
+  {
+    path: "www.constera.az",
+    url: "https://www.constera.az/",
+    status: 308,
+    location: "https://constera.az/"
+  },
   { path: "/api/health", status: 200, json: (body) => body.ok === true && body.database === "ready" },
   { path: "/api/catalog?scope=products&pageSize=1", status: 200, json: (body) => Array.isArray(body.data?.products) },
   { path: "/api/integrations", status: 200, json: (body) => typeof body.data?.readiness === "object" },
@@ -11,7 +17,21 @@ export const productionChecks = Object.freeze([
   { path: "/api/catalog-quality", status: 401, json: (body) => body.error?.code === "authentication_required" },
   { path: "/api/merchant-feed", status: 200, includes: "<rss" },
   { path: "/.well-known/security.txt", status: 200, includes: "Canonical: https://constera.az/.well-known/security.txt" },
-  { path: "/", status: 200, includes: 'lang="az"' },
+  {
+    path: "/",
+    status: 200,
+    includes: 'lang="az"',
+    headers: {
+      "content-security-policy": (value) => value.includes("default-src 'self'") && value.includes("object-src 'none'"),
+      "strict-transport-security": (value) => value.includes("max-age=31536000"),
+      "x-content-type-options": (value) => value.toLowerCase() === "nosniff",
+      "referrer-policy": (value) => value === "strict-origin-when-cross-origin"
+    }
+  },
+  { path: "/robots.txt", status: 200, includes: "Sitemap: https://constera.az/sitemap.xml" },
+  { path: "/sitemap.xml", status: 200, includes: "<urlset" },
+  { path: "/service-worker.js", status: 200, includes: "constera-shell-" },
+  { path: "/assets/icons/site.webmanifest", status: 200, includes: '"lang":"az"' },
   { path: "/catalog.html", status: 200, includes: "ConstEra" },
   { path: "/services.html", status: 200, includes: "ConstEra" },
   { path: "/packages.html", status: 200, includes: "ConstEra" },
@@ -72,13 +92,13 @@ export const sendProductionMonitorAlert = async ({
   return { sent: true };
 };
 
-const requestWithRetry = async (url, attempts = 2) => {
+const requestWithRetry = async (url, { attempts = 2, redirect = "follow" } = {}) => {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       return await fetch(url, {
         headers: { "User-Agent": "ConstEra production monitor/1.0" },
-        redirect: "follow",
+        redirect,
         signal: AbortSignal.timeout(8_000)
       });
     } catch (error) {
@@ -91,7 +111,9 @@ const requestWithRetry = async (url, attempts = 2) => {
 
 const inspectCheck = async (origin, check) => {
   const startedAt = Date.now();
-  const response = await requestWithRetry(`${origin}${check.path}`);
+  const response = await requestWithRetry(check.url || `${origin}${check.path}`, {
+    redirect: check.location ? "manual" : "follow"
+  });
   const contentType = response.headers.get("content-type") || "";
   const body = contentType.includes("application/json")
     ? await response.json()
@@ -104,6 +126,15 @@ const inspectCheck = async (origin, check) => {
   }
   if (check.includes && !String(body).includes(check.includes)) {
     throw new Error(`${check.path}: gözlənilən səhifə məzmunu tapılmadı.`);
+  }
+  if (check.location && response.headers.get("location") !== check.location) {
+    throw new Error(`${check.path}: əsas domenə daimi yönləndirmə düzgün deyil.`);
+  }
+  for (const [name, validate] of Object.entries(check.headers || {})) {
+    const value = String(response.headers.get(name) || "");
+    if (!value || !validate(value)) {
+      throw new Error(`${check.path}: ${name} təhlükəsizlik başlığı düzgün deyil.`);
+    }
   }
   return {
     path: check.path,

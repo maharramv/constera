@@ -15,6 +15,21 @@ const structuralIssueTypes = [
 ];
 const linkIssueTypes = ["broken_image_url", "invalid_image_content", "broken_source_url"];
 
+export const catalogLinkIssueTransition = (candidateType, result = {}) => {
+  const possibleIssueTypes = candidateType === "image"
+    ? ["broken_image_url", "invalid_image_content"]
+    : ["broken_source_url"];
+  const activeIssueType = candidateType === "image" && result.contentMismatch
+    ? "invalid_image_content"
+    : possibleIssueTypes[0];
+  return {
+    activeIssueType,
+    resolvedIssueTypes: result.ok
+      ? possibleIssueTypes
+      : possibleIssueTypes.filter((type) => type !== activeIssueType)
+  };
+};
+
 const issueId = (key) => `cqi-${createHash("sha256").update(key).digest("hex").slice(0, 28)}`;
 const issue = (entityType, entityId, issueType, severity, detail) => {
   const issueKey = `${entityType}:${entityId}:${issueType}`;
@@ -62,27 +77,67 @@ export const validatePublicUrl = async (value) => {
   return { ok: true, url };
 };
 
+export const hasImageFileSignature = (value) => {
+  const bytes = value instanceof Uint8Array ? value : new Uint8Array(value || []);
+  const ascii = (offset, length) => String.fromCharCode(...bytes.slice(offset, offset + length));
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  if (bytes.length >= 8 && bytes[0] === 0x89 && ascii(1, 3) === "PNG" && bytes[4] === 0x0d && bytes[5] === 0x0a) return true;
+  if (bytes.length >= 6 && ["GIF87a", "GIF89a"].includes(ascii(0, 6))) return true;
+  if (bytes.length >= 12 && ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return true;
+  if (bytes.length >= 2 && ascii(0, 2) === "BM") return true;
+  if (bytes.length >= 12 && ascii(4, 4) === "ftyp" && ["avif", "avis", "heic", "heix", "mif1"].includes(ascii(8, 4))) return true;
+  const textPrefix = new TextDecoder().decode(bytes.slice(0, 1_024)).replace(/^\uFEFF/, "").trimStart();
+  return /^<svg(?:\s|>)/i.test(textPrefix) || /^<\?xml[\s\S]*?<svg(?:\s|>)/i.test(textPrefix);
+};
+
+const probeImageBody = async (url) => {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      signal: AbortSignal.timeout(5_000),
+      headers: {
+        "User-Agent": "ConstEra-Quality-Monitor/1.0",
+        Range: "bytes=0-1023"
+      }
+    });
+    if (response.status < 200 || response.status >= 300 || !response.body) return false;
+    const reader = response.body.getReader();
+    const { value } = await reader.read();
+    await reader.cancel().catch(() => {});
+    return hasImageFileSignature(value);
+  } catch {
+    return false;
+  }
+};
+
 const probeUrl = async (value, kind) => {
   const valid = await validatePublicUrl(value);
   if (!valid.ok) return valid;
-  try {
-    const response = await fetch(valid.url, {
-      method: "HEAD",
-      redirect: "manual",
-      signal: AbortSignal.timeout(5_000),
-      headers: { "User-Agent": "ConstEra-Quality-Monitor/1.0" }
-    });
-    if ([401, 403, 405, 429].includes(response.status) || (response.status >= 200 && response.status < 400)) {
-      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-      if (kind === "image" && response.status < 300 && contentType && !contentType.startsWith("image/")) {
-        return { ok: false, reason: `Şəkil URL-i ${contentType} qaytarır`, contentMismatch: true };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(valid.url, {
+        method: "HEAD",
+        redirect: "manual",
+        signal: AbortSignal.timeout(attempt === 0 ? 5_000 : 8_000),
+        headers: { "User-Agent": "ConstEra-Quality-Monitor/1.0" }
+      });
+      if ([401, 403, 405, 429].includes(response.status) || (response.status >= 200 && response.status < 400)) {
+        const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+        if (kind === "image" && response.status < 300 && contentType && !contentType.startsWith("image/")) {
+          const validImageBody = await probeImageBody(valid.url);
+          if (!validImageBody) {
+            return { ok: false, reason: `Şəkil URL-i ${contentType} qaytarır`, contentMismatch: true };
+          }
+        }
+        return { ok: true };
       }
-      return { ok: true };
+      return { ok: false, reason: `Mənbə HTTP ${response.status} qaytarır` };
+    } catch {
+      if (attempt === 1) return { ok: false, reason: "Mənbə vaxt limitində cavab vermədi" };
     }
-    return { ok: false, reason: `Mənbə HTTP ${response.status} qaytarır` };
-  } catch {
-    return { ok: false, reason: "Mənbə vaxt limitində cavab vermədi" };
   }
+  return { ok: false, reason: "Mənbə vaxt limitində cavab vermədi" };
 };
 
 const upsertIssues = async (runId, issues) => {
@@ -248,17 +303,18 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
       })));
       for (const { candidate, result } of probeResults) {
         probedUrls += 1;
-        const type = candidate.type === "image"
-          ? (result.contentMismatch ? "invalid_image_content" : "broken_image_url")
-          : "broken_source_url";
-        const key = `product:${candidate.entityId}:${type}`;
-        if (!result.ok) linkIssues.push(issue("product", candidate.entityId, type, "high", result.reason));
-        else {
+        const transition = catalogLinkIssueTransition(candidate.type, result);
+        if (!result.ok) {
+          linkIssues.push(issue("product", candidate.entityId, transition.activeIssueType, "high", result.reason));
+        }
+        const resolvedKeys = transition.resolvedIssueTypes
+          .map((type) => `product:${candidate.entityId}:${type}`);
+        if (resolvedKeys.length) {
           resolved += (await query(
             `UPDATE catalog_quality_issues
                 SET status = 'resolved', resolved_at = now(), last_checked_at = now(), last_run_id = $1
-              WHERE issue_key = $2 AND status = 'open' RETURNING id`,
-            [runId, key]
+              WHERE issue_key = ANY($2::text[]) AND status = 'open' RETURNING id`,
+            [runId, resolvedKeys]
           )).length;
         }
       }

@@ -37,6 +37,16 @@ test("bütün açıq kommersiya formaları versiyalanan hüquqi razılıq gönd�
   assert.match(marketplace, /legalAccepted:\s*data\.get\("legalAccepted"\) === "true"/);
 });
 
+test("smoke kommersiya müraciətləri hüquqi razılıq sübutu göndərir", () => {
+  const commerceSmoke = read("scripts/smoke-commerce.mjs");
+  const operationsSmoke = read("scripts/smoke-operations.mjs");
+  assert.match(commerceSmoke, /action:\s*"apply"[\s\S]*legalAccepted:\s*true/);
+  assert.match(commerceSmoke, /sourcePath:\s*"\/suppliers\.html#supplier-application"/);
+  assert.match(commerceSmoke, /sourcePath:\s*"\/checkout\.html"/);
+  assert.match(operationsSmoke, /sourcePath:\s*"\/checkout\.html"/);
+  assert.match(operationsSmoke, /sourcePath:\s*"\/rental-detail\.html"/);
+});
+
 test("əlaqə forması CRM route-u və siyasət sübutu ilə serverə bağlıdır", () => {
   assert.match(read("api/admin.js"), /contact:\s*\(\) => import\("\.\/_admin\/contact\.js"\)/);
   const vercel = JSON.parse(read("vercel.json"));

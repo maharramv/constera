@@ -348,6 +348,7 @@ test("stok rezervi anbar səviyyəsində atomik ayrılır və fulfillment ilə i
 test("CRM və icarə rezervasiyası satış mənbələrini vahid pipeline-da birləşdirir", () => {
   const crm = read("api/_admin/crm.js");
   const crmSync = read("api/_lib/crm.js");
+  const smoke = read("scripts/smoke-commerce.mjs");
   const rentals = read("api/_admin/rental-bookings.js");
   const migration = read("db/migrations/017_crm_rental_bookings.sql");
   const admin = read("admin.html");
@@ -358,6 +359,7 @@ test("CRM və icarə rezervasiyası satış mənbələrini vahid pipeline-da bir
   assert.match(crmSync, /syncRfqLead/);
   assert.match(crmSync, /syncOrderLead/);
   assert.match(crmSync, /syncRentalLead/);
+  assert.match(smoke, /DELETE FROM crm_leads WHERE source_type = 'rfq' AND source_id = \$1/);
   assert.match(rentals, /daterange\(start_date, end_date, '\[\]'\)/);
   assert.match(rentals, /rental_not_available/);
   assert.match(migration, /crm_leads_source_unique/);

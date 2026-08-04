@@ -62,6 +62,18 @@ test("sessiya endpoint-i cookiesiz anonim cavab verir", async () => withoutDatab
   assert.equal(response.payload.user, null);
 }));
 
+test("zədələnmiş sessiya cookie-si server xətası yaratmır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "GET",
+    headers: { cookie: "constera_session=%E0%A4%A" },
+    query: { action: "session" }
+  }, response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.payload.authenticated, false);
+  assert.equal(response.payload.user, null);
+}));
+
 test("kataloq endpoint-i baza qoşulmayanda idarə olunan 503 qaytarır", async () => withoutDatabase(async () => {
   const response = createResponse();
   await catalogHandler({ method: "GET", headers: {}, query: {} }, response);

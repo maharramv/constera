@@ -108,6 +108,56 @@ test("tam naviqasiya desktop və mobile rejimlərində açılır", async ({ page
   }
 });
 
+test("dinamik idarəetmələr əlçatan ad və təhlükəsiz xarici link alır", async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    for (const file of pages) {
+      await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
+      const issues = await page.evaluate(() => {
+        const visible = (element) => {
+          if (element.closest('[aria-hidden="true"], [inert]')) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== "none"
+            && style.visibility !== "hidden"
+            && Number(style.opacity || 1) !== 0
+            && rect.width > 0
+            && rect.height > 0;
+        };
+        const hasLabel = (element) => {
+          if (element.getAttribute("aria-label")?.trim()) return true;
+          const labelledBy = element.getAttribute("aria-labelledby")?.trim();
+          if (labelledBy && labelledBy.split(/\s+/).every((id) => document.getElementById(id)?.textContent?.trim())) return true;
+          if (element.id && document.querySelector(`label[for="${CSS.escape(element.id)}"]`)?.textContent?.trim()) return true;
+          return Boolean(element.closest("label")?.textContent?.trim());
+        };
+        const result = [];
+        document.querySelectorAll("img:not([alt])").forEach((element) => result.push(`img without alt: ${element.src}`));
+        document.querySelectorAll("button, a[href]").forEach((element) => {
+          if (!visible(element)) return;
+          const name = element.getAttribute("aria-label")
+            || element.getAttribute("title")
+            || element.textContent
+            || element.querySelector("img")?.alt;
+          if (!String(name || "").trim()) result.push(`${element.tagName.toLowerCase()} without name`);
+        });
+        document.querySelectorAll("input:not([type='hidden']), select, textarea").forEach((element) => {
+          if (visible(element) && !hasLabel(element)) {
+            result.push(`${element.tagName.toLowerCase()} without label: ${element.getAttribute("name") || element.id || "unknown"}`);
+          }
+        });
+        document.querySelectorAll('a[target="_blank"]').forEach((element) => {
+          if (!String(element.getAttribute("rel") || "").split(/\s+/).includes("noopener")) {
+            result.push(`external link without noopener: ${element.getAttribute("href")}`);
+          }
+        });
+        return result;
+      });
+      expect(issues, `${file} @ ${viewport.width}px`).toEqual([]);
+    }
+  }
+});
+
 test("əsas ekranların vizual artefaktları yaradılır", async ({ page }, testInfo) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
     await page.setViewportSize(viewport);
