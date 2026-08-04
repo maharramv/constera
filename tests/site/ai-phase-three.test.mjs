@@ -10,7 +10,7 @@ test("AI Mərhələ 3 sənədi real kataloq və çoxməhsullu RFQ ilə birləşd
   const catalogPricing = read("api/_lib/estimate-catalog.js");
   const rfqApi = read("api/rfqs.js");
 
-  assert.match(page, /AI Mərhələ 5/);
+  assert.match(page, /AI Mərhələ 6/);
   assert.match(page, /AI \+ Neon kataloqu/);
   assert.match(page, /data-ai-smeta-file/);
   assert.match(marketplace, /enrichEstimateWithCatalog/);

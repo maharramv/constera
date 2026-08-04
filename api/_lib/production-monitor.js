@@ -12,6 +12,7 @@ export const productionChecks = Object.freeze([
   { path: "/api/catalog?scope=products&pageSize=1", status: 200, json: (body) => Array.isArray(body.data?.products) },
   { path: "/api/integrations", status: 200, json: (body) => typeof body.data?.readiness === "object" },
   { path: "/api/ai", status: 401, json: (body) => body.error?.code === "authentication_required" },
+  { path: "/api/procurement-plans", status: 401, json: (body) => body.error?.code === "authentication_required" },
   { path: "/api/orders", status: 401, json: (body) => body.error?.code === "authentication_required" },
   { path: "/api/support", status: 401, json: (body) => body.error?.code === "authentication_required" },
   { path: "/api/supplier-performance", status: 401, json: (body) => body.error?.code === "authentication_required" },
@@ -38,7 +39,7 @@ export const productionChecks = Object.freeze([
   { path: "/services.html", status: 200, includes: "ConstEra" },
   { path: "/packages.html", status: 200, includes: "ConstEra" },
   { path: "/rental.html", status: 200, includes: "ConstEra" },
-  { path: "/ai-smeta.html", status: 200, includes: "AI Mərhələ 5" },
+  { path: "/ai-smeta.html", status: 200, includes: "AI Mərhələ 6" },
   { path: "/login.html", status: 200, includes: "ConstEra" }
 ]);
 

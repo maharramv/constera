@@ -250,7 +250,7 @@ export default withApiErrors(async (req, res) => {
          $7, $8, $9, $10, $11, $12,
          $13, $14, $15, $16, $17, $18, $19, $20, $21
        )
-       ON CONFLICT (estimate_id) WHERE estimate_id IS NOT NULL DO NOTHING
+       ON CONFLICT (estimate_id) WHERE estimate_id IS NOT NULL AND procurement_plan_phase_id IS NULL DO NOTHING
        RETURNING id
      ), new_items AS (
        INSERT INTO rfq_items (id, rfq_id, item_kind, item_id, title, quantity_text, unit, specs)
@@ -306,6 +306,7 @@ export default withApiErrors(async (req, res) => {
                 (SELECT count(*)::int FROM rfq_items item WHERE item.rfq_id = rfq.id) AS item_count
            FROM rfqs rfq
           WHERE rfq.estimate_id = $1 AND rfq.customer_id = $2
+            AND rfq.procurement_plan_phase_id IS NULL
           LIMIT 1`,
         [estimateId, session.id]
       );

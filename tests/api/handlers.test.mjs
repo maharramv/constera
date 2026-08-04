@@ -103,6 +103,7 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
     "inventory",
     "operations-center",
     "procurement",
+    "procurement-plans",
     "proposals",
     "product-offers",
     "purchase-orders",

@@ -391,7 +391,7 @@ test("AI smeta sənəddən çoxməhsullu RFQ-yə mobil və desktop axını göst
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     await page.setViewportSize(viewport);
     await page.goto("/ai-smeta.html", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("AI Mərhələ 5 · Sənəddən satınalmaya")).toBeVisible();
+    await expect(page.getByText("AI Mərhələ 6 · Smetadan satınalma təqviminə")).toBeVisible();
     await page.locator('[data-ai-smeta-form] [name="city"]').fill("Bakı");
     await page.locator('[data-ai-smeta-form] button[type="submit"]').click();
     await expect(page.locator("[data-ai-smeta-output]")).toBeVisible();
@@ -413,6 +413,161 @@ test("AI smeta sənəddən çoxməhsullu RFQ-yə mobil və desktop axını göst
     expect(overflow).toBeLessThanOrEqual(0);
     await testInfo.attach(`ai-smeta-phase-three-${viewport.width}.png`, {
       body: await page.screenshot({ fullPage: false, animations: "disabled" }),
+      contentType: "image/png"
+    });
+  }
+});
+
+test("AI satınalma planı redaktə, təsdiq və mərhələli RFQ axınını tamamlayır", async ({ page }, testInfo) => {
+  const estimate = {
+    id: "estimate-plan-layout",
+    projectLabel: "Villa layihəsi",
+    projectType: "villa",
+    area: 180,
+    scopeLabel: "Tam tikinti + təmir",
+    finishLabel: "Standart",
+    floors: 2,
+    rooms: 6,
+    wetZones: 3,
+    wastePercent: 8,
+    riskReserve: 10,
+    deliveryPercent: 4,
+    laborPercent: 18,
+    city: "Bakı",
+    workflowStatus: "approved",
+    createdAt: "2026-08-04T08:00:00.000Z",
+    rows: [
+      {
+        key: "concrete", title: "Hazır beton", category: "Konstruksiya",
+        phase: "Bünövrə və konstruksiya", criticality: "Yüksək", included: true,
+        quantity: 32, baseQuantity: 30, unit: "m³", confidence: "Yüksək", products: []
+      },
+      {
+        key: "cable", title: "Elektrik kabeli", category: "Elektrik",
+        phase: "MEP sistemləri", criticality: "Yüksək", included: true,
+        quantity: 950, baseQuantity: 900, unit: "metr", confidence: "Orta", products: []
+      }
+    ]
+  };
+  const initialPlan = () => ({
+    id: "ppl-layout",
+    estimateId: estimate.id,
+    aiRunId: "air-plan-layout",
+    title: "Villa layihəsi · satınalma planı",
+    status: "review_pending",
+    projectStartDate: "2026-09-01",
+    targetEndDate: "2027-01-28",
+    durationDays: 150,
+    currency: "AZN",
+    totalBudget: 18_400,
+    pricedRows: 1,
+    unpricedRows: 1,
+    summary: "2 material mövqeyi 2 satınalma dalğasına bölündü.",
+    warnings: ["1 mövqenin təsdiqli qiyməti yoxdur."],
+    confidence: 0.88,
+    version: 1,
+    waves: [
+      {
+        id: "pph-structure", key: "structure-1", phaseKey: "structure",
+        title: "Bünövrə və konstruksiya", sequence: 1,
+        startDate: "2026-09-01", endDate: "2026-10-21", needByDate: "2026-08-18",
+        leadTimeDays: 14, budget: 18_400, currency: "AZN", riskLevel: "high",
+        rowKeys: ["concrete"], rowCount: 1, unpricedCount: 0, included: true,
+        status: "planned", reason: "Daşıyıcı konstruksiya işlərindən əvvəl alınmalıdır.", checks: []
+      },
+      {
+        id: "pph-mep", key: "mep-1", phaseKey: "mep",
+        title: "MEP sistemləri", sequence: 2,
+        startDate: "2026-10-31", endDate: "2026-12-14", needByDate: "2026-10-10",
+        leadTimeDays: 21, budget: null, currency: "AZN", riskLevel: "medium",
+        rowKeys: ["cable"], rowCount: 1, unpricedCount: 1, included: true,
+        status: "planned", reason: "Kabel stoku iş başlanğıcından əvvəl təsdiqlənməlidir.", checks: ["Stoku təsdiqlə."]
+      }
+    ]
+  });
+  let plan = initialPlan();
+  let savedWaveCount = 0;
+
+  await page.addInitScript((payload) => {
+    localStorage.setItem("constera-ai-estimates", JSON.stringify([payload]));
+  }, estimate);
+  await page.route("**/api/auth**", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ user: { id: "customer-layout", role: "customer", name: "Müştəri", email: "customer@example.test" } })
+  }));
+  await page.route("**/api/integrations", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: { readiness: { aiEstimate: true } } })
+  }));
+  await page.route("**/api/ai", async (route) => {
+    plan.status = "approved";
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: { id: plan.aiRunId, approvalStatus: "approved" } })
+    });
+  });
+  await page.route("**/api/procurement-plans**", async (route) => {
+    const method = route.request().method();
+    if (method === "PATCH") {
+      const payload = route.request().postDataJSON();
+      savedWaveCount = payload.waves?.length || 0;
+      plan.waves = plan.waves.map((wave) => ({
+        ...wave,
+        ...(payload.waves || []).find((entry) => entry.id === wave.id)
+      }));
+      plan.status = "review_pending";
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { plan } })
+      });
+    }
+    if (method === "POST") {
+      plan.status = "activated";
+      plan.waves = plan.waves.map((wave, index) => ({
+        ...wave,
+        status: "rfq_created",
+        rfqId: `rfq-plan-${index + 1}`,
+        rfqStatus: "Yeni"
+      }));
+      return route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { plan, duplicate: false } })
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: [plan] })
+    });
+  });
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    plan = initialPlan();
+    savedWaveCount = 0;
+    await page.setViewportSize(viewport);
+    await page.goto(`/ai-smeta.html?estimate=${estimate.id}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-ai-plan-wave]")).toHaveCount(2);
+    await expect(page.locator(".ai-procurement-kpis article").first()).toContainText("aktiv dalğa");
+    await expect(page.locator(".ai-procurement-kpis article").first().locator("strong")).toHaveText("2");
+    await page.locator("[data-ai-plan-need]").first().fill("2026-08-17");
+    await page.locator("[data-ai-plan-save]").click();
+    await expect.poll(() => savedWaveCount).toBe(2);
+    await page.locator('[data-ai-plan-review="approve"]').click();
+    await expect(page.locator("[data-ai-plan-activate]")).toBeVisible();
+    await page.locator("[data-ai-smeta-legal]").check();
+    await page.locator("[data-ai-plan-activate]").click();
+    await expect(page.locator('[data-plan-status="activated"]')).toContainText("RFQ-lər yaradılıb");
+    await expect(page.locator('[href*="rfq=rfq-plan-"]')).toHaveCount(2);
+    const overflow = await page.evaluate(() =>
+      Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow, `procurement plan ${viewport.width}: horizontal overflow`).toBeLessThanOrEqual(0);
+    await testInfo.attach(`ai-procurement-plan-${viewport.width}.png`, {
+      body: await page.screenshot({ fullPage: true, animations: "disabled" }),
       contentType: "image/png"
     });
   }

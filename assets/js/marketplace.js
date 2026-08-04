@@ -5621,6 +5621,7 @@ const initAiSmeta = () => {
   if (!form || !output) return;
 
   const estimateKey = "constera-ai-estimates";
+  const requestedEstimateId = new URLSearchParams(window.location.search).get("estimate") || "";
   const projectLabels = {
     villa: "Villa / fərdi ev",
     apartment: "Mənzil təmiri",
@@ -5661,6 +5662,7 @@ const initAiSmeta = () => {
   };
   let cloudUser = null;
   let aiProviderReady = false;
+  let currentPlan = null;
   const projectProfiles = {
     villa: { concrete: 0.24, rebar: 0.034, block: 12.2, plaster: 1.75, paint: 0.24, tile: 0.42, cable: 5.6, pipe: 1.05, insulation: 0.9, roof: 0.72 },
     apartment: { concrete: 0.04, rebar: 0.006, block: 3.8, plaster: 1.45, paint: 0.28, tile: 0.38, cable: 4.8, pipe: 0.86, insulation: 0.18, roof: 0 },
@@ -6091,6 +6093,115 @@ const initAiSmeta = () => {
     if (empty) empty.hidden = estimates.length > 0;
     renderStats();
   };
+  const planStatusLabels = {
+    draft: "Redaktə edilir",
+    review_pending: "İnsan təsdiqi gözləyir",
+    approved: "RFQ üçün təsdiqlənib",
+    rejected: "Rədd edilib",
+    activated: "RFQ-lər yaradılıb"
+  };
+  const planRiskLabels = { low: "Aşağı", medium: "Orta", high: "Yüksək" };
+  const defaultPlanStartDate = () => {
+    const date = new Date(Date.now() + 7 * 86_400_000);
+    return date.toISOString().slice(0, 10);
+  };
+  const loadProcurementPlan = async (estimateId) => {
+    if (!cloudUser || !estimateId || !window.ConstEraAPI?.procurementPlans) {
+      currentPlan = null;
+      return null;
+    }
+    const result = await window.ConstEraAPI.procurementPlans(estimateId);
+    currentPlan = Array.isArray(result.data) ? result.data[0] || null : null;
+    if (currentEstimate?.id === estimateId) renderEstimate(currentEstimate, false);
+    return currentPlan;
+  };
+  const renderProcurementPlan = (estimate, workflowStatus) => {
+    const plan = currentPlan?.estimateId === estimate.id ? currentPlan : null;
+    if (!cloudUser) return `
+      <section class="ai-procurement-plan ai-smeta-history" data-ai-procurement-plan>
+        <div class="admin-import-status" data-type="warning">
+          <strong>AI satınalma planı hesab tələb edir.</strong>
+          <a class="source-link" href="login.html?next=ai-smeta.html">Daxil ol və smetanı Neon-da saxla</a>.
+        </div>
+      </section>
+    `;
+    if (!plan) {
+      const blocked = !["draft", "approved"].includes(workflowStatus);
+      return `
+        <section class="ai-procurement-plan ai-smeta-history" data-ai-procurement-plan>
+          <div class="market-section-heading">
+            <div><p class="eyebrow">AI satınalma təqvimi</p><h3>Mərhələli material planı yarat</h3></div>
+            <span class="data-badge">Maksimum 20 mövqe / RFQ</span>
+          </div>
+          <div class="admin-form-grid ai-procurement-plan-create">
+            <label class="admin-field"><span>Layihə başlanğıcı</span><input type="date" value="${escapeAttr(defaultPlanStartDate())}" data-ai-plan-start ${blocked ? "disabled" : ""} /></label>
+            <label class="admin-field"><span>Layihə müddəti, gün</span><input type="number" min="30" max="730" step="1" value="150" inputmode="numeric" data-ai-plan-duration ${blocked ? "disabled" : ""} /></label>
+            <button class="button button-primary" type="button" data-ai-plan-generate="${escapeAttr(estimate.id)}" ${blocked ? "disabled" : ""}>AI satınalma planı yarat</button>
+          </div>
+          <p class="admin-import-status" data-type="${blocked ? "warning" : "info"}">${blocked
+            ? "Əvvəl smeta üzrə insan təsdiqini tamamla."
+            : "Qayda əsaslı tikinti ardıcıllığı AI ilə yoxlanacaq; material, miqdar və büdcə serverdə dəyişməz qalacaq."}</p>
+        </section>
+      `;
+    }
+    const editable = ["draft", "review_pending", "rejected"].includes(plan.status);
+    const confidence = Number.isFinite(Number(plan.confidence)) ? `${Math.round(Number(plan.confidence) * 100)}%` : "-";
+    const activeWaves = (plan.waves || []).filter((wave) => wave.included !== false);
+    const rfqIds = activeWaves.map((wave) => wave.rfqId).filter(Boolean);
+    return `
+      <section class="ai-procurement-plan ai-smeta-history" data-ai-procurement-plan data-plan-status="${escapeAttr(plan.status)}">
+        <div class="market-section-heading">
+          <div><p class="eyebrow">AI satınalma təqvimi</p><h3>${escapeHtml(plan.title)}</h3></div>
+          <span class="data-badge">${escapeHtml(planStatusLabels[plan.status] || plan.status)}</span>
+        </div>
+        <div class="ai-smeta-summary ai-procurement-kpis">
+          <article><strong>${escapeHtml(activeWaves.length)}</strong><span>aktiv dalğa</span></article>
+          <article><strong>${escapeHtml(plan.projectStartDate)}</strong><span>başlanğıc</span></article>
+          <article><strong>${escapeHtml(plan.targetEndDate)}</strong><span>hədəf son</span></article>
+          <article><strong>${escapeHtml(confidence)}</strong><span>AI etibarı</span></article>
+          <article><strong>${formatMoney(plan.totalBudget, plan.currency || "AZN")}</strong><span>qiymətlənən büdcə</span></article>
+          <article><strong>${escapeHtml(plan.unpricedRows)}</strong><span>qiymətsiz mövqe</span></article>
+        </div>
+        <p class="admin-import-status">${escapeHtml(plan.summary || "Satınalma planı hazırdır.")}</p>
+        ${(plan.warnings || []).length ? `<p class="admin-import-status" data-type="warning"><strong>Yoxlanmalı məqamlar:</strong> ${(plan.warnings || []).map(escapeHtml).join(" · ")}</p>` : ""}
+        <div class="ai-smeta-table ai-procurement-wave-list">
+          ${(plan.waves || []).map((wave) => `
+            <article class="ai-procurement-wave ${wave.included === false ? "is-excluded" : ""}" data-ai-plan-wave data-wave-id="${escapeAttr(wave.id)}">
+              <header>
+                <label class="ai-smeta-row-select">
+                  <input type="checkbox" data-ai-plan-included ${wave.included === false ? "" : "checked"} ${editable ? "" : "disabled"} />
+                  <span>${escapeHtml(wave.title)}</span>
+                </label>
+                <span class="status-pill">${escapeHtml(planRiskLabels[wave.riskLevel] || wave.riskLevel)} risk</span>
+              </header>
+              <p class="admin-import-status">${escapeHtml(wave.rowCount)} material · ${wave.budget === null ? "Qiymət sorğu əsasında" : formatMoney(wave.budget, wave.currency || plan.currency)} · ${escapeHtml(wave.unpricedCount)} qiymətsiz mövqe</p>
+              <div class="admin-form-grid ai-procurement-wave-fields">
+                <label class="admin-field"><span>Tələb tarixi</span><input type="date" value="${escapeAttr(wave.needByDate)}" data-ai-plan-need ${editable ? "" : "disabled"} /></label>
+                <label class="admin-field"><span>İş başlanğıcı</span><input type="date" value="${escapeAttr(wave.startDate)}" data-ai-plan-wave-start ${editable ? "" : "disabled"} /></label>
+                <label class="admin-field"><span>İş sonu</span><input type="date" value="${escapeAttr(wave.endDate)}" data-ai-plan-wave-end ${editable ? "" : "disabled"} /></label>
+                <label class="admin-field"><span>Təchizat, gün</span><input type="number" min="1" max="90" step="1" value="${escapeAttr(wave.leadTimeDays)}" data-ai-plan-lead ${editable ? "" : "disabled"} /></label>
+                <label class="admin-field"><span>Risk</span><select data-ai-plan-risk ${editable ? "" : "disabled"}>
+                  ${Object.entries(planRiskLabels).map(([value, label]) => `<option value="${value}" ${wave.riskLevel === value ? "selected" : ""}>${label}</option>`).join("")}
+                </select></label>
+              </div>
+              <p class="admin-import-status">${escapeHtml(wave.reason || "Tikinti ardıcıllığına əsasən planlaşdırılıb.")}</p>
+              ${(wave.checks || []).length ? `<small class="admin-import-status">${wave.checks.map(escapeHtml).join(" · ")}</small>` : ""}
+              ${wave.rfqId ? `<a class="source-link" href="rfq-dashboard.html?rfq=${encodeURIComponent(wave.rfqId)}">RFQ-ni aç · ${escapeHtml(wave.rfqStatus || "Yeni")}</a>` : ""}
+            </article>
+          `).join("")}
+        </div>
+        <div class="admin-actions">
+          ${editable ? `<button class="button button-secondary" type="button" data-ai-plan-save="${escapeAttr(plan.id)}">${plan.status === "rejected" ? "Düzəlt və yenidən baxışa göndər" : "Düzəlişləri saxla"}</button>` : ""}
+          ${plan.status === "review_pending" ? `
+            <button class="button button-primary" type="button" data-ai-plan-review="approve" data-run-id="${escapeAttr(plan.aiRunId || "")}">Planı təsdiqlə</button>
+            <button class="button button-outline" type="button" data-ai-plan-review="reject" data-run-id="${escapeAttr(plan.aiRunId || "")}">Planı rədd et</button>
+          ` : ""}
+          ${plan.status === "approved" ? `<button class="button button-primary" type="button" data-ai-plan-activate="${escapeAttr(plan.id)}">${escapeHtml(activeWaves.length)} mərhələ RFQ-si yarat</button>` : ""}
+          ${plan.status === "activated" ? `<a class="button button-secondary" href="rfq-dashboard.html">${escapeHtml(rfqIds.length)} RFQ-ni paneldə aç</a>` : ""}
+        </div>
+      </section>
+    `;
+  };
   const renderEstimate = (estimate, shouldScroll = true) => {
     const aiApprovalLabels = {
       pending: "İnsan təsdiqi gözləyir",
@@ -6117,6 +6228,10 @@ const initAiSmeta = () => {
       converted: "RFQ yaradılıb"
     };
     const workflowStatus = workflowStatusFor(estimate);
+    const plan = currentPlan?.estimateId === estimate.id ? currentPlan : null;
+    const planOwnsWorkflow = Boolean(plan);
+    const planApproved = ["approved", "activated"].includes(plan?.status);
+    const planActivated = plan?.status === "activated";
     output.hidden = false;
     output.innerHTML = `
       <div class="market-section-heading">
@@ -6127,10 +6242,11 @@ const initAiSmeta = () => {
         <span class="data-badge">${escapeHtml(estimate.sourceFileName || estimate.scopeLabel)}</span>
       </div>
       <div class="ai-smeta-workflow" data-workflow-status="${escapeAttr(workflowStatus)}">
-        <span><strong>1</strong>Sənəd</span>
-        <span><strong>2</strong>Kataloq uyğunluğu</span>
+        <span class="is-complete"><strong>1</strong>Sənəd</span>
+        <span class="is-complete"><strong>2</strong>Kataloq</span>
         <span class="${["approved", "converted"].includes(workflowStatus) ? "is-complete" : "is-current"}"><strong>3</strong>${escapeHtml(workflowLabels[workflowStatus] || workflowStatus)}</span>
-        <span class="${workflowStatus === "converted" ? "is-complete" : ""}"><strong>4</strong>RFQ</span>
+        <span class="${planApproved ? "is-complete" : workflowStatus === "approved" ? "is-current" : ""}"><strong>4</strong>Satınalma planı</span>
+        <span class="${planActivated || workflowStatus === "converted" ? "is-complete" : planApproved ? "is-current" : ""}"><strong>5</strong>RFQ dalğaları</span>
       </div>
       <div class="ai-smeta-phase-strip">
         ${phaseCounts.map((item) => `<span>${escapeHtml(item.phase)} <strong>${escapeHtml(item.count)}</strong></span>`).join("")}
@@ -6214,13 +6330,14 @@ const initAiSmeta = () => {
           </article>
         `).join("")}
       </div>
+      ${renderProcurementPlan(estimate, workflowStatus)}
       <label class="supplier-application-consent">
         <input type="checkbox" value="true" data-ai-smeta-legal />
         <span><a href="terms.html">İstifadə şərtləri</a> və <a href="privacy.html">məxfilik siyasəti</a> ilə razıyam.</span>
       </label>
       <div class="admin-actions">
-        ${estimate.aiProvider && aiApprovalStatus === "pending" ? `<button class="button button-primary" type="button" data-ai-smeta-approve-rfq="${escapeAttr(estimate.id)}">Təsdiqlə və RFQ yarat</button>` : ""}
-        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}" ${aiActionLocked ? "disabled title=\"Əvvəl AI nəticəsini yoxlayıb təsdiqlə\"" : ""}>Sorğu qaralaması yarat</button>
+        ${estimate.aiProvider && aiApprovalStatus === "pending" && !planOwnsWorkflow ? `<button class="button button-primary" type="button" data-ai-smeta-approve-rfq="${escapeAttr(estimate.id)}">Təsdiqlə və tək RFQ yarat</button>` : ""}
+        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}" ${aiActionLocked || planOwnsWorkflow ? "disabled title=\"Satınalma planı aktiv olduqda tək RFQ yaradılmır\"" : ""}>Tək RFQ qaralaması yarat</button>
         <button class="button button-secondary" type="button" data-ai-smeta-reprice="${escapeAttr(estimate.id)}" ${workflowStatus === "converted" ? "disabled" : ""}>Qiymətləri yenilə</button>
         <button class="button button-secondary" type="button" data-ai-smeta-cart="${escapeAttr(estimate.id)}" ${aiActionLocked ? "disabled title=\"Əvvəl AI nəticəsini yoxlayıb təsdiqlə\"" : ""}>Qiymətlənənləri səbətə əlavə et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV-yə ixrac et</button>
@@ -6231,7 +6348,7 @@ const initAiSmeta = () => {
     if (shouldScroll) output.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  let currentEstimate = readEstimates()[0] || null;
+  let currentEstimate = readEstimates().find((estimate) => estimate.id === requestedEstimateId) || readEstimates()[0] || null;
   if (currentEstimate) renderEstimate(currentEstimate, false);
   renderHistory();
 
@@ -6239,6 +6356,7 @@ const initAiSmeta = () => {
     event.preventDefault();
     const formData = new FormData(form);
     const estimateInput = Object.fromEntries(formData.entries());
+    currentPlan = null;
     currentEstimate = createEstimate(formData);
     window.ConstEraTrack?.("estimate_created", { entityType: "estimate", entityId: currentEstimate.id, payload: { source: "calculator", rows: currentEstimate.rows.length } });
     writeEstimates([currentEstimate, ...readEstimates()]);
@@ -6362,6 +6480,7 @@ const initAiSmeta = () => {
         contentBase64
       });
       const base = createEstimate(new FormData(form));
+      currentPlan = null;
       currentEstimate = {
         ...base,
         id: `smeta-import-${Date.now()}`,
@@ -6409,8 +6528,14 @@ const initAiSmeta = () => {
   historyList?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-ai-smeta-open]");
     if (!button) return;
+    currentPlan = null;
     currentEstimate = readEstimates().find((estimate) => estimate.id === button.dataset.aiSmetaOpen) || null;
-    if (currentEstimate) renderEstimate(currentEstimate);
+    if (currentEstimate) {
+      renderEstimate(currentEstimate);
+      loadProcurementPlan(currentEstimate.id).catch((error) => {
+        if (status) status.textContent = `Satınalma planı yüklənmədi: ${error.message}`;
+      });
+    }
   });
   output.addEventListener("change", async (event) => {
     const target = event.target.closest("[data-ai-smeta-row-include], [data-ai-smeta-row-quantity], [data-ai-smeta-row-unit]");
@@ -6468,6 +6593,134 @@ const initAiSmeta = () => {
     }
   });
   output.addEventListener("click", async (event) => {
+    const generatePlanButton = event.target.closest("[data-ai-plan-generate]");
+    if (generatePlanButton) {
+      const estimate = readEstimates().find((item) => item.id === generatePlanButton.dataset.aiPlanGenerate) || currentEstimate;
+      if (!estimate || !cloudUser || !window.ConstEraAPI?.generateProcurementPlan) {
+        if (status) status.textContent = "AI satınalma planı üçün hesaba daxil ol.";
+        return;
+      }
+      const projectStartDate = String(output.querySelector("[data-ai-plan-start]")?.value || "");
+      const durationDays = Number(output.querySelector("[data-ai-plan-duration]")?.value || 150);
+      generatePlanButton.disabled = true;
+      try {
+        let approvedEstimate = estimate;
+        if (workflowStatusFor(estimate) === "draft") {
+          approvedEstimate = { ...estimate, workflowStatus: "approved" };
+          currentEstimate = approvedEstimate;
+          writeEstimates([approvedEstimate, ...readEstimates().filter((item) => item.id !== approvedEstimate.id)]);
+          await persistEstimate(approvedEstimate);
+        }
+        if (status) status.textContent = "Tikinti ardıcıllığı və təchizat riskləri AI ilə planlaşdırılır...";
+        const response = await window.ConstEraAPI.generateProcurementPlan({
+          estimateId: approvedEstimate.id,
+          projectStartDate,
+          durationDays
+        });
+        currentPlan = response.data?.plan || null;
+        currentEstimate = approvedEstimate;
+        renderEstimate(currentEstimate, false);
+        renderHistory();
+        if (status) status.textContent = currentPlan
+          ? `${currentPlan.waves.length} satınalma dalğası hazırlandı. Tarixləri yoxla və planı təsdiqlə.`
+          : "Satınalma planı yaradılmadı.";
+      } catch (error) {
+        if (status) status.textContent = error.message || "Satınalma planı yaradılmadı.";
+      } finally {
+        if (generatePlanButton.isConnected) generatePlanButton.disabled = false;
+      }
+      return;
+    }
+    const savePlanButton = event.target.closest("[data-ai-plan-save]");
+    if (savePlanButton) {
+      if (!currentPlan || !window.ConstEraAPI?.updateProcurementPlan) return;
+      const waves = [...output.querySelectorAll("[data-ai-plan-wave]")].map((element) => {
+        const source = currentPlan.waves.find((wave) => wave.id === element.dataset.waveId) || {};
+        return {
+          id: element.dataset.waveId,
+          included: Boolean(element.querySelector("[data-ai-plan-included]")?.checked),
+          needByDate: element.querySelector("[data-ai-plan-need]")?.value,
+          startDate: element.querySelector("[data-ai-plan-wave-start]")?.value,
+          endDate: element.querySelector("[data-ai-plan-wave-end]")?.value,
+          leadTimeDays: Number(element.querySelector("[data-ai-plan-lead]")?.value || source.leadTimeDays),
+          riskLevel: element.querySelector("[data-ai-plan-risk]")?.value || source.riskLevel,
+          reason: source.reason || "",
+          checks: source.checks || []
+        };
+      });
+      if (!waves.some((wave) => wave.included)) {
+        if (status) status.textContent = "Ən azı bir satınalma dalğası aktiv qalmalıdır.";
+        return;
+      }
+      savePlanButton.disabled = true;
+      try {
+        const response = await window.ConstEraAPI.updateProcurementPlan(currentPlan.id, waves);
+        currentPlan = response.data?.plan || currentPlan;
+        renderEstimate(currentEstimate, false);
+        if (status) status.textContent = "Satınalma planındakı insan düzəlişləri Neon-da saxlandı.";
+      } catch (error) {
+        if (status) status.textContent = error.message || "Satınalma planı saxlanmadı.";
+      } finally {
+        if (savePlanButton.isConnected) savePlanButton.disabled = false;
+      }
+      return;
+    }
+    const planReviewButton = event.target.closest("[data-ai-plan-review]");
+    if (planReviewButton) {
+      const decision = planReviewButton.dataset.aiPlanReview;
+      const note = decision === "reject"
+        ? window.prompt("Planın rədd səbəbini yaz:", "Təchizat tarixləri yenidən hesablanmalıdır.")
+        : "İstifadəçi satınalma tarixlərini, dalğaları və riskləri yoxlayıb təsdiqlədi.";
+      if (decision === "reject" && note === null) return;
+      if (!planReviewButton.dataset.runId || !window.ConstEraAPI?.reviewAiRun || !currentPlan) return;
+      planReviewButton.disabled = true;
+      try {
+        await window.ConstEraAPI.reviewAiRun(planReviewButton.dataset.runId, decision, note || "");
+        await loadProcurementPlan(currentPlan.estimateId);
+        if (status) status.textContent = decision === "approve"
+          ? "Satınalma planı təsdiqləndi. İndi mərhələli RFQ-ləri yarada bilərsən."
+          : "Satınalma planı rədd edildi.";
+      } catch (error) {
+        if (status) status.textContent = error.message || "Satınalma planı təsdiqlənmədi.";
+      } finally {
+        if (planReviewButton.isConnected) planReviewButton.disabled = false;
+      }
+      return;
+    }
+    const activatePlanButton = event.target.closest("[data-ai-plan-activate]");
+    if (activatePlanButton) {
+      const legalAccepted = Boolean(output.querySelector("[data-ai-smeta-legal]")?.checked);
+      if (!legalAccepted) {
+        if (status) status.textContent = "RFQ dalğalarını yaratmaq üçün istifadə şərtləri ilə razılaş.";
+        output.querySelector("[data-ai-smeta-legal]")?.focus();
+        return;
+      }
+      if (!currentPlan || !window.ConstEraAPI?.activateProcurementPlan) return;
+      activatePlanButton.disabled = true;
+      try {
+        const response = await window.ConstEraAPI.activateProcurementPlan(currentPlan.id, {
+          legalAccepted: true,
+          sourcePath: `${window.location.pathname}${window.location.search}`
+        });
+        currentPlan = response.data?.plan || currentPlan;
+        const rfqIds = (currentPlan.waves || []).map((wave) => wave.rfqId).filter(Boolean);
+        currentEstimate = {
+          ...(currentEstimate || {}),
+          workflowStatus: "converted",
+          procurementPlanId: currentPlan.id,
+          procurementRfqIds: rfqIds
+        };
+        writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+        renderEstimate(currentEstimate, false);
+        renderHistory();
+        if (status) status.innerHTML = `${rfqIds.length} mərhələ RFQ-si yaradıldı. <a class="source-link" href="rfq-dashboard.html">Sorğu panelini aç</a>`;
+      } catch (error) {
+        if (status) status.textContent = error.message || "Mərhələli RFQ-lər yaradılmadı.";
+      } finally {
+        if (activatePlanButton.isConnected) activatePlanButton.disabled = false;
+      }
+      return;
+    }
     const repriceButton = event.target.closest("[data-ai-smeta-reprice]");
     if (repriceButton) {
       const estimate = readEstimates().find((item) => item.id === repriceButton.dataset.aiSmetaReprice) || currentEstimate;
@@ -6609,9 +6862,29 @@ const initAiSmeta = () => {
       ]);
       cloudUser = session.user;
       aiProviderReady = Boolean(integrations?.data?.readiness?.aiEstimate);
+      if (cloudUser && requestedEstimateId && currentEstimate?.id !== requestedEstimateId && window.ConstEraAPI?.cabinet) {
+        const cabinet = await window.ConstEraAPI.cabinet();
+        const entry = (cabinet.data?.estimates || []).find((estimate) => estimate.id === requestedEstimateId);
+        if (entry) {
+          currentEstimate = normalizeEstimateWorkflow({
+            ...(entry.payload || {}),
+            id: entry.id,
+            workflowStatus: entry.workflowStatus,
+            sourceType: entry.sourceType,
+            sourceFileName: entry.sourceFileName,
+            aiRunId: entry.aiRunId,
+            rfqId: entry.rfqId,
+            procurementPlanId: entry.procurementPlanId || entry.payload?.procurementPlanId
+          });
+          writeEstimates([currentEstimate, ...readEstimates().filter((estimate) => estimate.id !== currentEstimate.id)]);
+          renderEstimate(currentEstimate, false);
+          renderHistory();
+        }
+      }
       if (cloudUser && status) {
         status.textContent = `${cloudUser.name} hesabı qoşuldu. ${aiProviderReady ? "AI yoxlaması və insan təsdiqi aktivdir." : "Smetalar qayda əsaslı hesablanacaq və Neon kabinetində saxlanacaq."}`;
       }
+      if (cloudUser && currentEstimate) await loadProcurementPlan(currentEstimate.id);
     } catch {
       cloudUser = null;
     }
@@ -7589,6 +7862,7 @@ const initCustomerCabinet = () => {
   const orderList = document.querySelector("[data-customer-orders]");
   const rfqList = document.querySelector("[data-customer-rfqs]");
   const estimateList = document.querySelector("[data-customer-estimates]");
+  const procurementPlanList = document.querySelector("[data-customer-procurement-plans]");
   const favoriteGrid = document.querySelector("[data-customer-favorites]");
   const compareGrid = document.querySelector("[data-customer-compare]");
   const notificationList = document.querySelector("[data-customer-notifications]");
@@ -7596,7 +7870,7 @@ const initCustomerCabinet = () => {
   const exportEstimatesButton = document.querySelector("[data-customer-export-estimates]");
   const printButton = document.querySelector("[data-customer-print]");
 
-  if (!stats || !projectForm || !projectList || !orderList || !rfqList || !estimateList || !favoriteGrid || !compareGrid) return;
+  if (!stats || !projectForm || !projectList || !orderList || !rfqList || !estimateList || !procurementPlanList || !favoriteGrid || !compareGrid) return;
 
   const empty = (title, text) => `
     <article class="cabinet-item">
@@ -7623,6 +7897,7 @@ const initCustomerCabinet = () => {
         createdAt: payload.createdAt,
         updatedAt: payload.createdAt
       })),
+      procurementPlans: [],
       saved: {
         favorites: storage.read("constera-favorites").map((id) => productsById.get(id)).filter(Boolean),
         compare: storage.read("constera-compare").map((id) => productsById.get(id)).filter(Boolean)
@@ -7655,6 +7930,13 @@ const initCustomerCabinet = () => {
     rejected: "Rədd edilib",
     converted: "RFQ yaradılıb"
   };
+  const procurementPlanStatusLabels = {
+    draft: "Redaktə edilir",
+    review_pending: "Təsdiq gözləyir",
+    approved: "Təsdiqlənib",
+    rejected: "Rədd edilib",
+    activated: "RFQ-lər yaradılıb"
+  };
   const renderProductMiniCards = (products, emptyTitle) => products.length ? products.map((product) => `
     <article class="cabinet-product-card">
       <header>
@@ -7683,6 +7965,7 @@ const initCustomerCabinet = () => {
       <article class="stat-card"><span class="stat-value">${state.orders.length}</span><p>sifariş</p></article>
       <article class="stat-card"><span class="stat-value">${state.rfqs.length}</span><p>sorğu</p></article>
       <article class="stat-card"><span class="stat-value">${state.estimates.length}</span><p>smeta</p></article>
+      <article class="stat-card"><span class="stat-value">${(state.procurementPlans || []).length}</span><p>satınalma planı</p></article>
       <article class="stat-card"><span class="stat-value">${favorites.length + compare.length}</span><p>saxlanmış məhsul</p></article>
       <article class="stat-card"><span class="stat-value">${cart.length}</span><p>səbət mövqeyi</p></article>
     `;
@@ -7740,6 +8023,21 @@ const initCustomerCabinet = () => {
         </div>
       </article>`;
     }).join("") : empty("Smeta yoxdur.", "Ağıllı smeta modulunda ilk hesablamanı hazırla.");
+    procurementPlanList.innerHTML = (state.procurementPlans || []).length ? state.procurementPlans.slice(0, 20).map((plan) => {
+      const waves = Array.isArray(plan.waves) ? plan.waves.filter((wave) => wave.included !== false) : [];
+      const rfqCount = waves.filter((wave) => wave.rfqId).length;
+      return `
+        <article class="cabinet-item">
+          <header><strong>${escapeHtml(plan.title || "Satınalma planı")}</strong><span class="mini-badge">${escapeHtml(procurementPlanStatusLabels[plan.status] || plan.status)}</span></header>
+          <p>${escapeHtml(waves.length)} dalğa · ${escapeHtml(rfqCount)} RFQ · ${formatMoney(plan.totalBudget, plan.currency || "AZN")}</p>
+          <span>${escapeHtml(plan.projectStartDate || "Tarix açıqdır")} – ${escapeHtml(plan.targetEndDate || "Tarix açıqdır")} · ${escapeHtml(plan.unpricedRows || 0)} qiymətsiz mövqe</span>
+          <div class="cabinet-item-actions">
+            <a class="table-action" href="ai-smeta.html?estimate=${encodeURIComponent(plan.estimateId)}">Planı aç</a>
+            ${rfqCount ? '<a class="table-action" href="rfq-dashboard.html">RFQ paneli</a>' : ""}
+          </div>
+        </article>
+      `;
+    }).join("") : empty("Satınalma planı yoxdur.", "Təsdiqlənmiş smetadan ilk mərhələli planı yarat.");
     favoriteGrid.innerHTML = renderProductMiniCards(favorites, "Seçilmiş məhsul yoxdur.");
     compareGrid.innerHTML = renderProductMiniCards(compare, "Müqayisə siyahısı boşdur.");
     if (notificationList) notificationList.innerHTML = state.notifications.length ? state.notifications.map((notification) => `

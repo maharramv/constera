@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v13";
-const SCHEMA_MIGRATIONS = 29;
+const BACKUP_VERSION = "constera-cloud-backup-v14";
+const SCHEMA_MIGRATIONS = 30;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -43,6 +43,10 @@ const backupQueries = Object.freeze({
   deliveryQuotes: "SELECT * FROM delivery_quotes ORDER BY created_at",
   procurementRequests: "SELECT * FROM procurement_requests ORDER BY created_at",
   procurementDecisions: "SELECT * FROM procurement_decisions ORDER BY request_id, created_at",
+  customerProjects: "SELECT * FROM customer_projects ORDER BY created_at",
+  customerEstimates: "SELECT * FROM customer_estimates ORDER BY created_at",
+  procurementPlans: "SELECT * FROM procurement_plans ORDER BY created_at",
+  procurementPlanPhases: "SELECT * FROM procurement_plan_phases ORDER BY plan_id, sequence",
   crmLeads: "SELECT * FROM crm_leads ORDER BY created_at",
   crmActivities: "SELECT * FROM crm_activities ORDER BY lead_id, created_at",
   rentalBookings: "SELECT * FROM rental_bookings ORDER BY created_at",
@@ -162,6 +166,9 @@ const restoreReferences = Object.freeze([
   ["tenderLots", "tender_id", "tenders"],
   ["tenderBids", "tender_id", "tenders"],
   ["rfqs", "ai_run_id", "aiRuns"],
+  ["rfqs", "customer_id", "users"],
+  ["rfqs", "estimate_id", "customerEstimates"],
+  ["rfqs", "procurement_plan_phase_id", "procurementPlanPhases"],
   ["rfqItems", "rfq_id", "rfqs"],
   ["offers", "rfq_id", "rfqs"],
   ["commercialProposals", "rfq_id", "rfqs"],
@@ -176,6 +183,16 @@ const restoreReferences = Object.freeze([
   ["inventoryReservations", "order_id", "orders"],
   ["deliveryQuotes", "order_id", "orders"],
   ["procurementDecisions", "request_id", "procurementRequests"],
+  ["customerProjects", "customer_id", "users"],
+  ["customerEstimates", "customer_id", "users"],
+  ["customerEstimates", "ai_run_id", "aiRuns"],
+  ["customerEstimates", "rfq_id", "rfqs"],
+  ["customerEstimates", "procurement_plan_id", "procurementPlans"],
+  ["procurementPlans", "estimate_id", "customerEstimates"],
+  ["procurementPlans", "customer_id", "users"],
+  ["procurementPlans", "ai_run_id", "aiRuns"],
+  ["procurementPlanPhases", "plan_id", "procurementPlans"],
+  ["procurementPlanPhases", "rfq_id", "rfqs"],
   ["crmActivities", "lead_id", "crmLeads"],
   ["supportCaseItems", "case_id", "supportCases"],
   ["supportCaseMessages", "case_id", "supportCases"],
@@ -270,6 +287,8 @@ export const verifyCloudBackup = async ({ actorId = null } = {}) => {
     "products",
     "suppliers",
     "commercialProposals",
+    "customerEstimates",
+    "procurementPlans",
     "policyConsents",
     "auditLogs"
   ];

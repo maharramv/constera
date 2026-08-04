@@ -40,6 +40,10 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM customer_estimates) AS customer_estimates,
     (SELECT count(*)::int FROM customer_estimates WHERE workflow_status = 'approved') AS approved_estimates,
     (SELECT count(*)::int FROM customer_estimates WHERE workflow_status = 'converted') AS converted_estimates,
+    (SELECT count(*)::int FROM procurement_plans) AS procurement_plans,
+    (SELECT count(*)::int FROM procurement_plans WHERE status = 'approved') AS approved_procurement_plans,
+    (SELECT count(*)::int FROM procurement_plans WHERE status = 'activated') AS activated_procurement_plans,
+    (SELECT count(*)::int FROM procurement_plan_phases WHERE rfq_id IS NOT NULL) AS procurement_phase_rfqs,
     (SELECT count(*)::int FROM catalog_import_runs) AS scraper_runs,
     (SELECT count(*)::int FROM catalog_import_items WHERE review_status = 'pending') AS scraper_pending,
     (SELECT count(*)::int FROM support_cases) AS support_cases,
@@ -398,19 +402,45 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM customer_estimates estimate
       WHERE estimate.workflow_status = 'converted'
         AND (
-          estimate.rfq_id IS NULL
-          OR NOT EXISTS (
+          (estimate.rfq_id IS NULL AND NOT EXISTS (
+            SELECT 1 FROM procurement_plans plan
+            WHERE plan.id = estimate.procurement_plan_id AND plan.estimate_id = estimate.id AND plan.status = 'activated'
+          ))
+          OR (estimate.rfq_id IS NOT NULL AND NOT EXISTS (
             SELECT 1 FROM rfqs rfq
             WHERE rfq.id = estimate.rfq_id AND rfq.estimate_id = estimate.id
-          )
+              AND rfq.procurement_plan_phase_id IS NULL
+          ))
         )) AS invalid_estimate_conversions,
     (SELECT count(*)::int FROM customer_estimates estimate
       JOIN ai_runs run ON run.id = estimate.ai_run_id
       WHERE estimate.workflow_status = 'approved'
         AND run.approval_status <> 'approved') AS approved_estimates_without_ai_approval,
+    (SELECT count(*)::int FROM procurement_plans plan
+      LEFT JOIN ai_runs run ON run.id = plan.ai_run_id
+      WHERE plan.status IN ('approved', 'activated')
+        AND (run.id IS NULL OR run.feature <> 'procurement_plan' OR run.approval_status <> 'approved'))
+      AS approved_procurement_plans_without_ai_approval,
+    (SELECT count(*)::int FROM procurement_plans plan
+      WHERE plan.status = 'activated'
+        AND EXISTS (
+          SELECT 1 FROM procurement_plan_phases phase
+          WHERE phase.plan_id = plan.id AND phase.included = true
+            AND (
+              phase.status <> 'rfq_created'
+              OR phase.rfq_id IS NULL
+              OR NOT EXISTS (
+                SELECT 1 FROM rfqs rfq
+                WHERE rfq.id = phase.rfq_id AND rfq.procurement_plan_phase_id = phase.id
+              )
+            )
+        )) AS activated_procurement_plans_without_rfqs,
+    (SELECT count(*)::int FROM procurement_plan_phases phase
+      WHERE phase.row_count <> jsonb_array_length(phase.row_keys)
+        OR phase.row_count > 20) AS invalid_procurement_phase_rows,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 29
+        WHEN verification.schema_migrations = 30
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END
@@ -450,6 +480,8 @@ const [schema] = await query(`
     to_regclass('public.customer_projects') IS NOT NULL AS customer_projects_ready,
     to_regclass('public.saved_products') IS NOT NULL AS saved_products_ready,
     to_regclass('public.customer_estimates') IS NOT NULL AS customer_estimates_ready,
+    to_regclass('public.procurement_plans') IS NOT NULL AS procurement_plans_ready,
+    to_regclass('public.procurement_plan_phases') IS NOT NULL AS procurement_plan_phases_ready,
     to_regclass('public.catalog_import_runs') IS NOT NULL AS scraper_runs_ready,
     to_regclass('public.catalog_import_items') IS NOT NULL AS scraper_items_ready,
     to_regclass('public.support_cases') IS NOT NULL AS support_cases_ready,
@@ -502,7 +534,11 @@ const [schema] = await query(`
     to_regclass('public.rfqs_estimate_unique') IS NOT NULL
       AND to_regclass('public.customer_estimates_workflow_idx') IS NOT NULL
       AND to_regclass('public.customer_estimates_ai_run_unique') IS NOT NULL
-      AS ai_estimate_workflow_ready
+      AS ai_estimate_workflow_ready,
+    to_regclass('public.procurement_plans_customer_status_idx') IS NOT NULL
+      AND to_regclass('public.procurement_plan_phases_plan_sequence_idx') IS NOT NULL
+      AND to_regclass('public.rfqs_procurement_plan_phase_unique') IS NOT NULL
+      AS ai_procurement_plan_ready
 `);
 
 const minimums = {

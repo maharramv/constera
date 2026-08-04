@@ -2445,7 +2445,8 @@ dd {
 .ai-smeta-layout,
 .ai-smeta-history,
 .ai-smeta-table,
-.ai-smeta-products {
+.ai-smeta-products,
+.ai-procurement-wave {
   display: grid;
   gap: 14px;
 }
@@ -2521,7 +2522,7 @@ dd {
 
 .ai-smeta-workflow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -2653,6 +2654,21 @@ dd {
   font-size: 0.86rem;
 }
 
+.ai-procurement-plan {
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+}
+
+.ai-procurement-plan-create {
+  grid-template-columns: minmax(180px, 0.7fr) minmax(180px, 0.7fr) minmax(220px, 1fr);
+}
+
+.ai-procurement-wave {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+
 .ai-smeta-products span {
   font-size: 0.78rem;
   line-height: 1.45;
@@ -2711,7 +2727,8 @@ dd {
 
 .quality-item header,
 .cabinet-item header,
-.cabinet-product-card header {
+.cabinet-product-card header,
+.ai-procurement-wave header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -3407,6 +3424,10 @@ dd {
 
   .ai-smeta-workflow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-procurement-plan-create {
+    grid-template-columns: 1fr;
   }
 
   .compact-hero {

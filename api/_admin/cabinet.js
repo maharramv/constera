@@ -79,6 +79,21 @@ const mapProject = (row) => ({
   updatedAt: row.updated_at
 });
 
+const mapProcurementPlan = (row) => ({
+  id: row.id,
+  estimateId: row.estimate_id,
+  title: row.title,
+  status: row.status,
+  projectStartDate: row.project_start_date,
+  targetEndDate: row.target_end_date,
+  totalBudget: Number(row.total_budget || 0),
+  currency: row.currency,
+  unpricedRows: Number(row.unpriced_rows || 0),
+  waves: Array.isArray(row.waves) ? row.waves : [],
+  activatedAt: row.activated_at || null,
+  updatedAt: row.updated_at
+});
+
 const normalizeProductIds = (value, listType) => {
   if (!Array.isArray(value)) throw new ApiError(400, "validation_error", "Məhsul siyahısı massiv olmalıdır.");
   const limit = listType === "compare" ? 5 : 100;
@@ -91,7 +106,7 @@ const normalizeProductIds = (value, listType) => {
 };
 
 const readCabinet = async (user) => {
-  const [orders, rfqs, savedRows, projects, estimates, notifications] = await Promise.all([
+  const [orders, rfqs, savedRows, projects, estimates, procurementPlans, notifications] = await Promise.all([
     query(
       `SELECT o.*,
               COALESCE(json_agg(json_build_object(
@@ -150,6 +165,26 @@ const readCabinet = async (user) => {
     query("SELECT * FROM customer_projects WHERE customer_id = $1 ORDER BY updated_at DESC LIMIT 100", [user.id]),
     query("SELECT * FROM customer_estimates WHERE customer_id = $1 ORDER BY updated_at DESC LIMIT 50", [user.id]),
     query(
+      `SELECT plan.*,
+              COALESCE(json_agg(json_build_object(
+                'id', phase.id,
+                'title', phase.title,
+                'sequence', phase.sequence,
+                'needByDate', phase.need_by_date,
+                'rowCount', phase.row_count,
+                'included', phase.included,
+                'status', phase.status,
+                'rfqId', phase.rfq_id
+              ) ORDER BY phase.sequence) FILTER (WHERE phase.id IS NOT NULL), '[]'::json) AS waves
+         FROM procurement_plans plan
+         LEFT JOIN procurement_plan_phases phase ON phase.plan_id = plan.id
+        WHERE plan.customer_id = $1
+        GROUP BY plan.id
+        ORDER BY plan.updated_at DESC
+        LIMIT 50`,
+      [user.id]
+    ),
+    query(
       `SELECT id, subject, body, status, created_at
          FROM notifications
         WHERE user_id = $1 AND status <> 'dead'
@@ -172,12 +207,14 @@ const readCabinet = async (user) => {
       sourceFileName: row.source_file_name || "",
       aiRunId: row.ai_run_id || null,
       rfqId: row.rfq_id || null,
+      procurementPlanId: row.procurement_plan_id || null,
       version: Number(row.version || 1),
       approvedAt: row.approved_at || null,
       convertedAt: row.converted_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     })),
+    procurementPlans: procurementPlans.map(mapProcurementPlan),
     saved: {
       favorites: savedRows.filter((row) => row.list_type === "favorite").map(mapProduct),
       compare: savedRows.filter((row) => row.list_type === "compare").map(mapProduct)

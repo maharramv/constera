@@ -11,7 +11,7 @@ test("AI Mərhələ 5 smetanı redaktə, təsdiq və idempotent RFQ axınına ç
   const rfqs = read("api/rfqs.js");
   const migration = read("db/migrations/031_ai_estimate_workflow.sql");
 
-  assert.match(page, /AI Mərhələ 5/);
+  assert.match(page, /AI Mərhələ 6/);
   assert.match(marketplace, /data-ai-smeta-row-include/);
   assert.match(marketplace, /data-ai-smeta-row-quantity/);
   assert.match(marketplace, /data-ai-smeta-reprice/);

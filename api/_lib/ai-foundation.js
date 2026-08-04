@@ -6,11 +6,17 @@ import {
   createOpenAiCatalogAdvice,
   createOpenAiEstimate,
   createOpenAiOfferComparison,
+  createOpenAiProcurementPlan,
   createOpenAiRfqDraft,
   openAiConfiguration
 } from "./openai.js";
 import { generateProviderEstimate } from "./provider-adapters.js";
 import { enrichEstimateWorkflowRow } from "./estimate-workflow.js";
+import {
+  buildDeterministicProcurementPlan,
+  normalizeAiProcurementPlan,
+  prepareProcurementEstimateRows
+} from "./procurement-plan.js";
 
 const allRoles = ["super_admin", "admin", "sales", "supplier", "customer"];
 const elevatedRoles = ["super_admin", "admin"];
@@ -21,7 +27,8 @@ export const AI_FEATURE_POLICIES = Object.freeze({
   estimate_document: Object.freeze({ roles: allRoles, requiresApproval: true, label: "Smeta sənədinin oxunması" }),
   catalog_enrichment: Object.freeze({ roles: allRoles, requiresApproval: true, label: "AI kataloq məsləhətçisi" }),
   rfq_draft: Object.freeze({ roles: allRoles, requiresApproval: true, label: "RFQ qaralaması" }),
-  offer_comparison: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Təklif müqayisəsi" })
+  offer_comparison: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Təklif müqayisəsi" }),
+  procurement_plan: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Satınalma planı" })
 });
 
 const boundedInteger = (name, fallback, minimum, maximum) => {
@@ -238,6 +245,58 @@ export const normalizeAiEstimate = ({ estimate, fallbackEstimate = {}, allowedSo
     },
     sources: usedSourceIds.map((id) => allowed.get(id)).filter(Boolean)
   };
+};
+
+export const prepareAiProcurementPlanRequest = ({ estimate = {}, input = {} } = {}) => {
+  const baseline = buildDeterministicProcurementPlan({
+    estimate,
+    projectStartDate: text(input?.projectStartDate, 10),
+    durationDays: number(input?.durationDays, 150, 30, 730)
+  });
+  if (!baseline.waves.length) {
+    throw new ApiError(400, "procurement_plan_empty", "Satınalma planı üçün seçilmiş material mövqeyi yoxdur.");
+  }
+  const rowsByKey = new Map(prepareProcurementEstimateRows(estimate).map((row, index) => {
+    const sanitized = sanitizeRow({ ...row, key: row.planRowKey }, index);
+    return [sanitized.key, sanitized];
+  }));
+  const sources = sourceCatalog(estimate);
+  const context = {
+    project: {
+      title: text(estimate?.projectLabel || "Tikinti layihəsi", 240),
+      type: text(estimate?.projectType, 80),
+      city: text(estimate?.city, 160),
+      area: number(estimate?.area, 0, 0, 10_000_000),
+      scope: text(estimate?.scopeLabel || estimate?.scope, 120),
+      complexity: text(estimate?.complexityLabel || estimate?.complexity, 120),
+      projectStartDate: baseline.projectStartDate,
+      targetEndDate: baseline.targetEndDate,
+      durationDays: baseline.durationDays
+    },
+    allowedWaves: baseline.waves.map((wave) => ({
+      key: wave.key,
+      phase: wave.title,
+      startDate: wave.startDate,
+      endDate: wave.endDate,
+      needByDate: wave.needByDate,
+      leadTimeDays: wave.leadTimeDays,
+      riskLevel: wave.riskLevel,
+      rowCount: wave.rowCount,
+      unpricedCount: wave.unpricedCount,
+      materials: wave.rowKeys.map((key) => rowsByKey.get(key)).filter(Boolean).map((row) => ({
+        key: row.key,
+        title: row.title,
+        quantity: row.quantity,
+        unit: row.unit,
+        criticality: row.criticality
+      }))
+    }))
+  };
+  const requestBytes = Buffer.byteLength(JSON.stringify(context), "utf8");
+  if (requestBytes > 120_000) {
+    throw new ApiError(413, "ai_request_too_large", "Satınalma planı AI sorğusu icazə verilən həcmi keçir.");
+  }
+  return { context, baseline, sources, requestBytes, document: null };
 };
 
 const sanitizeCatalogCandidate = (candidate) => ({
@@ -675,7 +734,7 @@ const runSummary = (row) => ({
   reviewNote: row.review_note || "",
   rfqId: row.rfq_id || null,
   sources: Array.isArray(row.sources) ? row.sources : [],
-  ...(row.feature === "offer_comparison" ? {
+  ...(["offer_comparison", "procurement_plan"].includes(row.feature) ? {
     output: row.output && typeof row.output === "object" ? row.output : {}
   } : {}),
   createdAt: row.created_at,
@@ -910,6 +969,30 @@ export const generateAiOfferComparison = async ({ user, comparison = {} }) => {
   return { ...metadata, comparison: output };
 };
 
+export const generateAiProcurementPlan = async ({ user, estimate = {}, input = {} }) => {
+  const feature = "procurement_plan";
+  const prepared = prepareAiProcurementPlanRequest({ estimate, input });
+  const result = await runGovernedAiGeneration({
+    user,
+    feature,
+    prepared,
+    promptVersion: "procurement-plan-v1",
+    readiness: directOpenAiReadiness(),
+    generate: (runId) => createOpenAiProcurementPlan({ requestId: runId, context: prepared.context }),
+    normalize: (providerResult) => {
+      const normalized = normalizeAiProcurementPlan({ plan: providerResult.plan, baseline: prepared.baseline });
+      return {
+        output: normalized.output,
+        confidence: normalized.confidence,
+        sources: prepared.sources,
+        warnings: normalized.warnings
+      };
+    }
+  });
+  const { output, ...metadata } = result;
+  return { ...metadata, plan: output };
+};
+
 const usageSnapshot = (row, limits) => ({
   dailyPeriod: row?.daily_period || new Date().toISOString().slice(0, 10),
   dailyRequests: Number(row?.daily_requests || 0),
@@ -1021,6 +1104,15 @@ export const reviewAiRun = async ({ user, runId, decision, note = "" }) => {
             updated_at = now()
       WHERE ai_run_id = $1 AND workflow_status <> 'converted'`,
     [runId, status, status]
+  );
+  await query(
+    `UPDATE procurement_plans
+        SET status = $2,
+            approved_at = CASE WHEN $2 = 'approved' THEN now() ELSE NULL END,
+            version = version + 1,
+            updated_at = now()
+      WHERE ai_run_id = $1 AND status <> 'activated'`,
+    [runId, status]
   );
   await recordAudit({
     actorId: user.id,

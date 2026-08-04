@@ -71,6 +71,19 @@
       method: "POST",
       body: JSON.stringify({ action: "save-estimate", ...data })
     }),
+    procurementPlans: (estimateId = "") => request(`/api/procurement-plans?limit=30${estimateId ? `&estimateId=${encodeURIComponent(estimateId)}` : ""}`),
+    generateProcurementPlan: (data) => request("/api/procurement-plans", {
+      method: "POST",
+      body: JSON.stringify({ action: "generate", ...data })
+    }),
+    updateProcurementPlan: (id, waves) => request("/api/procurement-plans", {
+      method: "PATCH",
+      body: JSON.stringify({ action: "update", id, waves })
+    }),
+    activateProcurementPlan: (id, data = {}) => request("/api/procurement-plans", {
+      method: "POST",
+      body: JSON.stringify({ action: "activate", id, ...data })
+    }),
     syncEstimates: (estimates) => request("/api/cabinet", {
       method: "POST",
       body: JSON.stringify({ action: "sync-estimates", estimates })
