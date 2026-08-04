@@ -59,6 +59,7 @@ const requiredFiles = [
   "assets/js/order-detail.js",
   "assets/js/proposal-detail.js",
   "assets/js/admin-v2.js",
+  "assets/js/ai-admin.js",
   "assets/js/catalog-assistant.js",
   "assets/js/launch-center.js",
   "assets/js/marketplace.js",

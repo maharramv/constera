@@ -1,4 +1,5 @@
 import { ApiError } from "./http.js";
+import { openAiConfiguration } from "./openai.js";
 
 const httpsEndpoint = (value, name) => {
   const source = String(value || "").trim();
@@ -78,23 +79,26 @@ export const bankTransferInstructions = () => {
   };
 };
 
-export const providerReadiness = () => ({
-  payment: configuredHttpsEndpoint(process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET),
-  bankTransfer: bankTransferReadiness(),
-  electronicInvoice: configuredHttpsEndpoint(process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET),
-  logistics: configuredHttpsEndpoint(process.env.LOGISTICS_WEBHOOK_URL, process.env.LOGISTICS_WEBHOOK_SECRET),
-  aiEstimate: configuredHttpsEndpoint(process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET),
-  email: configuredHttpsEndpoint(process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured"),
-  whatsapp: configuredHttpsEndpoint(process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured")
-});
+export const providerReadiness = () => {
+  const directAi = openAiConfiguration();
+  return {
+    payment: configuredHttpsEndpoint(process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET),
+    bankTransfer: bankTransferReadiness(),
+    electronicInvoice: configuredHttpsEndpoint(process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET),
+    logistics: configuredHttpsEndpoint(process.env.LOGISTICS_WEBHOOK_URL, process.env.LOGISTICS_WEBHOOK_SECRET),
+    aiEstimate: directAi.ready || configuredHttpsEndpoint(process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET),
+    email: configuredHttpsEndpoint(process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured"),
+    whatsapp: configuredHttpsEndpoint(process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET || "configured")
+  };
+};
 
 export const providerConfigurationStatus = () => {
   const readiness = providerReadiness();
+  const directAi = openAiConfiguration();
   const items = [
     ["payment", "Kart ödənişi", process.env.PAYMENT_WEBHOOK_URL, process.env.PAYMENT_WEBHOOK_SECRET, true],
     ["electronicInvoice", "Elektron qaimə", process.env.EINVOICE_WEBHOOK_URL, process.env.EINVOICE_WEBHOOK_SECRET, true],
     ["logistics", "Logistika provayderi", process.env.LOGISTICS_WEBHOOK_URL, process.env.LOGISTICS_WEBHOOK_SECRET, true],
-    ["aiEstimate", "AI smeta", process.env.AI_ESTIMATE_WEBHOOK_URL, process.env.AI_ESTIMATE_WEBHOOK_SECRET, true],
     ["email", "E-poçt", process.env.EMAIL_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false],
     ["whatsapp", "WhatsApp", process.env.WHATSAPP_WEBHOOK_URL, process.env.NOTIFICATION_WEBHOOK_SECRET, false]
   ];
@@ -106,6 +110,25 @@ export const providerConfigurationStatus = () => {
     bankConfigured: Boolean(String(process.env.BANK_TRANSFER_BANK_NAME || "").trim()),
     ibanConfigured: Boolean(normalizedIban()),
     secretRequired: false
+  }, {
+    key: "aiEstimate",
+    label: "AI smeta",
+    ready: readiness.aiEstimate,
+    provider: directAi.ready ? "openai" : readiness.aiEstimate ? "webhook" : "none",
+    model: directAi.ready ? directAi.model : null,
+    keyConfigured: directAi.keyConfigured,
+    endpointConfigured: Boolean(process.env.AI_ESTIMATE_WEBHOOK_URL),
+    endpointValid: (() => {
+      try {
+        return new URL(process.env.AI_ESTIMATE_WEBHOOK_URL || "").protocol === "https:";
+      } catch {
+        return false;
+      }
+    })(),
+    secretConfigured: Boolean(process.env.AI_ESTIMATE_WEBHOOK_SECRET),
+    secretRequired: !directAi.ready,
+    structuredOutput: directAi.ready,
+    humanApproval: true
   }, ...items.map(([key, label, endpoint, secret, secretRequired]) => {
     let endpointValid = false;
     try {

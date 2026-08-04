@@ -20,6 +20,7 @@
   ],
   "rewrites": [
     { "source": "/api/account", "destination": "/api/admin?__route=account" },
+    { "source": "/api/ai", "destination": "/api/admin?__route=ai" },
     { "source": "/api/analytics", "destination": "/api/admin?__route=analytics" },
     { "source": "/api/audit", "destination": "/api/admin?__route=audit" },
     { "source": "/api/backup", "destination": "/api/admin?__route=backup" },

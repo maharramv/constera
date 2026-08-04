@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v11";
-const SCHEMA_MIGRATIONS = 27;
+const BACKUP_VERSION = "constera-cloud-backup-v12";
+const SCHEMA_MIGRATIONS = 28;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -82,6 +82,13 @@ const backupQueries = Object.freeze({
   deliveryTrackingEvents: "SELECT * FROM delivery_tracking_events ORDER BY occurred_at",
   securityEvents: "SELECT * FROM security_events ORDER BY created_at",
   backupVerifications: "SELECT * FROM backup_verifications ORDER BY created_at",
+  aiUsageCounters: "SELECT * FROM ai_usage_counters ORDER BY user_id",
+  aiRuns: `SELECT id, user_id, company_id, feature, provider, model, status, input_hash,
+                  prompt_version, request_bytes, response_bytes, input_tokens, output_tokens,
+                  total_tokens, reserved_tokens, estimated_cost_usd, confidence, sources,
+                  requires_approval, approval_status, reviewed_by, reviewed_at, review_note,
+                  error_code, expires_at, created_at, updated_at
+             FROM ai_runs WHERE expires_at > now() ORDER BY created_at`,
   auditLogs: "SELECT * FROM audit_logs ORDER BY created_at"
 });
 
@@ -172,7 +179,11 @@ const restoreReferences = Object.freeze([
   ["supportCaseItems", "case_id", "supportCases"],
   ["supportCaseMessages", "case_id", "supportCases"],
   ["supplierFeedRuns", "feed_id", "supplierFeeds"],
-  ["supplierSettlementItems", "settlement_id", "supplierSettlements"]
+  ["supplierSettlementItems", "settlement_id", "supplierSettlements"],
+  ["aiUsageCounters", "user_id", "users"],
+  ["aiRuns", "user_id", "users"],
+  ["aiRuns", "company_id", "companies"],
+  ["aiRuns", "reviewed_by", "users"]
 ]);
 
 export const validateBackupRestoreRoundTrip = (backup, { compressedPayload = null } = {}) => {

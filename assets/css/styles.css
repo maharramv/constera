@@ -137,22 +137,6 @@ textarea {
   display: none;
 }
 
-.ambient-one {
-  top: 14%;
-  left: -8%;
-  width: 360px;
-  height: 360px;
-  background: rgba(31, 111, 255, 0.12);
-}
-
-.ambient-two {
-  right: -10%;
-  bottom: 18%;
-  width: 420px;
-  height: 420px;
-  background: rgba(212, 166, 79, 0.1);
-}
-
 .header {
   position: sticky;
   top: 16px;
@@ -4767,6 +4751,18 @@ body[data-page="admin"] .admin-panel > .market-section-heading h2 {
     left: max(12px, env(safe-area-inset-left));
     max-width: none;
     justify-content: space-between;
+  }
+
+  .privacy-consent {
+    flex-wrap: wrap;
+  }
+
+  .privacy-consent > span {
+    flex-basis: 100%;
+  }
+
+  .privacy-consent .button {
+    flex: 1;
   }
 
   .source-count-band {

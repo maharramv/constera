@@ -284,9 +284,14 @@
       method: "POST",
       body: JSON.stringify({ action: "create-shipment", fulfillmentId })
     }),
-    aiEstimate: (input, deterministicEstimate) => request("/api/integrations", {
+    aiEstimate: (input, deterministicEstimate) => request("/api/ai", {
       method: "POST",
-      body: JSON.stringify({ action: "ai-estimate", input, deterministicEstimate })
+      body: JSON.stringify({ feature: "estimate_review", input, deterministicEstimate })
+    }),
+    aiDashboard: (scope = "mine") => request(`/api/ai?scope=${encodeURIComponent(scope)}&limit=50`),
+    reviewAiRun: (runId, decision, note = "") => request("/api/ai", {
+      method: "PATCH",
+      body: JSON.stringify({ runId, decision, note })
     }),
     importEstimateDocument: (file) => request("/api/integrations", {
       method: "POST",

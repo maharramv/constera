@@ -1392,6 +1392,27 @@
                   <button class="button button-outline" type="button" data-admin-recovery-copy>Kodları köçür</button>
                 </div>
               </section>
+              <section class="admin-v2-section admin-v2-section-wide" data-ai-foundation-panel>
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>AI idarəetmə mərkəzi</h3>
+                    <p class="admin-import-status">OpenAI bağlantısı, istifadə limitləri, etibar göstəricisi və insan təsdiqi.</p>
+                  </div>
+                  <div class="admin-actions">
+                    <span class="status-pill" data-ai-foundation-badge>Yoxlanılır</span>
+                    <button class="button button-outline" type="button" data-ai-foundation-refresh>Yenilə</button>
+                  </div>
+                </div>
+                <p class="admin-import-status" data-ai-foundation-status role="status" aria-live="polite">AI vəziyyəti yüklənir.</p>
+                <div class="admin-v2-kpi-grid" data-ai-foundation-metrics></div>
+                <div class="admin-v2-integration-list" data-ai-foundation-config></div>
+                <div class="table-wrap">
+                  <table class="admin-table">
+                    <thead><tr><th>Vaxt</th><th>İstifadəçi</th><th>Funksiya</th><th>İstifadə</th><th>Etibar</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead>
+                    <tbody data-ai-foundation-runs></tbody>
+                  </table>
+                </div>
+              </section>
               <section class="admin-v2-section">
                 <h3>CSV / Excel idxalı</h3>
                 <form class="admin-form" data-admin-v2-import-form>
@@ -1527,5 +1548,6 @@
     <script src="assets/js/launch-center.js"></script>
     <script src="assets/js/enterprise-admin.js"></script>
     <script src="assets/js/operations-center.js"></script>
+    <script src="assets/js/ai-admin.js"></script>
   </body>
 </html>

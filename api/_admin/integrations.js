@@ -1,4 +1,5 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { generateAiEstimate } from "../_lib/ai-foundation.js";
 import { assertCriticalTwoFactor, requireRole } from "../_lib/auth.js";
 import { syncOrderLead } from "../_lib/crm.js";
 import { query, recordAudit } from "../_lib/db.js";
@@ -11,7 +12,6 @@ import {
   bankTransferInstructions,
   createLogisticsShipment,
   createPaymentCheckout,
-  generateProviderEstimate,
   issueElectronicInvoice,
   providerConfigurationStatus,
   providerReadiness
@@ -291,9 +291,9 @@ export default withApiErrors(async (req, res) => {
     if (!providerReadiness().aiEstimate) {
       throw new ApiError(503, "ai_estimate_not_configured", "PDF smetanın oxunması üçün AI sənəd provayderi qoşulmalıdır.");
     }
-    const requestId = `ai-${randomUUID()}`;
-    const estimate = await generateProviderEstimate({
-      requestId,
+    const result = await generateAiEstimate({
+      user,
+      feature: "estimate_document",
       input: {
         document: {
           fileName: parsed.fileName,
@@ -304,16 +304,27 @@ export default withApiErrors(async (req, res) => {
       },
       deterministicEstimate: {}
     });
+    const estimate = result.estimate;
     await recordAudit({
       actorId: user.id,
       action: "parse",
       entityType: "estimate_document",
-      entityId: requestId,
+      entityId: result.runId,
       details: { fileName: parsed.fileName, sourceType: "pdf", rows: estimate.rows.length }
     });
     return sendJson(res, 200, {
       ok: true,
-      data: { fileName: parsed.fileName, sourceType: "pdf-ai", requiresAi: true, rows: estimate.rows }
+      data: {
+        fileName: parsed.fileName,
+        sourceType: "pdf-ai",
+        requiresAi: true,
+        rows: estimate.rows,
+        aiRunId: result.runId,
+        confidence: result.confidence,
+        sources: result.sources,
+        warnings: result.warnings,
+        approval: result.approval
+      }
     });
   }
 
@@ -804,17 +815,14 @@ export default withApiErrors(async (req, res) => {
 
   if (action === "ai-estimate") {
     const user = await requireRole(req);
-    if (!providerReadiness().aiEstimate) throw new ApiError(503, "ai_estimate_not_configured", "Xarici AI smeta provayderi hələ qoşulmayıb.");
     const deterministicEstimate = body.deterministicEstimate && typeof body.deterministicEstimate === "object"
       ? body.deterministicEstimate
       : {};
     const input = body.input && typeof body.input === "object" ? body.input : {};
     const encoded = JSON.stringify({ deterministicEstimate, input });
     if (Buffer.byteLength(encoded, "utf8") > 120_000) throw new ApiError(413, "estimate_too_large", "AI smeta sorğusu maksimum 120 KB ola bilər.");
-    const requestId = `ai-${randomUUID()}`;
-    const estimate = await generateProviderEstimate({ requestId, input, deterministicEstimate });
-    await recordAudit({ actorId: user.id, action: "generate", entityType: "ai_estimate", entityId: requestId });
-    return sendJson(res, 200, { ok: true, data: { requestId, estimate } });
+    const result = await generateAiEstimate({ user, feature: "estimate_review", input, deterministicEstimate });
+    return sendJson(res, 200, { ok: true, data: { ...result, requestId: result.runId } });
   }
 
   throw new ApiError(400, "invalid_integration_action", "İnteqrasiya əməliyyatı dəstəklənmir.");

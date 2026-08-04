@@ -144,11 +144,17 @@ Miqrator tətbiq edilmiş faylları `constera_schema_migrations` reyestrində ch
 npm run db:migrate -- --baseline-through=026_supplier_launch_controls.sql --confirm-existing-schema --only=027_launch_operations.sql
 ```
 
+AI Mərhələ 1 miqrasiyası yeni və artıq işləyən bazaya ayrıca tətbiq edilə bilər:
+
+```bash
+npm run db:migrate -- --only=028_ai_foundation.sql
+```
+
 Planı bazanı dəyişmədən görmək üçün eyni əmrə `--dry-run` əlavə et.
 
 5. `login.html` səhifəsində “İlk super administratoru yarat” bölməsini bir dəfə doldur. İlk istifadəçi yarandıqdan sonra quraşdırma endpoint-i avtomatik bağlanır.
 
-Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır.
+Şifrə bərpası məktubları üçün `EMAIL_WEBHOOK_URL` qurulmalıdır. Sistem bərpa açarını bazada yalnız heşlənmiş formada saxlayır, 30 dəqiqə sonra etibarsız edir və uğurlu dəyişiklikdən sonra bütün əvvəlki sessiyaları bağlayır. AI smeta üçün `OPENAI_API_KEY` yalnız server mühitində saxlanılır. `OPENAI_MODEL`, gündəlik/aylıq sorğu limitləri, token büdcəsi və saxlanma müddəti `.env.example` daxilində idarə olunur; xam sorğu bazaya yazılmır və hər AI nəticəsi istifadədən əvvəl insan təsdiqi gözləyir.
 
 Gündəlik bulud backup-ı üçün `BACKUP_WEBHOOK_URL` və `BACKUP_WEBHOOK_SECRET` birlikdə qurulmalıdır. Endpoint gzip edilmiş JSON qəbul etməli və faylı özəl yaddaşda saxlamalıdır. Hər yoxlama backup-ı gzip round-trip, kolleksiya tipi, təkrarlanan ID və əsas referensial əlaqələr üzrə bərpa məşqindən keçirir. `MONITOR_ALERT_WEBHOOK_URL` və ən azı 24 simvolluq `MONITOR_ALERT_WEBHOOK_SECRET` qurulduqda gündəlik production monitor xətanı həmin kanala `production_monitor_failed` JSON hadisəsi kimi göndərir və yenə HTTP 500 qaytararaq Vercel cron-u uğursuz işarələyir. GitHub monitoru əlavə olaraq altı saatdan bir ictimai müqaviləni yoxlayır və nasazlıqda incident issue açır. Kart ödənişi, elektron qaimə və xarici AI smeta yalnız müvafiq HTTPS webhook və gizli açar cütü olduqda interfeysdə aktivləşir.
 

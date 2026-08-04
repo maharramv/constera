@@ -54,6 +54,32 @@ test("AI smeta sənəd idxalı, səbət çevirməsi və satış hadisələri iş
   assert.match(events, /analytics_events/);
 });
 
+test("AI Mərhələ 1 limit, strukturlaşdırılmış cavab, audit və insan təsdiqini birləşdirir", () => {
+  const admin = read("admin.html");
+  const adminClient = read("assets/js/ai-admin.js");
+  const marketplace = read("assets/js/marketplace.js");
+  const production = read("assets/js/production.js");
+  const aiApi = read("api/_admin/ai.js");
+  const foundation = read("api/_lib/ai-foundation.js");
+  const openai = read("api/_lib/openai.js");
+  const migration = read("db/migrations/028_ai_foundation.sql");
+  const vercel = read("vercel.json");
+
+  assert.match(admin, /data-ai-foundation-panel/);
+  assert.match(adminClient, /aiDashboard\("all"\)/);
+  assert.match(marketplace, /data-ai-smeta-review/);
+  assert.match(marketplace, /aiApprovalStatus/);
+  assert.match(production, /request\("\/api\/ai"/);
+  assert.match(aiApi, /generateAiEstimate/);
+  assert.match(foundation, /AI_MONTHLY_TOKEN_BUDGET/);
+  assert.match(foundation, /approval_status/);
+  assert.match(openai, /store: false/);
+  assert.match(openai, /type: "json_schema"/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS ai_runs/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS ai_usage_counters/);
+  assert.match(vercel, /"source": "\/api\/ai"/);
+});
+
 test("admin etibar mərkəzi keyfiyyət robotu və təchizatçı scorecard-ını birləşdirir", () => {
   const admin = read("admin.html");
   const client = read("assets/js/enterprise-admin.js");

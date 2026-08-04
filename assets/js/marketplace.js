@@ -5327,7 +5327,9 @@ const initAiSmeta = () => {
     product.specs
   ].flat().join(" "));
   const recommendProducts = (rule) => {
-    const keywords = rule.keywords.map(normalize);
+    const keywords = (Array.isArray(rule.keywords) && rule.keywords.length
+      ? rule.keywords
+      : [rule.key, rule.title, rule.category]).filter(Boolean).map(normalize);
     return (marketplace.products || [])
       .map((product) => {
         const text = productSearchText(product);
@@ -5509,6 +5511,19 @@ const initAiSmeta = () => {
     renderStats();
   };
   const renderEstimate = (estimate, shouldScroll = true) => {
+    const aiApprovalLabels = {
+      pending: "İnsan təsdiqi gözləyir",
+      approved: "Ekspert tərəfindən təsdiqlənib",
+      rejected: "Ekspert tərəfindən rədd edilib",
+      not_required: "Təsdiq tələb etmir"
+    };
+    const aiApprovalStatus = estimate.aiApprovalStatus || "pending";
+    const aiActionLocked = Boolean(estimate.aiProvider && aiApprovalStatus !== "approved" && aiApprovalStatus !== "not_required");
+    const aiConfidence = Number.isFinite(Number(estimate.aiConfidence))
+      ? `${Math.round(Number(estimate.aiConfidence) * 100)}%`
+      : "-";
+    const aiSources = Array.isArray(estimate.aiSources) ? estimate.aiSources : [];
+    const aiWarnings = Array.isArray(estimate.aiWarnings) ? estimate.aiWarnings : [];
     output.hidden = false;
     output.innerHTML = `
       <div class="market-section-heading">
@@ -5534,6 +5549,24 @@ const initAiSmeta = () => {
         <article><strong>${escapeHtml(estimate.deliveryPercent || 0)}%</strong><span>logistika</span></article>
         <article><strong>${escapeHtml(estimate.laborPercent || 0)}%</strong><span>işçilik indeksi</span></article>
       </div>
+      ${estimate.aiProvider ? `
+        <div class="admin-v2-section-heading admin-import-status" data-type="${aiApprovalStatus === "approved" ? "success" : aiApprovalStatus === "rejected" ? "error" : "warning"}">
+          <div>
+            <strong>AI qaralaması · ${escapeHtml(aiConfidence)} etibar</strong>
+            <br><span>${escapeHtml(aiApprovalLabels[aiApprovalStatus] || aiApprovalStatus)}${estimate.aiModel ? ` · ${escapeHtml(estimate.aiModel)}` : ""}</span>
+          </div>
+          ${aiApprovalStatus === "pending" ? `
+            <div class="admin-actions">
+              <button class="button button-primary" type="button" data-ai-smeta-review="approve" data-run-id="${escapeAttr(estimate.aiRunId || "")}">Nəticəni təsdiqlə</button>
+              <button class="button button-outline" type="button" data-ai-smeta-review="reject" data-run-id="${escapeAttr(estimate.aiRunId || "")}">Rədd et</button>
+            </div>
+          ` : ""}
+        </div>
+        ${aiWarnings.length ? `<div class="admin-import-status" data-type="warning"><strong>Yoxlanmalı məqamlar:</strong> ${aiWarnings.map((warning) => escapeHtml(warning)).join(" · ")}</div>` : ""}
+        ${aiSources.length ? `<p class="admin-import-status"><strong>Mənbələr:</strong> ${aiSources.map((source) => source.url
+          ? `<a class="source-link" href="${escapeAttr(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || source.id)}</a>`
+          : `<span>${escapeHtml(source.title || source.id)}</span>`).join(" · ")}</p>` : ""}
+      ` : ""}
       ${estimate.aiSummary ? `<p class="admin-import-status" data-type="success">${escapeHtml(estimate.aiSummary)}</p>` : ""}
       <div class="ai-smeta-table">
         ${estimate.rows.map((row) => `
@@ -5557,8 +5590,8 @@ const initAiSmeta = () => {
         `).join("")}
       </div>
       <div class="admin-actions">
-        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}">Sorğu qaralaması yarat</button>
-        <button class="button button-secondary" type="button" data-ai-smeta-cart="${escapeAttr(estimate.id)}">Qiymətlənənləri səbətə əlavə et</button>
+        <button class="button button-primary" type="button" data-ai-smeta-rfq="${escapeAttr(estimate.id)}" ${aiActionLocked ? "disabled title=\"Əvvəl AI nəticəsini yoxlayıb təsdiqlə\"" : ""}>Sorğu qaralaması yarat</button>
+        <button class="button button-secondary" type="button" data-ai-smeta-cart="${escapeAttr(estimate.id)}" ${aiActionLocked ? "disabled title=\"Əvvəl AI nəticəsini yoxlayıb təsdiqlə\"" : ""}>Qiymətlənənləri səbətə əlavə et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-export-current="${escapeAttr(estimate.id)}">Bu smetanı CSV-yə ixrac et</button>
         <button class="button button-secondary" type="button" data-ai-smeta-print>PDF üçün çap et</button>
         <a class="button button-outline" href="catalog.html">Kataloqda bax</a>
@@ -5630,6 +5663,12 @@ const initAiSmeta = () => {
             ? Number(providerEstimate.riskReserve)
             : currentEstimate.riskReserve,
           aiProvider: true,
+          aiRunId: String(result.data?.runId || result.data?.requestId || ""),
+          aiModel: String(result.data?.model || ""),
+          aiConfidence: Number(result.data?.confidence ?? providerEstimate.confidence ?? 0),
+          aiSources: Array.isArray(result.data?.sources) ? result.data.sources : [],
+          aiWarnings: Array.isArray(result.data?.warnings) ? result.data.warnings : [],
+          aiApprovalStatus: String(result.data?.approval?.status || "pending"),
           aiSummary: String(providerEstimate.summary || providerEstimate.note || "Xarici AI miqdarları və layihə risklərini yoxladı.").slice(0, 1_000)
         };
         writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
@@ -5693,7 +5732,13 @@ const initAiSmeta = () => {
         id: `smeta-import-${Date.now()}`,
         projectLabel: `${file.name} sənədindən smeta`,
         rows: (parsed.data.rows || []).map((row) => ({ ...row, products: recommendProducts(row) })),
-        note: [base.note, `Mənbə faylı: ${file.name}`].filter(Boolean).join(" · ")
+        note: [base.note, `Mənbə faylı: ${file.name}`].filter(Boolean).join(" · "),
+        aiProvider: Boolean(parsed.data.requiresAi),
+        aiRunId: String(parsed.data.aiRunId || ""),
+        aiConfidence: Number(parsed.data.confidence || 0),
+        aiSources: Array.isArray(parsed.data.sources) ? parsed.data.sources : [],
+        aiWarnings: Array.isArray(parsed.data.warnings) ? parsed.data.warnings : [],
+        aiApprovalStatus: String(parsed.data.approval?.status || (parsed.data.requiresAi ? "pending" : "not_required"))
       };
       if (window.ConstEraAPI?.catalogEstimate) {
         const priced = await window.ConstEraAPI.catalogEstimate(currentEstimate.rows.map((row) => ({
@@ -5723,6 +5768,37 @@ const initAiSmeta = () => {
     if (currentEstimate) renderEstimate(currentEstimate);
   });
   output.addEventListener("click", async (event) => {
+    const reviewButton = event.target.closest("[data-ai-smeta-review]");
+    if (reviewButton) {
+      const decision = reviewButton.dataset.aiSmetaReview;
+      const note = decision === "reject"
+        ? window.prompt("Rədd səbəbini yaz:", "Miqdarlar ekspert tərəfindən yenidən yoxlanmalıdır.")
+        : "İstifadəçi smeta qaralamasını yoxladı və təsdiqlədi.";
+      if (decision === "reject" && note === null) return;
+      if (!reviewButton.dataset.runId || !window.ConstEraAPI?.reviewAiRun) {
+        if (status) status.textContent = "AI nəticəsinin audit nömrəsi tapılmadı.";
+        return;
+      }
+      reviewButton.disabled = true;
+      try {
+        const response = await window.ConstEraAPI.reviewAiRun(reviewButton.dataset.runId, decision, note || "");
+        currentEstimate = {
+          ...(currentEstimate || {}),
+          aiApprovalStatus: response.data?.approvalStatus || (decision === "approve" ? "approved" : "rejected")
+        };
+        writeEstimates([currentEstimate, ...readEstimates().filter((item) => item.id !== currentEstimate.id)]);
+        renderEstimate(currentEstimate, false);
+        renderHistory();
+        if (status) status.textContent = decision === "approve"
+          ? "AI qaralaması təsdiqləndi. İndi sorğu və səbət əməliyyatları açıqdır."
+          : "AI qaralaması rədd edildi. Yeni parametrlərlə smetanı yenidən hazırla.";
+      } catch (error) {
+        if (status) status.textContent = error.message || "AI nəticəsi yoxlanmadı.";
+      } finally {
+        reviewButton.disabled = false;
+      }
+      return;
+    }
     const exportCurrent = event.target.closest("[data-ai-smeta-export-current]");
     if (exportCurrent) {
       const estimate = readEstimates().find((item) => item.id === exportCurrent.dataset.aiSmetaExportCurrent) || currentEstimate;
@@ -5800,7 +5876,7 @@ const initAiSmeta = () => {
       cloudUser = session.user;
       aiProviderReady = Boolean(integrations?.data?.readiness?.aiEstimate);
       if (cloudUser && status) {
-        status.textContent = `${cloudUser.name} hesabı qoşuldu. ${aiProviderReady ? "Xarici AI yoxlaması aktivdir." : "Smetalar qayda əsaslı hesablanacaq və Neon kabinetində saxlanacaq."}`;
+        status.textContent = `${cloudUser.name} hesabı qoşuldu. ${aiProviderReady ? "AI yoxlaması və insan təsdiqi aktivdir." : "Smetalar qayda əsaslı hesablanacaq və Neon kabinetində saxlanacaq."}`;
       }
     } catch {
       cloudUser = null;

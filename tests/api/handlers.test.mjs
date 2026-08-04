@@ -93,6 +93,7 @@ test("idarəetmə gateway-i marşrutları bir funksiyada təhlükəsiz yönlənd
   assert.equal(ordersResponse.payload.error.code, "authentication_required");
 
   for (const route of [
+    "ai",
     "cabinet",
     "catalog-staging",
     "catalog-quality",
@@ -140,6 +141,8 @@ test("provider hazırlığı açarsız rejimdə açıq və təhlükəsiz cavab v
     "EINVOICE_WEBHOOK_SECRET",
     "AI_ESTIMATE_WEBHOOK_URL",
     "AI_ESTIMATE_WEBHOOK_SECRET",
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
     "EMAIL_WEBHOOK_URL",
     "WHATSAPP_WEBHOOK_URL",
     "NOTIFICATION_WEBHOOK_SECRET"

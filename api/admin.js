@@ -2,6 +2,7 @@ import { ApiError, withApiErrors } from "./_lib/http.js";
 
 const routeLoaders = Object.freeze({
   account: () => import("./_admin/account.js"),
+  ai: () => import("./_admin/ai.js"),
   analytics: () => import("./_admin/analytics.js"),
   audit: () => import("./_admin/audit.js"),
   backup: () => import("./_admin/backup.js"),

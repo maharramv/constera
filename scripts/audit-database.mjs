@@ -394,7 +394,7 @@ const [integrity] = await query(`
         )) AS invalid_verified_media_rights,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 27
+        WHEN verification.schema_migrations = 28
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END
@@ -455,6 +455,8 @@ const [schema] = await query(`
     to_regclass('public.delivery_tracking_events') IS NOT NULL AS delivery_tracking_events_ready,
     to_regclass('public.security_events') IS NOT NULL AS security_events_ready,
     to_regclass('public.backup_verifications') IS NOT NULL AS backup_verifications_ready,
+    to_regclass('public.ai_usage_counters') IS NOT NULL AS ai_usage_counters_ready,
+    to_regclass('public.ai_runs') IS NOT NULL AS ai_runs_ready,
     to_regclass('public.web_push_subscriptions') IS NOT NULL AS web_push_subscriptions_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
@@ -478,7 +480,8 @@ const [schema] = await query(`
     to_regclass('public.supplier_contracts_one_active_idx') IS NOT NULL AS supplier_contract_scope_ready,
     to_regclass('public.media_assets_one_primary_idx') IS NOT NULL AS media_primary_scope_ready,
     to_regclass('public.supplier_contracts_legal_status_idx') IS NOT NULL AS supplier_legal_scope_ready,
-    to_regclass('public.media_assets_rights_review_idx') IS NOT NULL AS media_rights_scope_ready
+    to_regclass('public.media_assets_rights_review_idx') IS NOT NULL AS media_rights_scope_ready,
+    to_regclass('public.ai_runs_pending_review_idx') IS NOT NULL AS ai_review_scope_ready
 `);
 
 const minimums = {
