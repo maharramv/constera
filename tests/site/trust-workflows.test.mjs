@@ -63,7 +63,7 @@ test("AI Mərhələ 1 limit, strukturlaşdırılmış cavab, audit və insan tə
   const foundation = read("api/_lib/ai-foundation.js");
   const openai = read("api/_lib/openai.js");
   const migration = read("db/migrations/028_ai_foundation.sql");
-  const vercel = read("vercel.json");
+  const vercel = JSON.parse(read("vercel.json"));
 
   assert.match(admin, /data-ai-foundation-panel/);
   assert.match(adminClient, /aiDashboard\("all"\)/);
@@ -77,7 +77,10 @@ test("AI Mərhələ 1 limit, strukturlaşdırılmış cavab, audit və insan tə
   assert.match(openai, /type: "json_schema"/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS ai_runs/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS ai_usage_counters/);
-  assert.match(vercel, /"source": "\/api\/ai"/);
+  assert.equal(
+    vercel.rewrites.some((route) => route.source === "/api/ai" && route.destination === "/api/admin?__route=ai"),
+    true
+  );
 });
 
 test("admin etibar mərkəzi keyfiyyət robotu və təchizatçı scorecard-ını birləşdirir", () => {
