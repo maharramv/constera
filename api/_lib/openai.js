@@ -3,6 +3,7 @@ import { ApiError } from "./http.js";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.4-mini";
 const REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
+const PDF_DETAIL_LEVELS = new Set(["auto", "low", "high"]);
 
 const integerEnv = (name, fallback, minimum, maximum) => {
   const value = Number.parseInt(String(process.env[name] || ""), 10);
@@ -19,6 +20,11 @@ const safeReasoningEffort = (value) => {
   return REASONING_EFFORTS.has(effort) ? effort : "low";
 };
 
+const safePdfDetail = (value) => {
+  const detail = String(value || "high").trim().toLowerCase();
+  return PDF_DETAIL_LEVELS.has(detail) ? detail : "high";
+};
+
 export const openAiConfiguration = () => {
   const key = String(process.env.OPENAI_API_KEY || "").trim();
   return {
@@ -26,6 +32,7 @@ export const openAiConfiguration = () => {
     keyConfigured: Boolean(key),
     model: safeModel(process.env.OPENAI_MODEL),
     reasoningEffort: safeReasoningEffort(process.env.OPENAI_REASONING_EFFORT),
+    pdfDetail: safePdfDetail(process.env.AI_PDF_DETAIL),
     maxOutputTokens: integerEnv("AI_MAX_OUTPUT_TOKENS", 2_500, 256, 8_000),
     requestTimeoutMs: integerEnv("AI_REQUEST_TIMEOUT_MS", 24_000, 5_000, 25_000)
   };
@@ -223,7 +230,8 @@ const createStructuredOpenAiResponse = async ({
     userContent.push({
       type: "input_file",
       filename: document.fileName,
-      file_data: document.contentBase64
+      file_data: `data:${document.mimeType};base64,${document.contentBase64}`,
+      detail: configuration.pdfDetail
     });
   }
 

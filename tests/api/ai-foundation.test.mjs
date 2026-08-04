@@ -211,6 +211,66 @@ test("OpenAI Responses sorğusu store=false və sərt JSON Schema ilə göndəri
   }
 });
 
+test("PDF sənədi Responses API-yə data URI və yüksək detal ilə göndərilir", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    await withEnvironment({
+      OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456",
+      AI_PDF_DETAIL: "high"
+    }, async () => {
+      let requestBody;
+      globalThis.fetch = async (_url, options) => {
+        requestBody = JSON.parse(options.body);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "completed",
+            model: "gpt-5.4-mini",
+            output_text: JSON.stringify({
+              summary: "PDF material siyahısı oxundu.",
+              confidence: 0.86,
+              riskReserve: 10,
+              warnings: [],
+              rows: [{
+                key: "paint",
+                title: "Daxili boya",
+                quantity: 30,
+                unit: "litr",
+                category: "Boya",
+                reasoning: "Sənəddə göstərilən həcm əsas götürülüb.",
+                confidence: 0.86,
+                sourceIds: []
+              }]
+            }),
+            usage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 }
+          })
+        };
+      };
+
+      await createOpenAiEstimate({
+        requestId: "air-pdf-test",
+        feature: "estimate_document",
+        context: { projectInput: {}, deterministicEstimate: {}, allowedSources: [] },
+        document: {
+          fileName: "material-siyahisi.pdf",
+          mimeType: "application/pdf",
+          contentBase64: "JVBERi0xLjcK"
+        }
+      });
+
+      const userMessage = requestBody.input.find((item) => item.role === "user");
+      const fileInput = userMessage.content.find((item) => item.type === "input_file");
+      assert.equal(fileInput.filename, "material-siyahisi.pdf");
+      assert.equal(fileInput.file_data, "data:application/pdf;base64,JVBERi0xLjcK");
+      assert.equal(fileInput.detail, "high");
+      assert.equal(requestBody.store, false);
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("OpenAI kataloq və RFQ funksiyaları ayrı sərt sxemlərdən istifadə edir", async () => {
   const originalFetch = globalThis.fetch;
   try {

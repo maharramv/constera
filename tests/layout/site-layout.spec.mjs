@@ -333,6 +333,88 @@ test("kataloq köməkçisi mobil və desktop görünüşdə işləyir", async ({
   }
 });
 
+test("AI smeta sənəddən çoxməhsullu RFQ-yə mobil və desktop axını göstərir", async ({ page }, testInfo) => {
+  await page.route("**/api/auth**", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: null }) });
+  });
+  await page.route("**/api/integrations", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { readiness: { aiEstimate: false } } })
+      });
+      return;
+    }
+    const payload = route.request().postDataJSON();
+    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    const pricedRows = rows.map((row, index) => ({
+      key: row.key,
+      title: row.title,
+      selected: {
+        id: `phase-three-product-${index + 1}`,
+        name: `${row.title} · real kataloq məhsulu`,
+        brand: "ConstEra tərəfdaşı",
+        price: "10.00 AZN",
+        priceStatus: "confirmed",
+        unitPrice: 10,
+        offerId: `offer-${index + 1}`,
+        sourceLabel: "Yoxlanmış təchizatçı"
+      },
+      alternatives: [],
+      matchedBy: "catalog_search",
+      packageCount: 1,
+      packageSize: 1,
+      lineTotal: 10,
+      pricingConfidence: "high"
+    }));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          rows: pricedRows,
+          materialSubtotal: pricedRows.length * 10,
+          pricedRows: pricedRows.length,
+          matchedRows: pricedRows.length,
+          searchMatchedRows: pricedRows.length,
+          unresolvedRows: [],
+          totalRows: pricedRows.length,
+          coveragePercent: 100,
+          matchPercent: 100,
+          currency: "AZN"
+        }
+      })
+    });
+  });
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/ai-smeta.html", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("AI Mərhələ 3 · Sənəddən RFQ-yə")).toBeVisible();
+    await page.locator('[data-ai-smeta-form] [name="city"]').fill("Bakı");
+    await page.locator('[data-ai-smeta-form] button[type="submit"]').click();
+    await expect(page.locator("[data-ai-smeta-output]")).toBeVisible();
+    await expect(page.locator("[data-ai-smeta-output]")).toContainText("real məhsul uyğunluğu");
+    await expect(page.locator("[data-ai-smeta-output]")).toContainText("Yoxlanmış təchizatçı");
+    await page.locator("[data-ai-smeta-legal]").check();
+    await page.locator("[data-ai-smeta-rfq]").click();
+    const rfqItemCount = await page.evaluate(() => {
+      const drafts = JSON.parse(localStorage.getItem("constera-rfq-drafts") || "[]");
+      return drafts[0]?.items?.length || 0;
+    });
+    expect(rfqItemCount).toBeGreaterThan(1);
+    expect(rfqItemCount).toBeLessThanOrEqual(20);
+    const overflow = await page.evaluate(() =>
+      Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    await testInfo.attach(`ai-smeta-phase-three-${viewport.width}.png`, {
+      body: await page.screenshot({ fullPage: false, animations: "disabled" }),
+      contentType: "image/png"
+    });
+  }
+});
+
 test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async ({ page }, testInfo) => {
   const launchMetrics = {
     onboardedSuppliers: 3,

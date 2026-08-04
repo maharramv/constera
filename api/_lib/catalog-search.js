@@ -26,6 +26,8 @@ const SEARCH_STOP_WORDS = new Set([
 
 const SYNONYM_GROUPS = [
   ["boya", "kraska", "краска", "paint", "emulsiya", "emulsion"],
+  ["daxili", "interyer", "interior", "icmekan"],
+  ["xarici", "fasad", "eksteryer", "exterior"],
   ["sement", "cement", "simento", "цемент", "beton", "concrete", "m400", "m500"],
   ["beton", "concrete", "hazirbeton", "sement", "цемент"],
   ["armatur", "rebar", "demir", "арматура", "metal"],

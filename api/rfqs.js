@@ -190,13 +190,14 @@ export default withApiErrors(async (req, res) => {
     if (!session) throw new ApiError(401, "authentication_required", "AI qaralamasını sorğuya bağlamaq üçün hesaba daxil ol.");
     const approvedRuns = await query(
       `SELECT id FROM ai_runs
-        WHERE id = $1 AND user_id = $2 AND feature = 'rfq_draft'
+        WHERE id = $1 AND user_id = $2
+          AND feature IN ('rfq_draft', 'estimate_review', 'estimate_document')
           AND status = 'completed' AND approval_status = 'approved' AND expires_at > now()
         LIMIT 1`,
       [aiRunId, session.id]
     );
     if (!approvedRuns[0]) {
-      throw new ApiError(409, "ai_rfq_not_approved", "AI RFQ qaralaması təsdiqlənməyib və ya istifadə müddəti bitib.");
+      throw new ApiError(409, "ai_rfq_not_approved", "AI smeta və ya RFQ qaralaması təsdiqlənməyib, sənə aid deyil və ya istifadə müddəti bitib.");
     }
   }
 

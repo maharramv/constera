@@ -82,6 +82,8 @@ const requiredProductionFiles = [
   "scripts/smoke-operations.mjs",
   "scripts/smoke-trust.mjs",
   "scripts/smoke-ai-phase-two.mjs",
+  "tests/api/estimate-catalog.test.mjs",
+  "tests/site/ai-phase-three.test.mjs",
   ...siteShellTemplateFiles,
   "playwright.config.mjs",
   "tests/layout/site-layout.spec.mjs",
