@@ -1,6 +1,7 @@
 import { assertCriticalTwoFactor, criticalAdminTwoFactorRequired, requireRole } from "../_lib/auth.js";
 import { runCatalogQualityScan } from "../_lib/catalog-quality.js";
 import { backupDeliveryReadiness } from "../_lib/cloud-backup.js";
+import { buildCommercialLaunchProgram } from "../_lib/commercial-launch.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { googleMarketingReadiness } from "../_lib/google-marketing.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -176,6 +177,16 @@ export const loadLaunchCenter = async () => {
          (SELECT count(*) FROM commercial_proposals)::int AS commercial_proposals,
          (SELECT count(*) FROM orders WHERE payment_status = 'paid')::int AS paid_orders,
          (SELECT count(*) FROM orders WHERE status = 'completed')::int AS completed_orders,
+         (SELECT count(*) FROM users
+           WHERE status = 'active' AND role = 'customer')::int AS active_customers,
+         (SELECT count(DISTINCT activity.customer_id)
+            FROM (
+              SELECT customer_id FROM rfqs
+               WHERE customer_id IS NOT NULL AND created_at >= now() - interval '90 days'
+              UNION
+              SELECT customer_id FROM orders
+               WHERE customer_id IS NOT NULL AND created_at >= now() - interval '90 days'
+            ) activity)::int AS pilot_engaged_customers,
          (SELECT count(*) FROM electronic_invoices WHERE status = 'issued')::int AS issued_invoices,
          (SELECT count(*) FROM order_fulfillments WHERE status = 'ready')::int AS ready_fulfillments,
          (SELECT count(*) FROM order_fulfillments WHERE status = 'shipped')::int AS shipped_fulfillments,
@@ -312,7 +323,7 @@ export const loadLaunchCenter = async () => {
           AND offer.stock_quantity > 0
           AND offer.source_url ~ '^https://'
         ORDER BY offer.stock_quantity DESC, offer.price_verified_at DESC
-        LIMIT 40`
+        LIMIT 100`
     ),
     query(
       `SELECT fulfillment.id, fulfillment.order_id, orders.order_number,
@@ -477,6 +488,8 @@ export const loadLaunchCenter = async () => {
     commercialProposals: number(metricsRow.commercial_proposals),
     paidOrders: number(metricsRow.paid_orders),
     completedOrders: number(metricsRow.completed_orders),
+    activeCustomers: number(metricsRow.active_customers),
+    pilotEngagedCustomers: number(metricsRow.pilot_engaged_customers),
     issuedInvoices: number(metricsRow.issued_invoices),
     readyFulfillments: number(metricsRow.ready_fulfillments),
     shippedFulfillments: number(metricsRow.shipped_fulfillments),
@@ -542,9 +555,17 @@ export const loadLaunchCenter = async () => {
     backup: latestBackup,
     criticalTwoFactorEnforced: metrics.criticalTwoFactorEnforced
   });
+  const commercialLaunch = buildCommercialLaunchProgram({
+    metrics,
+    providers,
+    backup: { ready: backup.ready, recentVerified: backupVerification.ready },
+    monitoring,
+    assortment: pilotSelections
+  });
 
   return {
     readiness,
+    commercialLaunch,
     metrics,
     providers,
     monitoring,

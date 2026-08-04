@@ -67,6 +67,8 @@ const requiredFiles = [
   "assets/js/operations-center.js",
   "service-worker.js",
   ".well-known/security.txt",
+  "docs/commercial-launch-runbook.md",
+  "docs/csv-templates/pilot-customers.csv",
   "scripts/site-shell.mjs",
   ...siteShellTemplateFiles
 ];

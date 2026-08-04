@@ -200,6 +200,48 @@
             <div class="admin-v2-kpi-grid" data-launch-kpis></div>
             <div class="launch-section-grid" data-launch-sections></div>
 
+            <section class="admin-v2-section launch-commercial-section">
+              <div class="admin-v2-section-heading">
+                <div>
+                  <h3>Kommersiya buraxılışı</h3>
+                  <p class="admin-v2-quality-summary">3 təchizatçı · 100 hazır məhsul · 10 pilot müştəri · 1 tamamlanmış sifariş</p>
+                </div>
+                <div class="admin-actions">
+                  <span class="status-pill" data-commercial-launch-decision>NO-GO</span>
+                  <button class="table-action" type="button" data-commercial-launch-export-plan>Planı endir</button>
+                  <button class="table-action" type="button" data-commercial-launch-export-assortment>Assortimenti endir</button>
+                  <a class="table-action" href="docs/commercial-launch-runbook.md" target="_blank" rel="noopener">Runbook</a>
+                </div>
+              </div>
+              <p class="admin-import-status" data-commercial-launch-status role="status" aria-live="polite">
+                Kommersiya buraxılışı hesablanır.
+              </p>
+              <div class="admin-v2-kpi-grid" data-commercial-launch-kpis></div>
+              <div class="launch-sales-leaders">
+                <div>
+                  <strong>Buraxılış hədəfləri</strong>
+                  <div class="admin-v2-compact-list" data-commercial-launch-milestones></div>
+                </div>
+                <div>
+                  <strong>Məcburi nəzarətlər</strong>
+                  <div class="admin-v2-compact-list" data-commercial-launch-controls></div>
+                </div>
+              </div>
+              <div class="admin-v2-section-heading launch-assortment-heading">
+                <div>
+                  <strong>Pilot assortimenti</strong>
+                  <p class="admin-v2-quality-summary">Aktual qiymət və stok daşıyan namizədlər hazır olma səviyyəsinə görə sıralanır.</p>
+                </div>
+                <span class="data-badge" data-commercial-launch-assortment-count>0 / 100 hazır</span>
+              </div>
+              <div class="table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>Məhsul</th><th>Təchizatçı</th><th>Qiymət / stok</th><th>Buraxılış qapısı</th><th>Mənbə</th></tr></thead>
+                  <tbody data-commercial-launch-assortment></tbody>
+                </table>
+              </div>
+            </section>
+
             <section class="admin-v2-section launch-release-section">
               <div class="admin-v2-section-heading">
                 <div>
@@ -246,6 +288,7 @@
                 <a class="button button-outline" href="docs/csv-templates/media-urls.csv" download>Media idxal şablonu</a>
                 <a class="button button-outline" href="docs/csv-templates/logistics-tariffs.csv" download>Logistika şablonu</a>
                 <a class="button button-outline" href="docs/csv-templates/pilot-order-checklist.csv" download>Pilot aktı</a>
+                <a class="button button-outline" href="docs/csv-templates/pilot-customers.csv" download>Pilot müştəriləri</a>
               </div>
             </section>
 

@@ -65,6 +65,12 @@
     attention: "Tövsiyələr var",
     blocked: "Bloklayıcılar var"
   };
+  const commercialPhaseLabels = {
+    foundation: "Təməl nəzarətləri tamamlanır",
+    preparation: "Pilot komandası hazırlanır",
+    pilot: "Qapalı pilot başlaya bilər",
+    live: "Kommersiya buraxılışına hazırdır"
+  };
   const providerLabels = {
     payment: "Kart ödənişi",
     bankTransfer: "Bank köçürməsi",
@@ -97,7 +103,11 @@
     payment: "overview",
     invoice: "operations"
   };
-  const csvCell = (value) => `"${String(value ?? "").replace(/"/g, "\"\"")}"`;
+  const csvCell = (value) => {
+    const text = String(value ?? "");
+    const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, "\"\"")}"`;
+  };
   const downloadCsv = (filename, rows) => {
     const source = `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
     const url = URL.createObjectURL(new Blob([source], { type: "text/csv;charset=utf-8" }));
@@ -140,9 +150,72 @@
     ` : "<p>Qoşulma mərhələsi tapılmadı.</p>";
   };
 
+  const renderCommercialLaunch = () => {
+    const program = state.launch?.commercialLaunch;
+    if (!program) return;
+    const decision = qs("[data-commercial-launch-decision]");
+    if (decision) {
+      decision.textContent = program.decision === "go" ? "GO-LIVE" : program.decision === "pilot" ? "PILOT" : "NO-GO";
+      decision.className = `status-pill ${program.decision === "go" ? "is-success" : program.decision === "no_go" ? "is-danger" : ""}`;
+    }
+    setStatus(
+      "[data-commercial-launch-status]",
+      `${commercialPhaseLabels[program.phase] || "Buraxılış vəziyyəti hesablandı"} · ${Number(program.score || 0)}% · ${Number(program.blockers?.length || 0)} açıq qapı`,
+      program.decision === "go" ? "success" : program.decision === "pilot" ? "warning" : "error"
+    );
+
+    const milestoneMap = new Map((program.milestones || []).map((item) => [item.key, item]));
+    const metrics = state.launch?.metrics || {};
+    const kpis = qs("[data-commercial-launch-kpis]");
+    if (kpis) kpis.innerHTML = [
+      [milestoneMap.get("suppliers")?.current || 0, milestoneMap.get("suppliers")?.target || 3, "pilot təchizatçısı"],
+      [milestoneMap.get("products")?.current || 0, milestoneMap.get("products")?.target || 100, "hazır məhsul"],
+      [milestoneMap.get("customers")?.current || 0, milestoneMap.get("customers")?.target || 10, "aktiv pilot müştərisi"],
+      [metrics.activeCustomers || 0, null, "aktiv müştəri hesabı"]
+    ].map(([value, target, label]) => `
+      <article><strong>${Number(value).toLocaleString("az-AZ")}${target ? ` / ${Number(target).toLocaleString("az-AZ")}` : ""}</strong><span>${escapeHtml(label)}</span></article>
+    `).join("");
+
+    const milestones = qs("[data-commercial-launch-milestones]");
+    if (milestones) milestones.innerHTML = (program.milestones || []).map((item) => `
+      <article>
+        <div><strong>${escapeHtml(item.label)}</strong><small>${Number(item.current).toLocaleString("az-AZ")} / ${Number(item.target).toLocaleString("az-AZ")} tamamlanıb</small></div>
+        <button class="table-action" type="button" data-launch-target="${escapeHtml(item.targetTab || "launch")}">${escapeHtml(item.ready ? "Bax" : item.action || "Tamamla")}</button>
+      </article>
+    `).join("");
+
+    const controls = qs("[data-commercial-launch-controls]");
+    if (controls) controls.innerHTML = [
+      ...(program.controls || []).map((item) => ({ ...item, optional: false })),
+      ...(program.optionalControls || []).map((item) => ({ ...item, optional: true }))
+    ].map((item) => `
+      <article>
+        <div><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail)}${item.optional ? " · Tövsiyə" : ""}</small></div>
+        <button class="table-action ${item.ready ? "is-ready" : "is-blocked"}" type="button" data-launch-target="${escapeHtml(item.targetTab || "launch")}">${item.ready ? "Hazır" : escapeHtml(item.action || "Tamamla")}</button>
+      </article>
+    `).join("");
+
+    const assortment = program.assortment || { items: [] };
+    const assortmentCount = qs("[data-commercial-launch-assortment-count]");
+    if (assortmentCount) assortmentCount.textContent = `${Number(assortment.readyCount || 0)} / ${Number(assortment.target || 100)} hazır`;
+    const assortmentRows = qs("[data-commercial-launch-assortment]");
+    if (assortmentRows) assortmentRows.innerHTML = (assortment.items || []).slice(0, 20).map((item) => {
+      const source = safeHttpsUrl(item.sourceUrl);
+      return `
+        <tr>
+          <td data-label="Məhsul"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml([item.sku, item.brand, item.package].filter(Boolean).join(" · "))}</small></td>
+          <td data-label="Təchizatçı">${escapeHtml(item.supplierName || "Dəqiqləşməyib")}</td>
+          <td data-label="Qiymət / stok"><strong>${escapeHtml(formatMoney(item.unitPrice, item.currency))}</strong><small>${Number(item.stockQuantity || 0).toLocaleString("az-AZ")} stok · ${escapeHtml(formatDate(item.priceVerifiedAt))}</small></td>
+          <td data-label="Buraxılış qapısı"><span class="status-pill ${item.ready ? "is-success" : "is-danger"}">${item.ready ? "Hazır" : escapeHtml((item.missing || []).map((entry) => entry.label).join(", ") || "Yoxlanmalıdır")}</span></td>
+          <td data-label="Mənbə">${source ? `<a class="source-link" href="${escapeHtml(source)}" target="_blank" rel="noopener noreferrer">Aç</a>` : "Yoxdur"}</td>
+        </tr>`;
+    }).join("") || '<tr><td colspan="5">Aktual qiymət və stok daşıyan pilot namizədi tapılmadı.</td></tr>';
+  };
+
   const renderLaunch = () => {
     const data = state.launch;
     if (!data) return;
+    renderCommercialLaunch();
     const readiness = data.readiness || {};
     const metrics = data.metrics || {};
     const score = qs("[data-launch-score]");
@@ -524,6 +597,44 @@
     setStatus("[data-launch-status]", "Gündəlik əməliyyat planı endirildi.", "success");
   };
 
+  const exportCommercialLaunchPlan = () => {
+    const program = state.launch?.commercialLaunch;
+    if (!program) return;
+    const rows = [["type", "key", "label", "current", "target", "ready", "detail", "next_action"]];
+    for (const item of program.milestones || []) rows.push([
+      "milestone", item.key, item.label, item.current, item.target, item.ready ? "yes" : "no",
+      `${item.current} / ${item.target} tamamlanıb`, item.action
+    ]);
+    for (const item of program.controls || []) rows.push([
+      "required_control", item.key, item.label, "", "", item.ready ? "yes" : "no", item.detail, item.action
+    ]);
+    for (const item of program.optionalControls || []) rows.push([
+      "optional_control", item.key, item.label, "", "", item.ready ? "yes" : "no", item.detail, item.action
+    ]);
+    downloadCsv(datedFilename("constera-commercial-launch-plan"), rows);
+    setStatus("[data-commercial-launch-status]", "Kommersiya buraxılışı planı endirildi.", "success");
+  };
+
+  const exportCommercialLaunchAssortment = () => {
+    const assortment = state.launch?.commercialLaunch?.assortment;
+    if (!assortment?.items?.length) {
+      setStatus("[data-commercial-launch-status]", "İxrac üçün pilot assortiment namizədi yoxdur.", "warning");
+      return;
+    }
+    const rows = [[
+      "sku", "product", "brand", "supplier", "unit_price", "currency", "stock", "minimum_order",
+      "price_verified_at", "source_url", "contract_ready", "licensed_media_ready", "launch_ready", "missing_gates"
+    ]];
+    for (const item of assortment.items) rows.push([
+      item.sku, item.name, item.brand, item.supplierName, item.unitPrice, item.currency, item.stockQuantity,
+      item.minimumOrder, item.priceVerifiedAt, item.sourceUrl, item.hasActiveContract ? "yes" : "no",
+      item.hasLicensedMedia ? "yes" : "no", item.ready ? "yes" : "no",
+      (item.missing || []).map((entry) => entry.label).join("; ")
+    ]);
+    downloadCsv(datedFilename("constera-commercial-launch-assortment"), rows);
+    setStatus("[data-commercial-launch-status]", `${assortment.items.length} assortiment sətri endirildi.`, "success");
+  };
+
   qs("[data-launch-refresh]")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     setBusy(button, true, "Yenilənir...");
@@ -538,6 +649,8 @@
   qs("[data-launch-export-report]")?.addEventListener("click", exportLaunchReport);
   qs("[data-launch-export-media]")?.addEventListener("click", exportPilotMediaTemplate);
   qs("[data-launch-export-daily]")?.addEventListener("click", exportDailyPlan);
+  qs("[data-commercial-launch-export-plan]")?.addEventListener("click", exportCommercialLaunchPlan);
+  qs("[data-commercial-launch-export-assortment]")?.addEventListener("click", exportCommercialLaunchAssortment);
   qs("[data-launch-run-daily]")?.addEventListener("click", async (event) => {
     if (!window.confirm("Qiymət köhnəlməsi, təchizatçı xatırlatmaları və kataloq keyfiyyəti indi yoxlanılsın? Əməliyyat audit jurnalına yazılacaq.")) return;
     const button = event.currentTarget;

@@ -33,3 +33,20 @@ test("launch sübut paketi admin panelindən əlçatandır", () => {
   assert.match(checklist, /Administrator təhlükəsizliyi/);
   assert.match(read(".well-known/security.txt"), /Canonical: https:\/\/constera\.az\/\.well-known\/security\.txt/);
 });
+
+test("Commercial Launch ölçülə bilən GO-LIVE qapısı və 100 məhsullu assortiment verir", () => {
+  const admin = read("admin.html");
+  const launch = read("assets/js/launch-center.js");
+  const api = read("api/_admin/launch-center.js");
+  const runbook = read("docs/commercial-launch-runbook.md");
+  assert.match(admin, /Kommersiya buraxılışı/);
+  assert.match(admin, /data-commercial-launch-milestones/);
+  assert.match(admin, /pilot-customers\.csv/);
+  assert.match(launch, /constera-commercial-launch-assortment/);
+  assert.match(api, /buildCommercialLaunchProgram/);
+  assert.match(api, /LIMIT 100/);
+  assert.match(runbook, /3 tam qoşulmuş təchizatçı/);
+  assert.match(runbook, /100 satışa tam hazır məhsul/);
+  assert.match(runbook, /10 pilot müştəri/);
+  assert.match(runbook, /GO-LIVE/);
+});

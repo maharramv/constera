@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { buildCommercialLaunchProgram } from "../../api/_lib/commercial-launch.js";
 import { navigationItems } from "../../scripts/site-shell.mjs";
 
 const pages = [
@@ -333,6 +334,59 @@ test("kataloq köməkçisi mobil və desktop görünüşdə işləyir", async ({
 });
 
 test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async ({ page }, testInfo) => {
+  const launchMetrics = {
+    onboardedSuppliers: 3,
+    eligibleProducts: 100,
+    pilotEngagedCustomers: 10,
+    completedOrders: 0,
+    activeCustomers: 10,
+    privilegedUsers: 1,
+    adminsWithTwoFactor: 1,
+    criticalTwoFactorEnforced: true,
+    verifiedLogisticsZones: 1,
+    criticalSecurityEvents: 0
+  };
+  const pilotAssortment = [{
+    productId: "pilot-product",
+    sku: "PILOT-001",
+    name: "Pilot sement məhsulu",
+    brand: "ConstEra",
+    package: "40 kq",
+    supplierName: "Pilot təchizatçı",
+    unitPrice: 12.5,
+    currency: "AZN",
+    stockQuantity: 100,
+    priceVerifiedAt: new Date().toISOString(),
+    sourceUrl: "https://example.com/pilot-product",
+    missing: [],
+    ready: true
+  }];
+  const commercialLaunch = buildCommercialLaunchProgram({
+    metrics: launchMetrics,
+    providers: { bankTransfer: true },
+    backup: { ready: true, recentVerified: true },
+    monitoring: { scheduledWorkflow: true },
+    assortment: pilotAssortment
+  });
+  await page.route((url) => url.pathname === "/api/auth" && url.searchParams.get("action") === "session", (route) =>
+    route.fulfill({ json: { ok: true, user: { id: "layout-admin", role: "super_admin" } } }));
+  await page.route("**/api/launch-center", (route) => route.fulfill({
+    json: {
+      ok: true,
+      data: {
+        commercialLaunch,
+        metrics: launchMetrics,
+        readiness: { status: "attention", score: commercialLaunch.score, blockerCount: 1, warningCount: 0, sections: [], priorities: [] },
+        providers: { bankTransfer: true },
+        monitoring: { scheduledWorkflow: true },
+        backup: { ready: true, verification: { ready: true }, latest: {} },
+        suppliers: [],
+        pilotSelections: pilotAssortment,
+        readyFulfillments: [],
+        pilotHistory: []
+      }
+    }
+  }));
   await page.goto("/index.html", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => {
     localStorage.setItem("constera-rfq-drafts", JSON.stringify([{
@@ -382,6 +436,11 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
     await page.locator("[data-admin-quality-dialog]").evaluate((dialog) => dialog.close());
     await page.locator('[data-admin-tab="launch"]').click();
     await expect(page.locator('[data-admin-panel="launch"]')).toBeVisible();
+    await expect(page.locator("[data-commercial-launch-decision]")).toBeVisible();
+    await expect(page.locator("[data-commercial-launch-kpis]")).toBeVisible();
+    await expect(page.locator("[data-commercial-launch-milestones]")).toBeVisible();
+    await expect(page.locator("[data-commercial-launch-assortment]")).toBeVisible();
+    await expect(page.locator("[data-commercial-launch-export-plan]")).toBeVisible();
     await expect(page.locator("[data-launch-pilot-form]")).toBeVisible();
     await page.locator('[data-admin-tab="crm"]').click();
     await expect(page.locator('[data-admin-panel="crm"]')).toBeVisible();

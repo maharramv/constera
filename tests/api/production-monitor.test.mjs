@@ -71,7 +71,14 @@ test("monitor xətası qorunan webhook-a məhdud JSON hadisəsi göndərir", asy
 
 test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruyur", async () => {
   const paths = productionChecks.map((item) => item.path);
-  for (const path of ["www.constera.az", "/robots.txt", "/sitemap.xml", "/service-worker.js", "/assets/icons/site.webmanifest"]) {
+  for (const path of [
+    "www.constera.az",
+    "/api/launch-center",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/service-worker.js",
+    "/assets/icons/site.webmanifest"
+  ]) {
     assert.equal(paths.includes(path), true, path);
   }
   const homepage = productionChecks.find((item) => item.path === "/");
