@@ -70,9 +70,13 @@ test("monitor xətası qorunan webhook-a məhdud JSON hadisəsi göndərir", asy
 });
 
 test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruyur", async () => {
+  const monitorOrigin = "https://constera.az/";
+  const normalizedMonitorOrigin = monitorOrigin.replace(/\/+$/, "");
+  const originHost = new URL(normalizedMonitorOrigin).hostname;
+  const expectedWwwHost = originHost.startsWith("www.") ? `https://${originHost}` : `https://www.${originHost}`;
   const paths = productionChecks.map((item) => item.path);
   for (const path of [
-    "www.constera.az",
+    expectedWwwHost,
     "/api/launch-center",
     "/robots.txt",
     "/sitemap.xml",
@@ -114,7 +118,7 @@ test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruy
     return new Response(body, { status: check?.status || 200, headers });
   };
   try {
-    const result = await runProductionMonitor({ origin: "https://constera.example.test" });
+    const result = await runProductionMonitor({ origin: monitorOrigin });
     assert.equal(result.count, productionChecks.length);
   } finally {
     global.fetch = originalFetch;

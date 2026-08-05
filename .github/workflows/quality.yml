@@ -42,6 +42,29 @@ jobs:
       - name: Responsiv layout testlərini işə sal
         run: npm run test:layout
 
+      - name: Buraxılış readiness yoxlaması
+        id: launch-readiness
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ] && [ -z "${POSTGRES_URL}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "DATABASE_URL və ya POSTGRES_URL təyin olunmadığı üçün launch readiness check atlandı."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          npm run launch:readiness:go-live -- --artifact
+
+      - name: Launch readiness nəticələrini saxla
+        if: steps.launch-readiness.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: constera-launch-readiness
+          path: outputs/launch-readiness-*
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Brauzer hesabatını saxla
         if: always()
         uses: actions/upload-artifact@v4

@@ -94,7 +94,18 @@ npm run check:full
 npm run db:audit
 npm run db:verify-backup
 npm run check:production -- https://constera.az
+npm run launch:readiness:go-live
 ```
+
+Əlavə olaraq `npm run launch:readiness -- --artifact` komandası hazırkı vəziyyəti
+JSON və CSV olaraq `outputs/` qovluğunda saxlayır.
+
+Əlavə olaraq `ConstEra launch readiness gate` GitHub workflow-u təyin edilib.
+Workflow hər bazar günü və ya manual işlədildikdə `DATABASE_URL`/`POSTGRES_URL`
+təyin olunduğu halda `npm run launch:readiness:go-live -- --artifact` ilə
+bloku və minimum skoru yoxlayır, nəticəni artifact kimi saxlayır.
+`run` ekranında `GITHUB_STEP_SUMMARY` sayəsində əsas bloklayıcı və xəbərdarlıqlar
+qısa cədvəl şəklində görünür.
 
 Admin panelində əlavə olaraq:
 

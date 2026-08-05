@@ -19,6 +19,9 @@
     "test:api": "node --test tests/api/*.test.mjs",
     "test:site": "node --test tests/site/*.test.mjs",
     "test:layout": "playwright test",
+    "test:layout:ci": "npx playwright test --config=playwright.config.mjs",
+    "test:layout:local": "PLAYWRIGHT_BASE_URL=https://constera.az npx playwright test --config=playwright.config.mjs",
+    "test:layout:local-server": "PLAYWRIGHT_LOCAL=1 PLAYWRIGHT_LISTEN_HOST=127.0.0.1 npx playwright test --config=playwright.config.mjs",
     "db:migrate": "node scripts/migrate-database.mjs",
     "db:seed": "node scripts/seed-database.mjs",
     "db:import-scraper": "node scripts/import-scraper-catalog.mjs",
@@ -29,11 +32,16 @@
     "db:remediate": "node scripts/remediate-catalog-quality.mjs",
     "db:register-media-references": "node scripts/register-source-media-references.mjs",
     "db:smoke": "node scripts/smoke-commerce.mjs && node scripts/smoke-operations.mjs && node scripts/smoke-trust.mjs",
+    "launch:readiness": "node scripts/launch-readiness-audit.mjs",
+    "launch:readiness:go-live": "node scripts/launch-readiness-audit.mjs --go-live --min-score=100 --artifact",
     "ai:smoke": "node scripts/smoke-ai-phase-two.mjs",
     "db:create-admin": "node scripts/create-admin.mjs",
     "check:production": "node scripts/check-production.mjs",
     "check": "npm run verify:deploy && npm run build:static && npm run audit:dist",
-    "check:full": "npm run check && npm run test:layout"
+    "check:full": "npm run check && npm run test:layout:ci",
+    "check:full:local": "npm run check && npm run test:layout:local",
+    "launch:readiness:check": "npm run launch:readiness -- --artifact --artifact-dir=outputs",
+    "launch:readiness:ci": "npm run launch:readiness:go-live"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

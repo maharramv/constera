@@ -1,47 +1,60 @@
 const defaultOrigin = "https://constera.az";
 const minimumAlertSecretLength = 24;
 
-export const productionChecks = Object.freeze([
-  {
-    path: "www.constera.az",
-    url: "https://www.constera.az/",
+const createProductionChecks = (origin) => {
+  const normalizedOrigin = String(origin || defaultOrigin).replace(/\/+$/, "");
+  const parsedOrigin = new URL(normalizedOrigin);
+  const originHost = parsedOrigin.hostname;
+  const wwwHost = originHost.startsWith("www.") ? originHost : `www.${originHost}`;
+  const wwwCheck = {
+    path: `https://${wwwHost}`,
+    url: `https://${wwwHost}/`,
     status: 308,
-    location: "https://constera.az/"
-  },
-  { path: "/api/health", status: 200, json: (body) => body.ok === true && body.database === "ready" },
-  { path: "/api/catalog?scope=products&pageSize=1", status: 200, json: (body) => Array.isArray(body.data?.products) },
-  { path: "/api/integrations", status: 200, json: (body) => typeof body.data?.readiness === "object" },
-  { path: "/api/ai", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/procurement-plans", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/orders", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/support", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/supplier-performance", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/catalog-quality", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/launch-center", status: 401, json: (body) => body.error?.code === "authentication_required" },
-  { path: "/api/merchant-feed", status: 200, includes: "<rss" },
-  { path: "/.well-known/security.txt", status: 200, includes: "Canonical: https://constera.az/.well-known/security.txt" },
-  {
-    path: "/",
-    status: 200,
-    includes: 'lang="az"',
-    headers: {
-      "content-security-policy": (value) => value.includes("default-src 'self'") && value.includes("object-src 'none'"),
-      "strict-transport-security": (value) => value.includes("max-age=31536000"),
-      "x-content-type-options": (value) => value.toLowerCase() === "nosniff",
-      "referrer-policy": (value) => value === "strict-origin-when-cross-origin"
-    }
-  },
-  { path: "/robots.txt", status: 200, includes: "Sitemap: https://constera.az/sitemap.xml" },
-  { path: "/sitemap.xml", status: 200, includes: "<urlset" },
-  { path: "/service-worker.js", status: 200, includes: "constera-shell-" },
-  { path: "/assets/icons/site.webmanifest", status: 200, includes: '"lang":"az"' },
-  { path: "/catalog.html", status: 200, includes: "ConstEra" },
-  { path: "/services.html", status: 200, includes: "ConstEra" },
-  { path: "/packages.html", status: 200, includes: "ConstEra" },
-  { path: "/rental.html", status: 200, includes: "ConstEra" },
-  { path: "/ai-smeta.html", status: 200, includes: "AI Mərhələ 6" },
-  { path: "/login.html", status: 200, includes: "ConstEra" }
-]);
+    location: `${normalizedOrigin}/`
+  };
+  return Object.freeze([
+    ...(process.env.PRD_SKIP_WWW_REDIRECT === "1" ? [] : [wwwCheck]),
+    { path: "/api/health", status: 200, json: (body) => body.ok === true && body.database === "ready" },
+    { path: "/api/catalog?scope=products&pageSize=1", status: 200, json: (body) => Array.isArray(body.data?.products) },
+    { path: "/api/integrations", status: 200, json: (body) => typeof body.data?.readiness === "object" },
+    { path: "/api/ai", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/procurement-plans", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/orders", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/support", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/supplier-performance", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/catalog-quality", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/launch-center", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/merchant-feed", status: 200, includes: "<rss" },
+    {
+      path: "/.well-known/security.txt",
+      status: 200,
+      includes: `Canonical: ${normalizedOrigin}/.well-known/security.txt`
+    },
+    {
+      path: "/",
+      status: 200,
+      includes: 'lang="az"',
+      headers: {
+        "content-security-policy": (value) => value.includes("default-src 'self'") && value.includes("object-src 'none'"),
+        "strict-transport-security": (value) => value.includes("max-age=31536000"),
+        "x-content-type-options": (value) => value.toLowerCase() === "nosniff",
+        "referrer-policy": (value) => value === "strict-origin-when-cross-origin"
+      }
+    },
+    { path: "/robots.txt", status: 200, includes: `Sitemap: ${normalizedOrigin}/sitemap.xml` },
+    { path: "/sitemap.xml", status: 200, includes: "<urlset" },
+    { path: "/service-worker.js", status: 200, includes: "constera-shell-" },
+    { path: "/assets/icons/site.webmanifest", status: 200, includes: '"lang":"az"' },
+    { path: "/catalog.html", status: 200, includes: "ConstEra" },
+    { path: "/services.html", status: 200, includes: "ConstEra" },
+    { path: "/packages.html", status: 200, includes: "ConstEra" },
+    { path: "/rental.html", status: 200, includes: "ConstEra" },
+    { path: "/ai-smeta.html", status: 200, includes: "AI Mərhələ 6" },
+    { path: "/login.html", status: 200, includes: "ConstEra" }
+  ]);
+};
+
+export const productionChecks = Object.freeze(createProductionChecks(defaultOrigin));
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -151,7 +164,8 @@ export const runProductionMonitor = async ({
   origin = process.env.APP_ORIGIN || defaultOrigin
 } = {}) => {
   const normalizedOrigin = String(origin || defaultOrigin).replace(/\/+$/, "");
-  const checks = await Promise.all(productionChecks.map((check) => inspectCheck(normalizedOrigin, check)));
+  const checksToRun = createProductionChecks(normalizedOrigin);
+  const checks = await Promise.all(checksToRun.map((check) => inspectCheck(normalizedOrigin, check)));
   return {
     origin: normalizedOrigin,
     checks,

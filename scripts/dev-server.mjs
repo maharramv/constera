@@ -7,6 +7,7 @@ import { renderSitePage } from "./site-shell.mjs";
 
 const root = resolve(".");
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || "127.0.0.1";
 const maxBodyBytes = 8_000_000;
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -106,8 +107,37 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`ConstEra lokal serveri: http://127.0.0.1:${port}`);
+const hostCandidates = [...new Set([host, "127.0.0.1", "::1", "0.0.0.0", "localhost"])];
+
+const start = (index = 0) => new Promise((resolve, reject) => {
+  if (index >= hostCandidates.length) {
+    reject(new Error("Lokal server üçün əlçatan host tapılmadı."));
+    return;
+  }
+  const listenHost = hostCandidates[index];
+  const announceHost = listenHost === "0.0.0.0" ? "127.0.0.1" : listenHost;
+  const onListen = () => {
+    server.off("error", onError);
+    console.log(`ConstEra lokal serveri: http://${announceHost}:${port}`);
+    resolve(listenHost);
+  };
+  const onError = (error) => {
+    if (error.code === "EADDRINUSE" || error.code === "EACCES" || error.code === "EPERM") {
+      server.off("error", onError);
+      server.off("listening", onListen);
+      return start(index + 1).then(resolve, reject);
+    }
+    server.off("error", onError);
+    reject(error);
+  };
+  server.once("listening", onListen);
+  server.once("error", onError);
+  server.listen(port, listenHost);
+});
+
+start().catch((error) => {
+  console.error("Lokal serveri başlatmaq alınmadı:", error.message || error);
+  process.exit(1);
 });
 
 const close = () => server.close(() => process.exit(0));
