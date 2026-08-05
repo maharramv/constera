@@ -123,6 +123,18 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:layout:local
 Qeyd: `test:layout:local-server` yalnız əlində stabil lokal browser varsa və Playwright lokal
 brauzer başlatma icazəsi verildiyi halda işləyir.
 
+Buraxılış hazırlıq hesabatını yalnız yoxlama üçün lokal rejimdə almaq istəyirsənsə:
+
+```bash
+npm run launch:readiness:offline
+```
+
+Real baza ilə final audit üçün:
+
+```bash
+npm run launch:readiness:go-live
+```
+
 ```
 
 Yalnız build üçün:
