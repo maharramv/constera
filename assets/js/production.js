@@ -67,6 +67,23 @@
       method: "DELETE",
       body: JSON.stringify({ action: "delete-project", id })
     }),
+    projectWorkspace: (id) => request(`/api/projects?id=${encodeURIComponent(id)}`),
+    syncProjectWorkspace: (data) => request("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ action: "sync", ...data })
+    }),
+    matchProjectSuppliers: (projectId) => request("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ action: "match-suppliers", projectId })
+    }),
+    saveProjectMilestone: (data) => request("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ action: "save-milestone", ...data })
+    }),
+    deleteProjectMilestone: (id) => request("/api/projects", {
+      method: "DELETE",
+      body: JSON.stringify({ action: "delete-milestone", id })
+    }),
     saveEstimate: (data) => request("/api/cabinet", {
       method: "POST",
       body: JSON.stringify({ action: "save-estimate", ...data })

@@ -440,7 +440,7 @@ const [integrity] = await query(`
         OR phase.row_count > 20) AS invalid_procurement_phase_rows,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 30
+        WHEN verification.schema_migrations = 31
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END

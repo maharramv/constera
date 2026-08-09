@@ -56,6 +56,10 @@ const mapRfq = (row) => ({
   needDate: row.need_date,
   budget: row.budget || "",
   note: row.note || "",
+  startDate: row.start_date || "",
+  targetEndDate: row.target_end_date || "",
+  rfqId: row.rfq_id || null,
+  itemCount: Number(row.item_count || 0),
   items: row.items || [],
   offers: (row.offers || []).map((offer) => ({
     ...offer,
@@ -162,7 +166,14 @@ const readCabinet = async (user) => {
         ORDER BY sp.created_at DESC`,
       [user.id]
     ),
-    query("SELECT * FROM customer_projects WHERE customer_id = $1 ORDER BY updated_at DESC LIMIT 100", [user.id]),
+    query(
+      `SELECT project.*,
+              (SELECT count(*)::int FROM customer_project_items item WHERE item.project_id = project.id) AS item_count
+         FROM customer_projects project
+        WHERE project.customer_id = $1
+        ORDER BY project.updated_at DESC LIMIT 100`,
+      [user.id]
+    ),
     query("SELECT * FROM customer_estimates WHERE customer_id = $1 ORDER BY updated_at DESC LIMIT 50", [user.id]),
     query(
       `SELECT plan.*,

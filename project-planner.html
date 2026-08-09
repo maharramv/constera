@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Layihə səbəti | Material, xidmət və icarə</title>
+    <meta name="description" content="Tikinti və təmir layihəsi üçün materialları, xidmətləri, hazır paketləri və icarə avadanlıqlarını vahid səbətdə toplayın." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.az/project-planner.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/enterprise.css" />
+  </head>
+  <body data-page="project-planner">
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html" aria-label="ConstEra ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="ConstEra loqosu" />
+          <span class="brand-copy"><strong>CONSTERA</strong><span>Layihə səbəti</span></span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Naviqasiya menyusunu aç"></button>
+        <nav class="nav" id="site-nav"><a href="catalog.html">Kataloq</a></nav>
+      </header>
+
+      <main>
+        <section class="market-hero section compact-hero project-planner-hero">
+          <div class="market-hero-copy">
+            <p class="eyebrow">Vahid layihə mərkəzi</p>
+            <h1>Materialı, xidməti, paketi və icarəni bir layihədə idarə et.</h1>
+            <div class="detail-actions">
+              <a class="button button-primary" href="catalog.html">Material seç</a>
+              <a class="button button-secondary" href="services.html">Xidmət seç</a>
+              <a class="button button-outline" href="rental.html">İcarə seç</a>
+            </div>
+          </div>
+          <div class="stat-card glass">
+            <span class="stat-value" data-project-basket-count>0</span>
+            <p>layihə mövqeyi</p>
+          </div>
+        </section>
+
+        <section class="section admin-board">
+          <div class="admin-panel glass">
+            <div class="market-section-heading">
+              <div><p class="eyebrow">Layihə profili</p><h2>Əsas məlumatlar</h2></div>
+              <span class="data-badge" data-project-cloud-badge>Lokal saxlanır</span>
+            </div>
+            <form class="admin-form" data-project-planner-form>
+              <label class="admin-field"><span>Layihə adı</span><input name="title" maxlength="240" placeholder="Mərdəkan villa layihəsi" /></label>
+              <label class="admin-field"><span>Layihə tipi</span><select name="projectType"><option value="villa">Villa / fərdi ev</option><option value="apartment">Mənzil təmiri</option><option value="office">Ofis / kommersiya</option><option value="warehouse">Anbar / istehsalat</option></select></label>
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Sahə, m²</span><input name="area" type="number" min="20" step="1" value="120" /></label>
+                <label class="admin-field"><span>Büdcə, AZN</span><input name="budget" type="number" min="0" step="100" /></label>
+              </div>
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Başlama tarixi</span><input name="startDate" type="date" /></label>
+                <label class="admin-field"><span>Hədəf bitmə tarixi</span><input name="targetEndDate" type="date" /></label>
+              </div>
+              <label class="admin-field"><span>Şəhər / rayon</span><input name="city" maxlength="160" placeholder="Bakı, Xəzər rayonu" /></label>
+              <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="4" maxlength="3000" placeholder="İcra mərhələsi, material səviyyəsi və vacib tarixlər"></textarea></label>
+              <div class="admin-actions">
+                <button class="button button-primary" type="button" data-project-cloud-save>Layihəni buludda saxla</button>
+                <a class="button button-outline" href="login.html?next=project-planner.html" data-project-login>Hesaba daxil ol</a>
+              </div>
+              <p class="admin-import-status" data-project-planner-status role="status" aria-live="polite">Layihə parametrləri bu cihazda saxlanır.</p>
+            </form>
+          </div>
+
+          <div class="admin-board">
+            <div class="admin-stat-grid" data-project-planner-stats></div>
+
+            <article class="admin-panel glass">
+              <div class="market-section-heading">
+                <div><p class="eyebrow">Layihə səbəti</p><h2>Seçilmiş mövqelər</h2></div>
+                <button class="button button-outline" type="button" data-project-planner-clear>Səbəti təmizlə</button>
+              </div>
+              <div class="cabinet-list" data-project-planner-items></div>
+              <div class="empty-state project-basket-empty" data-project-planner-empty>
+                <strong>Layihə səbəti boşdur.</strong>
+                <span>Kataloq, xidmət, paket və icarə bölmələrindən layihəyə mövqe əlavə et.</span>
+                <div class="detail-actions"><a class="button button-secondary" href="catalog.html">Kataloqa keç</a><a class="button button-outline" href="packages.html">Hazır paketlər</a></div>
+              </div>
+            </article>
+
+            <section class="market-grid">
+              <article class="admin-panel glass">
+                <div class="market-section-heading">
+                  <div><p class="eyebrow">Ağıllı uyğunlaşdırma</p><h2>Təchizatçı seçimi</h2></div>
+                  <button class="button button-secondary" type="button" data-project-match-suppliers>Uyğunlaşdır</button>
+                </div>
+                <div class="cabinet-list" data-project-supplier-matches>
+                  <article class="cabinet-item"><strong>Uyğunlaşdırma hazır deyil.</strong><span>Layihəni buludda saxladıqdan sonra real kataloq və təsdiqlənmiş rəylər üzrə seçim et.</span></article>
+                </div>
+              </article>
+
+              <article class="admin-panel glass">
+                <div class="market-section-heading">
+                  <div><p class="eyebrow">Maliyyə axını</p><h2>RFQ, təklif və ödəniş</h2></div>
+                  <span class="data-badge" data-project-commerce-badge>Başlanmayıb</span>
+                </div>
+                <div class="cabinet-list" data-project-commerce>
+                  <article class="cabinet-item"><strong>Qiymət sorğusu yaradılmayıb.</strong><span>Seçilmiş mövqeləri vahid RFQ-yə çevirərək kommersiya təklifi və ödəniş axınını başlat.</span></article>
+                </div>
+              </article>
+            </section>
+
+            <section class="market-grid">
+              <article class="admin-panel glass">
+                <div class="market-section-heading">
+                  <div><p class="eyebrow">İcra təqvimi</p><h2>Mərhələlər və xatırlatmalar</h2></div>
+                  <span class="data-badge" data-project-milestone-count>0 mərhələ</span>
+                </div>
+                <form class="admin-form" data-project-milestone-form>
+                  <label class="admin-field"><span>Mərhələ adı</span><input name="title" maxlength="240" required placeholder="Materialların çatdırılması" /></label>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Tip</span><select name="type"><option value="planning">Planlama</option><option value="procurement">Satınalma</option><option value="service">Xidmət</option><option value="rental">İcarə</option><option value="delivery">Çatdırılma</option><option value="payment">Ödəniş</option><option value="handover">Təhvil</option><option value="other">Digər</option></select></label>
+                    <label class="admin-field"><span>Tarix</span><input name="dueDate" type="date" required /></label>
+                  </div>
+                  <label class="admin-field"><span>Qeyd</span><input name="note" maxlength="1000" placeholder="Məsul şəxs və şərtlər" /></label>
+                  <label class="admin-check"><input name="reminder" type="checkbox" value="true" checked /><span>3 gün əvvəl tətbiq və push xatırlatması yarat</span></label>
+                  <button class="button button-secondary" type="submit">Mərhələ əlavə et</button>
+                </form>
+                <div class="cabinet-list" data-project-milestones></div>
+              </article>
+
+              <article class="admin-panel glass">
+                <div class="market-section-heading">
+                  <div><p class="eyebrow">Sənəd mərkəzi</p><h2>Plan, müqavilə və sertifikatlar</h2></div>
+                  <span class="data-badge" data-project-document-count>0 sənəd</span>
+                </div>
+                <form class="admin-form" data-project-document-form>
+                  <label class="admin-field"><span>PDF və ya şəkil, maksimum 3 MB</span><input name="document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/avif" required /></label>
+                  <button class="button button-secondary" type="submit">Sənədi yüklə</button>
+                </form>
+                <div class="cabinet-list" data-project-documents></div>
+              </article>
+            </section>
+
+            <section class="market-grid">
+              <a class="info-card" data-project-planner-ai href="ai-smeta.html">
+                <span>AI</span><h3>Ağıllı smeta hazırla</h3>
+              </a>
+              <a class="info-card" data-project-planner-ai-rfq href="rfq.html?project=1#ai-rfq">
+                <span>AI</span><h3>AI layihə brifi və RFQ</h3>
+              </a>
+              <a class="info-card" data-project-planner-rfq href="rfq.html?project=1">
+                <span>QS</span><h3>Vahid qiymət sorğusu yarat</h3>
+              </a>
+              <a class="info-card" href="customer-cabinet.html">
+                <span>LK</span><h3>Layihə kabinetini aç</h3>
+              </a>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/catalog-data.js"></script>
+    <script src="assets/js/taxonomy-expansion.js"></script>
+    <script src="assets/js/azerbaijan-real-products.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+    <script src="assets/js/marketplace.js"></script>
+  </body>
+</html>

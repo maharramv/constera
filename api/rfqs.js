@@ -158,7 +158,35 @@ export default withApiErrors(async (req, res) => {
   const session = await getSessionUser(req);
   const aiRunId = text(body.aiRunId, { max: 160 }) || null;
   const estimateId = text(body.estimateId, { max: 160 }) || null;
+  const projectId = text(body.projectId, { max: 160 }) || null;
   let estimateWorkflow = null;
+  if (projectId) {
+    if (!session) throw new ApiError(401, "authentication_required", "Layihəni RFQ-yə çevirmək üçün hesaba daxil ol.");
+    const projectRows = await query(
+      `SELECT project.*,
+              linked_rfq.status AS linked_rfq_status,
+              (SELECT count(*)::int FROM rfq_items item WHERE item.rfq_id = project.rfq_id) AS linked_item_count
+         FROM customer_projects project
+         LEFT JOIN rfqs linked_rfq ON linked_rfq.id = project.rfq_id
+        WHERE project.id = $1 AND project.customer_id = $2 LIMIT 1`,
+      [projectId, session.id]
+    );
+    const project = projectRows[0];
+    if (!project) throw new ApiError(404, "project_not_found", "RFQ üçün seçilmiş layihə tapılmadı.");
+    if (project.rfq_id) {
+      return sendJson(res, 200, {
+        ok: true,
+        data: {
+          id: project.rfq_id,
+          status: project.linked_rfq_status || "Yeni",
+          cloud: true,
+          duplicate: true,
+          itemCount: Number(project.linked_item_count || 0),
+          projectId
+        }
+      });
+    }
+  }
   if (estimateId) {
     if (!session) throw new ApiError(401, "authentication_required", "Smetanı RFQ-yə çevirmək üçün hesaba daxil ol.");
     const estimateRows = await query(
@@ -269,8 +297,14 @@ export default withApiErrors(async (req, res) => {
               version = estimate.version + 1,
               updated_at = now()
          FROM new_rfq
-        WHERE estimate.id = $21 AND estimate.customer_id = $2
+       WHERE estimate.id = $21 AND estimate.customer_id = $2
        RETURNING estimate.id
+     ), linked_project AS (
+       UPDATE customer_projects project
+          SET rfq_id = new_rfq.id, status = 'procurement', updated_at = now()
+         FROM new_rfq
+        WHERE project.id = $23 AND project.customer_id = $2
+       RETURNING project.id
      )
      SELECT new_rfq.id, (SELECT count(*)::int FROM new_items) AS item_count
        FROM new_rfq`,
@@ -296,7 +330,8 @@ export default withApiErrors(async (req, res) => {
       submissionHash,
       aiRunId,
       estimateId,
-      JSON.stringify(items)
+      JSON.stringify(items),
+      projectId
     ]
   );
   if (!createdRows[0]) {
@@ -340,7 +375,7 @@ export default withApiErrors(async (req, res) => {
     action: "create",
     entityType: "rfq",
     entityId: id,
-    details: { type, supplierId, itemCount: items.length, aiRunId, estimateId }
+    details: { type, supplierId, itemCount: items.length, aiRunId, estimateId, projectId }
   });
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "";
   const notification = {
@@ -363,6 +398,6 @@ export default withApiErrors(async (req, res) => {
   }
   return sendJson(res, 201, {
     ok: true,
-    data: { id, status: "Yeni", cloud: true, itemCount: Number(createdRows[0].item_count || items.length), aiRunId, estimateId }
+    data: { id, status: "Yeni", cloud: true, itemCount: Number(createdRows[0].item_count || items.length), aiRunId, estimateId, projectId }
   });
 });

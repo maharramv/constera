@@ -6,7 +6,7 @@ import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
 import { oneOf, parseLimit, text } from "../_lib/validation.js";
 
-const entityTypes = ["product", "supplier", "service", "package", "rental", "general"];
+const entityTypes = ["product", "supplier", "service", "package", "rental", "project", "general"];
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"]);
 const externalImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const licenseTypes = ["own", "supplier", "official", "licensed", "reference", "unspecified"];
@@ -241,6 +241,17 @@ export const probeExternalImage = async (value) => {
 };
 
 const assertSupplierMediaScope = async (user, entityType, entityId) => {
+  if (user.role === "customer") {
+    if (entityType !== "project" || !entityId) {
+      throw new ApiError(403, "media_scope_denied", "Müştəri media faylını yalnız öz layihəsinə bağlaya bilər.");
+    }
+    const rows = await query(
+      "SELECT id FROM customer_projects WHERE id = $1 AND customer_id = $2 LIMIT 1",
+      [entityId, user.id]
+    );
+    if (!rows[0]) throw new ApiError(403, "media_scope_denied", "Bu layihə müştəri hesabına aid deyil.");
+    return;
+  }
   if (user.role !== "supplier") return;
   if (entityType === "general" && !entityId) return;
   if (!user.companyId || !entityId || !["product", "supplier"].includes(entityType)) {
@@ -293,7 +304,7 @@ const markPrimary = async ({ id, entityType, entityId, url }) => {
 };
 
 export default withApiErrors(async (req, res) => {
-  const user = await requireRole(req, ["super_admin", "admin", "supplier"]);
+  const user = await requireRole(req, ["super_admin", "admin", "supplier", "customer"]);
   const privileged = ["super_admin", "admin"].includes(user.role);
   if (req.method === "GET") {
     const limit = parseLimit(req.query.limit, 100, 500);

@@ -20,20 +20,22 @@ export const queueNotification = async ({
   subject = null,
   body,
   templateKey = null,
-  payload = {}
+  payload = {},
+  availableAt = null
 }) => {
   const id = `ntf-${randomUUID()}`;
   await query(
-    `INSERT INTO notifications (id, user_id, channel, recipient, subject, body, template_key, payload)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
-    [id, userId, channel, recipient, subject, body, templateKey, JSON.stringify(payload)]
+    `INSERT INTO notifications (
+       id, user_id, channel, recipient, subject, body, template_key, payload, available_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, COALESCE($9::timestamptz, now()))`,
+    [id, userId, channel, recipient, subject, body, templateKey, JSON.stringify(payload), availableAt]
   );
   if (channel === "in_app" && userId) {
     await query(
       `INSERT INTO notifications (
-         id, user_id, channel, recipient, subject, body, template_key, payload
+         id, user_id, channel, recipient, subject, body, template_key, payload, available_at
        )
-       SELECT $1, $2, 'web_push', NULL, $3, $4, $5, $6::jsonb
+       SELECT $1, $2, 'web_push', NULL, $3, $4, $5, $6::jsonb, COALESCE($7::timestamptz, now())
        WHERE EXISTS (
          SELECT 1 FROM web_push_subscriptions
           WHERE user_id = $2 AND status = 'active'
@@ -44,7 +46,8 @@ export const queueNotification = async ({
         subject,
         body,
         templateKey,
-        JSON.stringify(payload)
+        JSON.stringify(payload),
+        availableAt
       ]
     );
   }

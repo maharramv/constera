@@ -131,6 +131,7 @@ const requiredProductionFiles = [
   "db/migrations/030_ai_offer_comparison.sql",
   "db/migrations/031_ai_estimate_workflow.sql",
   "db/migrations/032_ai_procurement_plans.sql",
+  "db/migrations/033_project_workspace.sql",
   "assets/js/order-detail.js",
   "assets/js/enterprise.js",
   "assets/js/enterprise-admin.js",

@@ -46,6 +46,8 @@ document.addEventListener("error", (event) => {
 const adminProductStorageKey = "constera-admin-products";
 const adminSupplierStorageKey = "constera-admin-suppliers";
 const cartStorageKey = "constera-cart";
+const projectBasketStorageKey = "constera-project-basket";
+const projectProfileStorageKey = "constera-project-profile";
 const adminEntityConfigs = {
   service: {
     storageKey: "constera-admin-services",
@@ -83,7 +85,9 @@ const adminBackupKeys = [
   "constera-ai-estimates",
   "constera-favorites",
   "constera-compare",
-  cartStorageKey
+  cartStorageKey,
+  projectBasketStorageKey,
+  projectProfileStorageKey
 ];
 
 const getCart = () => storage.read(cartStorageKey)
@@ -102,6 +106,30 @@ const updateCartIndicators = () => {
   });
 };
 
+const projectEntityTypes = new Set(["product", "service", "package", "rental"]);
+const getProjectBasket = () => storage.read(projectBasketStorageKey)
+  .map((item) => ({
+    type: String(item?.type || ""),
+    id: String(item?.id || ""),
+    quantity: Math.max(1, Number(item?.quantity || 1)),
+    addedAt: String(item?.addedAt || "")
+  }))
+  .filter((item) => projectEntityTypes.has(item.type) && item.id);
+const saveProjectBasket = (items) => storage.write(projectBasketStorageKey, items.slice(0, 200));
+const getProjectBasketCount = () => getProjectBasket().length;
+const updateProjectBasketIndicators = () => {
+  const count = getProjectBasketCount();
+  document.querySelectorAll("[data-project-basket-count]").forEach((node) => {
+    node.textContent = count.toLocaleString("az-AZ");
+  });
+};
+const isInProjectBasket = (type, id) => getProjectBasket()
+  .some((item) => item.type === type && item.id === id);
+const projectActionButton = (type, id, className = "button button-outline") => {
+  const selected = isInProjectBasket(type, id);
+  return `<button class="${className} product-cart${selected ? " is-active" : ""}" type="button" data-action="project" data-entity-type="${escapeAttr(type)}" data-id="${escapeAttr(id)}" aria-pressed="${selected}">${selected ? "Layihədədir" : "Layihəyə əlavə et"}</button>`;
+};
+
 const getCategory = (id) => marketplace.categories.find((category) => category.id === id);
 const getBrand = (name) => marketplace.brands.find((brand) => brand.name === name);
 const getServiceCategory = (id) =>
@@ -110,6 +138,30 @@ const getPackageCategory = (id) =>
   (marketplace.packageCategories || []).find((category) => category.id === id);
 const getRentalCategory = (id) =>
   (marketplace.rentalCategories || []).find((category) => category.id === id);
+
+const projectEntityConfig = {
+  product: { items: () => marketplace.products || [], title: "name", label: "Material", detail: "product-detail.html", param: "product" },
+  service: { items: () => marketplace.services || [], title: "title", label: "Xidmət", detail: "service-detail.html", param: "service" },
+  package: { items: () => marketplace.packages || [], title: "title", label: "Hazır paket", detail: "package-detail.html", param: "package" },
+  rental: { items: () => marketplace.rentals || [], title: "name", label: "İcarə", detail: "rental-detail.html", param: "rental" }
+};
+const getProjectEntity = (type, id) => projectEntityConfig[type]?.items().find((item) => item.id === id) || null;
+const getProjectProfile = () => {
+  const value = storage.read(projectProfileStorageKey);
+  return value && !Array.isArray(value) ? value : {};
+};
+const getResolvedProjectBasket = () => getProjectBasket().map((entry) => ({
+  ...entry,
+  entity: getProjectEntity(entry.type, entry.id),
+  config: projectEntityConfig[entry.type]
+})).filter((entry) => entry.entity && entry.config);
+const getProjectEntityTitle = (entry) => entry.entity[entry.config.title] || "Məlumat";
+const getProjectEntityPriceAmount = (entry) => {
+  const amount = Number(entry.entity.priceAmount);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  if (entry.type === "product" && entry.entity.priceStatus !== "confirmed") return null;
+  return amount;
+};
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 const normalizeSearchText = (value) => normalize(value)
@@ -273,6 +325,11 @@ const escapeHtml = (value) =>
     "'": "&#039;"
   })[char]);
 const escapeAttr = escapeHtml;
+const compactSymbol = (value, fallback = "") => {
+  const source = String(value || "").trim();
+  if (!source) return fallback;
+  return source.replace(/\s+/g, " ").slice(0, 2).toUpperCase();
+};
 const getSafeHttpsUrl = (value) => {
   try {
     const url = new URL(String(value || ""));
@@ -750,6 +807,29 @@ const renderDetailFallback = (container, title, backHref) => {
   `;
 };
 
+const renderEntityRecommendations = (title, entities, query) => {
+  if (!entities.length) return "";
+  const itemLinks = entities
+    .slice(0, 3)
+    .map((item) => {
+      const itemLabel = item.title || item.name || "Məlumat";
+      return `
+        <a class="info-card" href="${escapeAttr(`${query.path}?${query.param}=${encodeURIComponent(item.id)}`)}">
+          <span>Əlaqəli seçim</span>
+          <h3>${escapeHtml(itemLabel)}</h3>
+        </a>
+      `;
+    })
+    .join("");
+
+  return `
+    <section class="detail-data-section detail-related">
+      <h2>${escapeHtml(title)}</h2>
+      <div class="market-grid">${itemLinks}</div>
+    </section>
+  `;
+};
+
 const createProductCard = (product) => {
   const category = getCategory(product.category);
   const brand = getBrand(product.brand);
@@ -817,7 +897,8 @@ const createProductCard = (product) => {
       </div>
       <div class="product-primary-actions">
         <button class="button button-secondary product-cart ${isInCart ? "is-active" : ""}" type="button" data-action="cart" data-id="${escapeAttr(product.id)}">${cartLabel}</button>
-        <a class="button button-outline product-rfq" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
+        ${projectActionButton("product", product.id)}
+        <a class="button button-outline" href="rfq.html?product=${encodeURIComponent(product.id)}">Sorğu göndər</a>
       </div>
     </article>
   `;
@@ -1749,7 +1830,10 @@ const createServiceCard = (service) => {
           ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
         </div>
       </div>
-      <a class="button button-secondary product-rfq" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu</a>
+      <div class="product-primary-actions">
+        ${projectActionButton("service", service.id, "button button-secondary")}
+        <a class="button button-outline" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu</a>
+      </div>
     </article>
   `;
 };
@@ -1816,7 +1900,10 @@ const createPackageCard = (pack) => {
           ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
         </div>
       </div>
-      <a class="button button-secondary product-rfq" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu</a>
+      <div class="product-primary-actions">
+        ${projectActionButton("package", pack.id, "button button-secondary")}
+        <a class="button button-outline" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu</a>
+      </div>
     </article>
   `;
 };
@@ -1866,7 +1953,10 @@ const createRentalCard = (rental) => {
           ${sourceUrl ? `<a class="source-link" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
         </div>
       </div>
-      <a class="button button-secondary product-rfq" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu</a>
+      <div class="product-primary-actions">
+        ${projectActionButton("rental", rental.id, "button button-secondary")}
+        <a class="button button-outline" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu</a>
+      </div>
     </article>
   `;
 };
@@ -2200,6 +2290,7 @@ const renderProductDetail = () => {
         <p class="hero-text">${escapeHtml(item.package || "Qablaşdırma sorğu ilə")} · ${escapeHtml(item.origin || "Mənşə dəqiqləşdirilir")} · ${escapeHtml(item.availability || "Stok sorğu ilə")}</p>
         <div class="detail-actions">
           <button class="button button-secondary" type="button" data-action="cart" data-id="${escapeAttr(item.id)}" data-offer-id="${escapeAttr(cartEntry?.offerId || preferredOffer?.id || "")}">${cartEntry ? selectedCommercialReady ? "Səbətdədir" : "Sorğu siyahısındadır" : selectedCommercialReady ? "Səbətə əlavə et" : "Sorğu siyahısına əlavə et"}</button>
+          ${projectActionButton("product", item.id)}
           <a class="button button-primary" href="rfq.html?product=${encodeURIComponent(item.id)}">Sorğu göndər</a>
           <a class="button button-outline" href="catalog.html">Kataloqa qayıt</a>
           ${source}
@@ -2538,6 +2629,9 @@ const renderServiceDetail = () => {
 
   const category = getServiceCategory(service.category);
   const sourceUrl = getSafeHttpsUrl(service.sourceUrl);
+  const relatedServices = sortBySourceQuality((marketplace.services || []).filter((item) =>
+    item.id !== service.id && (item.subcategory === service.subcategory || item.category === service.category)
+  ), "service");
   document.title = `${service.title} | ConstEra Xidmətlər`;
   updatePageDescription(`${service.title}: ${category?.title || "tikinti xidməti"}, ${service.subcategory || "ümumi xidmət"}, ${service.price}. ConstEra üzərindən xidmət sorğusu yarat.`);
   container.innerHTML = `
@@ -2555,6 +2649,7 @@ const renderServiceDetail = () => {
         </div>
         <p class="hero-text">İş həcmi, briqada, təhvil nəticələri və ilkin smeta üçün istifadə olunan xidmət kartı.</p>
         <div class="detail-actions">
+          ${projectActionButton("service", service.id)}
           <a class="button button-primary" href="rfq.html?service=${encodeURIComponent(service.id)}">Xidmət sorğusu yarat</a>
           <a class="button button-outline" href="services.html">Xidmətlərə qayıt</a>
           ${sourceUrl ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(service.sourceLabel || "Mənbəni aç")}</a>` : ""}
@@ -2599,6 +2694,7 @@ const renderServiceDetail = () => {
         </div>
       </article>
     </div>
+    ${renderEntityRecommendations("Oxşar xidmətlər", relatedServices, { path: "service-detail.html", param: "service" })}
   `;
   injectEntitySchema("constera-service-schema", {
     "@context": "https://schema.org",
@@ -2633,6 +2729,9 @@ const renderPackageDetail = () => {
   const sourceUrl = getSafeHttpsUrl(pack.sourceUrl);
   const providerUrl = getSafeHttpsUrl(pack.providerWebsite);
   const levelLabel = packageLevelLabels[pack.level] || pack.type;
+  const relatedPackages = sortBySourceQuality((marketplace.packages || []).filter((item) =>
+    item.id !== pack.id && (item.subcategory === pack.subcategory || item.category === pack.category)
+  ), "package");
   document.title = `${pack.title} | ConstEra Paketlər`;
   updatePageDescription(`${pack.title}: ${category?.title || "hazır paket"}, ${pack.subcategory || "ümumi paket"}, ${pack.price}. Təmir və tikinti paketləri üçün sorğu göndər.`);
   container.innerHTML = `
@@ -2651,6 +2750,7 @@ const renderPackageDetail = () => {
         </div>
         <p class="hero-text">${escapeHtml(pack.idealFor)}</p>
         <div class="detail-actions">
+          ${projectActionButton("package", pack.id)}
           <a class="button button-primary" href="rfq.html?package=${encodeURIComponent(pack.id)}">Paket sorğusu yarat</a>
           ${sourceUrl ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
           <a class="button button-outline" href="packages.html">Paketlərə qayıt</a>
@@ -2698,6 +2798,7 @@ const renderPackageDetail = () => {
         ${pack.warrantyMonths ? `<p>${escapeHtml(`${pack.warrantyMonths} ay zəmanət mənbədə göstərilib; müqavilədə yenidən təsdiqlənməlidir.`)}</p>` : ""}
       </article>
     </div>
+    ${renderEntityRecommendations("Oxşar hazır paketlər", relatedPackages, { path: "package-detail.html", param: "package" })}
   `;
   injectEntitySchema("constera-package-schema", {
     "@context": "https://schema.org",
@@ -2740,6 +2841,9 @@ const renderRentalDetail = () => {
   const category = getRentalCategory(rental.category);
   const sourceUrl = getSafeHttpsUrl(rental.sourceUrl);
   const imageUrl = getPublicImageUrl(rental);
+  const relatedRentals = sortBySourceQuality((marketplace.rentals || []).filter((item) =>
+    item.id !== rental.id && (item.subcategory === rental.subcategory || item.category === rental.category)
+  ), "rental");
   const rentalMedia = imageUrl
     ? `<div class="detail-media"><img data-product-image data-product-fallback="İC" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(rental.name)}" width="1280" height="960" decoding="async" referrerpolicy="no-referrer"></div>`
     : `<div class="detail-symbol"><span>İC</span></div>`;
@@ -2759,6 +2863,7 @@ const renderRentalDetail = () => {
         </div>
         <p class="hero-text">Avadanlıq gücü, operator şərti, depozit, çatdırılma və rezervasiya qiymət sorğusu üçün əsas kart.</p>
         <div class="detail-actions">
+          ${projectActionButton("rental", rental.id)}
           <a class="button button-primary" href="rfq.html?rental=${encodeURIComponent(rental.id)}">İcarə sorğusu yarat</a>
           ${sourceUrl ? `<a class="button button-secondary" href="${escapeAttr(sourceUrl)}" target="_blank" rel="noopener noreferrer">Mənbəni aç</a>` : ""}
           <a class="button button-outline" href="rental.html">İcarəyə qayıt</a>
@@ -2846,6 +2951,7 @@ const renderRentalDetail = () => {
         </p>
       </form>
     </section>
+    ${renderEntityRecommendations("Oxşar icarə avadanlıqları", relatedRentals, { path: "rental-detail.html", param: "rental" })}
   `;
   const bookingForm = container.querySelector("[data-rental-booking-form]");
   const bookingStatus = container.querySelector("[data-rental-booking-status]");
@@ -4045,6 +4151,8 @@ const initRfq = () => {
   }
 
   const params = new URLSearchParams(window.location.search);
+  const requestedProjectId = params.get("project") || "";
+  let requestedProjectEntries = [];
   const productId = params.get("product");
   const serviceId = params.get("service");
   const packageId = params.get("package");
@@ -4064,6 +4172,55 @@ const initRfq = () => {
   const supplierId = params.get("supplier");
   if (supplierSelect && supplierId && (marketplace.suppliers || []).some((supplier) => supplier.id === supplierId)) {
     supplierSelect.value = supplierId;
+  }
+  const applyProjectRfq = (entries, profile) => {
+    if (entries.length) {
+      productSelect.value = "";
+      if (form.elements.customProduct) {
+        form.elements.customProduct.value = entries.map((entry) => entry.title).join(", ").slice(0, 1000);
+      }
+      if (form.elements.quantity) form.elements.quantity.value = `${entries.length} layihə mövqeyi`;
+      if (form.elements.city) form.elements.city.value = profile.city || "";
+      if (form.elements.usage) form.elements.usage.value = profile.title || "Vahid tikinti və təmir layihəsi";
+      if (form.elements.deliveryMode) form.elements.deliveryMode.value = "Çatdırılma lazımdır";
+      if (form.elements.note) {
+        form.elements.note.value = [
+          profile.area ? `Sahə: ${profile.area} m²` : "",
+          profile.budget ? `Büdcə: ${profile.budget} AZN` : "",
+          profile.note || "",
+          "Layihə mövqeləri:",
+          ...entries.map((entry, index) => `${index + 1}. ${entry.label}: ${entry.title} — ${entry.quantity} ${entry.unit || "mövqe"}`)
+        ].filter(Boolean).join("\n").slice(0, 4000);
+      }
+    }
+  };
+  if (requestedProjectId) {
+    const profile = getProjectProfile();
+    requestedProjectEntries = getResolvedProjectBasket().map((entry) => ({
+      type: entry.type,
+      id: entry.id,
+      title: getProjectEntityTitle(entry),
+      quantity: entry.quantity,
+      unit: entry.entity.unit || entry.entity.package || "mövqe",
+      label: entry.config.label,
+      specs: [entry.entity.subcategory, entry.entity.brand].filter(Boolean)
+    }));
+    applyProjectRfq(requestedProjectEntries, profile);
+    if (requestedProjectId !== "1" && window.ConstEraAPI?.projectWorkspace) {
+      window.ConstEraAPI.projectWorkspace(requestedProjectId).then((response) => {
+        const workspace = response.data || {};
+        requestedProjectEntries = (workspace.items || []).map((item) => ({
+          type: item.type,
+          id: item.id,
+          title: item.title,
+          quantity: item.quantity,
+          unit: item.unit || "mövqe",
+          label: getEntityConfig(item.type)?.label || "Mövqe",
+          specs: [item.snapshot?.category, item.snapshot?.subcategory, item.snapshot?.brand].filter(Boolean)
+        }));
+        applyProjectRfq(requestedProjectEntries, workspace.project || profile);
+      }).catch(() => null);
+    }
   }
 
   const rentalRequestFields = [...form.querySelectorAll("[data-rental-request-field]")];
@@ -4231,6 +4388,15 @@ const initRfq = () => {
         quantityText: data.get("quantity")
       } : { ...item, kind: item.productId ? "product" : "custom" })
       : [];
+    const projectItems = requestedProjectEntries.map((item) => ({
+      kind: item.type || "custom",
+      itemId: item.id || "",
+      title: item.title,
+      quantity: item.quantity,
+      quantityText: `${item.quantity} ${item.unit || "mövqe"}`,
+      unit: item.unit || "mövqe",
+      specs: item.specs || []
+    }));
     const rfq = {
       id: `rfq-${Date.now()}`,
       type: selectedType || "custom",
@@ -4241,7 +4407,10 @@ const initRfq = () => {
       priority: data.get("priority") || "Normal",
       product: submittedTitle,
       quantity: data.get("quantity"),
-      items: aiItems,
+      items: aiItems.length ? aiItems : projectItems,
+      projectId: requestedProjectId && requestedProjectId !== "1"
+        ? requestedProjectId
+        : (getProjectProfile().id || ""),
       aiRunId: approvedAiRfqDraft ? latestAiRfq?.runId || "" : "",
       needDate: data.get("needDate"),
       budget: data.get("budget"),
@@ -5619,6 +5788,16 @@ const initAiSmeta = () => {
   const importFile = document.querySelector("[data-ai-smeta-file]");
   const importButton = document.querySelector("[data-ai-smeta-import]");
   if (!form || !output) return;
+
+  const plannerParams = new URLSearchParams(window.location.search);
+  const plannerProjectType = plannerParams.get("projectType");
+  const plannerArea = Number(plannerParams.get("area"));
+  const plannerCity = plannerParams.get("city");
+  if (plannerProjectType && [...form.elements.projectType.options].some((option) => option.value === plannerProjectType)) {
+    form.elements.projectType.value = plannerProjectType;
+  }
+  if (Number.isFinite(plannerArea) && plannerArea >= 20) form.elements.area.value = String(plannerArea);
+  if (plannerCity) form.elements.city.value = plannerCity.slice(0, 160);
 
   const estimateKey = "constera-ai-estimates";
   const requestedEstimateId = new URLSearchParams(window.location.search).get("estimate") || "";
@@ -7979,9 +8158,10 @@ const initCustomerCabinet = () => {
     projectList.innerHTML = state.projects.length ? state.projects.map((project) => `
       <article class="cabinet-item">
         <header><strong>${escapeHtml(project.title)}</strong><span class="mini-badge">${escapeHtml(projectStatusLabels[project.status] || project.status)}</span></header>
-        <p>${escapeHtml(project.city || "Məkan qeyd edilməyib")} · ${project.area === null || project.area === "" ? "Sahə açıq" : `${escapeHtml(project.area)} m²`} · ${project.budget === null || project.budget === "" ? "Büdcə açıq" : formatMoney(project.budget, project.currency || "AZN")}</p>
+        <p>${escapeHtml(project.city || "Məkan qeyd edilməyib")} · ${project.area === null || project.area === "" ? "Sahə açıq" : `${escapeHtml(project.area)} m²`} · ${project.budget === null || project.budget === "" ? "Büdcə açıq" : formatMoney(project.budget, project.currency || "AZN")} · ${escapeHtml(project.itemCount || 0)} mövqe</p>
         <span>${escapeHtml(project.note || "Əlavə qeyd yoxdur.")}</span>
         <div class="cabinet-item-actions">
+          <a class="table-action" href="project-planner.html?project=${encodeURIComponent(project.id)}">Layihə mərkəzi</a>
           <a class="table-action" href="rfq.html?project=${encodeURIComponent(project.id)}">Sorğu yarat</a>
           <button class="table-action is-danger" type="button" data-customer-project-delete="${escapeAttr(project.id)}">Sil</button>
         </div>
@@ -8512,10 +8692,448 @@ const renderCheckout = () => {
   loadOrders();
 };
 
+const initProjectPlanner = () => {
+  const form = document.querySelector("[data-project-planner-form]");
+  const list = document.querySelector("[data-project-planner-items]");
+  const empty = document.querySelector("[data-project-planner-empty]");
+  const stats = document.querySelector("[data-project-planner-stats]");
+  const clearButton = document.querySelector("[data-project-planner-clear]");
+  const rfqLink = document.querySelector("[data-project-planner-rfq]");
+  const aiLink = document.querySelector("[data-project-planner-ai]");
+  const aiRfqLink = document.querySelector("[data-project-planner-ai-rfq]");
+  const status = document.querySelector("[data-project-planner-status]");
+  const cloudBadge = document.querySelector("[data-project-cloud-badge]");
+  const cloudSave = document.querySelector("[data-project-cloud-save]");
+  const loginLink = document.querySelector("[data-project-login]");
+  const supplierMatches = document.querySelector("[data-project-supplier-matches]");
+  const matchSuppliersButton = document.querySelector("[data-project-match-suppliers]");
+  const milestoneForm = document.querySelector("[data-project-milestone-form]");
+  const milestoneList = document.querySelector("[data-project-milestones]");
+  const milestoneCount = document.querySelector("[data-project-milestone-count]");
+  const documentForm = document.querySelector("[data-project-document-form]");
+  const documentList = document.querySelector("[data-project-documents]");
+  const documentCount = document.querySelector("[data-project-document-count]");
+  const commerceList = document.querySelector("[data-project-commerce]");
+  const commerceBadge = document.querySelector("[data-project-commerce-badge]");
+  if (!form || !list || !stats) return;
+
+  let cloudUser = null;
+  let workspace = null;
+  let cloudSyncTimer = 0;
+  let cloudSyncActive = false;
+
+  const setPlannerStatus = (message, type = "") => {
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.type = type;
+  };
+
+  const applyProfile = () => {
+    const profile = getProjectProfile();
+    Object.entries(profile).forEach(([name, value]) => {
+      if (form.elements[name] && value !== undefined && value !== null) form.elements[name].value = value;
+    });
+  };
+  const saveProfile = () => {
+    const profile = { ...getProjectProfile(), ...Object.fromEntries(new FormData(form).entries()) };
+    storage.write(projectProfileStorageKey, profile);
+    return profile;
+  };
+  const projectPayload = () => {
+    const profile = saveProfile();
+    const entries = getResolvedProjectBasket();
+    const projectType = ["apartment", "villa", "office"].includes(profile.projectType) ? profile.projectType : "other";
+    return {
+      ...profile,
+      id: profile.id || "",
+      title: profile.title || `${projectType === "villa" ? "Villa" : projectType === "apartment" ? "Mənzil" : projectType === "office" ? "Ofis" : "Tikinti"} layihəsi`,
+      projectType,
+      status: workspace?.project?.status || "planning",
+      currency: "AZN",
+      items: entries.map((entry) => {
+        const entity = entry.entity || {};
+        const priceAmount = getProjectEntityPriceAmount(entry);
+        return {
+          type: entry.type,
+          id: entry.id,
+          title: getProjectEntityTitle(entry),
+          quantity: entry.quantity,
+          unit: entity.unit || entity.package || "mövqe",
+          priceAmount,
+          priceStatus: priceAmount === null ? "request" : "confirmed",
+          currency: entity.priceCurrency || "AZN",
+          sourceUrl: getSafeHttpsUrl(entity.sourceUrl),
+          snapshot: {
+            title: getProjectEntityTitle(entry),
+            category: entity.category || "",
+            subcategory: entity.subcategory || "",
+            brand: entity.brand || "",
+            supplier: entity.supplier || entity.providerName || "",
+            supplierId: entity.supplierId || "",
+            image: entity.image || entity.imageUrl || "",
+            priceText: entity.price || entity.priceText || "Sorğu əsasında"
+          }
+        };
+      })
+    };
+  };
+
+  const renderWorkspace = () => {
+    const projectId = workspace?.project?.id || getProjectProfile().id || "";
+    const matches = workspace?.supplierMatches || [];
+    if (supplierMatches) supplierMatches.innerHTML = matches.length ? matches.map((match, index) => `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(`${index + 1}. ${match.supplier}`)}</strong><span class="mini-badge is-verified">${escapeHtml(Math.round(match.score))}% uyğunluq</span></header>
+        <p>${escapeHtml(match.region || "Azərbaycan")} · ${escapeHtml(match.coverageCount)} uyğun əhatə · ${match.verifiedReviews ? `${escapeHtml(match.verifiedReviews)} təsdiqlənmiş rəy` : "Yeni təchizatçı"}</p>
+        <span>${escapeHtml((match.reasons || []).join(" · ") || "Kataloq uyğunluğu əsasında seçilib")}${match.reviewAverage ? ` · ${escapeHtml(match.reviewAverage.toFixed(1))}/5` : ""}</span>
+        <div class="cabinet-item-actions">
+          <a class="table-action" href="suppliers.html?supplier=${encodeURIComponent(match.supplierId)}">Profili aç</a>
+          <a class="table-action" href="rfq.html?project=${encodeURIComponent(projectId)}&supplier=${encodeURIComponent(match.supplierId)}">Bu təchizatçıdan soruş</a>
+        </div>
+      </article>
+    `).join("") : '<article class="cabinet-item"><strong>Uyğunlaşdırma hazır deyil.</strong><span>Layihəni saxla və real kataloq əhatəsinə görə təchizatçıları seç.</span></article>';
+
+    const milestones = workspace?.milestones || [];
+    if (milestoneCount) milestoneCount.textContent = `${milestones.length} mərhələ`;
+    if (milestoneList) milestoneList.innerHTML = milestones.length ? milestones.map((milestone) => `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(milestone.title)}</strong><span class="mini-badge">${escapeHtml(milestone.status === "completed" ? "Tamamlanıb" : milestone.status === "in_progress" ? "İcradadır" : "Planlanıb")}</span></header>
+        <p>${escapeHtml(milestone.dueDate)} · ${escapeHtml(milestone.type)}${milestone.reminderScheduled ? " · Xatırlatma aktivdir" : ""}</p>
+        <span>${escapeHtml(milestone.note || "Əlavə qeyd yoxdur.")}</span>
+        <div class="cabinet-item-actions"><button class="table-action is-danger" type="button" data-project-milestone-delete="${escapeAttr(milestone.id)}">Sil</button></div>
+      </article>
+    `).join("") : '<article class="cabinet-item"><strong>Təqvim boşdur.</strong><span>Satınalma, xidmət, icarə, çatdırılma və ödəniş tarixlərini əlavə et.</span></article>';
+
+    const documents = workspace?.documents || [];
+    if (documentCount) documentCount.textContent = `${documents.length} sənəd`;
+    if (documentList) documentList.innerHTML = documents.length ? documents.map((document) => `
+      <article class="cabinet-item">
+        <header><strong>${escapeHtml(document.filename)}</strong><span class="mini-badge">${escapeHtml(Math.max(1, Math.round(document.sizeBytes / 1024)))} KB</span></header>
+        <p>${escapeHtml(document.contentType)} · ${new Date(document.createdAt).toLocaleString("az-AZ")}</p>
+        <div class="cabinet-item-actions"><a class="table-action" href="${escapeAttr(document.url)}" target="_blank" rel="noopener">Sənədi aç</a><button class="table-action is-danger" type="button" data-project-document-delete="${escapeAttr(document.id)}">Sil</button></div>
+      </article>
+    `).join("") : '<article class="cabinet-item"><strong>Sənəd yoxdur.</strong><span>Plan, texniki tapşırıq, müqavilə, sertifikat və aktları layihəyə bağla.</span></article>';
+
+    const commerce = workspace?.commerce || {};
+    if (commerceBadge) commerceBadge.textContent = commerce.paymentStatus
+      ? `Ödəniş: ${commerce.paymentStatus}`
+      : commerce.proposalStatus ? `Təklif: ${commerce.proposalStatus}` : commerce.rfqStatus || "Başlanmayıb";
+    if (commerceList) commerceList.innerHTML = commerce.rfqId ? `
+      <article class="cabinet-item">
+        <header><strong>Qiymət sorğusu</strong><span class="mini-badge">${escapeHtml(commerce.rfqStatus || "Yeni")}</span></header>
+        <p>${commerce.proposalId ? `Kommersiya təklifi ${escapeHtml(commerce.proposalNumber)}` : "Təchizatçı təklifləri gözlənilir"}</p>
+        <span>${commerce.proposalTotal === null || commerce.proposalTotal === undefined ? "Məbləğ hələ təsdiqlənməyib" : formatMoney(commerce.proposalTotal, commerce.proposalCurrency || "AZN")}</span>
+        <div class="cabinet-item-actions">
+          <a class="table-action" href="rfq-dashboard.html?rfq=${encodeURIComponent(commerce.rfqId)}">RFQ-ni aç</a>
+          ${commerce.proposalId ? `<a class="table-action" href="proposal-detail.html?proposal=${encodeURIComponent(commerce.proposalId)}">Təklif və PDF</a>` : ""}
+          ${commerce.orderId ? `<a class="table-action" href="order-detail.html?order=${encodeURIComponent(commerce.orderId)}">Sifariş #${escapeHtml(commerce.orderNumber)}</a>` : ""}
+        </div>
+      </article>
+    ` : `<article class="cabinet-item"><strong>Qiymət sorğusu yaradılmayıb.</strong><span>${getProjectBasketCount()} mövqeni vahid RFQ-yə çevir, sonra çoxmövqeli kommersiya təklifi, ƏDV, logistika və ödəniş vəziyyətini buradan izlə.</span><div class="cabinet-item-actions"><a class="table-action" href="rfq.html?project=${encodeURIComponent(projectId || "1")}">RFQ yarat</a></div></article>`;
+  };
+
+  const applyWorkspace = (data) => {
+    workspace = data || null;
+    if (!workspace?.project) return;
+    const currentProfile = getProjectProfile();
+    const profile = { ...currentProfile, ...workspace.project, id: workspace.project.id };
+    storage.write(projectProfileStorageKey, profile);
+    const localItems = getProjectBasket();
+    const localKeys = new Set(localItems.map((item) => `${item.type}:${item.id}`));
+    const cloudItems = (workspace.items || []).filter((item) => !localKeys.has(`${item.type}:${item.id}`)).map((item) => ({
+      type: item.type,
+      id: item.id,
+      quantity: item.quantity,
+      addedAt: item.createdAt || new Date().toISOString()
+    }));
+    if (cloudItems.length) saveProjectBasket([...localItems, ...cloudItems]);
+    applyProfile();
+    if (cloudBadge) cloudBadge.textContent = "Neon sinxronizasiyası aktivdir";
+    if (loginLink) loginLink.hidden = true;
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", workspace.project.id);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    if (rfqLink) rfqLink.href = `rfq.html?project=${encodeURIComponent(workspace.project.id)}`;
+    if (aiRfqLink) aiRfqLink.href = `rfq.html?project=${encodeURIComponent(workspace.project.id)}#ai-rfq`;
+    renderWorkspace();
+  };
+
+  const syncCloud = async ({ quiet = false } = {}) => {
+    if (!cloudUser || !window.ConstEraAPI?.syncProjectWorkspace || cloudSyncActive) return null;
+    cloudSyncActive = true;
+    if (cloudSave) cloudSave.disabled = true;
+    if (!quiet) setPlannerStatus("Layihə Neon bazasına yazılır...");
+    try {
+      const response = await window.ConstEraAPI.syncProjectWorkspace(projectPayload());
+      applyWorkspace(response.data);
+      if (!quiet) setPlannerStatus("Layihə və bütün mövqelər Neon bazasında saxlandı.", "success");
+      return response.data;
+    } catch (error) {
+      setPlannerStatus(error.message || "Layihə buludda saxlanmadı.", "error");
+      return null;
+    } finally {
+      cloudSyncActive = false;
+      if (cloudSave) cloudSave.disabled = false;
+    }
+  };
+
+  const scheduleCloudSync = () => {
+    if (!cloudUser || !getProjectProfile().id) return;
+    window.clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = window.setTimeout(() => syncCloud({ quiet: true }), 700);
+  };
+  const render = () => {
+    const entries = getResolvedProjectBasket();
+    const counts = entries.reduce((result, entry) => {
+      result[entry.type] = (result[entry.type] || 0) + 1;
+      return result;
+    }, {});
+    const priced = entries.filter((entry) => getProjectEntityPriceAmount(entry) !== null);
+    const knownSubtotal = priced.reduce((sum, entry) =>
+      sum + getProjectEntityPriceAmount(entry) * entry.quantity, 0);
+    const pendingCount = entries.length - priced.length;
+    stats.innerHTML = `
+      <article class="stat-card"><span class="stat-value">${entries.length}</span><p>ümumi mövqe</p></article>
+      <article class="stat-card"><span class="stat-value">${counts.product || 0}</span><p>material</p></article>
+      <article class="stat-card"><span class="stat-value">${(counts.service || 0) + (counts.package || 0)}</span><p>xidmət və paket</p></article>
+      <article class="stat-card"><span class="stat-value">${counts.rental || 0}</span><p>icarə</p></article>
+      <article class="stat-card"><span class="stat-value">${formatMoney(knownSubtotal)}</span><p>məlum ilkin məbləğ</p></article>
+      <article class="stat-card"><span class="stat-value">${pendingCount}</span><p>qiymət təsdiqi gözləyir</p></article>
+    `;
+    list.innerHTML = entries.map((entry) => {
+      const entity = entry.entity;
+      const sourceUrl = getSafeHttpsUrl(entity.sourceUrl);
+      const amount = getProjectEntityPriceAmount(entry);
+      const meta = [entity.subcategory, entity.brand, entity.providerName, entity.city].filter(Boolean).slice(0, 2).join(" · ");
+      const detailUrl = `${entry.config.detail}?${entry.config.param}=${encodeURIComponent(entry.id)}`;
+      return `
+        <article class="cabinet-item" data-project-basket-item="${escapeAttr(`${entry.type}:${entry.id}`)}">
+          <header><strong>${escapeHtml(getProjectEntityTitle(entry))}</strong><span class="mini-badge${sourceUrl ? " is-verified" : ""}">${escapeHtml(sourceUrl ? "Mənbəli" : "Təsdiq tələb edir")}</span></header>
+          <p>${escapeHtml(`${compactSymbol(entry.config.label, "CE")} · ${entry.config.label} · ${meta || entity.category || "ConstEra kataloqu"}`)}</p>
+          <span>${amount === null ? "Sorğu əsasında" : formatMoney(amount * entry.quantity)} · ${escapeHtml(entity.unit || entity.package || "mövqe")}</span>
+          <div class="cabinet-item-actions">
+            <a class="table-action" href="${escapeAttr(detailUrl)}">Detallı bax</a>
+            <label class="admin-field"><span>Miqdar</span><input type="number" min="1" max="1000000" step="1" value="${escapeAttr(entry.quantity)}" data-project-quantity="${escapeAttr(`${entry.type}:${entry.id}`)}" /></label>
+            <button class="table-action is-danger" type="button" data-project-remove="${escapeAttr(`${entry.type}:${entry.id}`)}">Layihədən çıxar</button>
+          </div>
+        </article>
+      `;
+    }).join("");
+    if (empty) empty.hidden = entries.length > 0;
+    list.hidden = entries.length === 0;
+    if (clearButton) clearButton.disabled = entries.length === 0;
+    if (rfqLink) {
+      rfqLink.classList.toggle("is-disabled", entries.length === 0);
+      rfqLink.setAttribute("aria-disabled", String(entries.length === 0));
+    }
+    updateProjectBasketIndicators();
+    scheduleCloudSync();
+  };
+
+  applyProfile();
+  form.addEventListener("input", () => {
+    const profile = saveProfile();
+    if (aiLink) {
+      const params = new URLSearchParams({
+        projectType: profile.projectType || "villa",
+        area: profile.area || "120",
+        city: profile.city || ""
+      });
+      aiLink.href = `ai-smeta.html?${params}`;
+    }
+    setPlannerStatus(cloudUser && profile.id ? "Dəyişikliklər avtomatik sinxronlaşdırılacaq." : "Layihə parametrləri bu cihazda saxlandı.");
+    scheduleCloudSync();
+  });
+  form.dispatchEvent(new Event("input"));
+  list.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-project-quantity]");
+    if (!input) return;
+    const [type, id] = input.dataset.projectQuantity.split(":");
+    const quantity = Math.max(1, Math.min(1_000_000, Number(input.value) || 1));
+    saveProjectBasket(getProjectBasket().map((entry) => entry.type === type && entry.id === id ? { ...entry, quantity } : entry));
+    render();
+  });
+  list.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-project-remove]");
+    if (!button) return;
+    const [type, id] = button.dataset.projectRemove.split(":");
+    saveProjectBasket(getProjectBasket().filter((entry) => entry.type !== type || entry.id !== id));
+    render();
+  });
+  clearButton?.addEventListener("click", () => {
+    saveProjectBasket([]);
+    render();
+    if (status) status.textContent = "Layihə səbəti təmizləndi.";
+  });
+  cloudSave?.addEventListener("click", () => {
+    if (!cloudUser) {
+      window.location.assign("login.html?next=project-planner.html");
+      return;
+    }
+    syncCloud();
+  });
+  matchSuppliersButton?.addEventListener("click", async () => {
+    if (!cloudUser || !window.ConstEraAPI?.matchProjectSuppliers) {
+      setPlannerStatus("Təchizatçı uyğunlaşdırması üçün hesabına daxil ol.", "warning");
+      return;
+    }
+    let projectId = getProjectProfile().id || "";
+    if (!projectId) projectId = (await syncCloud())?.project?.id || "";
+    if (!projectId) return;
+    matchSuppliersButton.disabled = true;
+    try {
+      const response = await window.ConstEraAPI.matchProjectSuppliers(projectId);
+      applyWorkspace(response.data);
+      setPlannerStatus(`${response.data?.supplierMatches?.length || 0} uyğun təchizatçı tapıldı.`, "success");
+    } catch (error) {
+      setPlannerStatus(error.message || "Təchizatçılar uyğunlaşdırılmadı.", "error");
+    } finally {
+      matchSuppliersButton.disabled = false;
+    }
+  });
+  milestoneForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!cloudUser || !window.ConstEraAPI?.saveProjectMilestone) {
+      setPlannerStatus("Təqvim və xatırlatma üçün hesabına daxil ol.", "warning");
+      return;
+    }
+    let projectId = getProjectProfile().id || "";
+    if (!projectId) projectId = (await syncCloud())?.project?.id || "";
+    if (!projectId) return;
+    const fields = Object.fromEntries(new FormData(milestoneForm).entries());
+    const button = milestoneForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const response = await window.ConstEraAPI.saveProjectMilestone({ ...fields, projectId, reminder: fields.reminder === "true" });
+      applyWorkspace(response.data);
+      milestoneForm.reset();
+      milestoneForm.elements.reminder.checked = true;
+      setPlannerStatus("Mərhələ və xatırlatma saxlandı.", "success");
+    } catch (error) {
+      setPlannerStatus(error.message || "Mərhələ saxlanmadı.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+  milestoneList?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-project-milestone-delete]");
+    if (!button || !window.ConstEraAPI?.deleteProjectMilestone) return;
+    button.disabled = true;
+    try {
+      const response = await window.ConstEraAPI.deleteProjectMilestone(button.dataset.projectMilestoneDelete);
+      applyWorkspace(response.data);
+      setPlannerStatus("Mərhələ silindi.", "success");
+    } catch (error) {
+      button.disabled = false;
+      setPlannerStatus(error.message || "Mərhələ silinmədi.", "error");
+    }
+  });
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Fayl oxunmadı."));
+    reader.readAsDataURL(file);
+  });
+  documentForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = documentForm.elements.document.files?.[0];
+    if (!file || !cloudUser || !window.ConstEraAPI?.uploadMedia) {
+      setPlannerStatus("Sənəd yükləmək üçün hesabına daxil ol və fayl seç.", "warning");
+      return;
+    }
+    if (file.size > 3_000_000) {
+      setPlannerStatus("Sənəd maksimum 3 MB ola bilər.", "error");
+      return;
+    }
+    let projectId = getProjectProfile().id || "";
+    if (!projectId) projectId = (await syncCloud())?.project?.id || "";
+    if (!projectId) return;
+    const button = documentForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await window.ConstEraAPI.uploadMedia({
+        filename: file.name,
+        contentType: file.type,
+        fileBase64: await fileToDataUrl(file),
+        entityType: "project",
+        entityId: projectId,
+        altText: `${projectPayload().title} layihə sənədi`,
+        licenseType: "own",
+        licenseNote: "Müştəri tərəfindən layihə sənədi kimi yüklənib."
+      });
+      const response = await window.ConstEraAPI.projectWorkspace(projectId);
+      applyWorkspace(response.data);
+      documentForm.reset();
+      setPlannerStatus("Sənəd layihəyə əlavə edildi.", "success");
+    } catch (error) {
+      setPlannerStatus(error.message || "Sənəd yüklənmədi.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+  documentList?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-project-document-delete]");
+    const projectId = getProjectProfile().id || "";
+    if (!button || !projectId || !window.ConstEraAPI?.deleteMedia) return;
+    button.disabled = true;
+    try {
+      await window.ConstEraAPI.deleteMedia(button.dataset.projectDocumentDelete);
+      const response = await window.ConstEraAPI.projectWorkspace(projectId);
+      applyWorkspace(response.data);
+      setPlannerStatus("Sənəd silindi.", "success");
+    } catch (error) {
+      button.disabled = false;
+      setPlannerStatus(error.message || "Sənəd silinmədi.", "error");
+    }
+  });
+  rfqLink?.addEventListener("click", (event) => {
+    if (!getProjectBasketCount()) event.preventDefault();
+  });
+  render();
+  renderWorkspace();
+  window.ConstEraAPI?.session?.().then(async (session) => {
+    cloudUser = session.user || null;
+    if (!cloudUser) return;
+    if (loginLink) loginLink.hidden = true;
+    if (cloudBadge) cloudBadge.textContent = "Hesab qoşulub";
+    const requestedId = new URLSearchParams(window.location.search).get("project") || getProjectProfile().id || "";
+    if (requestedId && requestedId !== "1" && window.ConstEraAPI?.projectWorkspace) {
+      try {
+        const response = await window.ConstEraAPI.projectWorkspace(requestedId);
+        applyWorkspace(response.data);
+        render();
+        setPlannerStatus("Layihə Neon bazasından yükləndi.", "success");
+        return;
+      } catch (error) {
+        setPlannerStatus(error.message || "Bulud layihəsi yüklənmədi.", "error");
+      }
+    }
+    setPlannerStatus("Hesab qoşulub. Layihəni buludda saxlaya bilərsən.", "success");
+  }).catch(() => null);
+};
+
 const initActions = () => {
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
+
+    if (button.dataset.action === "project") {
+      const type = button.dataset.entityType;
+      const id = button.dataset.id;
+      if (!projectEntityTypes.has(type) || !getProjectEntity(type, id)) return;
+      const basket = getProjectBasket();
+      const exists = basket.some((item) => item.type === type && item.id === id);
+      const next = exists
+        ? basket.filter((item) => item.type !== type || item.id !== id)
+        : [...basket, { type, id, quantity: 1, addedAt: new Date().toISOString() }];
+      saveProjectBasket(next);
+      button.classList.toggle("is-active", !exists);
+      button.setAttribute("aria-pressed", String(!exists));
+      button.textContent = exists ? "Layihəyə əlavə et" : "Layihədədir";
+      updateProjectBasketIndicators();
+      window.ConstEraTrack?.(exists ? "project_item_removed" : "project_item_added", { entityType: type, entityId: id });
+      return;
+    }
 
     if (button.dataset.action === "cart") {
       const id = button.dataset.id;
@@ -8593,7 +9211,9 @@ initSupplierPortal();
 initPriceImportCenter();
 initCustomerCabinet();
 renderCheckout();
+initProjectPlanner();
 initActions();
 initCartDock();
+updateProjectBasketIndicators();
 applyUrlFilters();
 })();

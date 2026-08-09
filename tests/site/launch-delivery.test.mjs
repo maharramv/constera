@@ -9,6 +9,8 @@ test("GitHub quality gate və xarici production monitoru aktiv workflow kimi sax
   const monitor = read(".github/workflows/production-monitor.yml");
   assert.match(quality, /npm run check/);
   assert.match(quality, /npm run test:layout/);
+  assert.match(quality, /launch:readiness -- --artifact --artifact-dir=outputs --min-score=0/);
+  assert.doesNotMatch(quality, /launch:readiness:go-live/);
   assert.match(monitor, /17 \*\/6 \* \* \*/);
   assert.match(monitor, /npm run check:production -- https:\/\/constera\.az/);
   assert.match(monitor, /github\.rest\.issues\.create/);

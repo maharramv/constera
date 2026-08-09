@@ -16,6 +16,7 @@ const requiredFiles = [
   "service-detail.html",
   "packages.html",
   "package-detail.html",
+  "project-planner.html",
   "rental.html",
   "rental-detail.html",
   "brands.html",
@@ -84,6 +85,7 @@ const staticEntries = [
   "service-detail.html",
   "packages.html",
   "package-detail.html",
+  "project-planner.html",
   "rental.html",
   "rental-detail.html",
   "brands.html",
@@ -139,6 +141,9 @@ staticEntries.forEach((entry) => {
     // Könüllü fayllar statik ixracı dayandırmadan buraxıla bilər.
   }
 });
+
+// Mənbə idxal faylları repoda qalır, lakin ictimai production paketinə daxil edilmir.
+rmSync("dist/docs/imports", { recursive: true, force: true });
 
 staticEntries
   .filter((entry) => entry.endsWith(".html"))
@@ -240,6 +245,7 @@ const addSitemapUrl = (path, changefreq, priority, params = {}) => {
   ["catalog.html", "weekly", "0.9"],
   ["services.html", "weekly", "0.85"],
   ["packages.html", "weekly", "0.85"],
+  ["project-planner.html", "monthly", "0.7"],
   ["rental.html", "weekly", "0.85"],
   ["brands.html", "weekly", "0.8"],
   ["suppliers.html", "weekly", "0.8"],

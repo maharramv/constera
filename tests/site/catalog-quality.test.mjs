@@ -71,5 +71,5 @@ test("statik build JS və CSS fayllarını məzmun hash-i ilə versiyalayır", (
   assert.match(build, /\?v=\$\{revision\}/);
   assert.match(build, /constera-shell-\$\{revision\}/);
   assert.match(buildAudit, /asset versiyası yoxdur/);
-  assert.match(serviceWorker, /constera-shell-v6/);
+  assert.match(serviceWorker, /constera-shell-v\d+/);
 });

@@ -54,7 +54,9 @@ jobs:
             exit 0
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
-          npm run launch:readiness:go-live -- --artifact
+          # Adi kod keyfiyyət yoxlaması kommersiya məlumatlarının tamamlanmasını
+          # bloklamır; sərt GO-LIVE qapısı launch-readiness-gate.yml-də qalır.
+          npm run launch:readiness -- --artifact --artifact-dir=outputs --min-score=0
 
       - name: Launch readiness nəticələrini saxla
         if: steps.launch-readiness.outputs.skip != 'true'

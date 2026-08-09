@@ -1,4 +1,4 @@
-const CACHE_NAME = "constera-shell-v6";
+const CACHE_NAME = "constera-shell-v7";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -19,6 +19,7 @@ const PRIVATE_PAGES = new Set([
   "/admin.html",
   "/checkout.html",
   "/customer-cabinet.html",
+  "/project-planner.html",
   "/login.html",
   "/order-detail.html",
   "/proposal-detail.html",
