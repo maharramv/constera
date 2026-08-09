@@ -190,6 +190,9 @@ export const buildCatalogStructuralIssues = (products, offers) => {
   });
   products.forEach((product) => {
     const specsCount = Array.isArray(product.specs) ? product.specs.length : 0;
+    const structuredTechnicalCount = countTechnicalAttributes(
+      Array.isArray(product.extra_data?.attributes) ? product.extra_data.attributes : []
+    );
     const duplicateKey = `${String(product.name || "").trim().toLowerCase()}::${String(product.brand || "").trim().toLowerCase()}`;
     const mediaSeverity = product.has_eligible_offer ? "high" : "medium";
     if (!product.image_url) issues.push(issue("product", product.id, "missing_image", mediaSeverity, "Real məhsul fotosu yoxdur."));
@@ -205,7 +208,9 @@ export const buildCatalogStructuralIssues = (products, offers) => {
     }
     if (!product.source_url) issues.push(issue("product", product.id, "missing_source", "high", "Məhsul mənbəsi göstərilməyib."));
     else if (!/^https:\/\//i.test(product.source_url)) issues.push(issue("product", product.id, "invalid_source_url", "high", "Mənbə HTTPS deyil."));
-    if (specsCount < 2) issues.push(issue("product", product.id, "missing_specs", "medium", "Texniki xüsusiyyətlər kifayət deyil."));
+    if (Math.max(specsCount, structuredTechnicalCount) < 2) {
+      issues.push(issue("product", product.id, "missing_specs", "medium", "Texniki xüsusiyyətlər kifayət deyil."));
+    }
     if (!product.brand) issues.push(issue("product", product.id, "missing_brand", "medium", "Brend göstərilməyib."));
     if (!product.category_id) issues.push(issue("product", product.id, "missing_category", "high", "Aktiv kateqoriya seçilməyib."));
     if (product.price_status === "confirmed" && (!product.price_verified_at || Date.now() - Date.parse(product.price_verified_at) > 30 * 86_400_000)) {
@@ -241,7 +246,7 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
     const [products, offers] = await Promise.all([
       query(
         `SELECT product.id, product.sku, product.name, product.brand, product.category_id,
-                product.specs, product.image_url, product.source_url, product.price_status,
+                product.specs, product.extra_data, product.image_url, product.source_url, product.price_status,
                 product.price_verified_at, product.stock_quantity, product.availability,
                 product.updated_at,
                 EXISTS (
@@ -347,7 +352,20 @@ export const runCatalogQualityScan = async ({ probeLinks = true, linkLimit = 12 
 
 export const qualityIssueTypes = Object.freeze([...structuralIssueTypes, ...linkIssueTypes]);
 
-const loadAttributeCandidates = async () => {
+export const catalogAttributeNormalizationOptions = ({ limit = 200, minTechnicalAttributes = 2 } = {}) => ({
+  limit: Math.max(1, Math.min(Number(limit) || 200, 500)),
+  minTechnicalAttributes: Math.max(1, Math.min(Number(minTechnicalAttributes) || 2, 12))
+});
+
+export const summarizeAttributeEvidence = (attributes = []) => attributes.map(({ label, value, source }) => ({
+  label,
+  value,
+  source,
+  confidence: source === "stored" || source === "product" ? "confirmed" : "high"
+}));
+
+const loadAttributeCandidates = async (options = {}) => {
+  const bounds = catalogAttributeNormalizationOptions(options);
   const rows = await query(
     `SELECT id, name, package_text, origin, specs, extra_data
        FROM products
@@ -357,66 +375,128 @@ const loadAttributeCandidates = async () => {
         AND upper(sku) NOT LIKE '%RFQ%'
       ORDER BY id`
   );
-  return rows.map((row) => {
+  const eligible = rows.map((row) => {
     const current = Array.isArray(row.extra_data?.attributes) ? row.extra_data.attributes : [];
-    const attributes = normalizeProductAttributes({
+    const normalized = normalizeProductAttributes({
       name: row.name,
       specs: row.specs,
       packageText: row.package_text,
       origin: row.origin,
       storedAttributes: current
-    }).map(({ label, value }) => ({ label, value }));
+    });
+    const attributes = normalized.map(({ label, value }) => ({ label, value }));
     return {
       id: row.id,
       name: row.name,
+      beforeAttributes: current,
       currentCount: current.length,
       attributeCount: attributes.length,
       technicalCount: countTechnicalAttributes(attributes),
       attributes,
+      evidence: summarizeAttributeEvidence(normalized),
       changed: JSON.stringify(current) !== JSON.stringify(attributes)
     };
-  }).filter((item) => item.changed && item.technicalCount > 0);
+  }).filter((item) => item.changed && item.technicalCount >= bounds.minTechnicalAttributes)
+    .sort((left, right) => right.technicalCount - left.technicalCount
+      || right.attributeCount - left.attributeCount
+      || left.id.localeCompare(right.id));
+  return {
+    bounds,
+    eligibleProducts: eligible.length,
+    candidates: eligible.slice(0, bounds.limit)
+  };
 };
 
-export const previewCatalogAttributeNormalization = async () => {
-  const candidates = await loadAttributeCandidates();
+export const previewCatalogAttributeNormalization = async (options = {}) => {
+  const { bounds, eligibleProducts, candidates } = await loadAttributeCandidates(options);
+  const sampleLimit = Math.max(1, Math.min(Number(options.sampleLimit) || 20, 100));
   return {
+    mode: "preview",
     candidateProducts: candidates.length,
+    eligibleProducts,
+    deferredProducts: Math.max(0, eligibleProducts - candidates.length),
     technicalAttributes: candidates.reduce((sum, item) => sum + item.technicalCount, 0),
-    sample: candidates.slice(0, 20).map(({ id, name, attributeCount, technicalCount, attributes }) => ({
+    limit: bounds.limit,
+    minTechnicalAttributes: bounds.minTechnicalAttributes,
+    sample: candidates.slice(0, sampleLimit).map(({ id, name, currentCount, attributeCount, technicalCount, attributes, evidence }) => ({
       id,
       name,
+      currentCount,
       attributeCount,
       technicalCount,
-      attributes
+      attributes,
+      evidence
     }))
   };
 };
 
-export const normalizeCatalogAttributes = async ({ actorId = null } = {}) => {
-  const candidates = await loadAttributeCandidates();
-  if (!candidates.length) return { updatedProducts: 0, technicalAttributes: 0 };
+export const normalizeCatalogAttributes = async ({ actorId = null, limit = 200, minTechnicalAttributes = 2 } = {}) => {
+  const { bounds, eligibleProducts, candidates } = await loadAttributeCandidates({ limit, minTechnicalAttributes });
+  if (!candidates.length) {
+    return {
+      mode: "apply",
+      updatedProducts: 0,
+      eligibleProducts,
+      deferredProducts: 0,
+      technicalAttributes: 0,
+      limit: bounds.limit,
+      minTechnicalAttributes: bounds.minTechnicalAttributes
+    };
+  }
+  const batchId = `can-${randomUUID()}`;
+  const incoming = candidates.map((item) => ({
+    id: item.id,
+    remediationId: `cqm-${randomUUID()}`,
+    attributes: item.attributes,
+    beforeData: { attributes: item.beforeAttributes },
+    afterData: {
+      attributes: item.attributes,
+      evidence: item.evidence,
+      batchId,
+      normalizer: "catalog-attributes-v2"
+    }
+  }));
   const rows = await query(
     `WITH incoming AS (
        SELECT *
-         FROM jsonb_to_recordset($1::jsonb) AS item(id text, attributes jsonb)
+         FROM jsonb_to_recordset($1::jsonb) AS item(
+           id text, "remediationId" text, attributes jsonb,
+           "beforeData" jsonb, "afterData" jsonb
+         )
+     ), updated AS (
+       UPDATE products product
+          SET extra_data = jsonb_set(
+                coalesce(product.extra_data, '{}'::jsonb),
+                '{attributes}',
+                incoming.attributes,
+                true
+              ),
+              updated_at = now()
+         FROM incoming
+        WHERE product.id = incoming.id
+        RETURNING product.id
      )
-     UPDATE products product
-        SET extra_data = jsonb_set(
-              coalesce(product.extra_data, '{}'::jsonb),
-              '{attributes}',
-              incoming.attributes,
-              true
-            ),
-            updated_at = now()
+     INSERT INTO catalog_quality_remediations (
+       id, run_id, issue_id, entity_type, entity_id, action,
+       before_data, after_data, actor_id
+     )
+     SELECT incoming."remediationId", NULL, NULL, 'product', incoming.id,
+            'normalize_attributes_v2', incoming."beforeData", incoming."afterData", $2
        FROM incoming
-      WHERE product.id = incoming.id
-      RETURNING product.id`,
-    [JSON.stringify(candidates.map((item) => ({ id: item.id, attributes: item.attributes })))]
+       JOIN updated ON updated.id = incoming.id
+     RETURNING entity_id`,
+    [JSON.stringify(incoming), actorId || null]
   );
   return {
+    mode: "apply",
+    batchId,
     updatedProducts: rows.length,
+    eligibleProducts,
+    deferredProducts: Math.max(0, eligibleProducts - rows.length),
     technicalAttributes: candidates.reduce((sum, item) => sum + item.technicalCount, 0),
+    limit: bounds.limit,
+    minTechnicalAttributes: bounds.minTechnicalAttributes,
+    sampleProductIds: rows.slice(0, 20).map((row) => row.entity_id),
     actorId
   };
 };

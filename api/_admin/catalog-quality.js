@@ -97,14 +97,24 @@ export default withApiErrors(async (req, res) => {
       return sendJson(res, 200, { ok: true, data: await previewCatalogRemediation(issueIds) });
     }
     if (action === "preview-attributes") {
-      return sendJson(res, 200, { ok: true, data: await previewCatalogAttributeNormalization() });
+      return sendJson(res, 200, {
+        ok: true,
+        data: await previewCatalogAttributeNormalization({
+          limit: Math.max(1, Math.min(Number(body.limit) || 200, 500)),
+          minTechnicalAttributes: Math.max(1, Math.min(Number(body.minTechnicalAttributes) || 2, 12))
+        })
+      });
     }
     if (action === "normalize-attributes") {
       if (!["super_admin", "admin"].includes(user.role)) {
         throw new ApiError(403, "permission_denied", "Atributları yalnız administrator standartlaşdıra bilər.");
       }
       assertCriticalTwoFactor(user);
-      const result = await normalizeCatalogAttributes({ actorId: user.id });
+      const result = await normalizeCatalogAttributes({
+        actorId: user.id,
+        limit: Math.max(1, Math.min(Number(body.limit) || 200, 500)),
+        minTechnicalAttributes: Math.max(1, Math.min(Number(body.minTechnicalAttributes) || 2, 12))
+      });
       await recordAudit({
         actorId: user.id,
         action: "normalize_attributes",

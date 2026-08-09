@@ -31,6 +31,8 @@
     "db:verify-backup": "node scripts/verify-cloud-backup.mjs",
     "db:scan-quality": "node scripts/scan-catalog-quality.mjs",
     "db:remediate": "node scripts/remediate-catalog-quality.mjs",
+    "db:preview-attributes": "node scripts/normalize-catalog-attributes.mjs",
+    "db:normalize-attributes": "node scripts/normalize-catalog-attributes.mjs --commit",
     "db:register-media-references": "node scripts/register-source-media-references.mjs",
     "db:smoke": "node scripts/smoke-commerce.mjs && node scripts/smoke-operations.mjs && node scripts/smoke-trust.mjs",
     "launch:readiness": "node scripts/launch-readiness-audit.mjs",

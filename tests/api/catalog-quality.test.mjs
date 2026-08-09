@@ -45,6 +45,31 @@ test("RFQ məhsulunda təsdiqsiz media xəbərdarlıqdır, satışa hazır təkl
   );
 });
 
+test("iki struktur texniki atributu olan məhsul xüsusiyyətsiz sayılmır", () => {
+  const product = {
+    id: "product-attributes-ready",
+    name: "Test məhsulu",
+    brand: "Test",
+    category_id: "category-test",
+    specs: [],
+    extra_data: {
+      attributes: [
+        { label: "Ölçü", value: "1200 x 2400 mm" },
+        { label: "Qalınlıq", value: "12,5 mm" }
+      ]
+    },
+    image_url: "/assets/test.webp",
+    source_url: "https://example.com/product",
+    price_status: "request",
+    stock_quantity: null,
+    availability: "Sorğu əsasında",
+    has_eligible_offer: false,
+    has_licensed_media: true
+  };
+  const issues = buildCatalogStructuralIssues([product], []);
+  assert.equal(issues.some((item) => item.issueType === "missing_specs"), false);
+});
+
 test("şəkil imzası yanlış MIME başlığından asılı olmadan təhlükəsiz tanınır", () => {
   assert.equal(hasImageFileSignature(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0])), true);
   assert.equal(hasImageFileSignature(new TextEncoder().encode("<svg viewBox='0 0 1 1'></svg>")), true);

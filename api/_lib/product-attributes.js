@@ -38,6 +38,15 @@ const canonicalLabels = new Map([
   ["mənşə", "Mənşə"],
   ["origin", "Mənşə"]
 ]);
+const singleValueLabels = new Set(canonicalLabels.values());
+const sourcePriority = Object.freeze({
+  stored: 5,
+  product: 5,
+  spec: 4,
+  package: 3,
+  name: 2,
+  derived: 1
+});
 
 const fold = (value) => compact(value)
   .toLocaleLowerCase("az")
@@ -106,6 +115,20 @@ const normalizeValue = (value) => compact(value)
   .replace(/\bm2\b/gi, "m²")
   .replace(/\bm3\b/gi, "m³");
 
+const isPlausiblePackageText = (value) => {
+  const source = compact(value);
+  if (!source) return false;
+  if (/kisə|qutu|qab|balon|şüşə|vedrə|paket|ədəd|eded|lövhə|lovhe|profil|rulon|dəst|dest/i.test(source)) return true;
+  return /(?:^|\s)\d+(?:[.,]\d+)?\s*(?:ml|l|kq|kg|qr|g)(?:\s|\/|$)/i.test(source);
+};
+
+const isPlausibleOrigin = (value) => {
+  const source = compact(value);
+  return Boolean(source)
+    && !/bazarı|bazari|idxal|sorğu|sorgu|naməlum|melum deyil|unknown/i.test(source)
+    && source.length <= 80;
+};
+
 const inferAttribute = (spec) => {
   for (const item of inferredPatterns) {
     const match = compact(spec).match(item.pattern);
@@ -167,13 +190,24 @@ export const normalizeProductAttributes = ({
 } = {}) => {
   const attributes = [];
   const seen = new Set();
+  const singleValuePositions = new Map();
   const add = (label, value, source = "derived") => {
     const normalizedLabel = labelFor(label);
     const normalizedValue = normalizeValue(value);
     if (!normalizedLabel || !normalizedValue) return;
     const key = `${fold(normalizedLabel)}:${fold(normalizedValue)}`;
     if (seen.has(key)) return;
+    if (singleValueLabels.has(normalizedLabel) && singleValuePositions.has(normalizedLabel)) {
+      const position = singleValuePositions.get(normalizedLabel);
+      const current = attributes[position];
+      if ((sourcePriority[source] || 0) <= (sourcePriority[current.source] || 0)) return;
+      seen.delete(`${fold(current.label)}:${fold(current.value)}`);
+      attributes[position] = { label: normalizedLabel, value: normalizedValue, source };
+      seen.add(key);
+      return;
+    }
     seen.add(key);
+    if (singleValueLabels.has(normalizedLabel)) singleValuePositions.set(normalizedLabel, attributes.length);
     attributes.push({ label: normalizedLabel, value: normalizedValue, source });
   };
 
@@ -181,8 +215,8 @@ export const normalizeProductAttributes = ({
     if (!item || typeof item !== "object" || Array.isArray(item)) continue;
     add(item.label || item.key, item.value, "stored");
   }
-  add("Qablaşdırma", packageText, "product");
-  add("Mənşə", origin, "product");
+  if (isPlausiblePackageText(packageText)) add("Qablaşdırma", packageText, "product");
+  if (isPlausibleOrigin(origin)) add("Mənşə", origin, "product");
   for (const item of inferTextAttributes(packageText, { packageText: true })) add(item.label, item.value, "package");
   for (const item of inferTextAttributes(name)) add(item.label, item.value, "name");
 
