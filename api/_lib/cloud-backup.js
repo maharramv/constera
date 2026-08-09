@@ -4,7 +4,7 @@ import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
 const BACKUP_VERSION = "constera-cloud-backup-v16";
-const SCHEMA_MIGRATIONS = 33;
+export const BACKUP_SCHEMA_MIGRATIONS = 33;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -152,7 +152,7 @@ export const buildCloudBackup = async () => {
     backupId: `constera-${new Date().toISOString().replace(/[:.]/g, "-")}`,
     exportedAt: new Date().toISOString(),
     source: "ConstEra PostgreSQL",
-    schemaMigrations: SCHEMA_MIGRATIONS,
+    schemaMigrations: BACKUP_SCHEMA_MIGRATIONS,
     data
   };
 };
@@ -238,7 +238,7 @@ export const validateBackupRestoreRoundTrip = (backup, { compressedPayload = nul
   }
 
   if (restored.version !== BACKUP_VERSION) errors.push("Backup versiyası bərpa kodu ilə uyğun deyil.");
-  if (Number(restored.schemaMigrations) !== SCHEMA_MIGRATIONS) errors.push("Backup migration sayı cari sxemlə uyğun deyil.");
+  if (Number(restored.schemaMigrations) !== BACKUP_SCHEMA_MIGRATIONS) errors.push("Backup migration sayı cari sxemlə uyğun deyil.");
   if (!restored.data || typeof restored.data !== "object" || Array.isArray(restored.data)) {
     errors.push("Backup data bölməsi obyekt deyil.");
   }
@@ -310,7 +310,7 @@ export const verifyCloudBackup = async ({ actorId = null } = {}) => {
   const tableCount = Object.keys(summary).length;
   const recordCount = Object.values(summary).reduce((total, count) => total + Number(count || 0), 0);
   const restoreRehearsal = validateBackupRestoreRoundTrip(backup);
-  const status = missing.length || backup.schemaMigrations !== SCHEMA_MIGRATIONS || !restoreRehearsal.ready
+  const status = missing.length || backup.schemaMigrations !== BACKUP_SCHEMA_MIGRATIONS || !restoreRehearsal.ready
     ? "failed"
     : "verified";
   const details = {

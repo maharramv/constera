@@ -1,4 +1,5 @@
 import "./load-local-env.mjs";
+import { BACKUP_SCHEMA_MIGRATIONS } from "../api/_lib/cloud-backup.js";
 import { query } from "../api/_lib/db.js";
 
 if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
@@ -440,7 +441,7 @@ const [integrity] = await query(`
         OR phase.row_count > 20) AS invalid_procurement_phase_rows,
     COALESCE((
       SELECT CASE
-        WHEN verification.schema_migrations = 31
+        WHEN verification.schema_migrations = ${BACKUP_SCHEMA_MIGRATIONS}
           AND NULLIF(verification.checksum_sha256, '') IS NOT NULL THEN 0
         ELSE 1
       END

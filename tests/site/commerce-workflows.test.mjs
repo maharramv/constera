@@ -401,6 +401,8 @@ test("tam backup, deployment quality gate və production monitorinqi hazırdır"
   const vercelConfig = JSON.parse(read("vercel.json"));
 
   assert.match(backup, /constera-cloud-backup-v16/);
+  assert.match(backup, /BACKUP_SCHEMA_MIGRATIONS = 33/);
+  assert.match(read("scripts/audit-database.mjs"), /BACKUP_SCHEMA_MIGRATIONS/);
   assert.match(backup, /procurementPlans/);
   assert.match(backup, /commercialProposals/);
   assert.match(backup, /policyConsents/);
