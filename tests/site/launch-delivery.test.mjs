@@ -44,13 +44,25 @@ test("Commercial Launch ölçülə bilən GO-LIVE qapısı və 100 məhsullu ass
   assert.match(admin, /Kommersiya buraxılışı/);
   assert.match(admin, /data-commercial-launch-milestones/);
   assert.match(admin, /pilot-customers\.csv/);
-  assert.match(launch, /constera-commercial-launch-assortment/);
+  assert.match(launch, /constera-commercial-pilot-center/);
   assert.match(api, /buildCommercialLaunchProgram/);
   assert.match(api, /LIMIT 100/);
   assert.match(runbook, /3 tam qoşulmuş təchizatçı/);
   assert.match(runbook, /100 satışa tam hazır məhsul/);
   assert.match(runbook, /10 pilot müştəri/);
   assert.match(runbook, /GO-LIVE/);
+});
+
+test("20 məhsullu Kommersiya Pilot Mərkəzi məhsul qapılarını və növbəti addımı bir ekranda göstərir", () => {
+  const admin = read("admin.html");
+  const launch = read("assets/js/launch-center.js");
+  const api = read("api/_admin/launch-center.js");
+  assert.match(admin, /20 məhsullu Kommersiya Pilot Mərkəzi/);
+  assert.match(admin, /data-commercial-pilot-gates/);
+  assert.match(admin, /data-commercial-pilot-filter/);
+  assert.match(launch, /commercialPilot/);
+  assert.match(launch, /nextAction/);
+  assert.match(api, /buildCommercialPilotCenter/);
 });
 
 test("pilot assortiment ixracı yalnız oxuyur və hazır olmayan məhsulu açıq işarələyir", () => {

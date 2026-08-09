@@ -2,6 +2,7 @@ import { assertCriticalTwoFactor, criticalAdminTwoFactorRequired, requireRole } 
 import { runCatalogQualityScan } from "../_lib/catalog-quality.js";
 import { backupDeliveryReadiness } from "../_lib/cloud-backup.js";
 import { buildCommercialLaunchProgram } from "../_lib/commercial-launch.js";
+import { buildCommercialPilotCenter } from "../_lib/commercial-pilot.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { googleMarketingReadiness } from "../_lib/google-marketing.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
@@ -54,6 +55,7 @@ export const loadLaunchCenter = async () => {
     metricRows,
     supplierRows,
     pilotRows,
+    pilotWorkspaceRows,
     readyFulfillmentRows,
     salesDailyRows,
     topProductRows,
@@ -326,6 +328,85 @@ export const loadLaunchCenter = async () => {
         LIMIT 100`
     ),
     query(
+      `SELECT product.id AS product_id, product.sku, product.name, product.brand,
+              category.title AS category, product.subcategory, product.package_text,
+              product.image_url, product.source_url,
+              greatest(
+                (SELECT count(*)
+                   FROM jsonb_array_elements(
+                     CASE WHEN jsonb_typeof(product.extra_data->'attributes') = 'array'
+                       THEN product.extra_data->'attributes' ELSE '[]'::jsonb END
+                   ) attribute
+                  WHERE coalesce(attribute->>'label', '') NOT IN ('Qablaşdırma', 'Mənşə')),
+                (SELECT count(*)
+                   FROM jsonb_array_elements_text(coalesce(product.specs, '[]'::jsonb)) spec
+                  WHERE spec ~ '^[^:]{2,60}:[[:space:]]*.+')
+              )::int AS technical_attribute_count,
+              offer.id AS offer_id, offer.supplier_id,
+              offer.unit_price, offer.currency, offer.price_status,
+              offer.price_verified_at, offer.stock_quantity,
+              offer.minimum_order, offer.lead_time_days,
+              offer.source_url AS offer_source_url,
+              supplier.name AS supplier_name,
+              (
+                supplier.id IS NOT NULL
+                AND NULLIF(trim(supplier.contact), '') IS NOT NULL
+                AND supplier.website ~ '^https://'
+                AND NULLIF(trim(company.tax_id), '') IS NOT NULL
+                AND EXISTS (
+                  SELECT 1 FROM users supplier_user
+                   WHERE supplier_user.company_id = supplier.company_id
+                     AND supplier_user.role = 'supplier'
+                     AND supplier_user.status = 'active'
+                )
+              ) AS supplier_profile_ready,
+              EXISTS (
+                SELECT 1 FROM supplier_contracts contract
+                 WHERE contract.supplier_id = supplier.id
+                   AND contract.status = 'active'
+                   AND contract.legal_confirmed = true
+                   AND contract.starts_on <= current_date
+                   AND (contract.ends_on IS NULL OR contract.ends_on >= current_date)
+              ) AS has_active_contract,
+              media.url AS licensed_image_url,
+              media.url IS NOT NULL AS has_licensed_media
+         FROM products product
+         LEFT JOIN categories category ON category.id = product.category_id
+         LEFT JOIN LATERAL (
+           SELECT candidate.*
+             FROM product_offers candidate
+            WHERE candidate.product_id = product.id
+              AND candidate.status = 'active'
+            ORDER BY
+              CASE candidate.price_status WHEN 'confirmed' THEN 0 WHEN 'request' THEN 1 ELSE 2 END,
+              candidate.price_verified_at DESC NULLS LAST,
+              candidate.stock_quantity DESC NULLS LAST,
+              candidate.unit_price ASC NULLS LAST
+            LIMIT 1
+         ) offer ON true
+         LEFT JOIN suppliers supplier ON supplier.id = offer.supplier_id AND supplier.status <> 'Arxiv'
+         LEFT JOIN companies company ON company.id = supplier.company_id AND company.status = 'active'
+         LEFT JOIN LATERAL (
+           SELECT asset.url
+             FROM media_assets asset
+            WHERE asset.entity_type = 'product'
+              AND asset.entity_id = product.id
+              AND asset.status = 'active'
+              AND asset.content_type LIKE 'image/%'
+              AND asset.license_type IN ('own', 'supplier', 'official', 'licensed')
+              AND asset.rights_status = 'verified'
+              AND (asset.rights_expires_on IS NULL OR asset.rights_expires_on >= current_date)
+              AND asset.url ~ '^https://'
+            ORDER BY asset.is_primary DESC, asset.created_at DESC
+            LIMIT 1
+         ) media ON true
+        WHERE product.status = 'active'
+          AND lower(trim(coalesce(product.brand, ''))) <> 'constera sorğu'
+          AND lower(product.name) NOT LIKE '%məhsul qrupu%'
+          AND upper(product.sku) NOT LIKE '%RFQ%'
+        ORDER BY product.name`
+    ),
+    query(
       `SELECT fulfillment.id, fulfillment.order_id, orders.order_number,
               supplier.name AS supplier_name, orders.city,
               orders.payment_status, orders.total_amount, orders.currency
@@ -562,10 +643,41 @@ export const loadLaunchCenter = async () => {
     monitoring,
     assortment: pilotSelections
   });
+  const commercialPilot = buildCommercialPilotCenter(
+    pilotWorkspaceRows.map((row) => ({
+      productId: row.product_id,
+      offerId: row.offer_id || null,
+      sku: row.sku,
+      name: row.name,
+      brand: row.brand,
+      category: row.category || "Digər",
+      subcategory: row.subcategory || "",
+      package: row.package_text || "",
+      imageUrl: row.image_url || "",
+      licensedImageUrl: row.licensed_image_url || "",
+      sourceUrl: row.source_url || "",
+      offerSourceUrl: row.offer_source_url || "",
+      technicalAttributeCount: number(row.technical_attribute_count),
+      supplierId: row.supplier_id || null,
+      supplierName: row.supplier_name || "",
+      supplierProfileReady: Boolean(row.supplier_profile_ready),
+      hasActiveContract: Boolean(row.has_active_contract),
+      hasLicensedMedia: Boolean(row.has_licensed_media),
+      unitPrice: row.unit_price === null ? null : Number(row.unit_price),
+      currency: row.currency || "AZN",
+      priceStatus: row.price_status || "request",
+      priceVerifiedAt: row.price_verified_at,
+      stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
+      minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+      leadTimeDays: row.lead_time_days === null ? null : Number(row.lead_time_days)
+    })),
+    { verifiedLogisticsZones: metrics.verifiedLogisticsZones }
+  );
 
   return {
     readiness,
     commercialLaunch,
+    commercialPilot,
     metrics,
     providers,
     monitoring,

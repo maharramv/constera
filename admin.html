@@ -229,14 +229,19 @@
               </div>
               <div class="admin-v2-section-heading launch-assortment-heading">
                 <div>
-                  <strong>Pilot assortimenti</strong>
-                  <p class="admin-v2-quality-summary">Aktual qiymət və stok daşıyan namizədlər hazır olma səviyyəsinə görə sıralanır.</p>
+                  <strong>20 məhsullu Kommersiya Pilot Mərkəzi</strong>
+                  <p class="admin-v2-quality-summary">Real məhsullar foto, media hüququ, qiymət, stok, təchizatçı, müqavilə və logistika qapıları ilə sıralanır.</p>
                 </div>
-                <span class="data-badge" data-commercial-launch-assortment-count>0 / 100 hazır</span>
+                <div class="admin-actions">
+                  <select class="admin-select" data-commercial-pilot-filter aria-label="Pilot məhsullarını vəziyyətə görə filtrlə"><option value="all">Bütün 20 məhsul</option><option value="near_ready">Hazırlığa yaxın</option><option value="blocked">Bloklanan</option><option value="ready">Hazır</option></select>
+                  <span class="data-badge" data-commercial-launch-assortment-count>0 / 20 hazır</span>
+                </div>
               </div>
+              <div class="admin-v2-kpi-grid launch-pilot-kpis" data-commercial-pilot-kpis></div>
+              <div class="launch-pilot-gate-summary" data-commercial-pilot-gates></div>
               <div class="table-wrap">
                 <table class="admin-table">
-                  <thead><tr><th>Məhsul</th><th>Təchizatçı</th><th>Qiymət / stok</th><th>Buraxılış qapısı</th><th>Mənbə</th></tr></thead>
+                  <thead><tr><th>Məhsul</th><th>Hazırlıq</th><th>Qiymət / stok</th><th>Kommersiya qapıları</th><th>Növbəti addım</th></tr></thead>
                   <tbody data-commercial-launch-assortment></tbody>
                 </table>
               </div>

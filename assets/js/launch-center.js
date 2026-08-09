@@ -57,7 +57,8 @@
     pilotResult: null,
     products: [],
     mediaRows: [],
-    selectedSupplierId: ""
+    selectedSupplierId: "",
+    pilotFilter: "all"
   };
 
   const readinessLabels = {
@@ -195,21 +196,39 @@
       </article>
     `).join("");
 
-    const assortment = program.assortment || { items: [] };
+    const assortment = state.launch?.commercialPilot || { items: [], target: 20 };
     const assortmentCount = qs("[data-commercial-launch-assortment-count]");
-    if (assortmentCount) assortmentCount.textContent = `${Number(assortment.readyCount || 0)} / ${Number(assortment.target || 100)} hazır`;
+    if (assortmentCount) assortmentCount.textContent = `${Number(assortment.readyCount || 0)} / ${Number(assortment.selectedCount || assortment.target || 20)} hazır`;
+    const pilotKpis = qs("[data-commercial-pilot-kpis]");
+    if (pilotKpis) pilotKpis.innerHTML = [
+      [`${Number(assortment.averageScore || 0)}%`, "orta hazırlıq"],
+      [Number(assortment.readyCount || 0), "satışa hazır"],
+      [Number(assortment.nearReadyCount || 0), "hazırlığa yaxın"],
+      [Number(assortment.blockedCount || 0), "bloklanan"]
+    ].map(([value, label]) => `<article><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></article>`).join("");
+    const gateSummary = qs("[data-commercial-pilot-gates]");
+    if (gateSummary) gateSummary.innerHTML = `<div class="admin-actions">${(assortment.gateSummary || []).map((gate) => `
+      <button type="button" data-launch-target="${escapeHtml(gate.target || "launch")}" class="table-action ${Number(gate.missing || 0) ? "is-blocked" : "is-ready"}" title="${escapeHtml(gate.label)}">
+        <strong>${escapeHtml(gate.shortLabel || gate.label)}</strong>
+        <span>${Number(gate.ready || 0)} / ${Number(assortment.selectedCount || 0)}</span>
+      </button>
+    `).join("")}</div>`;
+    const filter = qs("[data-commercial-pilot-filter]");
+    if (filter && filter.value !== state.pilotFilter) filter.value = state.pilotFilter;
+    const visibleItems = (assortment.items || []).filter((item) => state.pilotFilter === "all" || item.status === state.pilotFilter);
     const assortmentRows = qs("[data-commercial-launch-assortment]");
-    if (assortmentRows) assortmentRows.innerHTML = (assortment.items || []).slice(0, 20).map((item) => {
-      const source = safeHttpsUrl(item.sourceUrl);
+    if (assortmentRows) assortmentRows.innerHTML = visibleItems.map((item) => {
+      const source = safeHttpsUrl(item.offerSourceUrl || item.sourceUrl);
+      const statusLabel = item.status === "ready" ? "Hazır" : item.status === "near_ready" ? "Yaxındır" : "Bloklanıb";
       return `
         <tr>
-          <td data-label="Məhsul"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml([item.sku, item.brand, item.package].filter(Boolean).join(" · "))}</small></td>
-          <td data-label="Təchizatçı">${escapeHtml(item.supplierName || "Dəqiqləşməyib")}</td>
-          <td data-label="Qiymət / stok"><strong>${escapeHtml(formatMoney(item.unitPrice, item.currency))}</strong><small>${Number(item.stockQuantity || 0).toLocaleString("az-AZ")} stok · ${escapeHtml(formatDate(item.priceVerifiedAt))}</small></td>
-          <td data-label="Buraxılış qapısı"><span class="status-pill ${item.ready ? "is-success" : "is-danger"}">${item.ready ? "Hazır" : escapeHtml((item.missing || []).map((entry) => entry.label).join(", ") || "Yoxlanmalıdır")}</span></td>
-          <td data-label="Mənbə">${source ? `<a class="source-link" href="${escapeHtml(source)}" target="_blank" rel="noopener noreferrer">Aç</a>` : "Yoxdur"}</td>
+          <td data-label="Məhsul"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml([item.sku, item.brand, item.category, item.package].filter(Boolean).join(" · "))}</small></td>
+          <td data-label="Hazırlıq"><span class="status-pill ${item.status === "ready" ? "is-success" : item.status === "blocked" ? "is-danger" : ""}">${Number(item.score || 0)}% · ${escapeHtml(statusLabel)}</span><small>${Number(item.completedGates || 0)} / ${Number(item.totalGates || 0)} qapı</small></td>
+          <td data-label="Qiymət / stok"><strong>${escapeHtml(formatMoney(item.unitPrice, item.currency))}</strong><small>${item.stockQuantity === null ? "Stok yoxdur" : `${Number(item.stockQuantity).toLocaleString("az-AZ")} stok`} · ${escapeHtml(item.supplierName || "Təchizatçı yoxdur")}</small></td>
+          <td data-label="Kommersiya qapıları"><div class="admin-v2-quality-issues">${(item.checks || []).map((check) => `<span class="status-pill ${check.ready ? "is-success" : "is-danger"}" title="${escapeHtml(check.label)}">${escapeHtml(check.shortLabel)}</span>`).join("")}</div></td>
+          <td data-label="Növbəti addım"><div class="admin-actions">${item.nextAction ? `<button class="table-action" type="button" data-launch-target="${escapeHtml(item.nextAction.target || "launch")}">${escapeHtml(item.nextAction.action)}</button>` : '<span class="status-pill is-success">Pilot üçün hazır</span>'}${source ? `<a class="source-link" href="${escapeHtml(source)}" target="_blank" rel="noopener noreferrer">Mənbə</a>` : ""}<a class="source-link" href="product-detail.html?product=${encodeURIComponent(item.productId)}">Məhsul</a></div></td>
         </tr>`;
-    }).join("") || '<tr><td colspan="5">Aktual qiymət və stok daşıyan pilot namizədi tapılmadı.</td></tr>';
+    }).join("") || '<tr><td colspan="5">Seçilmiş filtr üzrə pilot məhsulu tapılmadı.</td></tr>';
   };
 
   const renderLaunch = () => {
@@ -616,23 +635,24 @@
   };
 
   const exportCommercialLaunchAssortment = () => {
-    const assortment = state.launch?.commercialLaunch?.assortment;
+    const assortment = state.launch?.commercialPilot;
     if (!assortment?.items?.length) {
       setStatus("[data-commercial-launch-status]", "İxrac üçün pilot assortiment namizədi yoxdur.", "warning");
       return;
     }
     const rows = [[
-      "sku", "product", "brand", "supplier", "unit_price", "currency", "stock", "minimum_order",
-      "price_verified_at", "source_url", "contract_ready", "licensed_media_ready", "launch_ready", "missing_gates"
+      "priority", "sku", "product", "brand", "category", "supplier", "readiness_score", "status",
+      "unit_price", "currency", "stock", "price_verified_at", "source_url", "next_action",
+      ...(assortment.gateSummary || []).map((gate) => gate.key)
     ]];
     for (const item of assortment.items) rows.push([
-      item.sku, item.name, item.brand, item.supplierName, item.unitPrice, item.currency, item.stockQuantity,
-      item.minimumOrder, item.priceVerifiedAt, item.sourceUrl, item.hasActiveContract ? "yes" : "no",
-      item.hasLicensedMedia ? "yes" : "no", item.ready ? "yes" : "no",
-      (item.missing || []).map((entry) => entry.label).join("; ")
+      item.priority, item.sku, item.name, item.brand, item.category, item.supplierName, item.score, item.status,
+      item.unitPrice, item.currency, item.stockQuantity, item.priceVerifiedAt, item.offerSourceUrl || item.sourceUrl,
+      item.nextAction?.action || "Pilot üçün hazır",
+      ...(assortment.gateSummary || []).map((gate) => item.checks?.find((check) => check.key === gate.key)?.ready ? "yes" : "no")
     ]);
-    downloadCsv(datedFilename("constera-commercial-launch-assortment"), rows);
-    setStatus("[data-commercial-launch-status]", `${assortment.items.length} assortiment sətri endirildi.`, "success");
+    downloadCsv(datedFilename("constera-commercial-pilot-center"), rows);
+    setStatus("[data-commercial-launch-status]", `${assortment.items.length} pilot məhsulu endirildi.`, "success");
   };
 
   qs("[data-launch-refresh]")?.addEventListener("click", async (event) => {
@@ -651,6 +671,10 @@
   qs("[data-launch-export-daily]")?.addEventListener("click", exportDailyPlan);
   qs("[data-commercial-launch-export-plan]")?.addEventListener("click", exportCommercialLaunchPlan);
   qs("[data-commercial-launch-export-assortment]")?.addEventListener("click", exportCommercialLaunchAssortment);
+  qs("[data-commercial-pilot-filter]")?.addEventListener("change", (event) => {
+    state.pilotFilter = event.target.value;
+    renderCommercialLaunch();
+  });
   qs("[data-launch-run-daily]")?.addEventListener("click", async (event) => {
     if (!window.confirm("Qiymət köhnəlməsi, təchizatçı xatırlatmaları və kataloq keyfiyyəti indi yoxlanılsın? Əməliyyat audit jurnalına yazılacaq.")) return;
     const button = event.currentTarget;
