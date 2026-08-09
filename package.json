@@ -34,6 +34,8 @@
     "db:register-media-references": "node scripts/register-source-media-references.mjs",
     "db:smoke": "node scripts/smoke-commerce.mjs && node scripts/smoke-operations.mjs && node scripts/smoke-trust.mjs",
     "launch:readiness": "node scripts/launch-readiness-audit.mjs",
+    "launch:pilot-candidates": "node scripts/prepare-launch-pilot.mjs",
+    "launch:supplier-priority": "node scripts/prepare-supplier-onboarding.mjs",
     "launch:readiness:offline": "node scripts/launch-readiness-audit.mjs --offline --artifact --artifact-dir=outputs",
     "launch:readiness:go-live": "node scripts/launch-readiness-audit.mjs --go-live --min-score=100 --artifact",
     "ai:smoke": "node scripts/smoke-ai-phase-two.mjs",

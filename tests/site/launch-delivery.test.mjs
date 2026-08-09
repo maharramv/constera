@@ -52,3 +52,25 @@ test("Commercial Launch ölçülə bilən GO-LIVE qapısı və 100 məhsullu ass
   assert.match(runbook, /10 pilot müştəri/);
   assert.match(runbook, /GO-LIVE/);
 });
+
+test("pilot assortiment ixracı yalnız oxuyur və hazır olmayan məhsulu açıq işarələyir", () => {
+  const packageJson = read("package.json");
+  const script = read("scripts/prepare-launch-pilot.mjs");
+  assert.match(packageJson, /launch:pilot-candidates/);
+  assert.match(script, /SELECT/);
+  assert.doesNotMatch(script, /\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\b/);
+  assert.match(script, /review_required/);
+  assert.match(script, /imageRightsVerified/);
+  assert.match(script, /has_active_contract/);
+  assert.match(script, /pilot-product-candidates\.csv/);
+});
+
+test("təchizatçı qoşulma növbəsi hüquqi sübutları avtomatik təsdiqləmir", () => {
+  const packageJson = read("package.json");
+  const script = read("scripts/prepare-supplier-onboarding.mjs");
+  assert.match(packageJson, /launch:supplier-priority/);
+  assert.match(script, /buildSupplierOnboarding/);
+  assert.match(script, /review_required/);
+  assert.doesNotMatch(script, /\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\b/);
+  assert.match(script, /supplier-onboarding-priority\.csv/);
+});
