@@ -81,7 +81,8 @@ test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruy
     "/robots.txt",
     "/sitemap.xml",
     "/service-worker.js",
-    "/assets/icons/site.webmanifest"
+    "/assets/icons/site.webmanifest",
+    "/project-planner.html"
   ]) {
     assert.equal(paths.includes(path), true, path);
   }
