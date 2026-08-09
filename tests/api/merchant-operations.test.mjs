@@ -78,6 +78,7 @@ test("backup ayrıca özəl Blob token-i ilə hazır olur və provider statusu s
   const keys = [
     "BACKUP_WEBHOOK_URL",
     "BACKUP_WEBHOOK_SECRET",
+    "BACKUP_READ_WRITE_TOKEN",
     "BACKUP_BLOB_READ_WRITE_TOKEN",
     "PAYMENT_WEBHOOK_URL",
     "PAYMENT_WEBHOOK_SECRET"
@@ -90,7 +91,7 @@ test("backup ayrıca özəl Blob token-i ilə hazır olur və provider statusu s
       channel: "none",
       label: "Qurulmayıb"
     });
-    process.env.BACKUP_BLOB_READ_WRITE_TOKEN = "private-test-token";
+    process.env.BACKUP_READ_WRITE_TOKEN = "private-test-token";
     assert.equal(backupDeliveryReadiness().channel, "private_blob");
 
     process.env.PAYMENT_WEBHOOK_URL = "https://provider.example.test/payment";

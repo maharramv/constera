@@ -64,14 +64,18 @@ test("müqavilə və backup yalnız real təsdiqlə production-a keçir", () => 
   const operations = read("api/_admin/operations-center.js");
   const admin = read("admin.html");
   const backup = read("api/_lib/cloud-backup.js");
+  const backupDelivery = read("scripts/deliver-cloud-backup.mjs");
   const env = read(".env.example");
+  const packageJson = JSON.parse(read("package.json"));
 
   assert.match(operations, /contract_activation_requirements/);
   assert.match(operations, /legalConfirmed/);
   assert.match(admin, /name="legalConfirmed"/);
   assert.match(backup, /access: "private"/);
-  assert.match(backup, /BACKUP_BLOB_READ_WRITE_TOKEN/);
-  assert.match(env, /BACKUP_BLOB_READ_WRITE_TOKEN=/);
+  assert.match(backup, /BACKUP_READ_WRITE_TOKEN/);
+  assert.match(backupDelivery, /deliverScheduledBackup/);
+  assert.match(env, /BACKUP_READ_WRITE_TOKEN=/);
+  assert.match(packageJson.scripts["db:deliver-backup"], /deliver-cloud-backup\.mjs/);
 });
 
 test("rəsmi media, CSV/JSON inventar və bank köçürməsi idarə olunan axınla işləyir", () => {

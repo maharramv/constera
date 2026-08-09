@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v15";
-const SCHEMA_MIGRATIONS = 31;
+const BACKUP_VERSION = "constera-cloud-backup-v16";
+const SCHEMA_MIGRATIONS = 33;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -110,9 +110,13 @@ const webhookBackupReady = () => {
   }
 };
 
-const privateBlobBackupReady = () => Boolean(
-  String(process.env.BACKUP_BLOB_READ_WRITE_TOKEN || "").trim()
-);
+const privateBlobBackupToken = () => String(
+  process.env.BACKUP_READ_WRITE_TOKEN
+  || process.env.BACKUP_BLOB_READ_WRITE_TOKEN
+  || ""
+).trim();
+
+const privateBlobBackupReady = () => Boolean(privateBlobBackupToken());
 
 export const backupDeliveryReadiness = () => {
   if (webhookBackupReady()) {
@@ -389,7 +393,7 @@ export const deliverScheduledBackup = async () => {
         access: "private",
         addRandomSuffix: false,
         contentType: "application/gzip",
-        token: process.env.BACKUP_BLOB_READ_WRITE_TOKEN
+        token: privateBlobBackupToken()
       });
     } catch {
       throw new Error("Özəl backup yaddaşına yazmaq mümkün olmadı.");

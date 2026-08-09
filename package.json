@@ -27,6 +27,7 @@
     "db:import-scraper": "node scripts/import-scraper-catalog.mjs",
     "db:audit": "node scripts/audit-database.mjs",
     "db:audit-launch": "node scripts/audit-supplier-launch.mjs",
+    "db:deliver-backup": "node scripts/deliver-cloud-backup.mjs",
     "db:verify-backup": "node scripts/verify-cloud-backup.mjs",
     "db:scan-quality": "node scripts/scan-catalog-quality.mjs",
     "db:remediate": "node scripts/remediate-catalog-quality.mjs",
