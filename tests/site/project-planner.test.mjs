@@ -84,6 +84,33 @@ test("obyekt üzrə QR qəbul və faktiki material sərfiyyatı layihə mərkəz
   assert.match(vercel, /project-site-control/);
 });
 
+test("rəqəmsal obyekt jurnalı davamiyyət, qüsur, akt və çertyoj reviziyasını birləşdirir", () => {
+  const page = read("project-planner.html");
+  const api = read("api/_admin/project-site-journal.js");
+  const helper = read("api/_lib/project-site-journal.js");
+  const production = read("assets/js/production.js");
+  const client = read("assets/js/project-site-control.js");
+  const migration = read("db/migrations/035_project_site_journal.sql");
+  const vercel = read("vercel.json");
+
+  assert.match(page, /data-project-site-journal/);
+  assert.match(page, /data-daily-log-form/);
+  assert.match(page, /data-quality-issue-form/);
+  assert.match(page, /data-control-document-form/);
+  assert.match(page, /data-journal-report/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS project_site_daily_logs/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS project_quality_issues/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS project_control_documents/);
+  assert.match(api, /project_critical_quality_issue/);
+  assert.match(api, /sendWeeklyReport/);
+  assert.match(api, /status = 'superseded'/);
+  assert.match(helper, /workerShifts/);
+  assert.match(client, /create-daily-log/);
+  assert.match(client, /update-issue-status/);
+  assert.match(production, /projectSiteJournal/);
+  assert.match(vercel, /project-site-journal/);
+});
+
 test("detal səhifələri əlaqəli seçimləri və layihəyə əlavə etməni göstərir", () => {
   const marketplace = read("assets/js/marketplace.js");
 

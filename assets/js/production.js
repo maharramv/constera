@@ -94,6 +94,11 @@
       method: "POST",
       body: JSON.stringify({ action: "create-movement", ...data })
     }),
+    projectSiteJournal: (projectId) => request(`/api/project-site-journal?projectId=${encodeURIComponent(projectId)}`),
+    projectJournalMutation: (data) => request("/api/project-site-journal", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
     saveEstimate: (data) => request("/api/cabinet", {
       method: "POST",
       body: JSON.stringify({ action: "save-estimate", ...data })

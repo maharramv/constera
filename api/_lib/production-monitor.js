@@ -20,6 +20,7 @@ const createProductionChecks = (origin) => {
     { path: "/api/ai", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/procurement-plans", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/project-site-control?projectId=monitor", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/project-site-journal?projectId=monitor", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/orders", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/support", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/supplier-performance", status: 401, json: (body) => body.error?.code === "authentication_required" },

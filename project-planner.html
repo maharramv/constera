@@ -167,6 +167,90 @@
               <p class="admin-import-status" data-project-site-status role="status" aria-live="polite">Obyekt nəzarəti üçün hesabına daxil ol və layihəni buludda saxla.</p>
             </section>
 
+            <section class="admin-panel glass" id="project-site-journal" data-project-site-journal>
+              <div class="market-section-heading">
+                <div><p class="eyebrow">İcra və keyfiyyət</p><h2>Rəqəmsal obyekt jurnalı</h2></div>
+                <div class="admin-actions"><span class="data-badge" data-journal-badge>Layihəni saxla</span><a class="button button-outline" data-journal-report href="#" target="_blank" rel="noopener">Həftəlik hesabat</a></div>
+              </div>
+              <div class="admin-stat-grid" data-journal-stats></div>
+
+              <section class="market-grid">
+                <form class="admin-form" data-daily-log-form>
+                  <div class="admin-v2-section-heading"><div><h3>Gündəlik və davamiyyət</h3><p class="admin-v2-quality-summary">Briqada, icra, hava, texnika və gecikməni yaz.</p></div></div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>İş tarixi</span><input name="workDate" type="date" required /></label>
+                    <label class="admin-field"><span>Növbə</span><select name="shift"><option value="day">Gündüz</option><option value="night">Gecə</option></select></label>
+                    <label class="admin-field"><span>Hava</span><select name="weather"><option value="clear">Açıq</option><option value="cloudy">Buludlu</option><option value="rain">Yağış</option><option value="wind">Külək</option><option value="hot">İsti</option><option value="cold">Soyuq</option></select></label>
+                  </div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Briqada</span><input name="crewName" maxlength="240" required placeholder="Suvaq briqadası" /></label>
+                    <label class="admin-field"><span>Usta / nəzarətçi</span><input name="supervisorName" maxlength="240" /></label>
+                  </div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>İşçi sayı</span><input name="workerCount" type="number" min="0" max="5000" step="1" value="1" required /></label>
+                    <label class="admin-field"><span>Ümumi iş saatı</span><input name="workerHours" type="number" min="0" max="100000" step="0.5" value="8" /></label>
+                    <label class="admin-field"><span>Texnika saatı</span><input name="equipmentHours" type="number" min="0" max="100000" step="0.5" value="0" /></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Görülən işlər</span><textarea name="workSummary" rows="3" maxlength="4000" required placeholder="Gün ərzində tamamlanan iş və ölçülə bilən nəticə"></textarea></label>
+                  <label class="admin-field admin-field-wide"><span>Texnika və avadanlıq</span><input name="equipmentNote" maxlength="1000" placeholder="Ekskavator, beton nasosu, generator..." /></label>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Gecikmə, dəqiqə</span><input name="delayMinutes" type="number" min="0" max="1000000" step="1" value="0" /></label>
+                    <label class="admin-field"><span>Gecikmə səbəbi</span><input name="delayReason" maxlength="1000" /></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Əməyin təhlükəsizliyi qeydi</span><input name="safetyNote" maxlength="1000" placeholder="Hadisə və ya risk yoxdursa boş saxla" /></label>
+                  <label class="admin-field admin-field-wide"><span>Foto sübutu</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" /></label>
+                  <button class="button button-primary" type="submit">Gündəliyi saxla</button>
+                </form>
+
+                <form class="admin-form" data-quality-issue-form>
+                  <div class="admin-v2-section-heading"><div><h3>Qüsur və düzəliş</h3><p class="admin-v2-quality-summary">Foto, məsul şəxs, risk və son tarixlə tapşırıq yarat.</p></div></div>
+                  <label class="admin-field admin-field-wide"><span>Qüsurun adı</span><input name="title" maxlength="300" required placeholder="Su izolyasiyasında açıq birləşmə" /></label>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Risk</span><select name="severity"><option value="low">Aşağı</option><option value="medium" selected>Orta</option><option value="high">Yüksək</option><option value="critical">Kritik</option></select></label>
+                    <label class="admin-field"><span>İş sahəsi</span><input name="workArea" maxlength="240" placeholder="Blok B, dam" /></label>
+                    <label class="admin-field"><span>Son tarix</span><input name="dueDate" type="date" /></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Məsul şəxs / briqada</span><input name="assigneeName" maxlength="240" /></label>
+                  <label class="admin-field admin-field-wide"><span>Təsvir və qəbul meyarı</span><textarea name="description" rows="4" maxlength="3000"></textarea></label>
+                  <label class="admin-field admin-field-wide"><span>Qüsurun fotosu</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" /></label>
+                  <button class="button button-secondary" type="submit">Qüsuru qeydə al</button>
+                </form>
+              </section>
+
+              <section class="market-grid">
+                <form class="admin-form" data-control-document-form>
+                  <div class="admin-v2-section-heading"><div><h3>Akt və çertyoj versiyası</h3><p class="admin-v2-quality-summary">Gizli işi qəbul et və yalnız aktual reviziyanı saxla.</p></div></div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Tip</span><select name="type"><option value="hidden_work">Gizli iş aktı</option><option value="inspection">Texniki baxış</option><option value="handover">Təhvil aktı</option><option value="drawing_revision">Çertyoj reviziyası</option></select></label>
+                    <label class="admin-field"><span>Yoxlama tarixi</span><input name="inspectionDate" type="date" required /></label>
+                    <label class="admin-field"><span>Status</span><select name="status"><option value="draft">Qaralama</option><option value="pending" selected>Təsdiq gözləyir</option><option value="accepted">Qəbul edildi</option><option value="rejected">Rədd edildi</option></select></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Sənəd / iş adı</span><input name="title" maxlength="300" required /></label>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>İş sahəsi</span><input name="workArea" maxlength="240" /></label>
+                    <label class="admin-field"><span>Reviziya kodu</span><input name="revisionCode" maxlength="80" placeholder="R03" /></label>
+                  </div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Texniki nəzarətçi</span><input name="inspectorName" maxlength="240" /></label>
+                    <label class="admin-field"><span>Podratçı</span><input name="contractorName" maxlength="240" /></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Norma, ölçü və qəbul şərti</span><textarea name="specification" rows="3" maxlength="3000"></textarea></label>
+                  <label class="admin-field admin-field-wide"><span>Akt, çertyoj və ya foto</span><input name="document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/avif" /></label>
+                  <button class="button button-secondary" type="submit">Reyestrə əlavə et</button>
+                </form>
+                <div>
+                  <div class="admin-v2-section-heading"><h3>Son gündəliklər</h3><span class="data-badge" data-daily-log-count>0 qeyd</span></div>
+                  <div class="cabinet-list" data-daily-logs></div>
+                </div>
+              </section>
+
+              <section class="market-grid">
+                <div><div class="admin-v2-section-heading"><h3>Qüsur reyestri</h3><span class="data-badge" data-quality-issue-count>0 açıq</span></div><div class="cabinet-list" data-quality-issues></div></div>
+                <div><div class="admin-v2-section-heading"><h3>Aktlar və çertyojlar</h3><span class="data-badge" data-control-document-count>0 sənəd</span></div><div class="cabinet-list" data-control-documents></div></div>
+              </section>
+              <p class="admin-import-status" data-journal-status role="status" aria-live="polite">Jurnalı açmaq üçün hesabına daxil ol və layihəni buludda saxla.</p>
+            </section>
+
             <section class="market-grid">
               <article class="admin-panel glass">
                 <div class="market-section-heading">

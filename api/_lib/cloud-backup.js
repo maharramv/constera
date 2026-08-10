@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v17";
-export const BACKUP_SCHEMA_MIGRATIONS = 34;
+const BACKUP_VERSION = "constera-cloud-backup-v18";
+export const BACKUP_SCHEMA_MIGRATIONS = 35;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -49,6 +49,9 @@ const backupQueries = Object.freeze({
   customerProjectSupplierMatches: "SELECT * FROM customer_project_supplier_matches ORDER BY project_id, score DESC",
   projectMaterialReceipts: "SELECT * FROM project_material_receipts ORDER BY project_id, received_at",
   projectMaterialMovements: "SELECT * FROM project_material_movements ORDER BY project_id, recorded_at",
+  projectSiteDailyLogs: "SELECT * FROM project_site_daily_logs ORDER BY project_id, work_date, created_at",
+  projectQualityIssues: "SELECT * FROM project_quality_issues ORDER BY project_id, created_at",
+  projectControlDocuments: "SELECT * FROM project_control_documents ORDER BY project_id, inspection_date, created_at",
   customerEstimates: "SELECT * FROM customer_estimates ORDER BY created_at",
   procurementPlans: "SELECT * FROM procurement_plans ORDER BY created_at",
   procurementPlanPhases: "SELECT * FROM procurement_plan_phases ORDER BY plan_id, sequence",
@@ -203,6 +206,9 @@ const restoreReferences = Object.freeze([
   ["projectMaterialMovements", "project_id", "customerProjects"],
   ["projectMaterialMovements", "project_item_id", "customerProjectItems"],
   ["projectMaterialMovements", "receipt_id", "projectMaterialReceipts"],
+  ["projectSiteDailyLogs", "project_id", "customerProjects"],
+  ["projectQualityIssues", "project_id", "customerProjects"],
+  ["projectControlDocuments", "project_id", "customerProjects"],
   ["customerEstimates", "customer_id", "users"],
   ["customerEstimates", "ai_run_id", "aiRuns"],
   ["customerEstimates", "rfq_id", "rfqs"],
