@@ -53,6 +53,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.6.1",
     "fflate": "^0.8.3",
+    "qrcode": "^1.5.4",
     "read-excel-file": "^9.3.5",
     "web-push": "3.6.7"
   },

@@ -47,6 +47,7 @@
     { "source": "/api/cron-production-monitor", "destination": "/api/admin?__route=production-monitor" },
     { "source": "/api/procurement", "destination": "/api/admin?__route=procurement" },
     { "source": "/api/procurement-plans", "destination": "/api/admin?__route=procurement-plans" },
+    { "source": "/api/project-site-control", "destination": "/api/admin?__route=project-site-control" },
     { "source": "/api/projects", "destination": "/api/admin?__route=projects" },
     { "source": "/api/proposals", "destination": "/api/admin?__route=proposals" },
     { "source": "/api/product-offers", "destination": "/api/admin?__route=product-offers" },

@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v16";
-export const BACKUP_SCHEMA_MIGRATIONS = 33;
+const BACKUP_VERSION = "constera-cloud-backup-v17";
+export const BACKUP_SCHEMA_MIGRATIONS = 34;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -47,6 +47,8 @@ const backupQueries = Object.freeze({
   customerProjectItems: "SELECT * FROM customer_project_items ORDER BY project_id, sort_order, created_at",
   customerProjectMilestones: "SELECT * FROM customer_project_milestones ORDER BY project_id, due_date, created_at",
   customerProjectSupplierMatches: "SELECT * FROM customer_project_supplier_matches ORDER BY project_id, score DESC",
+  projectMaterialReceipts: "SELECT * FROM project_material_receipts ORDER BY project_id, received_at",
+  projectMaterialMovements: "SELECT * FROM project_material_movements ORDER BY project_id, recorded_at",
   customerEstimates: "SELECT * FROM customer_estimates ORDER BY created_at",
   procurementPlans: "SELECT * FROM procurement_plans ORDER BY created_at",
   procurementPlanPhases: "SELECT * FROM procurement_plan_phases ORDER BY plan_id, sequence",
@@ -196,6 +198,11 @@ const restoreReferences = Object.freeze([
   ["customerProjectMilestones", "project_id", "customerProjects"],
   ["customerProjectSupplierMatches", "project_id", "customerProjects"],
   ["customerProjectSupplierMatches", "supplier_id", "suppliers"],
+  ["projectMaterialReceipts", "project_id", "customerProjects"],
+  ["projectMaterialReceipts", "project_item_id", "customerProjectItems"],
+  ["projectMaterialMovements", "project_id", "customerProjects"],
+  ["projectMaterialMovements", "project_item_id", "customerProjectItems"],
+  ["projectMaterialMovements", "receipt_id", "projectMaterialReceipts"],
   ["customerEstimates", "customer_id", "users"],
   ["customerEstimates", "ai_run_id", "aiRuns"],
   ["customerEstimates", "rfq_id", "rfqs"],

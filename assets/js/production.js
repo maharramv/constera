@@ -84,6 +84,16 @@
       method: "DELETE",
       body: JSON.stringify({ action: "delete-milestone", id })
     }),
+    projectSiteControl: (projectId) => request(`/api/project-site-control?projectId=${encodeURIComponent(projectId)}`),
+    projectReceiptQr: (projectId, receiptId) => request(`/api/project-site-control?projectId=${encodeURIComponent(projectId)}&qrReceiptId=${encodeURIComponent(receiptId)}`),
+    createProjectReceipt: (data) => request("/api/project-site-control", {
+      method: "POST",
+      body: JSON.stringify({ action: "create-receipt", ...data })
+    }),
+    createProjectMaterialMovement: (data) => request("/api/project-site-control", {
+      method: "POST",
+      body: JSON.stringify({ action: "create-movement", ...data })
+    }),
     saveEstimate: (data) => request("/api/cabinet", {
       method: "POST",
       body: JSON.stringify({ action: "save-estimate", ...data })

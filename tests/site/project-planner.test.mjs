@@ -18,6 +18,7 @@ test("layihə səbəti bütün marketplace növlərini vahid axına bağlayır",
   assert.match(page, /data-project-milestone-form/);
   assert.match(page, /data-project-document-form/);
   assert.match(page, /data-project-commerce/);
+  assert.match(page, /value="industrial">Anbar \/ istehsalat/);
   assert.match(marketplace, /constera-project-basket/);
   assert.match(marketplace, /projectEntityTypes = new Set\(\["product", "service", "package", "rental"\]\)/);
   assert.match(marketplace, /data-action="project"/);
@@ -56,6 +57,31 @@ test("layihə iş sahəsi Neon, təchizatçı, təqvim, sənəd və kommersiya a
   assert.match(production, /matchProjectSuppliers/);
   assert.match(production, /saveProjectMilestone/);
   assert.match(media, /entityType !== "project"/);
+});
+
+test("obyekt üzrə QR qəbul və faktiki material sərfiyyatı layihə mərkəzinə bağlıdır", () => {
+  const page = read("project-planner.html");
+  const api = read("api/_admin/project-site-control.js");
+  const production = read("assets/js/production.js");
+  const client = read("assets/js/project-site-control.js");
+  const migration = read("db/migrations/034_project_site_control.sql");
+  const vercel = read("vercel.json");
+
+  assert.match(page, /data-project-site-control/);
+  assert.match(page, /data-project-receipt-form/);
+  assert.match(page, /data-project-movement-form/);
+  assert.match(page, /data-project-qr-file/);
+  assert.match(page, /data-project-material-summary/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS project_material_receipts/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS project_material_movements/);
+  assert.match(api, /QRCode\.toString/);
+  assert.match(api, /insufficient_project_material/);
+  assert.match(api, /project_material_rejected/);
+  assert.match(client, /BarcodeDetector/);
+  assert.match(client, /createProjectReceipt/);
+  assert.match(client, /createProjectMaterialMovement/);
+  assert.match(production, /projectSiteControl/);
+  assert.match(vercel, /project-site-control/);
 });
 
 test("detal səhifələri əlaqəli seçimləri və layihəyə əlavə etməni göstərir", () => {

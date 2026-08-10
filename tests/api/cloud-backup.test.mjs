@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { validateBackupRestoreRoundTrip } from "../../api/_lib/cloud-backup.js";
 
 const validBackup = () => ({
-  version: "constera-cloud-backup-v16",
+  version: "constera-cloud-backup-v17",
   backupId: "constera-test",
   exportedAt: "2026-08-03T00:00:00.000Z",
   source: "ConstEra PostgreSQL",
-  schemaMigrations: 33,
+  schemaMigrations: 34,
   data: {
     companies: [{ id: "cmp-1" }],
     users: [{ id: "usr-1", company_id: "cmp-1" }],

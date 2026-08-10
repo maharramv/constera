@@ -48,7 +48,7 @@
             </div>
             <form class="admin-form" data-project-planner-form>
               <label class="admin-field"><span>Layihə adı</span><input name="title" maxlength="240" placeholder="Mərdəkan villa layihəsi" /></label>
-              <label class="admin-field"><span>Layihə tipi</span><select name="projectType"><option value="villa">Villa / fərdi ev</option><option value="apartment">Mənzil təmiri</option><option value="office">Ofis / kommersiya</option><option value="warehouse">Anbar / istehsalat</option></select></label>
+              <label class="admin-field"><span>Layihə tipi</span><select name="projectType"><option value="villa">Villa / fərdi ev</option><option value="apartment">Mənzil təmiri</option><option value="office">Ofis / kommersiya</option><option value="industrial">Anbar / istehsalat</option></select></label>
               <div class="admin-form-grid">
                 <label class="admin-field"><span>Sahə, m²</span><input name="area" type="number" min="20" step="1" value="120" /></label>
                 <label class="admin-field"><span>Büdcə, AZN</span><input name="budget" type="number" min="0" step="100" /></label>
@@ -82,6 +82,90 @@
                 <div class="detail-actions"><a class="button button-secondary" href="catalog.html">Kataloqa keç</a><a class="button button-outline" href="packages.html">Hazır paketlər</a></div>
               </div>
             </article>
+
+            <section class="admin-panel glass" id="project-site-control" data-project-site-control>
+              <div class="market-section-heading">
+                <div>
+                  <p class="eyebrow">Obyekt nəzarəti</p>
+                  <h2>QR qəbul və faktiki material sərfiyyatı</h2>
+                </div>
+                <span class="data-badge" data-project-site-badge>Layihəni saxla</span>
+              </div>
+              <div class="admin-stat-grid" data-project-site-stats></div>
+
+              <div class="market-grid">
+                <form class="admin-form" data-project-receipt-form>
+                  <div class="admin-v2-section-heading">
+                    <div><h3>Materialı obyektə qəbul et</h3><p class="admin-v2-quality-summary">Çatdırılma, partiya və foto sübutunu qeyd et.</p></div>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Material</span><select name="projectItemId" required data-project-receipt-item><option value="">Əvvəl layihəni saxla</option></select></label>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Çatdırılan miqdar</span><input name="deliveredQuantity" type="number" min="0.001" max="1000000" step="0.001" required /></label>
+                    <label class="admin-field"><span>Qəbul edilən</span><input name="acceptedQuantity" type="number" min="0" max="1000000" step="0.001" required /></label>
+                    <label class="admin-field"><span>Rədd edilən</span><input name="rejectedQuantity" type="number" min="0" max="1000000" step="0.001" value="0" required /></label>
+                  </div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Təchizatçı</span><input name="supplierName" maxlength="240" placeholder="Şirkət adı" /></label>
+                    <label class="admin-field"><span>Qaimə nömrəsi</span><input name="deliveryNoteNumber" maxlength="120" placeholder="QA-2026-001" /></label>
+                  </div>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Partiya / lot</span><input name="batchNumber" maxlength="120" /></label>
+                    <label class="admin-field"><span>Avtomobil nömrəsi</span><input name="vehiclePlate" maxlength="40" placeholder="90-AA-000" /></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Foto sübutu</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" /></label>
+                  <label class="admin-field admin-field-wide"><span>Vəziyyət və uyğunsuzluq qeydi</span><textarea name="conditionNote" rows="3" maxlength="2000" placeholder="Qablaşdırma, zədə, say fərqi və digər qeyd"></textarea></label>
+                  <button class="button button-primary" type="submit">Qəbulu qeydə al</button>
+                </form>
+
+                <form class="admin-form" data-project-movement-form>
+                  <div class="admin-v2-section-heading">
+                    <div><h3>Faktiki sərfiyyatı yaz</h3><p class="admin-v2-quality-summary">İstifadə, israf və sahədən anbara qaytarmanı izlə.</p></div>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>Material</span><select name="projectItemId" required data-project-movement-item><option value="">Əvvəl layihəni saxla</option></select></label>
+                  <div class="admin-form-grid">
+                    <label class="admin-field"><span>Hərəkət</span><select name="type"><option value="use">İstifadə</option><option value="waste">İsraf / itki</option><option value="return">Sahədən anbara qaytarma</option></select></label>
+                    <label class="admin-field"><span>Miqdar</span><input name="quantity" type="number" min="0.001" max="1000000" step="0.001" required /></label>
+                  </div>
+                  <label class="admin-field admin-field-wide"><span>İş sahəsi</span><input name="workArea" maxlength="240" placeholder="1-ci mərtəbə, sanitar qovşaq" /></label>
+                  <label class="admin-field admin-field-wide"><span>Qeyd</span><textarea name="note" rows="3" maxlength="1000" placeholder="İş mərhələsi və məsul briqada"></textarea></label>
+                  <button class="button button-secondary" type="submit">Hərəkəti qeydə al</button>
+                </form>
+              </div>
+
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading">
+                  <div><h3>Mobil QR yoxlaması</h3><p class="admin-v2-quality-summary">Qəbul kodunu yaz və ya telefondan QR şəklini çək.</p></div>
+                </div>
+                <div class="admin-toolbar">
+                  <label class="admin-field"><span>QR / qəbul kodu</span><input data-project-qr-code maxlength="240" placeholder="CE-QB-2026-..." /></label>
+                  <label class="button button-outline"><input data-project-qr-file type="file" accept="image/*" capture="environment" hidden />Kamera ilə oxu</label>
+                  <button class="button button-secondary" type="button" data-project-qr-find>Aktı tap</button>
+                </div>
+                <article class="cabinet-item" data-project-qr-preview hidden></article>
+              </section>
+
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Material plan-fakt balansı</h3><span class="data-badge" data-project-site-item-count>0 material</span></div>
+                <div class="table-wrap">
+                  <table class="admin-table">
+                    <thead><tr><th>Material</th><th>Plan</th><th>Qəbul</th><th>İstifadə</th><th>İsraf</th><th>Qalıq</th><th>İcra</th></tr></thead>
+                    <tbody data-project-material-summary></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="market-grid">
+                <div>
+                  <div class="admin-v2-section-heading"><h3>Son qəbul aktları</h3><span class="data-badge" data-project-receipt-count>0 akt</span></div>
+                  <div class="cabinet-list" data-project-receipts></div>
+                </div>
+                <div>
+                  <div class="admin-v2-section-heading"><h3>Son sərfiyyat hərəkətləri</h3><span class="data-badge" data-project-movement-count>0 hərəkət</span></div>
+                  <div class="cabinet-list" data-project-movements></div>
+                </div>
+              </section>
+              <p class="admin-import-status" data-project-site-status role="status" aria-live="polite">Obyekt nəzarəti üçün hesabına daxil ol və layihəni buludda saxla.</p>
+            </section>
 
             <section class="market-grid">
               <article class="admin-panel glass">
@@ -162,5 +246,6 @@
     <script src="assets/js/script.js"></script>
     <script src="assets/js/production.js"></script>
     <script src="assets/js/marketplace.js"></script>
+    <script src="assets/js/project-site-control.js"></script>
   </body>
 </html>

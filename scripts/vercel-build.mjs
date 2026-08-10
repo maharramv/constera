@@ -67,6 +67,7 @@ const requiredFiles = [
   "assets/js/enterprise.js",
   "assets/js/enterprise-admin.js",
   "assets/js/operations-center.js",
+  "assets/js/project-site-control.js",
   "service-worker.js",
   ".well-known/security.txt",
   "docs/commercial-launch-runbook.md",
@@ -144,6 +145,9 @@ staticEntries.forEach((entry) => {
 
 // Mənbə idxal faylları repoda qalır, lakin ictimai production paketinə daxil edilmir.
 rmSync("dist/docs/imports", { recursive: true, force: true });
+rmSync("dist/docs/launch-runbook.md", { force: true });
+rmSync("dist/docs/quality-workflow.yml", { force: true });
+rmSync("dist/docs/production-monitor-workflow.yml", { force: true });
 
 staticEntries
   .filter((entry) => entry.endsWith(".html"))

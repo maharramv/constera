@@ -27,6 +27,7 @@ const routeLoaders = Object.freeze({
   orders: () => import("./_admin/orders.js"),
   "price-monitor": () => import("./_admin/price-monitor.js"),
   "production-monitor": () => import("./_admin/production-monitor.js"),
+  "project-site-control": () => import("./_admin/project-site-control.js"),
   procurement: () => import("./_admin/procurement.js"),
   "procurement-plans": () => import("./_admin/procurement-plans.js"),
   projects: () => import("./_admin/projects.js"),

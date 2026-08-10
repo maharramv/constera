@@ -78,6 +78,7 @@ test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruy
   for (const path of [
     expectedWwwHost,
     "/api/launch-center",
+    "/api/project-site-control?projectId=monitor",
     "/robots.txt",
     "/sitemap.xml",
     "/service-worker.js",

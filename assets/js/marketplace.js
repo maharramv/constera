@@ -8742,7 +8742,7 @@ const initProjectPlanner = () => {
   const projectPayload = () => {
     const profile = saveProfile();
     const entries = getResolvedProjectBasket();
-    const projectType = ["apartment", "villa", "office"].includes(profile.projectType) ? profile.projectType : "other";
+    const projectType = ["apartment", "villa", "office", "industrial"].includes(profile.projectType) ? profile.projectType : "other";
     return {
       ...profile,
       id: profile.id || "",
@@ -8856,6 +8856,7 @@ const initProjectPlanner = () => {
     if (rfqLink) rfqLink.href = `rfq.html?project=${encodeURIComponent(workspace.project.id)}`;
     if (aiRfqLink) aiRfqLink.href = `rfq.html?project=${encodeURIComponent(workspace.project.id)}#ai-rfq`;
     renderWorkspace();
+    window.dispatchEvent(new CustomEvent("constera:project-workspace", { detail: { projectId: workspace.project.id } }));
   };
 
   const syncCloud = async ({ quiet = false } = {}) => {
