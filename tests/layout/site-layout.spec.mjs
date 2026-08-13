@@ -1,35 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { readdirSync } from "node:fs";
 import { buildCommercialLaunchProgram } from "../../api/_lib/commercial-launch.js";
 import { navigationItems } from "../../scripts/site-shell.mjs";
 
-const pages = [
-  "index.html",
-  "catalog.html",
-  "category.html",
-  "subcategory.html",
-  "product-detail.html",
-  "services.html",
-  "service-detail.html",
-  "packages.html",
-  "package-detail.html",
-  "rental.html",
-  "rental-detail.html",
-  "brands.html",
-  "suppliers.html",
-  "supplier-portal.html",
-  "price-import.html",
-  "customer-cabinet.html",
-  "checkout.html",
-  "order-detail.html",
-  "proposal-detail.html",
-  "rfq.html",
-  "rfq-dashboard.html",
-  "tender.html",
-  "ai-smeta.html",
-  "admin.html",
-  "login.html",
-  "offline.html"
-];
+const pages = readdirSync(process.cwd())
+  .filter((file) => file.endsWith(".html"))
+  .sort((left, right) => left.localeCompare(right, "az"));
 
 const primaryViewports = [
   { name: "mobile", width: 390, height: 844 },

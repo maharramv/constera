@@ -54,6 +54,10 @@ const createProductionChecks = (origin) => {
     { path: "/rental.html", status: 200, includes: "ConstEra" },
     { path: "/project-planner.html", status: 200, includes: "Layihə səbəti" },
     { path: "/ai-smeta.html", status: 200, includes: "AI Mərhələ 6" },
+    { path: "/contact.html", status: 200, includes: "Əlaqə" },
+    { path: "/delivery-returns.html", status: 200, includes: "Çatdırılma" },
+    { path: "/privacy.html", status: 200, includes: "Məxfilik" },
+    { path: "/terms.html", status: 200, includes: "İstifadə şərtləri" },
     { path: "/login.html", status: 200, includes: "ConstEra" }
   ]);
 };
