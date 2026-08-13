@@ -70,6 +70,30 @@ test("site naviqasiyasının strukturu bütün səhifələrdə sabitdir", () => 
   });
 });
 
+test("ictimai naviqasiya alıcı axınına fokuslanır", () => {
+  const hrefs = navigationItems.map((item) => item.href);
+  const internalPages = ["admin.html", "price-import.html", "supplier-portal.html", "rfq-dashboard.html"];
+
+  assert.ok(navigationItems.length <= 8, "əsas menyu səkkiz keçiddən çox olmamalıdır");
+  internalPages.forEach((href) => assert.equal(hrefs.includes(href), false, `${href}: əsas menyuda olmamalıdır`));
+
+  const footer = render("index.html");
+  assert.match(footer, /<span class="footer-label">Alıcı üçün<\/span>/);
+  assert.match(footer, /<span class="footer-label">Biznes üçün<\/span>/);
+  assert.doesNotMatch(footer, /<a href="admin\.html">/);
+  assert.doesNotMatch(footer, /<a href="price-import\.html">/);
+});
+
+test("ana səhifə təkrarlanan vitrin və daxili idarəetmə bloklarını göstərmir", () => {
+  const home = readFileSync(resolve(root, "index.html"), "utf8");
+
+  assert.equal(count(home, /<section\b/gi), 6, "ana səhifə altı əsas hissədən ibarət olmalıdır");
+  assert.equal(count(home, /class="command-card"/g), 6, "əsas seçimlər yığcam saxlanmalıdır");
+  assert.doesNotMatch(home, /id="data-quality"|id="catalogs"|class="section partners"/);
+  assert.doesNotMatch(home, /data-contact-form/);
+  assert.match(home, /class="section home-final-cta"/);
+});
+
 test("render edilmiş səhifələr təkrarlanan id yaratmır", () => {
   htmlFiles.forEach((file) => {
     const html = render(file);

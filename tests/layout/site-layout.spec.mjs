@@ -204,6 +204,14 @@ test("mənbəli məhsullar əsas səhifə və kataloqda əvvəl göstərilir", a
   await expect(page.locator("[data-home-sourced-packages] .is-official-card")).toHaveCount(3);
   await expect(page.locator("[data-home-sourced-rentals] .is-sourced-card")).toHaveCount(3);
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const selector of ["[data-home-sourced-products]", "[data-home-sourced-packages]", "[data-home-sourced-rentals]"]) {
+    const visibleCards = await page.locator(`${selector} .market-card`).evaluateAll((cards) =>
+      cards.filter((card) => getComputedStyle(card).display !== "none").length);
+    expect(visibleCards, `${selector}: mobil vitrin sayı`).toBe(1);
+  }
+
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/catalog.html", { waitUntil: "domcontentloaded" });
   await expect(page.locator("[data-product-grid] .market-card").first()).toHaveClass(/is-sourced-card/);
   await page.locator("[data-source-filter]").selectOption("sourced-image");

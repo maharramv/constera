@@ -1118,14 +1118,7 @@ dd {
   }
 
   .nav > a[href="index.html#home"],
-  .nav > a[href="brands.html"],
-  .nav > a[href="supplier-portal.html"],
-  .nav > a[href="price-import.html"],
-  .nav > a[href="checkout.html"],
-  .nav > a[href="rfq.html"]:not(.nav-cta),
-  .nav > a[href="rfq-dashboard.html"],
-  .nav > a[href="ai-smeta.html"],
-  .nav > a[href="admin.html"] {
+  .nav > a[href="customer-cabinet.html"] {
     display: none;
   }
 
@@ -1741,7 +1734,7 @@ dd {
 
 .platform-command-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -2042,6 +2035,36 @@ dd {
 .sourced-showcase-lane .market-section-heading h3 {
   margin: 0;
   font-size: 1.35rem;
+}
+
+.home-final-cta {
+  padding-top: 28px;
+}
+
+.home-final-cta-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: center;
+  border-block: 1px solid var(--line);
+  padding: 42px 0;
+}
+
+.home-final-cta-panel h2 {
+  max-width: 860px;
+  margin-bottom: 14px;
+  font-size: clamp(2rem, 3.6vw, 3.8rem);
+}
+
+.home-final-cta-panel p:not(.eyebrow) {
+  max-width: 720px;
+  color: var(--muted);
+}
+
+.home-final-cta-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 210px;
 }
 
 .package-old-price {
@@ -3441,6 +3464,20 @@ dd {
 
   .ai-procurement-plan-create {
     grid-template-columns: 1fr;
+  }
+
+  .home-final-cta-panel {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 34px 0;
+  }
+
+  .home-final-cta-actions {
+    min-width: 0;
+  }
+
+  .sourced-showcase-lane .product-grid > .market-card:nth-child(n + 2) {
+    display: none;
   }
 
   .compact-hero {

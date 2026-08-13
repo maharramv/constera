@@ -25,7 +25,7 @@ test("məxfilik seçimi mobil məzmunu örtməyən axın panelində göstərilir
 });
 
 test("bütün açıq kommersiya formaları versiyalanan hüquqi razılıq göndərir", () => {
-  for (const file of ["checkout.html", "rfq.html", "suppliers.html", "index.html", "contact.html"]) {
+  for (const file of ["checkout.html", "rfq.html", "suppliers.html", "contact.html"]) {
     const html = read(file);
     assert.match(html, /name="legalAccepted"[^>]*required/, `${file}: hüquqi razılıq`);
     assert.match(html, /href="terms\.html"/, `${file}: şərtlər linki`);

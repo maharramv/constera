@@ -15,18 +15,10 @@ export const navigationItems = Object.freeze([
   { key: "catalog", href: "catalog.html", label: "Kataloq" },
   { key: "services", href: "services.html", label: "Xidmətlər" },
   { key: "packages", href: "packages.html", label: "Paketlər" },
-  { key: "project-planner", href: "project-planner.html", label: "Layihə səbəti" },
   { key: "rental", href: "rental.html", label: "İcarə" },
-  { key: "brands", href: "brands.html", label: "Brendlər" },
-  { key: "suppliers", href: "suppliers.html", label: "Təchizatçılar" },
-  { key: "supplier-portal", href: "supplier-portal.html", label: "Təchizatçı kabineti" },
-  { key: "price-import", href: "price-import.html", label: "Qiymət idxalı" },
-  { key: "customer-cabinet", href: "customer-cabinet.html", label: "Kabinet" },
-  { key: "checkout", href: "checkout.html", label: "Səbət" },
-  { key: "rfq-dashboard", href: "rfq-dashboard.html", label: "Sorğu paneli" },
-  { key: "tender", href: "tender.html", label: "Tender" },
   { key: "ai-smeta", href: "ai-smeta.html", label: "Ağıllı smeta" },
-  { key: "admin", href: "admin.html", label: "İdarəetmə" }
+  { key: "project-planner", href: "project-planner.html", label: "Layihə səbəti" },
+  { key: "customer-cabinet", href: "customer-cabinet.html", label: "Kabinet" }
 ]);
 
 const activeNavigationByPage = Object.freeze({
@@ -43,23 +35,23 @@ const activeNavigationByPage = Object.freeze({
   "project-planner": "project-planner",
   rental: "rental",
   "rental-detail": "rental",
-  brands: "brands",
-  suppliers: "suppliers",
-  "supplier-portal": "supplier-portal",
-  "price-import": "price-import",
+  brands: "catalog",
+  suppliers: "catalog",
+  "supplier-portal": "customer-cabinet",
+  "price-import": "customer-cabinet",
   "customer-cabinet": "customer-cabinet",
-  checkout: "checkout",
+  checkout: "project-planner",
   "order-detail": "customer-cabinet",
-  "proposal-detail": "rfq-dashboard",
+  "proposal-detail": "rfq",
   rfq: "rfq",
-  "rfq-dashboard": "rfq-dashboard",
-  tender: "tender",
+  "rfq-dashboard": "rfq",
+  tender: "rfq",
   "ai-smeta": "ai-smeta",
   contact: "home",
   privacy: "home",
   terms: "home",
   "delivery-returns": "home",
-  admin: "admin"
+  admin: "customer-cabinet"
 });
 
 const pageNameFromHtml = (html) => html.match(/<body\b[^>]*\bdata-page=["']([^"']+)["']/i)?.[1] || "home";
