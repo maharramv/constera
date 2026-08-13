@@ -78,6 +78,7 @@ const mapProduct = (row) => {
     availability: row.availability,
     stockQuantity: row.stock_quantity === null ? null : Number(row.stock_quantity),
     minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+    leadTimeDays: row.lead_time_days === null || row.lead_time_days === undefined ? null : Number(row.lead_time_days),
     priceVerifiedAt: row.price_verified_at,
     imageUrl: row.licensed_image_url || "",
     mediaLicensed: Boolean(row.licensed_image_url),
@@ -112,9 +113,33 @@ export default withApiErrors(async (req, res) => {
   const sourceStatus = text(req.query.source, { max: 40 });
   const origin = text(req.query.origin, { max: 40 });
   const requestedScope = String(req.query.scope || "products");
-  const scope = ["products", "facets", "full"].includes(requestedScope) ? requestedScope : "products";
+  const scope = ["products", "facets", "full", "summary"].includes(requestedScope) ? requestedScope : "products";
   const includeFacets = scope === "facets" || scope === "full";
   const includeStructure = scope === "full";
+
+  if (scope === "summary") {
+    const [summary] = await query(
+      `SELECT
+        (SELECT count(*)::int FROM categories WHERE kind = 'material' AND parent_id IS NULL AND active = true) AS categories,
+        (SELECT count(*)::int FROM categories WHERE kind = 'material' AND parent_id IS NOT NULL AND active = true) AS subcategories,
+        (SELECT count(*)::int FROM products WHERE status = 'active') AS products,
+        (SELECT count(DISTINCT NULLIF(trim(brand), ''))::int FROM products WHERE status = 'active') AS brands,
+        (SELECT count(*)::int FROM suppliers WHERE status <> 'Arxiv') AS suppliers,
+        (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'service' AND status = 'active') AS services,
+        (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'package' AND status = 'active') AS packages,
+        (SELECT count(*)::int FROM marketplace_entities WHERE entity_kind = 'rental' AND status = 'active') AS rentals,
+        (SELECT count(*)::int FROM products p WHERE p.status = 'active' AND ${commerceReadyExpression}) AS commerce_ready_products`
+    );
+    const counts = Object.fromEntries(Object.entries(summary || {}).map(([key, value]) => [key, Number(value || 0)]));
+    counts.commerceReadyProducts = counts.commerce_ready_products || 0;
+    delete counts.commerce_ready_products;
+
+    return sendJson(res, 200, {
+      ok: true,
+      data: { counts },
+      meta: { scope, generatedAt: new Date().toISOString() }
+    }, { "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300" });
+  }
   const minPrice = parsePriceAmount(req.query.minPrice);
   const maxPrice = parsePriceAmount(req.query.maxPrice);
   const sort = ["quality", "relevance", "newest", "name", "price_asc", "price_desc"].includes(String(req.query.sort || ""))
@@ -193,6 +218,7 @@ export default withApiErrors(async (req, res) => {
   if (sourceStatus === "sourced-image") {
     where.push(`NULLIF(trim(coalesce(p.source_url, '')), '') IS NOT NULL AND ${licensedImageExpression} IS NOT NULL`);
   }
+  if (sourceStatus === "commercial-ready") where.push(commerceReadyExpression);
   if (sourceStatus === "unsourced") where.push("NULLIF(trim(coalesce(p.source_url, '')), '') IS NULL");
   if (origin === "local") where.push("lower(coalesce(p.origin, '')) LIKE '%azərbaycan%' AND lower(coalesce(p.origin, '')) NOT LIKE '%idxal%'");
   if (origin === "import") where.push("(lower(coalesce(p.origin, '')) LIKE '%idxal%' OR lower(coalesce(p.origin, '')) LIKE '%import%')");
@@ -265,9 +291,24 @@ export default withApiErrors(async (req, res) => {
   const [productRows, countRows, brandRows, subcategoryRows, availabilityRows, priceRows, categoryFacetRows, categoryRows, supplierRows, entityRows] = await Promise.all([
     query(
       `SELECT p.*,
+              preferred_offer.lead_time_days,
               ${licensedImageExpression} AS licensed_image_url,
               ${commerceReadyExpression} AS commerce_ready
          FROM products p
+         LEFT JOIN LATERAL (
+           SELECT offer.lead_time_days
+             FROM product_offers offer
+            WHERE offer.product_id = p.id AND offer.status = 'active'
+            ORDER BY
+              (offer.supplier_id IS NOT DISTINCT FROM p.supplier_id) DESC,
+              offer.is_featured DESC,
+              CASE WHEN offer.price_verified_at >= now() - interval '30 days' THEN 0 ELSE 1 END,
+              CASE offer.price_status WHEN 'confirmed' THEN 0 WHEN 'request' THEN 1 ELSE 2 END,
+              offer.stock_quantity DESC NULLS LAST,
+              offer.unit_price ASC NULLS LAST,
+              offer.updated_at DESC
+            LIMIT 1
+         ) preferred_offer ON true
         WHERE ${where.join(" AND ")}
         ORDER BY ${orderBy}
         LIMIT $${limitIndex} OFFSET $${offsetIndex}`,

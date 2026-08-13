@@ -25,6 +25,16 @@ test("təchizatçı kabineti build zamanı ayrılmış bundle və yüngül data 
   assert.match(loader, /dataset\.catalog/);
 });
 
+test("müştəri kabineti build zamanı ayrıca və sərt ölçü limitli bundle-a keçir", () => {
+  const build = read("scripts/vercel-build.mjs");
+  const audit = read("scripts/audit-build.mjs");
+
+  assert.match(build, /customer-cabinet-page\.js/);
+  assert.match(build, /initCustomerCabinet\(\);\\ninitCartDock\(\)/);
+  assert.match(audit, /customerCabinetUsage/);
+  assert.match(audit, /customer-cabinet\.html sıxılmış JavaScript büdcəsini keçib/);
+});
+
 test("launch sübut paketi admin panelindən əlçatandır", () => {
   const admin = read("admin.html");
   const checklist = read("docs/launch-evidence-checklist.md");

@@ -876,6 +876,12 @@ const createProductCard = (product) => {
   const cartLabel = isInCart
     ? product.commerceReady ? "Səbətdədir" : "Sorğu siyahısındadır"
     : product.commerceReady ? "Səbətə əlavə et" : "Sorğu siyahısına əlavə et";
+  const stockText = product.stockQuantity === null || product.stockQuantity === undefined
+    ? "Stok sorğu ilə"
+    : `${Number(product.stockQuantity).toLocaleString("az-AZ")} vahid stokda`;
+  const deliveryText = product.leadTimeDays === null || product.leadTimeDays === undefined
+    ? "Təslimat sorğu ilə"
+    : Number(product.leadTimeDays) === 0 ? "Eyni gün təslimat" : `${Number(product.leadTimeDays).toLocaleString("az-AZ")} günə təslimat`;
 
   return `
     <article class="market-card product-card${sourced ? " is-sourced-card" : ""}${sourced && realMedia ? " has-real-media" : ""}" data-product-id="${escapeAttr(product.id)}" data-source-priority="${getSourceQualityScore(product, "product")}">
@@ -894,6 +900,11 @@ const createProductCard = (product) => {
           <span>${escapeHtml(product.package)}</span>
           <span>${escapeHtml(product.origin)}</span>
           <span>${escapeHtml(product.availability)}</span>
+        </div>
+        <div class="product-attributes product-commerce-status">
+          <span class="${product.commerceReady ? "mini-badge is-verified" : "mini-badge"}">${product.commerceReady ? "Satışa hazır" : "Təchizatçı təsdiqi tələb olunur"}</span>
+          <span>${escapeHtml(stockText)}</span>
+          <span>${escapeHtml(deliveryText)}</span>
         </div>
         <ul class="spec-list">
           ${(product.specs || []).map((spec) => `<li>${escapeHtml(spec)}</li>`).join("")}
@@ -1353,6 +1364,7 @@ const renderCatalog = () => {
       const matchesSource = sourceStatus === "all" ||
         (sourceStatus === "sourced" && sourced) ||
         (sourceStatus === "sourced-image" && sourced && realMedia) ||
+        (sourceStatus === "commercial-ready" && product.commerceReady === true) ||
         (sourceStatus === "unsourced" && !sourced);
       const originValue = normalize(product.origin);
       const isImported = originValue.includes("idxal") || originValue.includes("import");
@@ -1421,7 +1433,7 @@ const renderCatalog = () => {
         brand !== "all" ? brand : "",
         availability !== "all" ? availability : "",
         priceStatus === "request" ? "Sorğu qiyməti" : priceStatus === "confirmed" ? "Təsdiqli qiymət" : "",
-        sourceStatus === "sourced" ? "Mənbəli məlumat" : sourceStatus === "sourced-image" ? "Mənbə + hüquqlu foto" : sourceStatus === "unsourced" ? "Mənbəsiz struktur" : "",
+        sourceStatus === "sourced" ? "Mənbəli məlumat" : sourceStatus === "sourced-image" ? "Mənbə + hüquqlu foto" : sourceStatus === "commercial-ready" ? "Satışa tam hazır" : sourceStatus === "unsourced" ? "Mənbəsiz struktur" : "",
         origin === "local" ? "Azərbaycan" : origin === "import" ? "İdxal" : origin === "mixed" ? "Qarışıq mənşə" : ""
       ].filter(Boolean);
       activeFilterList.innerHTML = chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("");

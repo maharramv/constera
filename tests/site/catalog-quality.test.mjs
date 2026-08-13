@@ -10,12 +10,26 @@ test("kataloq standart olaraq yüngül məhsul cavabı və açıq tam sinxroniza
   assert.match(catalogApi, /req\.query\.scope \|\| "products"/);
   assert.match(catalogApi, /scope === "facets" \|\| scope === "full"/);
   assert.match(catalogApi, /scope === "full"/);
+  assert.match(catalogApi, /scope === "summary"/);
+  assert.match(catalogApi, /commerceReadyProducts/);
   assert.match(catalogApi, /requestGroupExpression/);
   assert.match(catalogApi, /requestGroupExpression\} ASC/);
   assert.match(catalogApi, /normalizeProductAttributes\(\{\s*name: row\.name/);
   assert.match(productsApi, /normalizeProductAttributes\(\{\s*name: row\.name/);
   assert.match(production, /scope:\s*"products"/);
+  assert.match(production, /catalogSummary:\s*\(\) => request\("\/api\/catalog\?scope=summary"\)/);
   assert.match(production, /api\.catalog\(\{ limit: "1000", scope: "full" \}\)/);
+});
+
+test("ictimai kataloq satış hazırlığını, stoku və təslimatı açıq göstərir", () => {
+  const catalog = readFileSync("catalog.html", "utf8");
+  const marketplace = readFileSync("assets/js/marketplace.js", "utf8");
+
+  assert.match(catalog, /value="commercial-ready">Satışa tam hazır/);
+  assert.match(marketplace, /product-commerce-status/);
+  assert.match(marketplace, /Təchizatçı təsdiqi tələb olunur/);
+  assert.match(marketplace, /vahid stokda/);
+  assert.match(marketplace, /günə təslimat/);
 });
 
 test("kataloq Azərbaycan hərfləri, sinonimlər və əlçatan təkliflər ilə axtarılır", () => {

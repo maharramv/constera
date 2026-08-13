@@ -167,6 +167,13 @@ staticEntries
           '<script src="assets/js/supplier-portal-page.js"></script>'
         );
     }
+    if (entry === "customer-cabinet.html") {
+      rendered = rendered
+        .replace(
+          '<script src="assets/js/marketplace.js"></script>',
+          '<script src="assets/js/customer-cabinet-page.js"></script>'
+        );
+    }
     writeFileSync(`dist/${entry}`, rendered);
   });
 
@@ -200,7 +207,6 @@ writeFileSync(
     rentals: []
   })), { level: 9 })
 );
-
 const marketplaceSource = readFileSync("assets/js/marketplace.js", "utf8");
 const marketplaceOpening = "(async () => {\n";
 const marketplaceClosing = "\n})();";
@@ -214,6 +220,7 @@ if (marketplaceInitializersIndex < 0) {
   throw new Error("marketplace.js başlanğıc çağırışları tapılmadı.");
 }
 const supplierPortalSource = `${marketplaceBody.slice(0, marketplaceInitializersIndex)}initSupplierPortal();\n`;
+const customerCabinetSource = `${marketplaceBody.slice(0, marketplaceInitializersIndex)}initCustomerCabinet();\ninitCartDock();\n`;
 const supplierPortalBuild = buildSync({
   stdin: {
     contents: supplierPortalSource,
@@ -231,6 +238,24 @@ const supplierPortalBuild = buildSync({
 writeFileSync(
   "dist/assets/js/supplier-portal-page.js",
   `;(async()=>{${supplierPortalBuild.outputFiles[0].text}})();\n`
+);
+const customerCabinetBuild = buildSync({
+  stdin: {
+    contents: customerCabinetSource,
+    sourcefile: "customer-cabinet-page.js",
+    resolveDir: process.cwd()
+  },
+  bundle: true,
+  format: "esm",
+  legalComments: "none",
+  minify: true,
+  target: "es2022",
+  treeShaking: true,
+  write: false
+});
+writeFileSync(
+  "dist/assets/js/customer-cabinet-page.js",
+  `;(async()=>{${customerCabinetBuild.outputFiles[0].text}})();\n`
 );
 [
   "dist/assets/js/catalog-data.js",

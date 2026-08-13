@@ -94,6 +94,15 @@ test("ConstEra sloqanı əsas brend nöqtələrində sabitdir", () => {
   assert.match(manifest.name, new RegExp(slogan, "i"));
 });
 
+test("ana səhifə kataloq sayğaclarını canlı API xülasəsi ilə yeniləyir və lokal fallback saxlayır", () => {
+  const script = readFileSync(resolve(root, "assets/js/script.js"), "utf8");
+
+  assert.match(script, /\/api\/catalog\?scope=summary/);
+  assert.match(script, /CONSTERA_CATALOG_SUMMARY/);
+  assert.match(script, /fallbackCounts/);
+  assert.match(script, /AbortController/);
+});
+
 test("ana səhifə təkrarlanan vitrin və daxili idarəetmə bloklarını göstərmir", () => {
   const home = readFileSync(resolve(root, "index.html"), "utf8");
 

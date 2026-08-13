@@ -129,6 +129,7 @@
       if (!params.has("pageSize") && !params.has("limit")) params.set("pageSize", "96");
       return request(`/api/catalog?${params}`);
     },
+    catalogSummary: () => request("/api/catalog?scope=summary"),
     product: (id) => request(`/api/products?id=${encodeURIComponent(id)}&limit=1`),
     products: (ids) => request(`/api/products?ids=${encodeURIComponent(ids.join(","))}`),
     productOffers: (productId, scope = "") => request(`/api/product-offers?productId=${encodeURIComponent(productId)}${scope ? `&scope=${encodeURIComponent(scope)}` : ""}`),

@@ -184,8 +184,7 @@ const marketplaceCounts = () => {
   };
 };
 
-const updateMarketplaceCounts = () => {
-  const counts = marketplaceCounts();
+const updateMarketplaceCounts = (counts = marketplaceCounts()) => {
   document.querySelectorAll("[data-marketplace-count]").forEach((node) => {
     const value = counts[node.dataset.marketplaceCount] ?? 0;
     node.dataset.target = String(value);
@@ -193,11 +192,38 @@ const updateMarketplaceCounts = () => {
   });
 };
 
-window.addEventListener("constera:catalog-ready", updateMarketplaceCounts, { once: true });
+const loadMarketplaceSummary = async () => {
+  if (window.CONSTERA_STATIC_PREVIEW || typeof fetch !== "function") return null;
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = window.setTimeout(() => controller?.abort(), 2_500);
+  try {
+    const response = await fetch("/api/catalog?scope=summary", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+      signal: controller?.signal
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload?.data?.counts || null;
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
+
+window.addEventListener("constera:catalog-ready", () => updateMarketplaceCounts(), { once: true });
 
 const initMarketplaceCounters = async () => {
   if (window.ConstEraCatalogReady) await window.ConstEraCatalogReady;
-  updateMarketplaceCounts();
+  const fallbackCounts = marketplaceCounts();
+  updateMarketplaceCounts(fallbackCounts);
+  const liveCounts = await loadMarketplaceSummary();
+  if (liveCounts) {
+    window.CONSTERA_CATALOG_SUMMARY = liveCounts;
+    updateMarketplaceCounts({ ...fallbackCounts, ...liveCounts });
+    window.dispatchEvent(new CustomEvent("constera:catalog-summary", { detail: liveCounts }));
+  }
   initCounters();
 };
 

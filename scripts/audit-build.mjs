@@ -81,9 +81,10 @@ if (/["']\/assets\/(?:css|js)\/[^"'?]+\.(?:css|js)["']/i.test(serviceWorker)) {
 const heaviestJavascriptPage = [...pageUsage].sort((left, right) => right.javascript - left.javascript)[0];
 const heaviestCssPage = [...pageUsage].sort((left, right) => right.css - left.css)[0];
 const supplierPortalUsage = pageUsage.find((item) => item.page === "supplier-portal.html");
-// Obyekt jurnalı və satınalma nəzarəti route-spesifik payload artırır; səhifə və gzip limitləri ayrıca sərt qalır.
+const customerCabinetUsage = pageUsage.find((item) => item.page === "customer-cabinet.html");
+// Route-spesifik kabinetlər ümumi JS ölçüsünü artırır; hər səhifənin normal və gzip limitləri ayrıca sərt qalır.
 if (totalBytes > 3_050_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
-if (javascriptBytes > 585_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
+if (javascriptBytes > 610_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
 // Route-specific styles increase the aggregate without increasing every page's payload.
 if (cssBytes > 85_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
 if (heaviestJavascriptPage?.javascript > 475_000) {
@@ -104,6 +105,9 @@ if (!assetBytes.has("assets/js/supplier-portal-page.js")) {
 if (!assetBytes.has("assets/data/supplier-marketplace.data")) {
   errors.push("supplier-marketplace.data: təchizatçı kabinetinin yüngül məlumat profili yaradılmayıb.");
 }
+if (!assetBytes.has("assets/js/customer-cabinet-page.js")) {
+  errors.push("customer-cabinet-page.js: müştəri kabinetinin ayrılmış bundle faylı yaradılmayıb.");
+}
 if (supplierPortalUsage?.javascript > 125_000) {
   errors.push(`supplier-portal.html JavaScript büdcəsini keçib: ${supplierPortalUsage.javascript} bayt.`);
 }
@@ -112,6 +116,12 @@ if (supplierPortalUsage?.javascriptGzip > 40_000) {
 }
 if (Number(assetBytes.get("assets/data/supplier-marketplace.data") || 0) > 20_000) {
   errors.push("supplier-marketplace.data yüngül məlumat büdcəsini keçib.");
+}
+if (customerCabinetUsage?.javascript > 150_000) {
+  errors.push(`customer-cabinet.html JavaScript büdcəsini keçib: ${customerCabinetUsage.javascript} bayt.`);
+}
+if (customerCabinetUsage?.javascriptGzip > 50_000) {
+  errors.push(`customer-cabinet.html sıxılmış JavaScript büdcəsini keçib: ${customerCabinetUsage.javascriptGzip} bayt.`);
 }
 
 console.log(
