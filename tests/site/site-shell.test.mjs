@@ -84,6 +84,16 @@ test("ictimai naviqasiya alıcı axınına fokuslanır", () => {
   assert.doesNotMatch(footer, /<a href="price-import\.html">/);
 });
 
+test("ConstEra sloqanı əsas brend nöqtələrində sabitdir", () => {
+  const slogan = "Tikintidə yeni era";
+  const manifest = JSON.parse(readFileSync(resolve(root, "assets/icons/site.webmanifest"), "utf8"));
+
+  assert.match(render("index.html"), new RegExp(slogan));
+  assert.match(render("login.html"), new RegExp(slogan));
+  assert.match(render("catalog.html"), new RegExp(slogan));
+  assert.match(manifest.name, new RegExp(slogan, "i"));
+});
+
 test("ana səhifə təkrarlanan vitrin və daxili idarəetmə bloklarını göstərmir", () => {
   const home = readFileSync(resolve(root, "index.html"), "utf8");
 

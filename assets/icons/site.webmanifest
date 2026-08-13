@@ -1,8 +1,8 @@
 {
-  "name": "ConstEra tikinti platforması",
+  "name": "ConstEra — tikintidə yeni era",
   "short_name": "ConstEra",
   "id": "/",
-  "description": "Tikinti materialları, xidmətlər, hazır paketlər və avadanlıq icarəsi üçün Azərbaycan platforması.",
+  "description": "ConstEra — tikinti materialları, xidmətlər, hazır paketlər və avadanlıq icarəsi üçün yeni era.",
   "lang": "az",
   "start_url": "/?source=pwa",
   "scope": "/",
