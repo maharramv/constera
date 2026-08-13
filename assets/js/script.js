@@ -195,6 +195,12 @@ const updateMarketplaceCounts = () => {
 
 window.addEventListener("constera:catalog-ready", updateMarketplaceCounts, { once: true });
 
+const initMarketplaceCounters = async () => {
+  if (window.ConstEraCatalogReady) await window.ConstEraCatalogReady;
+  updateMarketplaceCounts();
+  initCounters();
+};
+
 const animateCounter = (node) => {
   const target = Number(node.dataset.target);
   if (!Number.isFinite(target)) return;
@@ -543,8 +549,7 @@ const initAnalytics = () => {
 
 initAccessibility();
 initMenu();
-updateMarketplaceCounts();
-initCounters();
+initMarketplaceCounters();
 initContactForm();
 initSeoEnhancements();
 initServiceWorker();

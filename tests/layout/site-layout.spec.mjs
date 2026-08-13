@@ -197,6 +197,9 @@ test("mənbəli paket və texnika icarəsi axını responsiv işləyir", async (
 test("mənbəli məhsullar əsas səhifə və kataloqda əvvəl göstərilir", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  for (const key of ["categories", "products", "services", "rentals"]) {
+    await expect(page.locator(`[data-marketplace-count="${key}"]`).first()).not.toHaveText("0");
+  }
   await expect(page.locator("[data-home-sourced-products] .is-sourced-card")).toHaveCount(3);
   await expect(page.locator("[data-home-sourced-packages] .is-official-card")).toHaveCount(3);
   await expect(page.locator("[data-home-sourced-rentals] .is-sourced-card")).toHaveCount(3);
