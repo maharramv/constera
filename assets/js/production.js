@@ -276,6 +276,11 @@
       body: JSON.stringify(data)
     }),
     procurement: (orderId = "") => request(`/api/procurement${orderId ? `?orderId=${encodeURIComponent(orderId)}` : "?limit=500"}`),
+    procurementControl: () => request("/api/procurement-control"),
+    procurementControlMutation: (data) => request("/api/procurement-control", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
     requestProcurementApproval: (data) => request("/api/procurement", {
       method: "POST",
       body: JSON.stringify({ action: "request", ...data })

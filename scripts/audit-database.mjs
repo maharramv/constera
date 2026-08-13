@@ -27,6 +27,9 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM order_documents) AS order_documents,
     (SELECT count(*)::int FROM order_fulfillments) AS order_fulfillments,
     (SELECT count(*)::int FROM supplier_purchase_orders) AS supplier_purchase_orders,
+    (SELECT count(*)::int FROM procurement_goods_receipts WHERE status = 'posted') AS posted_goods_receipts,
+    (SELECT count(*)::int FROM supplier_invoices WHERE status <> 'cancelled') AS active_supplier_invoices,
+    (SELECT count(*)::int FROM supplier_invoices WHERE match_status = 'exception' AND status <> 'cancelled') AS supplier_invoice_exceptions,
     (SELECT count(*)::int FROM inventory_reservations WHERE status = 'active') AS active_reservations,
     (SELECT count(*)::int FROM inventory_reservations WHERE status = 'shortage') AS shortage_reservations,
     (SELECT count(*)::int FROM crm_leads) AS crm_leads,
@@ -91,6 +94,20 @@ const [integrity] = await query(`
       WHERE p.status = 'active' AND p.price_status = 'confirmed'
         AND NOT EXISTS (SELECT 1 FROM price_history h WHERE h.product_id = p.id)) AS confirmed_products_without_history,
     (SELECT count(*)::int FROM order_items WHERE quantity <= 0) AS invalid_order_quantities,
+    (SELECT count(*)::int FROM procurement_goods_receipt_items receipt_item
+      JOIN procurement_goods_receipts receipt ON receipt.id = receipt_item.receipt_id
+      JOIN supplier_purchase_order_items purchase_item ON purchase_item.id = receipt_item.purchase_order_item_id
+      WHERE receipt.purchase_order_id <> purchase_item.purchase_order_id) AS invalid_goods_receipt_items,
+    (SELECT count(*)::int FROM supplier_invoice_items invoice_item
+      JOIN supplier_invoices invoice ON invoice.id = invoice_item.invoice_id
+      JOIN supplier_purchase_order_items purchase_item ON purchase_item.id = invoice_item.purchase_order_item_id
+      WHERE invoice.purchase_order_id <> purchase_item.purchase_order_id) AS invalid_supplier_invoice_items,
+    (SELECT count(*)::int FROM supplier_invoices
+      WHERE status IN ('approved', 'paid')
+        AND (match_status <> 'matched' OR match_score <> 100)) AS invalid_payable_supplier_invoices,
+    (SELECT count(*)::int FROM supplier_invoices
+      WHERE status = 'paid'
+        AND (paid_by IS NULL OR paid_at IS NULL OR NULLIF(payment_reference, '') IS NULL)) AS invalid_paid_supplier_invoices,
     (SELECT count(*)::int FROM orders o
       WHERE NOT EXISTS (SELECT 1 FROM order_status_history history WHERE history.order_id = o.id)) AS orders_without_history,
     (SELECT count(*)::int FROM orders o
@@ -467,6 +484,10 @@ const [schema] = await query(`
     to_regclass('public.order_fulfillments') IS NOT NULL AS order_fulfillments_ready,
     to_regclass('public.supplier_purchase_orders') IS NOT NULL AS supplier_purchase_orders_ready,
     to_regclass('public.supplier_purchase_order_items') IS NOT NULL AS supplier_purchase_order_items_ready,
+    to_regclass('public.procurement_goods_receipts') IS NOT NULL AS procurement_goods_receipts_ready,
+    to_regclass('public.procurement_goods_receipt_items') IS NOT NULL AS procurement_goods_receipt_items_ready,
+    to_regclass('public.supplier_invoices') IS NOT NULL AS supplier_invoices_ready,
+    to_regclass('public.supplier_invoice_items') IS NOT NULL AS supplier_invoice_items_ready,
     to_regclass('public.inventory_reservations') IS NOT NULL AS inventory_reservations_ready,
     to_regclass('public.inventory_levels') IS NOT NULL AS inventory_levels_ready,
     to_regclass('public.warehouses') IS NOT NULL AS warehouses_ready,
@@ -526,6 +547,9 @@ const [schema] = await query(`
     to_regclass('public.product_offers_product_idx') IS NOT NULL AS product_offer_search_ready,
     to_regclass('public.procurement_requests_company_idx') IS NOT NULL AS procurement_scope_ready,
     to_regclass('public.supplier_purchase_orders_supplier_idx') IS NOT NULL AS purchase_order_scope_ready,
+    to_regclass('public.procurement_goods_receipts_order_idx') IS NOT NULL
+      AND to_regclass('public.supplier_invoices_match_queue_idx') IS NOT NULL
+      AS procurement_control_scope_ready,
     to_regclass('public.supplier_contracts_one_active_idx') IS NOT NULL AS supplier_contract_scope_ready,
     to_regclass('public.media_assets_one_primary_idx') IS NOT NULL AS media_primary_scope_ready,
     to_regclass('public.supplier_contracts_legal_status_idx') IS NOT NULL AS supplier_legal_scope_ready,

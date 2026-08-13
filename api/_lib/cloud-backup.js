@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v18";
-export const BACKUP_SCHEMA_MIGRATIONS = 35;
+const BACKUP_VERSION = "constera-cloud-backup-v19";
+export const BACKUP_SCHEMA_MIGRATIONS = 36;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -38,6 +38,10 @@ const backupQueries = Object.freeze({
   orderFulfillments: "SELECT * FROM order_fulfillments ORDER BY order_id, supplier_id",
   supplierPurchaseOrders: "SELECT * FROM supplier_purchase_orders ORDER BY order_id, supplier_id",
   supplierPurchaseOrderItems: "SELECT * FROM supplier_purchase_order_items ORDER BY purchase_order_id, order_item_id",
+  procurementGoodsReceipts: "SELECT * FROM procurement_goods_receipts ORDER BY purchase_order_id, received_at",
+  procurementGoodsReceiptItems: "SELECT * FROM procurement_goods_receipt_items ORDER BY receipt_id, purchase_order_item_id",
+  supplierInvoices: "SELECT * FROM supplier_invoices ORDER BY purchase_order_id, invoice_date, created_at",
+  supplierInvoiceItems: "SELECT * FROM supplier_invoice_items ORDER BY invoice_id, purchase_order_item_id",
   inventoryReservations: "SELECT * FROM inventory_reservations ORDER BY order_id, created_at",
   logisticsZones: "SELECT * FROM logistics_zones ORDER BY priority, name",
   deliveryQuotes: "SELECT * FROM delivery_quotes ORDER BY created_at",
@@ -192,6 +196,13 @@ const restoreReferences = Object.freeze([
   ["orderFulfillments", "order_id", "orders"],
   ["supplierPurchaseOrders", "order_id", "orders"],
   ["supplierPurchaseOrderItems", "purchase_order_id", "supplierPurchaseOrders"],
+  ["procurementGoodsReceipts", "purchase_order_id", "supplierPurchaseOrders"],
+  ["procurementGoodsReceiptItems", "receipt_id", "procurementGoodsReceipts"],
+  ["procurementGoodsReceiptItems", "purchase_order_item_id", "supplierPurchaseOrderItems"],
+  ["supplierInvoices", "purchase_order_id", "supplierPurchaseOrders"],
+  ["supplierInvoices", "ai_run_id", "aiRuns"],
+  ["supplierInvoiceItems", "invoice_id", "supplierInvoices"],
+  ["supplierInvoiceItems", "purchase_order_item_id", "supplierPurchaseOrderItems"],
   ["inventoryReservations", "order_id", "orders"],
   ["deliveryQuotes", "order_id", "orders"],
   ["procurementDecisions", "request_id", "procurementRequests"],

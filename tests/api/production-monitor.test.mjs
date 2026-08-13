@@ -80,6 +80,7 @@ test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruy
     "/api/launch-center",
     "/api/project-site-control?projectId=monitor",
     "/api/project-site-journal?projectId=monitor",
+    "/api/procurement-control",
     "/robots.txt",
     "/sitemap.xml",
     "/service-worker.js",

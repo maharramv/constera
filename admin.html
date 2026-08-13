@@ -1320,6 +1320,55 @@
                 <div class="admin-v2-section-heading"><h3>Təchizatçı hesablaşmaları</h3><span class="data-badge" data-settlement-count>0 hesablaşma</span></div>
                 <div class="table-wrap"><table class="admin-table"><thead><tr><th>Hesablaşma</th><th>Dövr</th><th>Brüt</th><th>Komissiya / refund</th><th>Ödəniləcək</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-settlement-rows></tbody></table></div>
               </section>
+              <section class="admin-v2-section admin-v2-section-wide" data-procurement-control>
+                <div class="admin-v2-section-heading">
+                  <div>
+                    <h3>Satınalma və faktura nəzarəti</h3>
+                    <p class="admin-v2-quality-summary">Sifariş, mal qəbulu və faktura mövqe üzrə tutuşdurulur. Uyğunsuz faktura ödənişə buraxılmır.</p>
+                  </div>
+                  <span class="data-badge" data-procurement-control-count>0 faktura</span>
+                </div>
+                <div class="admin-v2-kpi-grid" data-procurement-control-kpis></div>
+              </section>
+              <section class="admin-v2-section">
+                <h3>Mal qəbulu</h3>
+                <form class="admin-form" data-goods-receipt-form>
+                  <label class="admin-field admin-field-wide"><span>Satınalma sifarişi</span><select name="purchaseOrderId" required data-receipt-purchase-order></select></label>
+                  <label class="admin-field"><span>Qaimə / təhvil nömrəsi</span><input name="deliveryNoteNumber" maxlength="120" placeholder="TQ-2026-001" /></label>
+                  <label class="admin-field"><span>Qəbul vaxtı</span><input name="receivedAt" type="datetime-local" required /></label>
+                  <label class="admin-field admin-field-wide"><span>Qaimə və ya qəbul fotosu</span><input name="document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" /></label>
+                  <div class="admin-v2-compact-list admin-field-wide" data-receipt-item-rows></div>
+                  <label class="admin-field admin-field-wide"><span>Qeyd</span><textarea name="note" rows="2" maxlength="2000"></textarea></label>
+                  <button class="button button-secondary" type="submit">Mal qəbulunu qeyd et</button>
+                </form>
+              </section>
+              <section class="admin-v2-section">
+                <div class="admin-v2-section-heading"><h3>Təchizatçı fakturası</h3><button class="table-action" type="button" data-invoice-ai>AI ilə oxu</button></div>
+                <form class="admin-form" data-supplier-invoice-form>
+                  <label class="admin-field admin-field-wide"><span>Satınalma sifarişi</span><select name="purchaseOrderId" required data-invoice-purchase-order></select></label>
+                  <label class="admin-field admin-field-wide"><span>Faktura PDF-i və ya şəkli</span><input name="document" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" /></label>
+                  <label class="admin-field"><span>Faktura nömrəsi</span><input name="invoiceNumber" required maxlength="120" /></label>
+                  <label class="admin-field"><span>Faktura tarixi</span><input name="invoiceDate" type="date" required /></label>
+                  <label class="admin-field"><span>Son ödəniş tarixi</span><input name="dueDate" type="date" /></label>
+                  <label class="admin-field"><span>Valyuta</span><select name="currency"><option>AZN</option><option>USD</option><option>EUR</option><option>TRY</option></select></label>
+                  <div class="admin-v2-compact-list admin-field-wide" data-invoice-item-rows></div>
+                  <label class="admin-field"><span>Ara yekun</span><input name="subtotal" type="number" min="0" step="0.01" required /></label>
+                  <label class="admin-field"><span>Vergi</span><input name="taxAmount" type="number" min="0" step="0.01" value="0" required /></label>
+                  <label class="admin-field"><span>Çatdırılma</span><input name="deliveryAmount" type="number" min="0" step="0.01" value="0" required /></label>
+                  <label class="admin-field"><span>Faktura yekunu</span><input name="totalAmount" type="number" min="0" step="0.01" required /></label>
+                  <label class="admin-field admin-field-wide"><span>Qeyd</span><textarea name="note" rows="2" maxlength="2000"></textarea></label>
+                  <p class="admin-import-status admin-field-wide" data-invoice-ai-status role="status" aria-live="polite">AI nəticəsi qaralamadır və insan təsdiqi tələb edir.</p>
+                  <button class="button button-primary" type="submit">Fakturanı qeydiyyata al</button>
+                </form>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Mal qəbulu reyestri</h3><span class="data-badge" data-goods-receipt-count>0 qəbul</span></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Qəbul</th><th>Satınalma sifarişi</th><th>Miqdar</th><th>Sənəd</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-goods-receipt-rows></tbody></table></div>
+              </section>
+              <section class="admin-v2-section admin-v2-section-wide">
+                <div class="admin-v2-section-heading"><h3>Faktura və fərqlər</h3><span class="data-badge" data-supplier-invoice-count>0 faktura</span></div>
+                <div class="table-wrap"><table class="admin-table"><thead><tr><th>Faktura</th><th>Sifariş / layihə</th><th>Məbləğ</th><th>Uyğunlaşdırma</th><th>Vəziyyət</th><th>Əməliyyat</th></tr></thead><tbody data-supplier-invoice-rows></tbody></table></div>
+              </section>
               <section class="admin-v2-section">
                 <h3>Çatdırılma hadisəsi</h3>
                 <form class="admin-form" data-tracking-form>

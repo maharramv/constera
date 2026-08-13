@@ -111,6 +111,31 @@ test("rəqəmsal obyekt jurnalı davamiyyət, qüsur, akt və çertyoj reviziyas
   assert.match(vercel, /project-site-journal/);
 });
 
+test("satınalma nəzarəti sifariş, mal qəbulu, faktura və ödənişi birləşdirir", () => {
+  const page = read("admin.html");
+  const api = read("api/_admin/procurement-control.js");
+  const helper = read("api/_lib/procurement-control.js");
+  const production = read("assets/js/production.js");
+  const client = read("assets/js/operations-center.js");
+  const migration = read("db/migrations/036_procurement_three_way_control.sql");
+  const vercel = read("vercel.json");
+
+  assert.match(page, /data-procurement-control/);
+  assert.match(page, /data-goods-receipt-form/);
+  assert.match(page, /data-supplier-invoice-form/);
+  assert.match(page, /data-invoice-ai/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS procurement_goods_receipts/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS supplier_invoices/);
+  assert.match(api, /approve-invoice/);
+  assert.match(api, /pay-invoice/);
+  assert.match(api, /extract-invoice/);
+  assert.match(helper, /calculateThreeWayMatch/);
+  assert.match(client, /create-receipt/);
+  assert.match(client, /create-invoice/);
+  assert.match(production, /procurementControl/);
+  assert.match(vercel, /procurement-control/);
+});
+
 test("detal səhifələri əlaqəli seçimləri və layihəyə əlavə etməni göstərir", () => {
   const marketplace = read("assets/js/marketplace.js");
 

@@ -5,6 +5,7 @@ import { ApiError } from "./http.js";
 import {
   createOpenAiCatalogAdvice,
   createOpenAiEstimate,
+  createOpenAiInvoiceDocument,
   createOpenAiOfferComparison,
   createOpenAiProcurementPlan,
   createOpenAiRfqDraft,
@@ -28,7 +29,8 @@ export const AI_FEATURE_POLICIES = Object.freeze({
   catalog_enrichment: Object.freeze({ roles: allRoles, requiresApproval: true, label: "AI kataloq məsləhətçisi" }),
   rfq_draft: Object.freeze({ roles: allRoles, requiresApproval: true, label: "RFQ qaralaması" }),
   offer_comparison: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Təklif müqayisəsi" }),
-  procurement_plan: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Satınalma planı" })
+  procurement_plan: Object.freeze({ roles: procurementRoles, requiresApproval: true, label: "Satınalma planı" }),
+  invoice_document: Object.freeze({ roles: elevatedRoles, requiresApproval: true, label: "Faktura sənədinin oxunması" })
 });
 
 const boundedInteger = (name, fallback, minimum, maximum) => {
@@ -160,18 +162,84 @@ const sanitizeInput = (input) => {
 };
 
 const sanitizeDocument = (input, feature) => {
-  if (feature !== "estimate_document" || !input?.document) return null;
+  if (!["estimate_document", "invoice_document"].includes(feature) || !input?.document) return null;
   const fileName = text(input.document.fileName, 240);
   const mimeType = text(input.document.mimeType, 160).toLowerCase();
   const contentBase64 = String(input.document.contentBase64 || "").trim();
-  if (!fileName || mimeType !== "application/pdf" || !/^[a-zA-Z0-9+/=\r\n]+$/.test(contentBase64)) {
-    throw new ApiError(400, "invalid_ai_document", "AI sənədi düzgün PDF formatında deyil.");
+  const allowedTypes = feature === "estimate_document"
+    ? ["application/pdf"]
+    : ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  if (!fileName || !allowedTypes.includes(mimeType) || !/^[a-zA-Z0-9+/=\r\n]+$/.test(contentBase64)) {
+    throw new ApiError(400, "invalid_ai_document", "AI sənədi düzgün PDF və ya şəkil formatında deyil.");
   }
   const approximateBytes = Math.floor(contentBase64.replace(/\s/g, "").length * 0.75);
   if (approximateBytes > 1_500_000) {
     throw new ApiError(413, "ai_document_too_large", "AI sənədi maksimum 1,5 MB ola bilər.");
   }
   return { fileName, mimeType, contentBase64 };
+};
+
+export const prepareAiInvoiceDocumentRequest = ({ input = {}, purchaseOrder = {} } = {}) => {
+  const document = sanitizeDocument(input, "invoice_document");
+  if (!document) throw new ApiError(400, "invoice_document_required", "Faktura PDF-i və ya şəkli tələb olunur.");
+  const context = {
+    purchaseOrder: {
+      id: text(purchaseOrder.id, 160),
+      number: number(purchaseOrder.number, 0, 0),
+      supplierName: text(purchaseOrder.supplierName, 240),
+      currency: text(purchaseOrder.currency || "AZN", 12),
+      totalAmount: purchaseOrder.totalAmount === null ? null : number(purchaseOrder.totalAmount, 0, 0),
+      items: (Array.isArray(purchaseOrder.items) ? purchaseOrder.items : []).slice(0, 200).map((item) => ({
+        purchaseOrderItemId: text(item.id, 160),
+        sku: text(item.sku, 160),
+        title: text(item.title, 240),
+        quantity: number(item.quantity, 0, 0),
+        unit: text(item.unit, 40),
+        unitPrice: item.unitPrice === null ? null : number(item.unitPrice, 0, 0)
+      }))
+    }
+  };
+  const requestBytes = Buffer.byteLength(JSON.stringify(context), "utf8")
+    + Math.floor(document.contentBase64.replace(/\s/g, "").length * 0.75);
+  if (requestBytes > 1_650_000) throw new ApiError(413, "ai_request_too_large", "Faktura AI sorğusu icazə verilən həcmi keçir.");
+  return { context, document, sources: [], requestBytes };
+};
+
+export const normalizeAiInvoiceDocument = ({ invoice = {}, purchaseOrder = {} } = {}) => {
+  const allowed = new Set((purchaseOrder.items || []).map((item) => item.id));
+  const warnings = unique((Array.isArray(invoice.warnings) ? invoice.warnings : []).map((item) => text(item, 400)), 20);
+  const items = (Array.isArray(invoice.items) ? invoice.items : []).slice(0, 200).map((item) => {
+    const purchaseOrderItemId = text(item.purchaseOrderItemId, 160);
+    if (!allowed.has(purchaseOrderItemId)) {
+      warnings.push(`${text(item.description || "Faktura mövqeyi", 160)} satınalma sifarişində avtomatik tapılmadı.`);
+      return null;
+    }
+    return {
+      purchaseOrderItemId,
+      description: text(item.description, 500),
+      quantity: number(item.quantity, 0, 0),
+      unitPrice: number(item.unitPrice, 0, 0),
+      lineTotal: number(item.lineTotal, 0, 0),
+      confidence: confidenceScore(item.confidence, 0.5)
+    };
+  }).filter((item) => item && item.quantity > 0);
+  return {
+    output: {
+      invoiceNumber: text(invoice.invoiceNumber, 120),
+      invoiceDate: text(invoice.invoiceDate, 10),
+      dueDate: text(invoice.dueDate, 10),
+      currency: ["AZN", "USD", "EUR", "TRY"].includes(invoice.currency) ? invoice.currency : purchaseOrder.currency || "AZN",
+      subtotal: number(invoice.subtotal, 0, 0),
+      taxAmount: number(invoice.taxAmount, 0, 0),
+      deliveryAmount: number(invoice.deliveryAmount, 0, 0),
+      totalAmount: number(invoice.totalAmount, 0, 0),
+      items,
+      warnings: unique(warnings, 20)
+    },
+    confidence: confidenceScore(invoice.confidence, 0.5),
+    sources: [],
+    warnings: unique(warnings, 20)
+  };
 };
 
 export const prepareAiEstimateRequest = ({ feature, input, deterministicEstimate }) => {
@@ -734,7 +802,7 @@ const runSummary = (row) => ({
   reviewNote: row.review_note || "",
   rfqId: row.rfq_id || null,
   sources: Array.isArray(row.sources) ? row.sources : [],
-  ...(["offer_comparison", "procurement_plan"].includes(row.feature) ? {
+  ...(["offer_comparison", "procurement_plan", "invoice_document"].includes(row.feature) ? {
     output: row.output && typeof row.output === "object" ? row.output : {}
   } : {}),
   createdAt: row.created_at,
@@ -897,6 +965,29 @@ export const generateAiEstimate = async ({ user, feature = "estimate_review", in
   });
   const { output, ...metadata } = result;
   return { ...metadata, estimate: output };
+};
+
+export const generateAiInvoiceDocument = async ({ user, input = {}, purchaseOrder = {} }) => {
+  const feature = "invoice_document";
+  const prepared = prepareAiInvoiceDocumentRequest({ input, purchaseOrder });
+  const result = await runGovernedAiGeneration({
+    user,
+    feature,
+    prepared,
+    promptVersion: "invoice-document-v1",
+    readiness: directOpenAiReadiness(),
+    generate: (runId) => createOpenAiInvoiceDocument({
+      requestId: runId,
+      context: prepared.context,
+      document: prepared.document
+    }),
+    normalize: (providerResult) => normalizeAiInvoiceDocument({
+      invoice: providerResult.invoice,
+      purchaseOrder
+    })
+  });
+  const { output, ...metadata } = result;
+  return { ...metadata, invoice: output };
 };
 
 const directOpenAiReadiness = () => {

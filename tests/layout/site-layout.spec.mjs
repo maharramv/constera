@@ -685,6 +685,11 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
     await page.locator('[data-admin-tab="crm"]').click();
     await expect(page.locator('[data-admin-panel="crm"]')).toBeVisible();
     await expect(page.locator("[data-admin-v2-crm-form]")).toBeVisible();
+    await page.locator('[data-admin-tab="operations"]').click();
+    await expect(page.locator('[data-admin-panel="operations"]')).toBeVisible();
+    await expect(page.locator("[data-procurement-control]")).toBeVisible();
+    await expect(page.locator("[data-goods-receipt-form]")).toBeVisible();
+    await expect(page.locator("[data-supplier-invoice-form]")).toBeVisible();
 
     const overflow = await page.evaluate(() =>
       Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);

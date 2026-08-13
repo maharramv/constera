@@ -46,6 +46,7 @@
     { "source": "/api/price-monitor", "destination": "/api/admin?__route=price-monitor" },
     { "source": "/api/cron-production-monitor", "destination": "/api/admin?__route=production-monitor" },
     { "source": "/api/procurement", "destination": "/api/admin?__route=procurement" },
+    { "source": "/api/procurement-control", "destination": "/api/admin?__route=procurement-control" },
     { "source": "/api/procurement-plans", "destination": "/api/admin?__route=procurement-plans" },
     { "source": "/api/project-site-control", "destination": "/api/admin?__route=project-site-control" },
     { "source": "/api/project-site-journal", "destination": "/api/admin?__route=project-site-journal" },
