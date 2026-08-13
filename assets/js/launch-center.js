@@ -371,8 +371,8 @@
         const label = Number.isFinite(date.getTime())
           ? new Intl.DateTimeFormat("az-AZ", { day: "2-digit", month: "short" }).format(date)
           : String(item.day || "");
-        const height = Number(item.gross || 0) ? Math.max(8, Math.round(Number(item.gross) / maximum * 100)) : 3;
-        return `<div title="${escapeHtml(`${label}: ${formatMoney(item.gross)}`)}"><span style="height:${height}%"></span><small>${escapeHtml(label)}</small></div>`;
+        const height = Number(item.gross || 0) ? Math.max(10, Math.ceil(Number(item.gross) / maximum * 10) * 10) : 10;
+        return `<div title="${escapeHtml(`${label}: ${formatMoney(item.gross)}`)}"><span class="launch-sales-bar launch-sales-bar-${Math.min(height, 100)}"></span><small>${escapeHtml(label)}</small></div>`;
       }).join("");
     }
     const topProducts = qs("[data-launch-top-products]");

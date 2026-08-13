@@ -354,9 +354,27 @@ const hasSourcedData = (item) => marketplaceRanking.hasHttpsSource
   ? marketplaceRanking.hasHttpsSource(item)
   : Boolean(getSafeHttpsUrl(item?.sourceUrl));
 const hasRealMedia = (item) => Boolean(getPublicImageUrl(item));
+const fallbackSourceQualityScore = (item, kind = "product") => {
+  let score = 0;
+  const sourced = hasSourcedData(item);
+  const amount = Number(item?.priceAmount);
+  const priced = item?.priceAmount !== null && item?.priceAmount !== undefined
+    && item?.priceAmount !== "" && Number.isFinite(amount) && amount > 0;
+  if (sourced) score += 500;
+  if (hasRealMedia(item)) score += 180;
+  if (priced) score += 120;
+  if (kind === "product" && item?.priceStatus === "confirmed" && sourced) score += 180;
+  if (kind === "package" && item?.providerVerified) score += 160;
+  if (kind === "rental" && item?.sourceOfficial) score += 160;
+  else if (kind === "rental" && item?.sourceVerified) score += 80;
+  if (kind === "service" && item?.sourceVerified) score += 80;
+  if (item?.priceVerifiedAt || item?.lastVerified) score += 25;
+  if (item?.providerName || item?.supplier) score += 10;
+  return score;
+};
 const getSourceQualityScore = (item, kind = "product") => marketplaceRanking.getSourceQualityScore
   ? marketplaceRanking.getSourceQualityScore(item, kind)
-  : (hasSourcedData(item) ? 500 : 0) + (hasRealMedia(item) ? 180 : 0);
+  : fallbackSourceQualityScore(item, kind);
 const compareSourceQuality = (left, right, kind = "product") => marketplaceRanking.compareSourceQuality
   ? marketplaceRanking.compareSourceQuality(left, right, kind)
   : getSourceQualityScore(right, kind) - getSourceQualityScore(left, kind)
@@ -936,6 +954,10 @@ const renderCatalog = () => {
   const assistantSubmit = document.querySelector("[data-catalog-ai-submit]");
 
   if (!productGrid || !categoryList || !brandSelect || !searchInput) return;
+
+  [filterToggle, categoryToggle, searchInput].forEach((control) => {
+    if (control) control.disabled = false;
+  });
 
   const setupResponsivePanel = (button, panel, showLabel, hideLabel) => {
     if (!button || !panel) return;
@@ -7955,7 +7977,7 @@ const initPriceImportCenter = () => {
             <strong>${escapeHtml(label)}</strong>
             <span class="mini-badge">${escapeHtml(percent)}%</span>
           </header>
-          <div class="quality-meter"><i style="width: ${Math.max(4, Math.min(percent, 100))}%"></i></div>
+          <div class="quality-meter"><progress value="${Math.max(0, Math.min(percent, 100))}" max="100" aria-label="${escapeAttr(`${label}: ${percent}%`)}"></progress></div>
           <span>${escapeHtml(detail)}</span>
         </article>
       `).join("");

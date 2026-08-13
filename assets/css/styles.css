@@ -2759,9 +2759,22 @@ dd {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.quality-meter i {
+.quality-meter progress {
+  appearance: none;
   display: block;
+  width: 100%;
   height: 100%;
+  border-radius: inherit;
+  border: 0;
+  background: transparent;
+}
+
+.quality-meter progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+.quality-meter progress::-webkit-progress-value,
+.quality-meter progress::-moz-progress-bar {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--green), var(--gold));
 }

@@ -198,6 +198,10 @@ const htmlByFile = new Map(htmlFiles.map((file) => {
   return [file, renderSitePage(source, { file })];
 }));
 
+const clientJavascriptFiles = readdirSync(resolve(root, "assets/js"))
+  .filter((file) => extname(file) === ".js")
+  .map((file) => resolve(root, "assets/js", file));
+
 for (const file of htmlFiles) {
   const html = htmlByFile.get(file);
 
@@ -281,6 +285,13 @@ for (const file of htmlFiles) {
     .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ");
   if (/[\u0400-\u04ff]/u.test(visibleText)) report(errors, file, "Görünən mətndə kiril simvolları tapıldı.");
+}
+
+for (const file of clientJavascriptFiles) {
+  const source = readFileSync(file, "utf8");
+  if (/<[^>]*\sstyle\s*=/i.test(source) || /\.style\.|setAttribute\(\s*["']style["']/i.test(source)) {
+    report(errors, normalize(file.slice(root.length + 1)), "Dinamik inline stil Content Security Policy ilə uyğun deyil.");
+  }
 }
 
 const css = readFileSync(join(root, "assets/css/styles.css"), "utf8");

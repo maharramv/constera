@@ -31,6 +31,30 @@ test("kataloq Azərbaycan hərfləri, sinonimlər və əlçatan təkliflər ilə
   assert.match(marketplace, /краска/);
 });
 
+test("production kataloqu hazır olmadan idarəetmələri açmır və rəsmi mənbələri önə çəkir", () => {
+  const catalog = readFileSync("catalog.html", "utf8");
+  const marketplace = readFileSync("assets/js/marketplace.js", "utf8");
+
+  assert.match(catalog, /data-search[^>]*disabled/);
+  assert.match(catalog, /data-catalog-filter-toggle[^>]*disabled/);
+  assert.match(catalog, /data-catalog-category-toggle[^>]*disabled/);
+  assert.match(marketplace, /fallbackSourceQualityScore/);
+  assert.match(marketplace, /kind === "package" && item\?\.providerVerified\) score \+= 160/);
+  assert.match(marketplace, /control\.disabled = false/);
+});
+
+test("kataloq və satış qrafiki CSP-yə uyğun siniflərdən istifadə edir", () => {
+  const marketplace = readFileSync("assets/js/marketplace.js", "utf8");
+  const launchCenter = readFileSync("assets/js/launch-center.js", "utf8");
+  const buildAudit = readFileSync("scripts/audit-build.mjs", "utf8");
+
+  assert.match(marketplace, /<progress/);
+  assert.match(launchCenter, /launch-sales-bar-/);
+  assert.doesNotMatch(marketplace, /<[^>]*\sstyle\s*=/i);
+  assert.doesNotMatch(launchCenter, /<[^>]*\sstyle\s*=/i);
+  assert.match(buildAudit, /CSP-ni pozan dinamik inline stil tapıldı/);
+});
+
 test("admin panel məhsul məlumatı keyfiyyətini API-dən göstərir", () => {
   const admin = readFileSync("admin.html", "utf8");
   const adminJs = readFileSync("assets/js/admin-v2.js", "utf8");

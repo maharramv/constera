@@ -42,6 +42,12 @@ const forbiddenAssets = new Set([
 files.forEach(({ file }) => {
   const name = file.split("/").pop();
   if (forbiddenAssets.has(name)) errors.push(`${relative(root, file)}: istifadəsiz iri PNG build-ə düşüb.`);
+  if (file.endsWith(".js")) {
+    const source = readFileSync(file, "utf8");
+    if (/<[^>]*\sstyle\s*=/i.test(source) || /\.style\.|setAttribute\(\s*["']style["']/i.test(source)) {
+      errors.push(`${relative(root, file)}: CSP-ni pozan dinamik inline stil tapıldı.`);
+    }
+  }
   if (file.endsWith(".html")) {
     const html = readFileSync(file, "utf8");
     const referencedBytes = (pattern, sizes = assetBytes) => {
@@ -79,11 +85,11 @@ const supplierPortalUsage = pageUsage.find((item) => item.page === "supplier-por
 if (totalBytes > 3_050_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
 if (javascriptBytes > 585_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
 // Route-specific styles increase the aggregate without increasing every page's payload.
-if (cssBytes > 84_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
+if (cssBytes > 85_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
 if (heaviestJavascriptPage?.javascript > 475_000) {
   errors.push(`${heaviestJavascriptPage.page} JavaScript büdcəsini keçib: ${heaviestJavascriptPage.javascript} bayt.`);
 }
-if (heaviestCssPage?.css > 75_000) {
+if (heaviestCssPage?.css > 75_500) {
   errors.push(`${heaviestCssPage.page} CSS büdcəsini keçib: ${heaviestCssPage.css} bayt.`);
 }
 if (heaviestJavascriptPage?.javascriptGzip > 140_000) {

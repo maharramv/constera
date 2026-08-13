@@ -130,11 +130,22 @@
   align-items: end;
 }
 
-.launch-sales-chart span {
+.launch-sales-chart .launch-sales-bar {
   width: 100%;
   min-height: 3px;
   background: var(--accent);
 }
+
+.launch-sales-bar-10 { height: 10%; }
+.launch-sales-bar-20 { height: 20%; }
+.launch-sales-bar-30 { height: 30%; }
+.launch-sales-bar-40 { height: 40%; }
+.launch-sales-bar-50 { height: 50%; }
+.launch-sales-bar-60 { height: 60%; }
+.launch-sales-bar-70 { height: 70%; }
+.launch-sales-bar-80 { height: 80%; }
+.launch-sales-bar-90 { height: 90%; }
+.launch-sales-bar-100 { height: 100%; }
 
 .launch-sales-leaders {
   grid-template-columns: repeat(2, minmax(0, 1fr));
