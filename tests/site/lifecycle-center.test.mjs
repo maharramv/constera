@@ -17,10 +17,13 @@ test("həyat dövrü mərkəzi səkkiz əlaqəli modulu bir iş səthində saxla
 
 test("həyat dövrü API-si gateway və production müştərisinə qoşulub", () => {
   const gateway = read("api/admin.js");
-  const vercel = read("vercel.json");
+  const vercel = JSON.parse(read("vercel.json"));
   const production = read("assets/js/production.js");
   assert.match(gateway, /lifecycle: \(\) => import\("\.\/_admin\/lifecycle\.js"\)/);
-  assert.match(vercel, /"source": "\/api\/lifecycle"/);
+  assert.ok(
+    vercel.rewrites?.some((rewrite) => rewrite.source === "/api/lifecycle" && rewrite.destination === "/api/admin?__route=lifecycle"),
+    "Vercel həyat dövrü marşrutu çatışmır"
+  );
   assert.match(production, /lifecycleMutation/);
   assert.match(production, /publicProductPassport/);
 });
