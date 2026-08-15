@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v20";
-export const BACKUP_SCHEMA_MIGRATIONS = 37;
+const BACKUP_VERSION = "constera-cloud-backup-v21";
+export const BACKUP_SCHEMA_MIGRATIONS = 38;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -59,6 +59,11 @@ const backupQueries = Object.freeze({
   projectControlDocuments: "SELECT * FROM project_control_documents ORDER BY project_id, inspection_date, created_at",
   projectModelImports: "SELECT * FROM project_model_imports ORDER BY project_id, created_at",
   projectChangeOrders: "SELECT * FROM project_change_orders ORDER BY project_id, change_number",
+  projectWorkContracts: "SELECT * FROM project_work_contracts ORDER BY project_id, contract_number",
+  projectBoqItems: "SELECT * FROM project_boq_items ORDER BY contract_id, sort_order, item_code",
+  projectWorkMeasurements: "SELECT * FROM project_work_measurements ORDER BY contract_id, measurement_number",
+  projectPaymentCertificates: "SELECT * FROM project_payment_certificates ORDER BY contract_id, certificate_number",
+  projectPaymentCertificateItems: "SELECT * FROM project_payment_certificate_items ORDER BY certificate_id, created_at",
   warrantyCases: "SELECT * FROM warranty_cases ORDER BY created_at",
   surplusListings: "SELECT * FROM surplus_listings ORDER BY created_at",
   customerEstimates: "SELECT * FROM customer_estimates ORDER BY created_at",
@@ -234,6 +239,24 @@ const restoreReferences = Object.freeze([
   ["projectModelImports", "project_id", "customerProjects"],
   ["projectChangeOrders", "project_id", "customerProjects"],
   ["projectChangeOrders", "requested_by", "users"],
+  ["projectWorkContracts", "project_id", "customerProjects"],
+  ["projectWorkContracts", "contractor_supplier_id", "suppliers"],
+  ["projectWorkContracts", "created_by", "users"],
+  ["projectWorkContracts", "approved_by", "users"],
+  ["projectBoqItems", "contract_id", "projectWorkContracts"],
+  ["projectBoqItems", "linked_change_order_id", "projectChangeOrders"],
+  ["projectBoqItems", "created_by", "users"],
+  ["projectWorkMeasurements", "contract_id", "projectWorkContracts"],
+  ["projectWorkMeasurements", "boq_item_id", "projectBoqItems"],
+  ["projectWorkMeasurements", "submitted_by", "users"],
+  ["projectWorkMeasurements", "reviewed_by", "users"],
+  ["projectPaymentCertificates", "contract_id", "projectWorkContracts"],
+  ["projectPaymentCertificates", "submitted_by", "users"],
+  ["projectPaymentCertificates", "certified_by", "users"],
+  ["projectPaymentCertificates", "paid_by", "users"],
+  ["projectPaymentCertificateItems", "certificate_id", "projectPaymentCertificates"],
+  ["projectPaymentCertificateItems", "measurement_id", "projectWorkMeasurements"],
+  ["projectPaymentCertificateItems", "boq_item_id", "projectBoqItems"],
   ["warrantyCases", "customer_id", "users"],
   ["warrantyCases", "project_id", "customerProjects"],
   ["warrantyCases", "order_id", "orders"],
@@ -354,6 +377,8 @@ export const verifyCloudBackup = async ({ actorId = null } = {}) => {
     "procurementPlans",
     "productDigitalPassports",
     "projectChangeOrders",
+    "projectWorkContracts",
+    "projectPaymentCertificates",
     "warrantyCases",
     "rentalHandoverReports",
     "offerPriceLocks",

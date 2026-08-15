@@ -27,6 +27,7 @@ const createProductionChecks = (origin) => {
     { path: "/api/supplier-performance", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/catalog-quality", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/launch-center", status: 401, json: (body) => body.error?.code === "authentication_required" },
+    { path: "/api/execution", status: 401, json: (body) => body.error?.code === "authentication_required" },
     { path: "/api/merchant-feed", status: 200, includes: "<rss" },
     {
       path: "/.well-known/security.txt",
@@ -53,6 +54,8 @@ const createProductionChecks = (origin) => {
     { path: "/packages.html", status: 200, includes: "ConstEra" },
     { path: "/rental.html", status: 200, includes: "ConstEra" },
     { path: "/project-planner.html", status: 200, includes: "Layihə səbəti" },
+    { path: "/execution-center.html", status: 200, includes: "İcra və ödəniş mərkəzi" },
+    { path: "/execution-certificate.html", status: 200, includes: "data-certificate-document" },
     { path: "/ai-smeta.html", status: 200, includes: "AI Mərhələ 6" },
     { path: "/contact.html", status: 200, includes: "Əlaqə" },
     { path: "/delivery-returns.html", status: 200, includes: "Çatdırılma" },

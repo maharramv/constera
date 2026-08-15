@@ -85,7 +85,12 @@ const [counts] = await query(`
     (SELECT count(*)::int FROM surplus_listings WHERE status = 'published') AS published_surplus_listings,
     (SELECT count(*)::int FROM rental_handover_reports) AS rental_handover_reports,
     (SELECT count(*)::int FROM contractor_passports WHERE status = 'verified') AS verified_contractor_passports,
-    (SELECT count(*)::int FROM offer_price_locks WHERE status = 'active') AS active_offer_price_locks
+    (SELECT count(*)::int FROM offer_price_locks WHERE status = 'active') AS active_offer_price_locks,
+    (SELECT count(*)::int FROM project_work_contracts) AS project_work_contracts,
+    (SELECT count(*)::int FROM project_boq_items WHERE status <> 'cancelled') AS active_project_boq_items,
+    (SELECT count(*)::int FROM project_work_measurements) AS project_work_measurements,
+    (SELECT count(*)::int FROM project_payment_certificates) AS project_payment_certificates,
+    (SELECT count(*)::int FROM project_payment_certificates WHERE status = 'certified') AS payable_project_certificates
 `);
 
 const [integrity] = await query(`
@@ -473,6 +478,37 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM warranty_cases warranty
       JOIN customer_projects project ON project.id = warranty.project_id
       WHERE warranty.customer_id IS NOT NULL AND warranty.customer_id <> project.customer_id) AS warranty_project_scope_mismatch,
+    (SELECT count(*)::int FROM project_work_contracts
+      WHERE status IN ('active', 'completed') AND (approved_by IS NULL OR approved_at IS NULL)) AS invalid_approved_work_contracts,
+    (SELECT count(*)::int FROM project_work_measurements measurement
+      JOIN project_boq_items item ON item.id = measurement.boq_item_id
+      WHERE measurement.contract_id <> item.contract_id) AS measurement_contract_mismatch,
+    (SELECT count(*)::int FROM (
+      SELECT item.id
+        FROM project_boq_items item
+        JOIN project_work_measurements measurement ON measurement.boq_item_id = item.id
+       WHERE measurement.status = 'accepted'
+       GROUP BY item.id, item.contract_quantity
+      HAVING sum(measurement.measured_quantity) > item.contract_quantity
+    ) exceeded) AS accepted_measurements_over_boq,
+    (SELECT count(*)::int FROM project_payment_certificate_items certificate_item
+      JOIN project_payment_certificates certificate ON certificate.id = certificate_item.certificate_id
+      JOIN project_work_measurements measurement ON measurement.id = certificate_item.measurement_id
+      JOIN project_boq_items item ON item.id = certificate_item.boq_item_id
+      WHERE certificate.contract_id <> measurement.contract_id
+         OR certificate.contract_id <> item.contract_id
+         OR measurement.boq_item_id <> item.id) AS invalid_certificate_item_scope,
+    (SELECT count(*)::int FROM project_payment_certificates certificate
+      WHERE certificate.status IN ('certified', 'paid') AND (
+        certificate.certified_by IS NULL OR certificate.certified_at IS NULL
+        OR certificate.certified_by = certificate.submitted_by
+        OR abs(certificate.work_amount - COALESCE((
+          SELECT sum(item.line_amount) FROM project_payment_certificate_items item
+          WHERE item.certificate_id = certificate.id
+        ), 0)) > 0.01
+      )) AS invalid_certified_project_payments,
+    (SELECT count(*)::int FROM project_payment_certificates
+      WHERE status = 'paid' AND (paid_by IS NULL OR paid_at IS NULL OR NULLIF(payment_reference, '') IS NULL)) AS invalid_paid_project_certificates,
     COALESCE((
       SELECT CASE
         WHEN verification.schema_migrations = ${BACKUP_SCHEMA_MIGRATIONS}
@@ -553,6 +589,11 @@ const [schema] = await query(`
     to_regclass('public.rental_handover_reports') IS NOT NULL AS rental_handover_reports_ready,
     to_regclass('public.contractor_passports') IS NOT NULL AS contractor_passports_ready,
     to_regclass('public.offer_price_locks') IS NOT NULL AS offer_price_locks_ready,
+    to_regclass('public.project_work_contracts') IS NOT NULL AS project_work_contracts_ready,
+    to_regclass('public.project_boq_items') IS NOT NULL AS project_boq_items_ready,
+    to_regclass('public.project_work_measurements') IS NOT NULL AS project_work_measurements_ready,
+    to_regclass('public.project_payment_certificates') IS NOT NULL AS project_payment_certificates_ready,
+    to_regclass('public.project_payment_certificate_items') IS NOT NULL AS project_payment_certificate_items_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,

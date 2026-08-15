@@ -105,6 +105,11 @@
       body: JSON.stringify(data)
     }),
     publicProductPassport: (productId) => request(`/api/lifecycle?scope=public-passport&productId=${encodeURIComponent(productId)}`),
+    execution: (certificateId = "") => request(`/api/execution${certificateId ? `?certificateId=${encodeURIComponent(certificateId)}` : ""}`),
+    executionMutation: (data) => request("/api/execution", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
     saveEstimate: (data) => request("/api/cabinet", {
       method: "POST",
       body: JSON.stringify({ action: "save-estimate", ...data })

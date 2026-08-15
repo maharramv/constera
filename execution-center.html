@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra İcra və Ödəniş Mərkəzi</title>
+    <meta name="description" content="Tikinti müqaviləsi, BOQ, sahə ölçməsi, Forma 2/3 aktı, avans tutulması və zəmanət saxlamasının idarə edilməsi." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.az/execution-center.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/lifecycle-center.css" />
+    <link rel="stylesheet" href="assets/css/execution-center.css" />
+  </head>
+  <body data-page="execution-center">
+    <div class="site-shell">
+      <header class="header"><a class="brand" href="index.html"><strong>CONSTERA</strong></a></header>
+      <main>
+        <section class="section lifecycle-hero execution-hero">
+          <div>
+            <p class="eyebrow">Podratçı icrası və hesablaşma</p>
+            <h1>İcra və ödəniş mərkəzi</h1>
+            <p class="hero-text">Müqavilə iş həcmini sahədə ölç, iki tərəfli təsdiqlə və Forma 2/3 tipli ödəniş aktına çevir.</p>
+          </div>
+          <div class="lifecycle-session" data-execution-session>Daxilolma yoxlanılır.</div>
+        </section>
+
+        <section class="section lifecycle-workspace" data-execution-root>
+          <div class="admin-stat-grid lifecycle-stats" data-execution-stats></div>
+          <p class="admin-import-status" data-execution-status role="status" aria-live="polite">Məlumatlar yüklənir.</p>
+
+          <div class="lifecycle-tabs" role="tablist" aria-label="İcra və ödəniş bölmələri">
+            <button class="lifecycle-tab is-active" type="button" role="tab" aria-selected="true" data-execution-tab="contracts">Müqavilələr</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-execution-tab="boq">BOQ iş həcmi</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-execution-tab="measurements">Sahə ölçmələri</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-execution-tab="certificates">Forma 2/3 və ödəniş</button>
+          </div>
+
+          <section class="lifecycle-panel" data-execution-panel="contracts">
+            <div class="market-section-heading"><div><p class="eyebrow">Maliyyə şərtləri</p><h2>Podratçı iş müqavilələri</h2></div><span class="data-badge" data-count="contracts">0 müqavilə</span></div>
+            <form class="admin-form lifecycle-form" data-execution-form="create-contract">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Layihə</span><select name="projectId" data-option-source="projects" required></select></label>
+                <label class="admin-field"><span>Podratçı</span><select name="contractorSupplierId" data-option-source="suppliers" required></select></label>
+                <label class="admin-field"><span>Müqavilənin adı</span><input name="title" maxlength="240" required /></label>
+                <label class="admin-field"><span>Xarici müqavilə №</span><input name="externalContractNumber" maxlength="120" /></label>
+                <label class="admin-field"><span>Müqavilə məbləği</span><input name="contractAmount" type="number" min="0.01" step="0.01" required /></label>
+                <label class="admin-field"><span>Valyuta</span><select name="currency"><option>AZN</option><option>USD</option><option>EUR</option></select></label>
+                <label class="admin-field"><span>Başlama tarixi</span><input name="startDate" type="date" required /></label>
+                <label class="admin-field"><span>Bitmə tarixi</span><input name="endDate" type="date" /></label>
+                <label class="admin-field"><span>Avans, %</span><input name="advancePercent" type="number" min="0" max="100" step="0.01" value="0" /></label>
+                <label class="admin-field"><span>Avans tutulması, %</span><input name="advanceRecoveryPercent" type="number" min="0" max="100" step="0.01" value="20" /></label>
+                <label class="admin-field"><span>Zəmanət saxlaması, %</span><input name="retentionPercent" type="number" min="0" max="100" step="0.01" value="5" /></label>
+                <label class="admin-field"><span>ƏDV, %</span><input name="taxPercent" type="number" min="0" max="100" step="0.01" value="18" /></label>
+              </div>
+              <button class="button button-primary" type="submit">Müqavilə yarat</button>
+            </form>
+            <div class="lifecycle-records" data-execution-records="contracts"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-execution-panel="boq" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Miqdar və vahid qiymət</p><h2>BOQ iş mövqeləri</h2></div><span class="data-badge" data-count="boqItems">0 mövqe</span></div>
+            <form class="admin-form lifecycle-form" data-execution-form="create-boq-item">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Müqavilə</span><select name="contractId" data-option-source="contracts" required></select></label>
+                <label class="admin-field"><span>İş kodu</span><input name="itemCode" maxlength="80" placeholder="BOQ-001" required /></label>
+                <label class="admin-field"><span>İşin adı</span><input name="title" maxlength="300" required /></label>
+                <label class="admin-field"><span>İş kateqoriyası</span><input name="workCategory" maxlength="160" placeholder="Beton işləri" /></label>
+                <label class="admin-field"><span>Ölçü vahidi</span><input name="unit" maxlength="40" value="m²" required /></label>
+                <label class="admin-field"><span>Müqavilə miqdarı</span><input name="contractQuantity" type="number" min="0.001" step="0.001" required /></label>
+                <label class="admin-field"><span>Vahid qiyməti</span><input name="unitRate" type="number" min="0" step="0.01" required /></label>
+                <label class="admin-field"><span>Dəyişiklik sifarişi</span><select name="linkedChangeOrderId" data-option-source="changes" data-optional="true"></select></label>
+              </div>
+              <button class="button button-primary" type="submit">BOQ mövqeyi əlavə et</button>
+            </form>
+            <div class="execution-table-wrap" data-execution-table="boq"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-execution-panel="measurements" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">İki tərəfli təsdiq</p><h2>Sahə ölçmələri</h2></div><span class="data-badge" data-count="measurements">0 ölçmə</span></div>
+            <form class="admin-form lifecycle-form" data-execution-form="create-measurement">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Müqavilə</span><select name="contractId" data-option-source="activeContracts" required></select></label>
+                <label class="admin-field"><span>BOQ mövqeyi</span><select name="boqItemId" data-option-source="boqItems" required></select></label>
+                <label class="admin-field"><span>İş tarixi</span><input name="workDate" type="date" required /></label>
+                <label class="admin-field"><span>Ölçülən miqdar</span><input name="measuredQuantity" type="number" min="0.001" step="0.001" required /></label>
+                <label class="admin-field"><span>İcra yeri / zona</span><input name="locationText" maxlength="300" placeholder="A blok, 2-ci mərtəbə" /></label>
+              </div>
+              <label class="admin-field"><span>Foto və sənəd URL-ləri</span><textarea name="evidenceUrls" rows="2" placeholder="Hər sətirdə bir HTTPS URL"></textarea></label>
+              <label class="admin-field"><span>Qeyd</span><textarea name="note" rows="3"></textarea></label>
+              <button class="button button-primary" type="submit">Ölçmə qaralaması yarat</button>
+            </form>
+            <div class="lifecycle-records" data-execution-records="measurements"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-execution-panel="certificates" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Forma 2/3 və yekun hesab</p><h2>Ödəniş aktları</h2></div><span class="data-badge" data-count="certificates">0 akt</span></div>
+            <form class="admin-form lifecycle-form" data-execution-form="create-certificate">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Müqavilə</span><select name="contractId" data-option-source="payableContracts" required></select></label>
+                <label class="admin-field"><span>Akt tipi</span><select name="certificateType"><option value="interim">Aralıq Forma 2/3</option><option value="final">Yekun hesablaşma</option></select></label>
+                <label class="admin-field"><span>Dövrün başlanğıcı</span><input name="periodStart" type="date" required /></label>
+                <label class="admin-field"><span>Dövrün sonu</span><input name="periodEnd" type="date" required /></label>
+                <label class="admin-field"><span>Digər tutulmalar</span><input name="otherDeductions" type="number" min="0" step="0.01" value="0" /></label>
+              </div>
+              <label class="check-row"><input name="releaseRetention" type="checkbox" /> Yekun aktda əvvəlki zəmanət saxlamasını azad et</label>
+              <label class="admin-field"><span>Akt qeydi</span><textarea name="note" rows="3"></textarea></label>
+              <button class="button button-primary" type="submit">Qəbul olunmuş ölçmələrdən akt yarat</button>
+            </form>
+            <div class="lifecycle-records" data-execution-records="certificates"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+    <script src="assets/js/execution-center.js"></script>
+  </body>
+</html>

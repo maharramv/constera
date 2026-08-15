@@ -82,10 +82,12 @@ const heaviestJavascriptPage = [...pageUsage].sort((left, right) => right.javasc
 const heaviestCssPage = [...pageUsage].sort((left, right) => right.css - left.css)[0];
 const supplierPortalUsage = pageUsage.find((item) => item.page === "supplier-portal.html");
 const customerCabinetUsage = pageUsage.find((item) => item.page === "customer-cabinet.html");
-// Route-spesifik kabinetlər və həyat dövrü mərkəzi ümumi paketi artırır; aşağıdakı səhifə və gzip limitləri sərt qalır.
-if (totalBytes > 3_100_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
-if (javascriptBytes > 625_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
-if (cssBytes > 91_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
+const executionCenterUsage = pageUsage.find((item) => item.page === "execution-center.html");
+const executionCertificateUsage = pageUsage.find((item) => item.page === "execution-certificate.html");
+// İcra mərkəzi ayrıca route bundle-ları gətirir; ümumi artım onun sərt səhifə və gzip limitləri ilə əvəzlənir.
+if (totalBytes > 3_150_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
+if (javascriptBytes > 650_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
+if (cssBytes > 96_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
 if (heaviestJavascriptPage?.javascript > 475_000) {
   errors.push(`${heaviestJavascriptPage.page} JavaScript büdcəsini keçib: ${heaviestJavascriptPage.javascript} bayt.`);
 }
@@ -121,6 +123,20 @@ if (customerCabinetUsage?.javascript > 150_000) {
 }
 if (customerCabinetUsage?.javascriptGzip > 50_000) {
   errors.push(`customer-cabinet.html sıxılmış JavaScript büdcəsini keçib: ${customerCabinetUsage.javascriptGzip} bayt.`);
+}
+for (const usage of [executionCenterUsage, executionCertificateUsage].filter(Boolean)) {
+  if (usage.javascript > 65_000) {
+    errors.push(`${usage.page} JavaScript büdcəsini keçib: ${usage.javascript} bayt.`);
+  }
+  if (usage.javascriptGzip > 22_000) {
+    errors.push(`${usage.page} sıxılmış JavaScript büdcəsini keçib: ${usage.javascriptGzip} bayt.`);
+  }
+  if (usage.css > 76_000) {
+    errors.push(`${usage.page} CSS büdcəsini keçib: ${usage.css} bayt.`);
+  }
+  if (usage.cssGzip > 20_000) {
+    errors.push(`${usage.page} sıxılmış CSS büdcəsini keçib: ${usage.cssGzip} bayt.`);
+  }
 }
 
 console.log(
