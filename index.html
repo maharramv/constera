@@ -11,13 +11,14 @@
     <meta name="robots" content="index, follow" />
     <meta name="format-detection" content="telephone=no" />
     <link rel="canonical" href="https://constera.az/" />
-    <meta name="theme-color" content="#0b0f14" />
+    <meta name="theme-color" content="#f3f6f4" />
     <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
     <link rel="icon" type="image/png" sizes="96x96" href="assets/icons/favicon-96x96.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="assets/icons/site.webmanifest" />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/home-intent.css" />
     <link rel="stylesheet" href="assets/css/supplier-workflow.css" />
   </head>
   <body data-page="home">
@@ -63,17 +64,29 @@
               Məhsulu tap, texniki məlumatı yoxla, xidmət və avadanlıq seç, sonra eyni
               iş axınından qiymət sorğusu və ilkin smeta yarat.
             </p>
-            <form class="home-search" action="catalog.html" method="get">
-              <label for="home-search-input">Kataloqda axtarış</label>
-              <div>
+            <form class="home-search" action="catalog.html" method="get" data-home-intent-form data-intent="product">
+              <div class="home-intent-switch" aria-label="Axtarış istiqaməti">
+                <button type="button" data-home-intent="product" aria-pressed="true">Material</button>
+                <button type="button" data-home-intent="service" aria-pressed="false">Xidmət</button>
+                <button type="button" data-home-intent="package" aria-pressed="false">Paket</button>
+                <button type="button" data-home-intent="rental" aria-pressed="false">İcarə</button>
+              </div>
+              <label for="home-search-input" data-home-search-label>Material kataloqunda axtarış</label>
+              <div class="home-search-row">
                 <input
                   id="home-search-input"
                   name="q"
                   type="search"
                   placeholder="Məsələn: daxili boya 15 L, armatur 12 mm, Bosch"
                   autocomplete="off"
+                  data-home-search-input
                 />
-                <button class="button button-primary" type="submit">Axtar</button>
+                <button class="button button-primary" type="submit" data-home-search-submit>Material tap</button>
+              </div>
+              <div class="home-intent-presets" aria-label="Hazır axtarış nümunələri" data-home-intent-presets>
+                <button type="button" data-home-preset="sement 50 kq">Sement 50 kq</button>
+                <button type="button" data-home-preset="armatur 12 mm">Armatur 12 mm</button>
+                <button type="button" data-home-preset="daxili boya 15 L">Daxili boya 15 L</button>
               </div>
             </form>
           </div>

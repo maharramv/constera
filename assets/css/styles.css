@@ -321,7 +321,7 @@ textarea {
   text-transform: uppercase;
 }
 
-.home-search > div {
+.home-search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
@@ -3806,7 +3806,7 @@ dd {
     padding-bottom: 58px;
   }
 
-  .home-search > div {
+  .home-search-row {
     grid-template-columns: 1fr;
   }
 

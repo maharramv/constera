@@ -227,6 +227,84 @@ const initMarketplaceCounters = async () => {
   initCounters();
 };
 
+const initHomeIntentSearch = () => {
+  const form = document.querySelector("[data-home-intent-form]");
+  if (!form) return;
+  const input = form.querySelector("[data-home-search-input]");
+  const label = form.querySelector("[data-home-search-label]");
+  const submit = form.querySelector("[data-home-search-submit]");
+  const presetList = form.querySelector("[data-home-intent-presets]");
+  const intentButtons = [...form.querySelectorAll("[data-home-intent]")];
+  const intents = {
+    product: {
+      action: "catalog.html",
+      label: "Material kataloqunda axtarış",
+      placeholder: "Məsələn: daxili boya 15 L, armatur 12 mm, Bosch",
+      submit: "Material tap",
+      presets: ["Sement 50 kq", "Armatur 12 mm", "Daxili boya 15 L"]
+    },
+    service: {
+      action: "services.html",
+      label: "Tikinti və təmir xidməti axtarışı",
+      placeholder: "Məsələn: hamam təmiri, elektrik montajı, interyer dizaynı",
+      submit: "Xidmət tap",
+      presets: ["Hamam təmiri", "Elektrik montajı", "Açar təslim təmir"]
+    },
+    package: {
+      action: "packages.html",
+      label: "Hazır paket axtarışı",
+      placeholder: "Məsələn: 120 m² mənzil təmiri, villa tikintisi",
+      submit: "Paket tap",
+      presets: ["Ekonom təmir", "120 m² mənzil", "Açar təslim villa"]
+    },
+    rental: {
+      action: "rental.html",
+      label: "Avadanlıq icarəsi axtarışı",
+      placeholder: "Məsələn: mini ekskavator, avtokran, generator",
+      submit: "Avadanlıq tap",
+      presets: ["Mini ekskavator", "25 ton avtokran", "Generator icarəsi"]
+    }
+  };
+
+  const setIntent = (intent) => {
+    const config = intents[intent] || intents.product;
+    form.dataset.intent = intent;
+    form.action = config.action;
+    if (label) label.textContent = config.label;
+    if (input) input.placeholder = config.placeholder;
+    if (submit) submit.textContent = config.submit;
+    intentButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.homeIntent === intent)));
+    if (presetList) {
+      const buttons = config.presets.map((value) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.homePreset = value;
+        button.textContent = value;
+        return button;
+      });
+      presetList.replaceChildren(...buttons);
+    }
+  };
+
+  intentButtons.forEach((button) => button.addEventListener("click", () => setIntent(button.dataset.homeIntent || "product")));
+  presetList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-home-preset]");
+    if (!button || !input) return;
+    input.value = button.dataset.homePreset || "";
+    input.focus();
+  });
+  form.addEventListener("submit", () => {
+    const intent = form.dataset.intent || "product";
+    form.action = intents[intent]?.action || intents.product.action;
+    window.ConstEraTrack?.("home_intent_search", {
+      entityType: intent,
+      entityId: String(input?.value || "").trim().slice(0, 120),
+      payload: { intent }
+    });
+  });
+  setIntent(form.dataset.intent || "product");
+};
+
 const animateCounter = (node) => {
   const target = Number(node.dataset.target);
   if (!Number.isFinite(target)) return;
@@ -575,6 +653,7 @@ const initAnalytics = () => {
 
 initAccessibility();
 initMenu();
+initHomeIntentSearch();
 initMarketplaceCounters();
 initContactForm();
 initSeoEnhancements();

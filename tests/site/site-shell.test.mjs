@@ -103,6 +103,19 @@ test("ana səhifə kataloq sayğaclarını canlı API xülasəsi ilə yeniləyir
   assert.match(script, /AbortController/);
 });
 
+test("ana səhifə niyyətə görə material, xidmət, paket və icarəyə yönləndirir", () => {
+  const home = readFileSync(resolve(root, "index.html"), "utf8");
+  const script = readFileSync(resolve(root, "assets/js/script.js"), "utf8");
+
+  for (const intent of ["product", "service", "package", "rental"]) {
+    assert.match(home, new RegExp(`data-home-intent="${intent}"`));
+  }
+  for (const page of ["catalog.html", "services.html", "packages.html", "rental.html"]) {
+    assert.match(script, new RegExp(`action: "${page.replace(".", "\\.")}"`));
+  }
+  assert.match(script, /home_intent_search/);
+});
+
 test("ana səhifə təkrarlanan vitrin və daxili idarəetmə bloklarını göstərmir", () => {
   const home = readFileSync(resolve(root, "index.html"), "utf8");
 

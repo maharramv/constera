@@ -1,0 +1,61 @@
+.home-intent-switch,
+.home-intent-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.home-intent-switch {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.home-intent-switch button,
+.home-intent-presets button {
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-intent-switch button {
+  min-height: 36px;
+  padding: 0 13px;
+  border-radius: 6px;
+}
+
+.home-intent-switch button[aria-pressed="true"] {
+  color: #fff;
+  background: var(--green);
+}
+
+.home-intent-presets button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #46534f;
+  background: rgba(255, 255, 255, 0.76);
+  font-size: 0.72rem;
+}
+
+.home-intent-presets button:hover,
+.home-intent-presets button:focus-visible {
+  border-color: rgba(20, 112, 91, 0.42);
+  color: var(--green);
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .home-intent-switch {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
