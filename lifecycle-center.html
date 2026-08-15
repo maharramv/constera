@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Həyat Dövrü Mərkəzi | Layihə və aktiv nəzarəti</title>
+    <meta name="description" content="ConstEra məhsul pasportu, BIM modeli, dəyişiklik sifarişi, zəmanət, tikinti qalıqları, icarə təhvili, podratçı və qiymət kilidi idarəetməsi." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.az/lifecycle-center.html" />
+    <meta name="theme-color" content="#0b0f14" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/lifecycle-center.css" />
+  </head>
+  <body data-page="lifecycle-center">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="site-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy"><strong>CONSTERA</strong><span>Həyat dövrü</span></span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box"><span class="menu-toggle-line"></span><span class="menu-toggle-line"></span></span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a><a href="catalog.html">Kataloq</a><a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a><a href="rental.html">İcarə</a><a href="customer-cabinet.html">Kabinet</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a><a class="button button-outline nav-cta" href="customer-cabinet.html">Kabinetə qayıt</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="section lifecycle-hero">
+          <div>
+            <p class="eyebrow">Vahid layihə və aktiv nəzarəti</p>
+            <h1>Həyat dövrü mərkəzi</h1>
+            <p class="hero-text">Məhsulun sənədindən obyekt dəyişikliklərinə, icarə təhvilindən zəmanət bağlanışına qədər bütün sübutları bir axında saxla.</p>
+          </div>
+          <div class="lifecycle-session" data-lifecycle-session>Daxilolma yoxlanılır.</div>
+        </section>
+
+        <section class="section lifecycle-workspace" data-lifecycle-root>
+          <div class="admin-stat-grid lifecycle-stats" data-lifecycle-stats></div>
+          <p class="admin-import-status" data-lifecycle-status role="status" aria-live="polite">Məlumatlar yüklənir.</p>
+
+          <div class="lifecycle-tabs" role="tablist" aria-label="Həyat dövrü bölmələri">
+            <button class="lifecycle-tab is-active" type="button" role="tab" aria-selected="true" data-lifecycle-tab="passport">Məhsul pasportu</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="models">BIM / IFC</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="changes">Dəyişikliklər</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="warranty">Zəmanət</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="surplus">Qalıqlar</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="handover">İcarə təhvili</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="contractor">Podratçı</button>
+            <button class="lifecycle-tab" type="button" role="tab" aria-selected="false" data-lifecycle-tab="locks">Qiymət kilidi</button>
+          </div>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="passport">
+            <div class="market-section-heading"><div><p class="eyebrow">QR və izlənmə</p><h2>Rəqəmsal məhsul pasportu</h2></div><span class="data-badge" data-count="passports">0 pasport</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="save-passport">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Məhsul</span><select name="productId" data-option-source="products" required></select></label>
+                <label class="admin-field"><span>İstehsalçı</span><input name="manufacturer" maxlength="240" required /></label>
+                <label class="admin-field"><span>Mənşə ölkəsi</span><input name="originCountry" maxlength="160" /></label>
+                <label class="admin-field"><span>Model kodu</span><input name="modelCode" maxlength="160" /></label>
+                <label class="admin-field"><span>GTIN / barkod</span><input name="gtin" maxlength="80" /></label>
+                <label class="admin-field"><span>Zəmanət, ay</span><input name="warrantyMonths" type="number" min="0" max="600" value="12" /></label>
+                <label class="admin-field"><span>Status</span><select name="status"><option value="draft">Qaralama</option><option value="published">Dərc et</option><option value="expired">Vaxtı keçib</option><option value="archived">Arxiv</option></select></label>
+                <label class="admin-field"><span>Etibarlıdır</span><input name="validUntil" type="date" /></label>
+                <label class="admin-field"><span>Uyğunluq bəyannaməsi</span><input name="declarationUrl" type="url" placeholder="https://" /></label>
+                <label class="admin-field"><span>Təhlükəsizlik sənədi</span><input name="safetyUrl" type="url" placeholder="https://" /></label>
+                <label class="admin-field"><span>Quraşdırma təlimatı</span><input name="installationUrl" type="url" placeholder="https://" /></label>
+                <label class="admin-field"><span>EPD sənədi</span><input name="epdUrl" type="url" placeholder="https://" /></label>
+                <label class="admin-field"><span>Karbon, kq CO₂e</span><input name="carbonKgCo2e" type="number" min="0" step="0.01" /></label>
+                <label class="admin-field"><span>Təkrar emal, %</span><input name="recycledPercent" type="number" min="0" max="100" step="0.1" /></label>
+              </div>
+              <label class="admin-field"><span>Sertifikatlar</span><textarea name="certificates" rows="3" placeholder="CE; ISO 9001; AZS uyğunluq sertifikatı"></textarea></label>
+              <label class="check-row"><input name="batchTracking" type="checkbox" /> Partiya nömrəsi ilə izləmə tələb olunur</label>
+              <button class="button button-primary" type="submit">Pasportu saxla</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="passports"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="models" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Açıq model məlumatı</p><h2>BIM / IFC material çıxarışı</h2></div><span class="data-badge" data-count="models">0 model</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="analyze-model">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Layihə</span><select name="projectId" data-option-source="projects" required></select></label>
+                <label class="admin-field"><span>Model faylı</span><input name="modelFile" type="file" accept=".ifc,.dwg,.bcf,.txt" required /></label>
+                <label class="admin-field"><span>Alternativ HTTPS ünvanı</span><input name="sourceUrl" type="url" placeholder="https://" /></label>
+              </div>
+              <button class="button button-primary" type="submit">Modeli analiz et</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="models"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="changes" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Büdcə və müddət nəzarəti</p><h2>Dəyişiklik sifarişləri</h2></div><span class="data-badge" data-count="changes">0 dəyişiklik</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="create-change-order">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Layihə</span><select name="projectId" data-option-source="projects" required></select></label>
+                <label class="admin-field"><span>Dəyişiklik adı</span><input name="title" maxlength="240" required /></label>
+                <label class="admin-field"><span>Büdcə fərqi</span><input name="costDelta" type="number" step="0.01" value="0" /></label>
+                <label class="admin-field"><span>Müddət fərqi, gün</span><input name="daysDelta" type="number" value="0" /></label>
+                <label class="admin-field"><span>Valyuta</span><select name="currency"><option>AZN</option><option>USD</option><option>EUR</option></select></label>
+              </div>
+              <label class="admin-field"><span>Səbəb</span><textarea name="reason" rows="2" required></textarea></label>
+              <label class="admin-field"><span>İş həcminin dəyişməsi</span><textarea name="scopeDescription" rows="4" required></textarea></label>
+              <button class="button button-primary" type="submit">Təsdiqə göndər</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="changes"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="warranty" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Satışdan sonrakı xidmət</p><h2>Zəmanət və qüsur mərkəzi</h2></div><span class="data-badge" data-count="warranties">0 müraciət</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="create-warranty">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Layihə</span><select name="projectId" data-option-source="projects" data-optional="true"></select></label>
+                <label class="admin-field"><span>Məhsul</span><select name="productId" data-option-source="products" data-optional="true"></select></label>
+                <label class="admin-field"><span>Təchizatçı</span><select name="supplierId" data-option-source="suppliers" data-optional="true"></select></label>
+                <label class="admin-field"><span>Sifariş</span><select name="orderId" data-option-source="orders" data-optional="true"></select></label>
+                <label class="admin-field"><span>Qüsurun adı</span><input name="title" maxlength="240" required /></label>
+                <label class="admin-field"><span>Risk</span><select name="severity"><option value="low">Aşağı</option><option value="medium" selected>Orta</option><option value="high">Yüksək</option><option value="critical">Kritik</option></select></label>
+                <label class="admin-field"><span>Cavab son tarixi</span><input name="dueAt" type="datetime-local" /></label>
+              </div>
+              <label class="admin-field"><span>Təsvir</span><textarea name="description" rows="4" required></textarea></label>
+              <label class="admin-field"><span>Foto/sənəd URL-ləri</span><textarea name="evidenceUrls" rows="2" placeholder="Hər sətirdə bir HTTPS URL"></textarea></label>
+              <button class="button button-primary" type="submit">Zəmanət müraciəti yarat</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="warranties"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="surplus" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Dairəvi tikinti</p><h2>Tikinti qalıqları bazarı</h2></div><span class="data-badge" data-count="surplus">0 elan</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="create-surplus">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Layihə</span><select name="projectId" data-option-source="projects" data-optional="true"></select></label>
+                <label class="admin-field"><span>Məhsul</span><select name="productId" data-option-source="products" data-optional="true"></select></label>
+                <label class="admin-field"><span>Elanın adı</span><input name="title" maxlength="240" required /></label>
+                <label class="admin-field"><span>Miqdar</span><input name="quantity" type="number" min="0.001" step="0.001" required /></label>
+                <label class="admin-field"><span>Vahid</span><input name="unit" value="ədəd" maxlength="80" required /></label>
+                <label class="admin-field"><span>Vəziyyət</span><select name="condition"><option value="unused">İstifadə olunmayıb</option><option value="opened">Qablaşdırma açılıb</option><option value="used_good">İşlənmiş, yaxşı</option><option value="reclaimed">Söküntüdən bərpa</option></select></label>
+                <label class="admin-field"><span>Vahid qiyməti</span><input name="unitPrice" type="number" min="0" step="0.01" /></label>
+                <label class="admin-field"><span>Şəhər</span><input name="city" value="Bakı" maxlength="160" required /></label>
+                <label class="admin-field"><span>Foto URL-i</span><input name="photoUrl" type="url" placeholder="https://" /></label>
+                <label class="admin-field"><span>Elanın son tarixi</span><input name="expiresAt" type="datetime-local" /></label>
+              </div>
+              <label class="admin-field"><span>Təsvir</span><textarea name="description" rows="3"></textarea></label>
+              <button class="button button-primary" type="submit">Elanı dərc et</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="surplus"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="handover" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Foto və göstərici sübutu</p><h2>İcarə təhvil-qəbul protokolu</h2></div><span class="data-badge" data-count="handovers">0 akt</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="create-rental-handover">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Rezervasiya</span><select name="bookingId" data-option-source="bookings" required></select></label>
+                <label class="admin-field"><span>Akt tipi</span><select name="reportType"><option value="checkout">Təhvil</option><option value="checkin">Geri qəbul</option></select></label>
+                <label class="admin-field"><span>Vəziyyət</span><select name="equipmentCondition"><option value="excellent">Əla</option><option value="good" selected>Yaxşı</option><option value="fair">Qənaətbəxş</option><option value="damaged">Zədəli</option></select></label>
+                <label class="admin-field"><span>Mühərrik saatı</span><input name="engineHours" type="number" min="0" step="0.1" /></label>
+                <label class="admin-field"><span>Yanacaq, %</span><input name="fuelLevel" type="number" min="0" max="100" /></label>
+                <label class="admin-field"><span>Məkan</span><input name="locationText" maxlength="300" /></label>
+                <label class="admin-field"><span>Enlik</span><input name="latitude" type="number" min="-90" max="90" step="0.000001" /></label>
+                <label class="admin-field"><span>Uzunluq</span><input name="longitude" type="number" min="-180" max="180" step="0.000001" /></label>
+                <label class="admin-field"><span>Müştəri imzası</span><input name="customerSignature" maxlength="240" /></label>
+                <label class="admin-field"><span>Təchizatçı imzası</span><input name="supplierSignature" maxlength="240" /></label>
+              </div>
+              <label class="admin-field"><span>Zədə qeydi</span><textarea name="damageNotes" rows="3"></textarea></label>
+              <label class="admin-field"><span>Foto URL-ləri</span><textarea name="evidenceUrls" rows="2" placeholder="Hər sətirdə bir HTTPS URL"></textarea></label>
+              <button class="button button-primary" type="submit">Aktı saxla</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="handovers"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="contractor" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">Uyğunluq və imkan</p><h2>Təsdiqlənmiş podratçı pasportu</h2></div><span class="data-badge" data-count="contractors">0 pasport</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="save-contractor">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Şirkət / təchizatçı</span><select name="supplierId" data-option-source="suppliers" required></select></label>
+                <label class="admin-field"><span>Podratçı tipi</span><select name="contractorType"><option value="general">Baş podratçı</option><option value="specialist">İxtisaslaşmış</option><option value="design">Layihələndirmə</option><option value="installation">Quraşdırma</option><option value="rental">İcarə</option><option value="logistics">Logistika</option></select></label>
+                <label class="admin-field"><span>VÖEN</span><input name="voen" maxlength="32" /></label>
+                <label class="admin-field"><span>Lisenziya nömrəsi</span><input name="licenseNumber" maxlength="160" /></label>
+                <label class="admin-field"><span>Lisenziya bitir</span><input name="licenseValidUntil" type="date" /></label>
+                <label class="admin-field"><span>Sığorta nömrəsi</span><input name="insuranceNumber" maxlength="160" /></label>
+                <label class="admin-field"><span>Sığorta bitir</span><input name="insuranceValidUntil" type="date" /></label>
+                <label class="admin-field"><span>Komanda ölçüsü</span><input name="teamSize" type="number" min="0" max="100000" value="0" /></label>
+                <label class="admin-field"><span>İllik güc</span><input name="annualCapacity" maxlength="300" placeholder="m², layihə və ya dövriyyə" /></label>
+                <label class="admin-field"><span>Status</span><select name="status"><option value="draft">Qaralama</option><option value="pending" selected>Yoxlamaya göndər</option><option value="verified">Təsdiqlə</option></select></label>
+              </div>
+              <label class="admin-field"><span>Regionlar</span><input name="regions" placeholder="Bakı; Abşeron; Gəncə" /></label>
+              <label class="admin-field"><span>İxtisaslar</span><input name="specialties" placeholder="Fasad; MEP; beton işləri" /></label>
+              <label class="admin-field"><span>Portfolio URL-ləri</span><textarea name="portfolioUrls" rows="2"></textarea></label>
+              <label class="admin-field"><span>Yoxlama qeydi</span><textarea name="verificationNote" rows="3"></textarea></label>
+              <button class="button button-primary" type="submit">Podratçı pasportunu saxla</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="contractors"></div>
+          </section>
+
+          <section class="lifecycle-panel" data-lifecycle-panel="locks" hidden>
+            <div class="market-section-heading"><div><p class="eyebrow">24–72 saatlıq rezerv</p><h2>Təsdiqlənmiş qiymət kilidi</h2></div><span class="data-badge" data-count="locks">0 kilid</span></div>
+            <form class="admin-form lifecycle-form" data-lifecycle-form="lock-price">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Məhsul təklifi</span><select name="productOfferId" data-option-source="offers" required></select></label>
+                <label class="admin-field"><span>Layihə</span><select name="projectId" data-option-source="projects" data-optional="true"></select></label>
+                <label class="admin-field"><span>Miqdar</span><input name="quantity" type="number" min="0.001" step="0.001" value="1" required /></label>
+                <label class="admin-field"><span>Müddət</span><select name="hours"><option value="24">24 saat</option><option value="48">48 saat</option><option value="72">72 saat</option></select></label>
+              </div>
+              <button class="button button-primary" type="submit">Qiyməti kilidlə</button>
+            </form>
+            <div class="lifecycle-records" data-lifecycle-records="locks"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+    <script src="assets/js/lifecycle-center.js"></script>
+  </body>
+</html>

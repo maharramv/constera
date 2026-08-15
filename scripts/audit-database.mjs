@@ -77,7 +77,15 @@ const [counts] = await query(`
         AND license_type IN ('own', 'supplier', 'official', 'licensed')
         AND rights_status = 'verified'
         AND (rights_expires_on IS NULL OR rights_expires_on >= current_date)) AS licensed_media_assets,
-    (SELECT count(*)::int FROM web_push_subscriptions WHERE status = 'active') AS active_push_subscriptions
+    (SELECT count(*)::int FROM web_push_subscriptions WHERE status = 'active') AS active_push_subscriptions,
+    (SELECT count(*)::int FROM product_digital_passports) AS product_digital_passports,
+    (SELECT count(*)::int FROM project_model_imports) AS project_model_imports,
+    (SELECT count(*)::int FROM project_change_orders) AS project_change_orders,
+    (SELECT count(*)::int FROM warranty_cases) AS warranty_cases,
+    (SELECT count(*)::int FROM surplus_listings WHERE status = 'published') AS published_surplus_listings,
+    (SELECT count(*)::int FROM rental_handover_reports) AS rental_handover_reports,
+    (SELECT count(*)::int FROM contractor_passports WHERE status = 'verified') AS verified_contractor_passports,
+    (SELECT count(*)::int FROM offer_price_locks WHERE status = 'active') AS active_offer_price_locks
 `);
 
 const [integrity] = await query(`
@@ -456,6 +464,15 @@ const [integrity] = await query(`
     (SELECT count(*)::int FROM procurement_plan_phases phase
       WHERE phase.row_count <> jsonb_array_length(phase.row_keys)
         OR phase.row_count > 20) AS invalid_procurement_phase_rows,
+    (SELECT count(*)::int FROM offer_price_locks
+      WHERE status = 'active' AND expires_at <= now()) AS expired_active_price_locks,
+    (SELECT count(*)::int FROM surplus_listings
+      WHERE status = 'published' AND expires_at IS NOT NULL AND expires_at <= now()) AS expired_published_surplus,
+    (SELECT count(*)::int FROM contractor_passports
+      WHERE status = 'verified' AND (verified_by IS NULL OR verified_at IS NULL)) AS invalid_verified_contractors,
+    (SELECT count(*)::int FROM warranty_cases warranty
+      JOIN customer_projects project ON project.id = warranty.project_id
+      WHERE warranty.customer_id IS NOT NULL AND warranty.customer_id <> project.customer_id) AS warranty_project_scope_mismatch,
     COALESCE((
       SELECT CASE
         WHEN verification.schema_migrations = ${BACKUP_SCHEMA_MIGRATIONS}
@@ -528,6 +545,14 @@ const [schema] = await query(`
     to_regclass('public.ai_usage_counters') IS NOT NULL AS ai_usage_counters_ready,
     to_regclass('public.ai_runs') IS NOT NULL AS ai_runs_ready,
     to_regclass('public.web_push_subscriptions') IS NOT NULL AS web_push_subscriptions_ready,
+    to_regclass('public.product_digital_passports') IS NOT NULL AS product_digital_passports_ready,
+    to_regclass('public.project_model_imports') IS NOT NULL AS project_model_imports_ready,
+    to_regclass('public.project_change_orders') IS NOT NULL AS project_change_orders_ready,
+    to_regclass('public.warranty_cases') IS NOT NULL AS warranty_cases_ready,
+    to_regclass('public.surplus_listings') IS NOT NULL AS surplus_listings_ready,
+    to_regclass('public.rental_handover_reports') IS NOT NULL AS rental_handover_reports_ready,
+    to_regclass('public.contractor_passports') IS NOT NULL AS contractor_passports_ready,
+    to_regclass('public.offer_price_locks') IS NOT NULL AS offer_price_locks_ready,
     EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS search_ready,
     to_regclass('public.products_search_folded_trgm_idx') IS NOT NULL AS folded_search_ready,
     to_regclass('public.suppliers_company_unique') IS NOT NULL AS supplier_scope_ready,

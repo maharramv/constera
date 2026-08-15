@@ -21,6 +21,7 @@ const PRIVATE_PAGES = new Set([
   "/customer-cabinet.html",
   "/project-planner.html",
   "/login.html",
+  "/lifecycle-center.html",
   "/order-detail.html",
   "/proposal-detail.html",
   "/price-import.html",

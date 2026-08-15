@@ -1,0 +1,79 @@
+.product-passport-section {
+  display: grid;
+  gap: 20px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgba(212, 166, 79, 0.025);
+  padding-top: 34px;
+  padding-bottom: 34px;
+}
+
+.product-passport-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1.45fr);
+  gap: 24px;
+}
+
+.product-passport-code {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  border-left: 3px solid var(--gold);
+  padding: 8px 0 8px 18px;
+}
+
+.product-passport-code span,
+.product-passport-code small,
+.product-passport-facts dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.product-passport-code strong {
+  overflow-wrap: anywhere;
+  font-size: 1.15rem;
+}
+
+.product-passport-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+}
+
+.product-passport-facts > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  background: #11161d;
+  padding: 12px;
+}
+
+.product-passport-facts dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.product-passport-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .product-passport-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .product-passport-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .product-passport-actions .button {
+    width: 100%;
+  }
+}

@@ -3,8 +3,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { put } from "@vercel/blob";
 import { query, recordAudit } from "./db.js";
 
-const BACKUP_VERSION = "constera-cloud-backup-v19";
-export const BACKUP_SCHEMA_MIGRATIONS = 36;
+const BACKUP_VERSION = "constera-cloud-backup-v20";
+export const BACKUP_SCHEMA_MIGRATIONS = 37;
 
 const backupQueries = Object.freeze({
   companies: "SELECT * FROM companies ORDER BY created_at",
@@ -19,6 +19,7 @@ const backupQueries = Object.freeze({
                     image_url, source_url, source_label, specs, extra_data, status, created_at, updated_at
                FROM products ORDER BY updated_at`,
   productOffers: "SELECT * FROM product_offers ORDER BY product_id, supplier_id",
+  productDigitalPassports: "SELECT * FROM product_digital_passports ORDER BY product_id",
   priceHistory: "SELECT * FROM price_history ORDER BY captured_at",
   marketplaceEntities: "SELECT * FROM marketplace_entities ORDER BY entity_kind, title",
   mediaAssets: "SELECT * FROM media_assets ORDER BY created_at",
@@ -56,12 +57,19 @@ const backupQueries = Object.freeze({
   projectSiteDailyLogs: "SELECT * FROM project_site_daily_logs ORDER BY project_id, work_date, created_at",
   projectQualityIssues: "SELECT * FROM project_quality_issues ORDER BY project_id, created_at",
   projectControlDocuments: "SELECT * FROM project_control_documents ORDER BY project_id, inspection_date, created_at",
+  projectModelImports: "SELECT * FROM project_model_imports ORDER BY project_id, created_at",
+  projectChangeOrders: "SELECT * FROM project_change_orders ORDER BY project_id, change_number",
+  warrantyCases: "SELECT * FROM warranty_cases ORDER BY created_at",
+  surplusListings: "SELECT * FROM surplus_listings ORDER BY created_at",
   customerEstimates: "SELECT * FROM customer_estimates ORDER BY created_at",
   procurementPlans: "SELECT * FROM procurement_plans ORDER BY created_at",
   procurementPlanPhases: "SELECT * FROM procurement_plan_phases ORDER BY plan_id, sequence",
   crmLeads: "SELECT * FROM crm_leads ORDER BY created_at",
   crmActivities: "SELECT * FROM crm_activities ORDER BY lead_id, created_at",
   rentalBookings: "SELECT * FROM rental_bookings ORDER BY created_at",
+  rentalHandoverReports: "SELECT * FROM rental_handover_reports ORDER BY booking_id, report_type",
+  contractorPassports: "SELECT * FROM contractor_passports ORDER BY supplier_id",
+  offerPriceLocks: "SELECT * FROM offer_price_locks ORDER BY created_at",
   supplierApplications: "SELECT * FROM supplier_applications ORDER BY created_at",
   priceReviewRequests: "SELECT * FROM price_review_requests ORDER BY requested_at",
   notifications: "SELECT * FROM notifications ORDER BY created_at",
@@ -178,6 +186,9 @@ const restoreReferences = Object.freeze([
   ["products", "supplier_id", "suppliers"],
   ["productOffers", "product_id", "products"],
   ["productOffers", "supplier_id", "suppliers"],
+  ["productDigitalPassports", "product_id", "products"],
+  ["productDigitalPassports", "created_by", "users"],
+  ["productDigitalPassports", "updated_by", "users"],
   ["priceHistory", "product_id", "products"],
   ["tenderLots", "tender_id", "tenders"],
   ["tenderBids", "tender_id", "tenders"],
@@ -220,6 +231,17 @@ const restoreReferences = Object.freeze([
   ["projectSiteDailyLogs", "project_id", "customerProjects"],
   ["projectQualityIssues", "project_id", "customerProjects"],
   ["projectControlDocuments", "project_id", "customerProjects"],
+  ["projectModelImports", "project_id", "customerProjects"],
+  ["projectChangeOrders", "project_id", "customerProjects"],
+  ["projectChangeOrders", "requested_by", "users"],
+  ["warrantyCases", "customer_id", "users"],
+  ["warrantyCases", "project_id", "customerProjects"],
+  ["warrantyCases", "order_id", "orders"],
+  ["warrantyCases", "product_id", "products"],
+  ["warrantyCases", "supplier_id", "suppliers"],
+  ["surplusListings", "project_id", "customerProjects"],
+  ["surplusListings", "product_id", "products"],
+  ["surplusListings", "owner_id", "users"],
   ["customerEstimates", "customer_id", "users"],
   ["customerEstimates", "ai_run_id", "aiRuns"],
   ["customerEstimates", "rfq_id", "rfqs"],
@@ -230,6 +252,11 @@ const restoreReferences = Object.freeze([
   ["procurementPlanPhases", "plan_id", "procurementPlans"],
   ["procurementPlanPhases", "rfq_id", "rfqs"],
   ["crmActivities", "lead_id", "crmLeads"],
+  ["rentalHandoverReports", "booking_id", "rentalBookings"],
+  ["contractorPassports", "supplier_id", "suppliers"],
+  ["offerPriceLocks", "product_offer_id", "productOffers"],
+  ["offerPriceLocks", "customer_id", "users"],
+  ["offerPriceLocks", "project_id", "customerProjects"],
   ["supportCaseItems", "case_id", "supportCases"],
   ["supportCaseMessages", "case_id", "supportCases"],
   ["supplierFeedRuns", "feed_id", "supplierFeeds"],
@@ -325,6 +352,11 @@ export const verifyCloudBackup = async ({ actorId = null } = {}) => {
     "commercialProposals",
     "customerEstimates",
     "procurementPlans",
+    "productDigitalPassports",
+    "projectChangeOrders",
+    "warrantyCases",
+    "rentalHandoverReports",
+    "offerPriceLocks",
     "policyConsents",
     "auditLogs"
   ];

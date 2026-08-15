@@ -99,6 +99,12 @@
       method: "POST",
       body: JSON.stringify(data)
     }),
+    lifecycle: () => request("/api/lifecycle"),
+    lifecycleMutation: (data) => request("/api/lifecycle", {
+      method: "POST",
+      body: JSON.stringify(data)
+    }),
+    publicProductPassport: (productId) => request(`/api/lifecycle?scope=public-passport&productId=${encodeURIComponent(productId)}`),
     saveEstimate: (data) => request("/api/cabinet", {
       method: "POST",
       body: JSON.stringify({ action: "save-estimate", ...data })

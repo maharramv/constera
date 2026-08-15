@@ -82,11 +82,10 @@ const heaviestJavascriptPage = [...pageUsage].sort((left, right) => right.javasc
 const heaviestCssPage = [...pageUsage].sort((left, right) => right.css - left.css)[0];
 const supplierPortalUsage = pageUsage.find((item) => item.page === "supplier-portal.html");
 const customerCabinetUsage = pageUsage.find((item) => item.page === "customer-cabinet.html");
-// Route-spesifik kabinetlər ümumi JS ölçüsünü artırır; hər səhifənin normal və gzip limitləri ayrıca sərt qalır.
-if (totalBytes > 3_050_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
-if (javascriptBytes > 610_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
-// Route-specific styles increase the aggregate without increasing every page's payload.
-if (cssBytes > 85_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
+// Route-spesifik kabinetlər və həyat dövrü mərkəzi ümumi paketi artırır; aşağıdakı səhifə və gzip limitləri sərt qalır.
+if (totalBytes > 3_100_000) errors.push(`Build ölçüsü limitdən böyükdür: ${totalBytes} bayt.`);
+if (javascriptBytes > 625_000) errors.push(`Ümumi JavaScript ölçüsü limitdən böyükdür: ${javascriptBytes} bayt.`);
+if (cssBytes > 91_000) errors.push(`Ümumi CSS ölçüsü limitdən böyükdür: ${cssBytes} bayt.`);
 if (heaviestJavascriptPage?.javascript > 475_000) {
   errors.push(`${heaviestJavascriptPage.page} JavaScript büdcəsini keçib: ${heaviestJavascriptPage.javascript} bayt.`);
 }

@@ -40,6 +40,7 @@ const activeNavigationByPage = Object.freeze({
   "supplier-portal": "customer-cabinet",
   "price-import": "customer-cabinet",
   "customer-cabinet": "customer-cabinet",
+  "lifecycle-center": "customer-cabinet",
   checkout: "project-planner",
   "order-detail": "customer-cabinet",
   "proposal-detail": "rfq",
