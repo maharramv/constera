@@ -140,16 +140,19 @@ const requirePublicSupplier = async (supplierId) => {
 
 const readPublicPassport = async (productId) => {
   const rows = await query(
-    `SELECT passport.*, product.name AS product_name, product.sku, product.brand,
+    `SELECT passport.*, product.id AS active_product_id, product.name AS product_name, product.sku, product.brand,
             product.package_text, product.origin
-       FROM product_digital_passports passport
-       JOIN products product ON product.id = passport.product_id
-      WHERE passport.product_id = $1 AND passport.status = 'published'
+       FROM products product
+       LEFT JOIN product_digital_passports passport
+         ON passport.product_id = product.id
+        AND passport.status = 'published'
         AND (passport.valid_until IS NULL OR passport.valid_until >= current_date)
+      WHERE product.id = $1 AND product.status = 'active'
       LIMIT 1`,
     [text(productId, { field: "Məhsul", required: true, max: 160 })]
   );
-  if (!rows[0]) throw new ApiError(404, "passport_not_found", "Bu məhsul üçün dərc edilmiş rəqəmsal pasport yoxdur.");
+  if (!rows[0]) throw new ApiError(404, "product_not_found", "Aktiv məhsul tapılmadı.");
+  if (!rows[0].id) return null;
   const passport = camelize(rows[0]);
   return { ...passport, completeness: passportCompleteness(passport) };
 };

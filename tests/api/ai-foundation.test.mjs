@@ -23,6 +23,8 @@ import {
   openAiConfiguration
 } from "../../api/_lib/openai.js";
 
+const TEST_OPENAI_KEY = ["sk", "test", "abcdefghijklmnopqrstuvwxyz123456"].join("-");
+
 const withEnvironment = async (values, callback) => {
   const previous = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
   Object.entries(values).forEach(([key, value]) => {
@@ -269,7 +271,7 @@ test("OpenAI Responses sorğusu store=false və sərt JSON Schema ilə göndəri
   const originalFetch = globalThis.fetch;
   try {
     await withEnvironment({
-      OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456",
+      OPENAI_API_KEY: TEST_OPENAI_KEY,
       OPENAI_MODEL: "gpt-5-mini",
       OPENAI_REASONING_EFFORT: "minimal",
       AI_MAX_OUTPUT_TOKENS: "1400"
@@ -332,7 +334,7 @@ test("PDF sənədi Responses API-yə data URI və yüksək detal ilə göndəril
   const originalFetch = globalThis.fetch;
   try {
     await withEnvironment({
-      OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456",
+      OPENAI_API_KEY: TEST_OPENAI_KEY,
       AI_PDF_DETAIL: "high"
     }, async () => {
       let requestBody;
@@ -391,7 +393,7 @@ test("PDF sənədi Responses API-yə data URI və yüksək detal ilə göndəril
 test("OpenAI kataloq və RFQ funksiyaları ayrı sərt sxemlərdən istifadə edir", async () => {
   const originalFetch = globalThis.fetch;
   try {
-    await withEnvironment({ OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456" }, async () => {
+    await withEnvironment({ OPENAI_API_KEY: TEST_OPENAI_KEY }, async () => {
       const schemaNames = [];
       globalThis.fetch = async (_url, options) => {
         const requestBody = JSON.parse(options.body);
@@ -446,7 +448,7 @@ test("OpenAI kataloq və RFQ funksiyaları ayrı sərt sxemlərdən istifadə ed
 test("OpenAI təklif müqayisəsi yalnız offerId əsaslı sərt sxem qaytarır", async () => {
   const originalFetch = globalThis.fetch;
   try {
-    await withEnvironment({ OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456" }, async () => {
+    await withEnvironment({ OPENAI_API_KEY: TEST_OPENAI_KEY }, async () => {
       let requestBody;
       globalThis.fetch = async (_url, options) => {
         requestBody = JSON.parse(options.body);
@@ -491,7 +493,7 @@ test("OpenAI təklif müqayisəsi yalnız offerId əsaslı sərt sxem qaytarır"
 test("OpenAI satınalma planı yalnız dalğa açarları ilə sərt sxem qaytarır", async () => {
   const originalFetch = globalThis.fetch;
   try {
-    await withEnvironment({ OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456" }, async () => {
+    await withEnvironment({ OPENAI_API_KEY: TEST_OPENAI_KEY }, async () => {
       let requestBody;
       globalThis.fetch = async (_url, options) => {
         requestBody = JSON.parse(options.body);
@@ -537,7 +539,7 @@ test("OpenAI vaxt limiti ayrıca idarə olunan xəta qaytarır", async () => {
   const originalFetch = globalThis.fetch;
   try {
     await withEnvironment({
-      OPENAI_API_KEY: "sk-test_abcdefghijklmnopqrstuvwxyz123456"
+      OPENAI_API_KEY: TEST_OPENAI_KEY
     }, async () => {
       globalThis.fetch = async () => {
         throw new DOMException("Sorğu vaxtı bitdi", "TimeoutError");

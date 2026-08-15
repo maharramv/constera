@@ -18,6 +18,7 @@
   window.ConstEraAPI.publicProductPassport(productId)
     .then((result) => {
       const passport = result.data;
+      if (!passport) return;
       const environment = passport.environmentalData || {};
       const section = document.createElement("section");
       section.className = "section product-passport-section";
@@ -52,6 +53,6 @@
       detailRoot.insertAdjacentElement("afterend", section);
     })
     .catch((error) => {
-      if (error.status !== 404) console.warn("Məhsul pasportu yüklənmədi.");
+      console.warn("Məhsul pasportu yüklənmədi.");
     });
 })();

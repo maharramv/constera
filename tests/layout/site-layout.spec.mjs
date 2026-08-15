@@ -135,6 +135,42 @@ test("dinamik idarəetmələr əlçatan ad və təhlükəsiz xarici link alır",
   }
 });
 
+test("render olunan şəkillər mobil və desktop görünüşdə zədəsiz açılır", async ({ page }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    for (const file of pages) {
+      await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
+      await page.locator("img").evaluateAll((images) => {
+        images.forEach((image) => { image.loading = "eager"; });
+      });
+      await page.waitForFunction(() => [...document.images].every((image) => image.complete), null, { timeout: 8_000 })
+        .catch(() => {});
+      const broken = await page.locator("img").evaluateAll((images) => images
+        .filter((image) => !image.complete || image.naturalWidth === 0 || image.naturalHeight === 0)
+        .map((image) => image.currentSrc || image.src || "src yoxdur"));
+      expect(broken, `${file} @ ${viewport.width}px: açılmayan şəkil`).toEqual([]);
+    }
+  }
+});
+
+test("render olunan daxili keçidlərin hamısı mövcud səhifəyə aparır", async ({ page, request }) => {
+  const targets = new Set();
+  for (const file of pages) {
+    await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
+    const links = await page.locator("a[href]").evaluateAll((anchors) => anchors.map((anchor) => {
+      const href = anchor.getAttribute("href") || "";
+      if (!href || /^(?:mailto:|tel:|https?:\/\/|#)/i.test(href)) return "";
+      const target = new URL(href, location.href);
+      return target.origin === location.origin ? `${target.pathname}${target.search}` : "";
+    }).filter(Boolean));
+    links.forEach((link) => targets.add(link));
+  }
+  for (const target of [...targets].sort()) {
+    const response = await request.get(target);
+    expect(response.status(), `${target}: daxili keçid cavabı`).toBeLessThan(400);
+  }
+});
+
 test("əsas ekranların vizual artefaktları yaradılır", async ({ page }, testInfo) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
     await page.setViewportSize(viewport);

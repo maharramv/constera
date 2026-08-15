@@ -34,8 +34,9 @@ test("rəqəmsal pasport məhsul səhifəsində yalnız dərc edilmiş məlumat�
   const api = read("api/_admin/lifecycle.js");
   assert.match(detail, /assets\/js\/lifecycle-public\.js/);
   assert.match(client, /publicProductPassport/);
-  assert.match(client, /error\.status !== 404/);
+  assert.match(client, /if \(!passport\) return/);
   assert.match(api, /passport\.status = 'published'/);
+  assert.match(api, /if \(!rows\[0\]\.id\) return null/);
   assert.match(api, /completeness\.score < 70/);
 });
 
