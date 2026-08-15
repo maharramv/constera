@@ -19,10 +19,10 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Repozitoriyanı yüklə
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Node.js 22 qur
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -60,7 +60,7 @@ jobs:
 
       - name: Launch readiness nəticələrini saxla
         if: steps.launch-readiness.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: constera-launch-readiness
           path: outputs/launch-readiness-*
@@ -69,7 +69,7 @@ jobs:
 
       - name: Brauzer hesabatını saxla
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: constera-playwright-report
           path: |
