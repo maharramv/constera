@@ -8,7 +8,7 @@
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.035);
+  background: #ffffff;
   padding: 10px 13px;
   cursor: pointer;
 }

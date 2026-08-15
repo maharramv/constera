@@ -50,7 +50,7 @@
 .rfq-ai-confidence strong {
   font-family: var(--font-display);
   font-size: 1.45rem;
-  color: #f6d78d;
+  color: #79500f;
 }
 
 .rfq-ai-confidence span,
@@ -84,7 +84,7 @@
   height: 30px;
   border: 1px solid var(--line);
   border-radius: 50%;
-  color: #f6d78d;
+  color: #79500f;
   font-weight: 800;
 }
 
@@ -119,7 +119,7 @@
 }
 
 .rfq-ai-rank-facts p[data-type="warning"] {
-  color: #f0b4a9;
+  color: #a7352c;
 }
 
 @media (max-width: 760px) {

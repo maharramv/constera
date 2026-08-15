@@ -10,7 +10,7 @@
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
+  background: #ffffff;
   padding: 16px;
 }
 

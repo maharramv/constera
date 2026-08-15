@@ -2,21 +2,21 @@
   display: inline-grid;
   place-items: center;
   border: 1px solid var(--line);
-  color: #ffca66;
+  color: #79500f;
 }
 
 .launch-score[data-tone="good"],
 .launch-readiness-section .is-ready em,
 .launch-pilot-checks .is-ready,
 .status-pill.is-success {
-  color: #73d8a1;
+  color: #0c5c49;
 }
 
 .launch-score[data-tone="critical"],
 .launch-readiness-section .is-blocked em,
 .launch-pilot-checks .is-blocked,
 .status-pill.is-danger {
-  color: #ff8d86;
+  color: #a7352c;
 }
 
 .launch-section-grid {
@@ -91,7 +91,7 @@
   place-items: center;
   border-radius: 50%;
   background: rgba(255, 186, 55, 0.1);
-  color: #ffca66;
+  color: #79500f;
 }
 
 .launch-pilot-result {

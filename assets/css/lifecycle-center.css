@@ -59,8 +59,8 @@ body[data-page="lifecycle-center"] .lifecycle-hero h1 {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(11, 15, 20, 0.95);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(33, 58, 49, 0.1);
   padding: 5px;
   scrollbar-width: thin;
 }
@@ -99,7 +99,7 @@ body[data-page="lifecycle-center"] .lifecycle-hero h1 {
 .lifecycle-panel .admin-form {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: #ffffff;
   padding: 20px;
 }
 
@@ -135,7 +135,7 @@ body[data-page="lifecycle-center"] .lifecycle-hero h1 {
   gap: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
+  background: #ffffff;
   padding: 18px;
 }
 

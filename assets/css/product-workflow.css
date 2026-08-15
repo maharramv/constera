@@ -9,7 +9,7 @@
   width: 100%;
   padding: 10px;
   overflow-x: auto;
-  background: rgba(7, 12, 18, 0.86);
+  background: #edf3f0;
 }
 
 .detail-gallery-thumbs button {

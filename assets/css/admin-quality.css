@@ -4,7 +4,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   color: var(--text);
-  background: #10161d;
+  background: #ffffff;
   padding: 0;
   overflow: hidden;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
@@ -43,7 +43,7 @@
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
+  background: #eef4f1;
   font: 400 1.65rem/1 var(--font-body);
   cursor: pointer;
 }

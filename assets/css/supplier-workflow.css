@@ -10,7 +10,7 @@
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
+  background: #ffffff;
   padding: 11px 12px;
 }
 
@@ -30,7 +30,7 @@
 }
 
 .inventory-bulk-preview-row.is-valid strong {
-  color: #bff5e7;
+  color: #0c5c49;
 }
 
 .inventory-bulk-preview-row.has-error {
@@ -40,7 +40,7 @@
 
 .inventory-bulk-preview-row.has-error strong,
 .inventory-bulk-preview-row.has-error small {
-  color: #ffc1ba;
+  color: #a7352c;
 }
 
 .supplier-order-table {
