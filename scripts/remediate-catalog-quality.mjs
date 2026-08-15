@@ -46,7 +46,17 @@ const filteredRows = onlyTypes.length
 const issueIds = [...new Set([...issueArguments, ...filteredRows.map((row) => row.id)])];
 const allRequested = process.argv.includes("--all");
 const commit = process.argv.includes("--commit");
-const preview = await previewCatalogRemediation(allRequested ? [] : issueIds);
+const hasExplicitSelection = issueArguments.length > 0 || onlyTypes.length > 0;
+const emptyPreview = {
+  selectedIssues: 0,
+  quarantineProducts: 0,
+  duplicateProducts: 0,
+  safeFieldFixes: 0,
+  manualIssues: 0
+};
+const preview = !allRequested && hasExplicitSelection && issueIds.length === 0
+  ? emptyPreview
+  : await previewCatalogRemediation(allRequested ? [] : issueIds);
 console.log("Kataloq düzəlişi ön baxışı:");
 Object.entries(preview).forEach(([key, value]) => console.log(`- ${key}: ${value}`));
 

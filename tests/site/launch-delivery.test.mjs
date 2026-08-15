@@ -96,3 +96,10 @@ test("təchizatçı qoşulma növbəsi hüquqi sübutları avtomatik təsdiqləm
   assert.doesNotMatch(script, /\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\b/);
   assert.match(script, /supplier-onboarding-priority\.csv/);
 });
+
+test("kataloq remediation CLI boş təhlükəsiz filtrdə bütün problemləri seçmir", () => {
+  const script = read("scripts/remediate-catalog-quality.mjs");
+  assert.match(script, /hasExplicitSelection/);
+  assert.match(script, /hasExplicitSelection && issueIds\.length === 0/);
+  assert.match(script, /selectedIssues: 0/);
+});
