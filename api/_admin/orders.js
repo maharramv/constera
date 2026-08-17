@@ -301,14 +301,14 @@ export default withApiErrors(async (req, res) => {
     if (source.offerId && !selectedOffer) {
       throw new ApiError(400, "product_offer_not_found", `${product.name} üçün seçilmiş təchizatçı təklifi aktiv deyil.`);
     }
-    if (selectedOffer?.minimumOrder !== null && quantity < selectedOffer.minimumOrder) {
+    if (selectedOffer && selectedOffer.minimumOrder !== null && quantity < selectedOffer.minimumOrder) {
       throw new ApiError(
         400,
         "minimum_order_not_met",
         `${product.name} üçün minimum sifariş ${selectedOffer.minimumOrder} vahiddir.`
       );
     }
-    if (selectedOffer?.stockQuantity !== null && quantity > selectedOffer.stockQuantity) {
+    if (selectedOffer && selectedOffer.stockQuantity !== null && quantity > selectedOffer.stockQuantity) {
       throw new ApiError(
         409,
         "insufficient_offer_stock",

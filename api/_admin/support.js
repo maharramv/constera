@@ -288,7 +288,7 @@ export default withApiErrors(async (req, res) => {
       supplierId = supplierId || booking.supplier_id || null;
     }
     const requestedAmount = parsePriceAmount(body.requestedAmount);
-    if (requestedAmount !== null && order?.total_amount !== null && requestedAmount > Number(order.total_amount) + 0.01) {
+    if (requestedAmount !== null && order && order.total_amount !== null && requestedAmount > Number(order.total_amount) + 0.01) {
       throw new ApiError(400, "refund_amount_exceeds_order", "Tələb edilən məbləğ sifariş məbləğini keçə bilməz.");
     }
     const id = `sup-${randomUUID()}`;
