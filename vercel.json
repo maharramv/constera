@@ -38,6 +38,7 @@
     { "source": "/api/inventory", "destination": "/api/admin?__route=inventory" },
     { "source": "/api/launch-center", "destination": "/api/admin?__route=launch-center" },
     { "source": "/api/logistics", "destination": "/api/admin?__route=logistics" },
+    { "source": "/api/notify-email", "destination": "/api/admin?__route=notify-email" },
     { "source": "/api/lifecycle", "destination": "/api/admin?__route=lifecycle" },
     { "source": "/api/execution", "destination": "/api/admin?__route=execution" },
     { "source": "/api/media", "destination": "/api/admin?__route=media" },
