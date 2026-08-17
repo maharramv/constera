@@ -96,6 +96,27 @@
             <button class="button button-primary" type="submit">Şifrəni yenilə</button>
           </form>
 
+          <form class="admin-form auth-form auth-reset-form" data-accept-invite-form hidden>
+            <div class="auth-copy">
+              <p class="eyebrow">Administrator dəvəti</p>
+              <h2>Dəvəti qəbul et və hesabı aktivləşdir</h2>
+            </div>
+            <input name="token" type="hidden" data-accept-invite-token />
+            <label class="admin-field">
+              <span>Ad, soyad (istəyə görə)</span>
+              <input name="name" type="text" autocomplete="name" maxlength="120" />
+            </label>
+            <label class="admin-field">
+              <span>Şifrə</span>
+              <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+            </label>
+            <label class="admin-field">
+              <span>Şifrəni təsdiqlə</span>
+              <input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+            </label>
+            <button class="button button-primary" type="submit">Hesabı aktivləşdir</button>
+          </form>
+
           <details class="auth-setup">
             <summary>İlk super administratoru yarat</summary>
             <form class="admin-form auth-form" data-setup-form>

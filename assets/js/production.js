@@ -53,6 +53,12 @@
       headers: { Authorization: `Bearer ${credentials.setupToken}` },
       body: JSON.stringify(credentials)
     }),
+    register: (data) => request("/api/auth?action=register", { method: "POST", body: JSON.stringify(data) }),
+    verifyEmail: (token) => request("/api/auth?action=verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+    acceptInvite: (data) => request("/api/auth?action=accept-invite", { method: "POST", body: JSON.stringify(data) }),
+    inviteAdmin: (data) => request("/api/users", { method: "POST", body: JSON.stringify({ action: "invite", ...data }) }),
+    adminInvites: (status = "pending") => request(`/api/users?scope=invites&status=${encodeURIComponent(status)}`),
+    revokeInvite: (inviteId) => request("/api/users", { method: "PATCH", body: JSON.stringify({ inviteId }) }),
     logout: () => request("/api/auth?action=logout", { method: "POST", body: "{}" }),
     cabinet: () => request("/api/cabinet"),
     syncSavedProducts: (listType, productIds) => request("/api/cabinet", {
@@ -497,12 +503,15 @@
     const resetForm = document.querySelector("[data-password-reset-form]");
     const recoveryPanel = document.querySelector("[data-password-recovery]");
     const resetTokenInput = document.querySelector("[data-password-reset-token]");
+    const acceptInviteForm = document.querySelector("[data-accept-invite-form]");
+    const acceptInviteTokenInput = document.querySelector("[data-accept-invite-token]");
     const status = document.querySelector("[data-auth-status]");
     const sessionPanel = document.querySelector("[data-auth-session]");
     const sessionName = document.querySelector("[data-auth-session-name]");
     const logoutButton = document.querySelector("[data-auth-logout]");
     if (!loginForm || !status) return;
     let resetToken = new URLSearchParams(window.location.search).get("reset") || "";
+    let inviteToken = new URLSearchParams(window.location.search).get("invite") || "";
     let twoFactorToken = "";
 
     const setStatus = (message, type = "info") => {
@@ -511,12 +520,14 @@
     };
     const showSession = (user) => {
       sessionPanel.hidden = !user;
-      loginForm.hidden = Boolean(user) || Boolean(resetToken) || Boolean(twoFactorToken);
-      if (twoFactorForm) twoFactorForm.hidden = Boolean(user) || Boolean(resetToken) || !twoFactorToken;
-      if (recoveryPanel) recoveryPanel.hidden = Boolean(user) || Boolean(resetToken);
-      if (resetForm) resetForm.hidden = Boolean(user) || !resetToken;
+      loginForm.hidden = Boolean(user) || Boolean(resetToken) || Boolean(inviteToken) || Boolean(twoFactorToken);
+      if (twoFactorForm) twoFactorForm.hidden = Boolean(user) || Boolean(resetToken) || Boolean(inviteToken) || !twoFactorToken;
+      if (recoveryPanel) recoveryPanel.hidden = Boolean(user) || Boolean(resetToken) || Boolean(inviteToken);
+      if (resetForm) resetForm.hidden = Boolean(user) || Boolean(inviteToken) || !resetToken;
       if (resetTokenInput) resetTokenInput.value = resetToken;
-      if (setupForm) setupForm.closest("details").hidden = Boolean(user) || Boolean(resetToken);
+      if (acceptInviteForm) acceptInviteForm.hidden = Boolean(user) || !inviteToken;
+      if (acceptInviteTokenInput) acceptInviteTokenInput.value = inviteToken;
+      if (setupForm) setupForm.closest("details").hidden = Boolean(user) || Boolean(resetToken) || Boolean(inviteToken);
       if (sessionName && user) sessionName.textContent = `${user.name} · ${user.role}`;
     };
     showSession(null);
@@ -537,7 +548,9 @@
           : "Aktiv sessiya tapıldı."
         : resetToken
           ? "Yeni güclü şifrəni iki dəfə yaz."
-          : "İdarəetmə hesabına daxil ol.", adminNeedsTwoFactor ? "warning" : "success");
+          : inviteToken
+            ? "Dəvəti qəbul etmək üçün şifrə təyin et."
+            : "İdarəetmə hesabına daxil ol.", adminNeedsTwoFactor ? "warning" : "success");
     } catch (error) {
       setStatus(error.message || "API hazırda əlçatan deyil.", "warning");
     }
@@ -647,6 +660,30 @@
       }
     });
 
+    acceptInviteForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = acceptInviteForm.querySelector('button[type="submit"]');
+      const fields = Object.fromEntries(new FormData(acceptInviteForm).entries());
+      if (fields.password !== fields.confirmPassword) {
+        setStatus("Şifrələr eyni olmalıdır.", "error");
+        return;
+      }
+      setButtonBusy(submit, true, "Aktivləşdirilir...");
+      try {
+        const result = await api.acceptInvite({ token: fields.token, password: fields.password, name: fields.name });
+        inviteToken = "";
+        window.history.replaceState({}, "", `login.html?next=${encodeURIComponent(safeNextUrl())}`);
+        acceptInviteForm.reset();
+        showSession(result.user);
+        setStatus("Hesab aktivləşdirildi. Yönləndirilirsən...", "success");
+        window.setTimeout(() => window.location.assign(safeNextUrl()), 350);
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        setButtonBusy(submit, false);
+      }
+    });
+
     setupForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
       const submit = setupForm.querySelector('button[type="submit"]');
@@ -667,6 +704,51 @@
       await api.logout().catch(() => null);
       showSession(null);
       setStatus("Sessiya bağlandı.", "success");
+    });
+  };
+
+  const initRegister = async () => {
+    const registerForm = document.querySelector("[data-register-form]");
+    const status = document.querySelector("[data-register-status]");
+    const donePanel = document.querySelector("[data-register-done]");
+    if (!registerForm || !status) return;
+
+    const setStatus = (message, type = "info") => {
+      status.textContent = message;
+      status.dataset.type = type;
+    };
+
+    const verifyToken = new URLSearchParams(window.location.search).get("verify") || "";
+    if (verifyToken) {
+      registerForm.hidden = true;
+      setStatus("Hesab təsdiqlənir...");
+      try {
+        await api.verifyEmail(verifyToken);
+        window.history.replaceState({}, "", "register.html");
+        donePanel.hidden = false;
+        setStatus("Hesab uğurla aktivləşdirildi.", "success");
+      } catch (error) {
+        registerForm.hidden = false;
+        setStatus(error.message, "error");
+      }
+      return;
+    }
+
+    setStatus("Aşağıdakı formu doldurub hesab yarat.");
+    registerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = registerForm.querySelector('button[type="submit"]');
+      setButtonBusy(submit, true, "Yaradılır...");
+      try {
+        const fields = Object.fromEntries(new FormData(registerForm).entries());
+        const result = await api.register(fields);
+        registerForm.hidden = true;
+        setStatus(result.message || "Qeydiyyat tamamlandı. E-poçtunu yoxla.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        setButtonBusy(submit, false);
+      }
     });
   };
 
@@ -762,5 +844,6 @@
   };
 
   initLogin();
+  initRegister();
   initCloudPanel();
 })();

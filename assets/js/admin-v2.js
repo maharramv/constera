@@ -19,6 +19,7 @@
     staging: [],
     audit: [],
     supplierApplications: [],
+    adminInvites: [],
     priceMonitor: null,
     account: null,
     qualityProduct: null,
@@ -560,6 +561,20 @@
     </tr>`).join("") || '<tr><td colspan="6">İstifadəçi tapılmadı.</td></tr>';
   };
 
+  const renderAdminInvites = () => {
+    const invites = state.adminInvites || [];
+    setText("[data-admin-invite-count]", `${invites.length.toLocaleString("az-AZ")} gözləyən`);
+    const body = qs("[data-admin-invites]");
+    if (!body) return;
+    body.innerHTML = invites.map((item) => `<tr>
+      <td data-label="Ad">${escapeHtml(item.name)}</td>
+      <td data-label="E-poçt">${escapeHtml(item.email)}</td>
+      <td data-label="Rol">${escapeHtml(roleLabels[item.role] || item.role)}</td>
+      <td data-label="Bitmə tarixi">${formatDate(item.expiresAt, true)}</td>
+      <td data-label="Əməliyyat"><button class="table-action is-danger" type="button" data-invite-revoke="${escapeHtml(item.id)}">Ləğv et</button></td>
+    </tr>`).join("") || '<tr><td colspan="5">Gözləyən dəvət yoxdur.</td></tr>';
+  };
+
   const clearUserForm = () => {
     const form = qs("[data-admin-v2-user-form]");
     if (!form) return;
@@ -832,6 +847,11 @@
   const loadSupplierApplications = async () => {
     state.supplierApplications = (await api.supplierApplications("pending")).data || [];
     renderSupplierApplications();
+  };
+  const loadAdminInvites = async () => {
+    if (state.session?.role !== "super_admin") return;
+    state.adminInvites = (await api.adminInvites("pending")).data || [];
+    renderAdminInvites();
   };
   const loadRequests = async () => {
     const [rfqs, tenders, tenderBids, orders] = await Promise.all([
@@ -1324,6 +1344,43 @@
       setStatus("[data-admin-supplier-application-status]", error.message, "error");
     } finally {
       setButtonBusy(button, false);
+    }
+  });
+  const inviteForm = qs("[data-admin-invite-form]");
+  inviteForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = inviteForm.querySelector('button[type="submit"]');
+    setButtonBusy(button, true, "Göndərilir...");
+    try {
+      const fields = Object.fromEntries(new FormData(inviteForm).entries());
+      const result = await api.inviteAdmin(fields);
+      inviteForm.reset();
+      await loadAdminInvites();
+      setStatus(
+        "[data-admin-invite-status]",
+        result.inviteUrl ? `Dəvət yaradıldı. Keçid (dev rejimi): ${result.inviteUrl}` : "Dəvət göndərildi.",
+        "success"
+      );
+    } catch (error) {
+      setStatus("[data-admin-invite-status]", error.message, "error");
+    } finally {
+      setButtonBusy(button, false);
+    }
+  });
+  qs("[data-admin-invites]")?.addEventListener("click", async (event) => {
+    const revokeButton = event.target.closest("[data-invite-revoke]");
+    if (!revokeButton) return;
+    const invite = state.adminInvites.find((item) => item.id === revokeButton.dataset.inviteRevoke);
+    if (!invite || !window.confirm(`${invite.email} üçün dəvət ləğv edilsin?`)) return;
+    setButtonBusy(revokeButton, true, "Ləğv edilir...");
+    try {
+      await api.revokeInvite(invite.id);
+      await loadAdminInvites();
+      setStatus("[data-admin-invite-status]", "Dəvət ləğv edildi.", "success");
+    } catch (error) {
+      setStatus("[data-admin-invite-status]", error.message, "error");
+    } finally {
+      setButtonBusy(revokeButton, false);
     }
   });
   qs("[data-admin-v2-rfqs]")?.addEventListener("change", async (event) => {
@@ -1924,7 +1981,7 @@
         setStatus("[data-admin-v2-status]", "Canlı idarəetmə üçün administrator hesabına daxil ol. Lokal panel işləməyə davam edir.", "warning");
         return;
       }
-      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadRequests(), loadB2b(), loadCommercial(), loadMedia(), loadSystem()];
+      const tasks = [loadDashboard(), loadCategories(), loadUsers(), loadSupplierApplications(), loadAdminInvites(), loadRequests(), loadB2b(), loadCommercial(), loadMedia(), loadSystem()];
       const results = await Promise.allSettled(tasks);
       const failed = results.filter((item) => item.status === "rejected");
       if (failed.length) {

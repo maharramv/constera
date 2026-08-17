@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra Qeydiyyat | Müştəri hesabı yarat</title>
+    <meta name="description" content="ConstEra tikinti materialları bazarında pulsuz müştəri hesabı yarat: qiymət sorğusu göndər, sifarişləri izlə, təchizatçılarla əlaqə saxla." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://constera.az/register.html" />
+    <meta name="theme-color" content="#f3f6f4" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body data-page="register">
+    <div class="site-shell auth-shell">
+      <header class="header">
+        <a class="brand" href="index.html#home" aria-label="CONSTERA ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="CONSTERA logo" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Tikintidə yeni era</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span class="menu-toggle-box">
+            <span class="menu-toggle-line"></span>
+            <span class="menu-toggle-line"></span>
+          </span>
+        </button>
+        <nav class="nav" id="site-nav">
+          <a href="index.html#home">Ana səhifə</a>
+          <a href="catalog.html">Kataloq</a>
+          <a href="services.html">Xidmətlər</a>
+          <a href="packages.html">Paketlər</a>
+          <a href="rental.html">İcarə</a>
+          <a href="ai-smeta.html">Ağıllı smeta</a>
+          <a href="project-planner.html">Layihə səbəti</a>
+          <a href="customer-cabinet.html" aria-current="page">Kabinet</a>
+          <a class="button button-outline nav-cta" href="rfq.html">Qiymət sorğusu</a>
+        </nav>
+      </header>
+
+      <main class="auth-main">
+        <section class="auth-card glass">
+          <div class="auth-copy">
+            <p class="eyebrow">Müştəri hesabı</p>
+            <h1>ConstEra hesabı yarat</h1>
+            <p>Qiymət sorğusu göndər, sifarişlərini izlə və layihələrini bir kabinetdə idarə et. Şifrə brauzerdə saxlanmır.</p>
+          </div>
+
+          <p class="auth-status" data-register-status role="status" aria-live="polite">Yüklənir...</p>
+
+          <form class="admin-form auth-form" data-register-form>
+            <label class="admin-field">
+              <span>Ad, soyad</span>
+              <input name="name" type="text" autocomplete="name" minlength="2" maxlength="120" required />
+            </label>
+            <label class="admin-field">
+              <span>E-poçt</span>
+              <input name="email" type="email" autocomplete="username" maxlength="254" required />
+            </label>
+            <label class="admin-field">
+              <span>Şifrə</span>
+              <input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required />
+            </label>
+            <label hidden aria-hidden="true">
+              <span>Faks</span>
+              <input name="fax" type="text" tabindex="-1" autocomplete="off" />
+            </label>
+            <button class="button button-primary" type="submit">Hesab yarat</button>
+            <p class="admin-import-status">Qeydiyyatdan keçməklə <a href="terms.html">istifadə şərtlərini</a> və <a href="privacy.html">məxfilik siyasətini</a> qəbul etmiş olursan.</p>
+          </form>
+
+          <div class="auth-session" data-register-done hidden>
+            <strong>Hesab aktivdir</strong>
+            <div class="admin-actions">
+              <a class="button button-primary" href="customer-cabinet.html">Kabinetə keç</a>
+            </div>
+          </div>
+
+          <p class="admin-import-status">Artıq hesabın var? <a href="login.html">Daxil ol</a>. Təchizatçısan? <a href="suppliers.html#supplier-application">Təchizatçı müraciəti göndər</a>.</p>
+        </section>
+      </main>
+    </div>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/production.js"></script>
+  </body>
+</html>

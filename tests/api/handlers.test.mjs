@@ -4,6 +4,7 @@ import healthHandler from "../../api/health.js";
 import authHandler from "../../api/auth.js";
 import catalogHandler from "../../api/catalog.js";
 import adminHandler from "../../api/admin.js";
+import usersHandler from "../../api/_admin/users.js";
 import productsHandler from "../../api/products.js";
 import rfqsHandler from "../../api/rfqs.js";
 import offersHandler from "../../api/offers.js";
@@ -277,3 +278,156 @@ test("yekun maya müqayisəsi qiymət, logistika, stok və minimum sifarişi bir
   assert.equal(offers[1].eligible, false);
   assert.match(offers[1].reasons.join(" "), /Stokda yalnız 5/);
 });
+
+// --- Müştəri qeydiyyatı, e-poçt təsdiqi və administrator dəvəti ---
+
+test("qeydiyyat honeypot doldurulduqda sakitcə uğurlu cavab qaytarır və bazaya toxunmur", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "register" },
+    body: { fax: "spam-bot-filled-this" }
+  }, response);
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.payload.ok, true);
+}));
+
+test("qeydiyyat e-poçt olmadan 400 xətası qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "register" },
+    body: { name: "Test İstifadəçi", password: "CoxGucluSifre-2026!" }
+  }, response);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.payload.error.code, "validation_error");
+}));
+
+test("qeydiyyat zəif şifrə ilə rədd edilir", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "register" },
+    body: { name: "Test İstifadəçi", email: "yeni@constera.az", password: "qisa" }
+  }, response);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.payload.error.code, "weak_password");
+}));
+
+test("qeydiyyat düzgün məlumatla baza qoşulmayanda idarə olunan 503 qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "register" },
+    body: { name: "Test İstifadəçi", email: "yeni@constera.az", password: "CoxGucluSifre-2026!" }
+  }, response);
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.payload.error.code, "database_not_configured");
+}));
+
+test("email təsdiqi açar olmadan 400 xətası qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "verify-email" },
+    body: {}
+  }, response);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.payload.error.code, "validation_error");
+}));
+
+test("email təsdiqi keçərli formatlı açarla baza qoşulmayanda idarə olunan 503 qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "verify-email" },
+    body: { token: "sample-verification-token" }
+  }, response);
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.payload.error.code, "database_not_configured");
+}));
+
+test("dəvət qəbulu açar olmadan 400 xətası qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "accept-invite" },
+    body: { password: "CoxGucluSifre-2026!" }
+  }, response);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.payload.error.code, "validation_error");
+}));
+
+test("dəvət qəbulu zəif şifrə ilə rədd edilir", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "accept-invite" },
+    body: { token: "sample-invite-token", password: "qisa" }
+  }, response);
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.payload.error.code, "weak_password");
+}));
+
+test("dəvət qəbulu keçərli məlumatla baza qoşulmayanda idarə olunan 503 qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "accept-invite" },
+    body: { token: "sample-invite-token", password: "CoxGucluSifre-2026!" }
+  }, response);
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.payload.error.code, "database_not_configured");
+}));
+
+test("naməlum auth əməliyyatı 404 qaytarır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await authHandler({
+    method: "POST",
+    headers: {},
+    query: { action: "not-a-real-action" },
+    body: {}
+  }, response);
+  assert.equal(response.statusCode, 404);
+  assert.equal(response.payload.error.code, "unknown_action");
+}));
+
+test("administrator dəvəti yaratmaq anonim sorğuya bağlıdır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await usersHandler({
+    method: "POST",
+    headers: {},
+    query: {},
+    body: { action: "invite", email: "yeni-admin@constera.az", name: "Yeni Admin" }
+  }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.error.code, "authentication_required");
+}));
+
+test("gözləyən administrator dəvətləri siyahısı anonim sorğuya bağlıdır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await usersHandler({ method: "GET", headers: {}, query: { scope: "invites" } }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.error.code, "authentication_required");
+}));
+
+test("administrator dəvətini ləğv etmək anonim sorğuya bağlıdır", async () => withoutDatabase(async () => {
+  const response = createResponse();
+  await usersHandler({
+    method: "PATCH",
+    headers: {},
+    query: {},
+    body: { inviteId: "inv-test" }
+  }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.error.code, "authentication_required");
+}));

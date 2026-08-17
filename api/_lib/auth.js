@@ -145,6 +145,25 @@ export const recordLoginAttempt = async (identityHash, succeeded) => {
   await query("INSERT INTO auth_attempts (identity_hash, succeeded) VALUES ($1, $2)", [identityHash, succeeded]);
 };
 
+// Qeydiyyat cəhdləri eyni auth_attempts jurnalını "register:" prefiksli identity_hash
+// ilə paylaşır ki, giriş cəhdləri ilə eyni səviyyəli məhdudlaşdırma alınsın və yeni cədvəl
+// tələb olunmasın. limit/windowMinutes çağıran tərəfindən IP və e-poçt üçün ayrıca verilir.
+export const assertRegistrationAllowed = async (identityHash, { limit, windowMinutes, message }) => {
+  const rows = await query(
+    `SELECT count(*)::int AS attempts
+       FROM auth_attempts
+      WHERE identity_hash = $1 AND created_at > now() - (($2::int)::text || ' minutes')::interval`,
+    [identityHash, windowMinutes]
+  );
+  if ((rows[0]?.attempts || 0) >= limit) {
+    throw new ApiError(429, "too_many_attempts", message);
+  }
+};
+
+export const recordRegistrationAttempt = async (identityHash) => {
+  await query("INSERT INTO auth_attempts (identity_hash, succeeded) VALUES ($1, true)", [identityHash]);
+};
+
 export const validateRole = (role) => allowedRoles.includes(role) ? role : "customer";
 
 export const availableRoles = Object.freeze([...allowedRoles]);

@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { availableRoles, hashPassword, requireRole } from "../_lib/auth.js";
+import { availableRoles, hashOpaque, hashPassword, requireRole } from "../_lib/auth.js";
 import { query, recordAudit } from "../_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, readJson, sendJson, withApiErrors } from "../_lib/http.js";
+import { queueNotification } from "../_lib/notifications.js";
 import { email, oneOf, parseLimit, text } from "../_lib/validation.js";
 
 const editableStatuses = ["active", "invited", "suspended"];
@@ -38,9 +39,33 @@ const assertSuperAdminContinuity = async (target, nextRole, nextStatus) => {
 
 const createTemporaryPassword = () => `${randomBytes(9).toString("base64url")}Aa7!`;
 
+const mapInvite = (row) => ({
+  id: row.id,
+  email: row.email,
+  name: row.name,
+  role: row.role,
+  status: row.status,
+  invitedBy: row.invited_by || null,
+  expiresAt: row.expires_at,
+  acceptedAt: row.accepted_at,
+  createdAt: row.created_at
+});
+
 export default withApiErrors(async (req, res) => {
   const actor = await requireRole(req, ["super_admin", "admin"]);
   if (req.method === "GET") {
+    if (req.query.scope === "invites") {
+      if (actor.role !== "super_admin") throw new ApiError(403, "permission_denied", "Yalnız super administrator dəvətlərə baxa bilər.");
+      const status = oneOf(req.query.status, ["pending", "accepted", "revoked", "all"], "pending", "Dəvət statusu");
+      const rows = await query(
+        `SELECT * FROM admin_invites
+          ${status === "all" ? "" : "WHERE status = $1"}
+          ORDER BY created_at DESC
+          LIMIT 200`,
+        status === "all" ? [] : [status]
+      );
+      return sendJson(res, 200, { ok: true, data: rows.map(mapInvite) });
+    }
     const limit = parseLimit(req.query.limit, 100, 500);
     const rows = await query(
       `SELECT u.id, u.name, u.email, u.role, u.status, u.company_id, u.must_change_password,
@@ -57,6 +82,70 @@ export default withApiErrors(async (req, res) => {
   assertMethod(req, ["POST", "PATCH"]);
   assertSameOrigin(req);
   const body = await readJson(req, 40_000);
+
+  if (req.method === "POST" && body.action === "invite") {
+    if (actor.role !== "super_admin") throw new ApiError(403, "permission_denied", "Yalnız super administrator yeni administrator dəvət edə bilər.");
+    const role = oneOf(body.role, ["admin", "super_admin"], "admin", "Rol");
+    const inviteEmail = email(body.email);
+    const name = text(body.name, { field: "Ad", required: true, min: 2, max: 120 });
+    const duplicateUser = await query("SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1", [inviteEmail]);
+    if (duplicateUser[0]) throw new ApiError(409, "duplicate_user", "Bu e-poçtla istifadəçi artıq mövcuddur.");
+    await query("DELETE FROM admin_invites WHERE status = 'pending' AND expires_at <= now()");
+    const inviteId = `inv-${randomUUID()}`;
+    const token = randomBytes(32).toString("base64url");
+    try {
+      await query(
+        `INSERT INTO admin_invites (id, email, name, role, token_hash, invited_by, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, now() + interval '72 hours')`,
+        [inviteId, inviteEmail, name, role, hashOpaque(token), actor.id]
+      );
+    } catch (error) {
+      if (error?.code === "23505") throw new ApiError(409, "invite_pending", "Bu e-poçt üçün gözləyən dəvət artıq mövcuddur.");
+      throw error;
+    }
+    const origin = String(process.env.APP_ORIGIN || "https://constera.az").replace(/\/$/, "");
+    const inviteUrl = `${origin}/login.html?invite=${encodeURIComponent(token)}`;
+    await queueNotification({
+      channel: "email",
+      recipient: inviteEmail,
+      subject: "ConstEra administrator dəvəti",
+      body: `Salam, ${name}. Sənə ConstEra idarəetmə panelinə administrator kimi qoşulmaq üçün dəvət göndərildi. 72 saat ərzində qəbul et: ${inviteUrl}`,
+      templateKey: "admin_invite_created",
+      payload: { inviteId, inviteUrl }
+    });
+    if (!process.env.EMAIL_WEBHOOK_URL) {
+      await queueNotification({
+        userId: actor.id,
+        channel: "in_app",
+        subject: "Administrator dəvəti göndərildi",
+        body: `${name} (${inviteEmail}) üçün dəvət yaradıldı. Xarici e-poçt kanalı hələ qurulmadığı üçün keçidi lazım gəldikdə əl ilə paylaş: ${inviteUrl}`,
+        templateKey: "admin_invite_admin_fallback",
+        payload: { inviteId, inviteUrl }
+      });
+    }
+    await recordAudit({ actorId: actor.id, action: "invite", entityType: "admin_invite", entityId: inviteId, details: { email: inviteEmail, role } });
+    const devTokensExposed = process.env.CONSTERA_EXPOSE_DEV_TOKENS === "true";
+    return sendJson(res, 201, {
+      ok: true,
+      data: { id: inviteId, email: inviteEmail, name, role, status: "pending", expiresInHours: 72 },
+      ...(devTokensExposed ? { inviteUrl, inviteToken: token } : {})
+    });
+  }
+
+  if (req.method === "PATCH" && body.inviteId) {
+    if (actor.role !== "super_admin") throw new ApiError(403, "permission_denied", "Yalnız super administrator dəvətləri idarə edə bilər.");
+    const inviteId = text(body.inviteId, { field: "Dəvət ID-si", required: true, max: 160 });
+    const rows = await query(
+      `UPDATE admin_invites
+          SET status = 'revoked', updated_at = now()
+        WHERE id = $1 AND status = 'pending'
+        RETURNING *`,
+      [inviteId]
+    );
+    if (!rows[0]) throw new ApiError(404, "invite_not_found", "Gözləyən dəvət tapılmadı.");
+    await recordAudit({ actorId: actor.id, action: "revoke", entityType: "admin_invite", entityId: inviteId });
+    return sendJson(res, 200, { ok: true, data: mapInvite(rows[0]) });
+  }
 
   if (req.method === "POST") {
     const role = oneOf(body.role, availableRoles, "customer", "Rol");

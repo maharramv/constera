@@ -1,17 +1,19 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   assertLoginAllowed,
+  assertRegistrationAllowed,
   createSession,
   destroySession,
   getSessionUser,
   hashOpaque,
   hashPassword,
   recordLoginAttempt,
+  recordRegistrationAttempt,
   verifyPassword
 } from "./_lib/auth.js";
 import { query, recordAudit } from "./_lib/db.js";
 import { ApiError, assertMethod, assertSameOrigin, getClientIp, readJson, sendJson, withApiErrors } from "./_lib/http.js";
-import { deliverNotificationNow } from "./_lib/notifications.js";
+import { deliverNotificationNow, queueNotification } from "./_lib/notifications.js";
 import { recordSecurityEvent } from "./_lib/security-events.js";
 import {
   findRecoveryCode,
@@ -20,6 +22,23 @@ import {
   verifyTotp
 } from "./_lib/two-factor.js";
 import { email, text } from "./_lib/validation.js";
+
+const devTokensExposed = () => process.env.CONSTERA_EXPOSE_DEV_TOKENS === "true";
+
+const appOrigin = () => String(process.env.APP_ORIGIN || "https://constera.az").replace(/\/$/, "");
+
+// EMAIL_WEBHOOK_URL hələ qurulmayanda (bax: launch-readiness auditinin "Xarici
+// bildiriş kanalı" bəndi) e-poçt heç yerə çatmır. queueNotification həmişə
+// 'email' kanalına növbəyə yazır — webhook qurulan kimi cron-notifications.js
+// onu avtomatik çatdıracaq, bu funksiyanı dəyişmədən. Bu arada admin panelə
+// daxili bildiriş əlavə edirik ki, keçid əl ilə paylaşıla bilsin.
+const notifyAdminsFallback = async ({ subject, body, templateKey, payload }) => {
+  if (process.env.EMAIL_WEBHOOK_URL) return;
+  const admins = await query("SELECT id FROM users WHERE role IN ('super_admin', 'admin') AND status = 'active'");
+  for (const admin of admins) {
+    await queueNotification({ userId: admin.id, channel: "in_app", subject, body, templateKey, payload });
+  }
+};
 
 const tokenMatches = (provided, expected) => {
   const left = Buffer.from(String(provided || ""));
@@ -244,6 +263,145 @@ export default withApiErrors(async (req, res) => {
       riskLevel: "medium"
     });
     return sendJson(res, 200, { ok: true, message: "Şifrə yeniləndi. Yeni şifrə ilə daxil ola bilərsən." });
+  }
+
+  if (action === "register") {
+    if (text(body.fax, { max: 200 })) return sendJson(res, 201, { ok: true, message: "Qeydiyyat tamamlandı." });
+    const userEmail = email(body.email);
+    const name = text(body.name, { field: "Ad", required: true, min: 2, max: 120 });
+    const passwordHash = await hashPassword(body.password);
+    const ipHash = hashOpaque(`register-ip:${getClientIp(req)}`);
+    const emailHash = hashOpaque(`register-email:${userEmail}`);
+    await assertRegistrationAllowed(ipHash, {
+      limit: 8,
+      windowMinutes: 60,
+      message: "Bu IP ünvanından çox sayda qeydiyyat cəhdi edilib. Bir saat sonra yenidən yoxla."
+    });
+    await assertRegistrationAllowed(emailHash, {
+      limit: 3,
+      windowMinutes: 60,
+      message: "Bu e-poçt üçün çox sayda qeydiyyat cəhdi edilib. Bir saat sonra yenidən yoxla."
+    });
+    await recordRegistrationAttempt(ipHash);
+    await recordRegistrationAttempt(emailHash);
+
+    const userId = `usr-${randomUUID()}`;
+    try {
+      await query(
+        `INSERT INTO users (id, email, name, password_hash, role, status)
+         VALUES ($1, $2, $3, $4, 'customer', 'invited')`,
+        [userId, userEmail, name, passwordHash]
+      );
+    } catch (error) {
+      if (error?.code === "23505") throw new ApiError(409, "duplicate_user", "Bu e-poçtla hesab artıq mövcuddur.");
+      throw error;
+    }
+
+    const token = randomBytes(32).toString("base64url");
+    await query(
+      `INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3, now() + interval '48 hours')`,
+      [`evt-${randomUUID()}`, userId, hashOpaque(token)]
+    );
+    const verifyUrl = `${appOrigin()}/register.html?verify=${encodeURIComponent(token)}`;
+    await queueNotification({
+      userId,
+      channel: "email",
+      recipient: userEmail,
+      subject: "ConstEra hesabını təsdiqlə",
+      body: `Salam, ${name}. ConstEra hesabını aktivləşdirmək üçün bu keçidə klik et (48 saat etibarlıdır): ${verifyUrl}`,
+      templateKey: "email_verification",
+      payload: { verifyUrl, expiresInHours: 48 }
+    });
+    await notifyAdminsFallback({
+      subject: "Yeni qeydiyyat təsdiq gözləyir",
+      body: `${name} (${userEmail}) qeydiyyatdan keçdi. Xarici e-poçt kanalı hələ qurulmadığı üçün təsdiq keçidini lazım gəldikdə əl ilə paylaş: ${verifyUrl}`,
+      templateKey: "email_verification_admin_fallback",
+      payload: { userId, verifyUrl }
+    });
+    await recordAudit({ actorId: userId, action: "register", entityType: "user", entityId: userId });
+    await recordSecurityEvent({ req, userId, email: userEmail, eventType: "registration_completed", succeeded: true, riskLevel: "low" });
+
+    return sendJson(res, 201, {
+      ok: true,
+      message: "Qeydiyyat tamamlandı. Hesabı aktivləşdirmək üçün e-poçtuna göndərilən keçidə klik et.",
+      ...(devTokensExposed() ? { verifyUrl, verificationToken: token } : {})
+    });
+  }
+
+  if (action === "verify-email") {
+    const token = text(body.token, { field: "Təsdiq açarı", required: true, max: 200 });
+    const rows = await query(
+      `WITH valid_token AS (
+         UPDATE email_verification_tokens
+            SET used_at = now()
+          WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+          RETURNING user_id
+       )
+       UPDATE users u
+          SET status = 'active', updated_at = now()
+         FROM valid_token v
+        WHERE u.id = v.user_id AND u.status = 'invited'
+        RETURNING u.id, u.name, u.email, u.role, u.company_id`,
+      [hashOpaque(token)]
+    );
+    const user = rows[0];
+    if (!user) throw new ApiError(400, "verification_token_invalid", "Təsdiq keçidi yanlışdır və ya vaxtı bitib.");
+    const companyRows = user.company_id
+      ? await query("SELECT name FROM companies WHERE id = $1 LIMIT 1", [user.company_id])
+      : [];
+    await createSession(req, res, user.id);
+    await recordAudit({ actorId: user.id, action: "verify_email", entityType: "user", entityId: user.id });
+    await recordSecurityEvent({ req, userId: user.id, email: user.email, eventType: "email_verified", succeeded: true, riskLevel: "low" });
+    return sendJson(res, 200, sessionResponse({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: "active",
+      companyId: user.company_id,
+      companyName: companyRows[0]?.name || null
+    }));
+  }
+
+  if (action === "accept-invite") {
+    const token = text(body.token, { field: "Dəvət açarı", required: true, max: 200 });
+    const overrideName = text(body.name, { max: 120 });
+    const passwordHash = await hashPassword(body.password);
+    const userId = `usr-${randomUUID()}`;
+    let rows;
+    try {
+      rows = await query(
+        `WITH invite AS (
+           UPDATE admin_invites
+              SET status = 'accepted', accepted_at = now(), updated_at = now()
+            WHERE token_hash = $1 AND status = 'pending' AND expires_at > now()
+            RETURNING id, email, name, role
+         )
+         INSERT INTO users (id, email, name, password_hash, role, status, password_changed_at)
+         SELECT $2, invite.email, COALESCE(NULLIF($3, ''), invite.name), $4, invite.role, 'active', now()
+           FROM invite
+         RETURNING id, name, email, role, status, company_id`,
+        [hashOpaque(token), userId, overrideName, passwordHash]
+      );
+    } catch (error) {
+      if (error?.code === "23505") throw new ApiError(409, "duplicate_user", "Bu e-poçtla hesab artıq mövcuddur.");
+      throw error;
+    }
+    const user = rows[0];
+    if (!user) throw new ApiError(400, "invite_token_invalid", "Dəvət keçidi yanlışdır və ya vaxtı bitib.");
+    await createSession(req, res, user.id);
+    await recordAudit({ actorId: user.id, action: "accept_invite", entityType: "user", entityId: user.id, details: { role: user.role } });
+    await recordSecurityEvent({ req, userId: user.id, email: user.email, eventType: "admin_invite_accepted", succeeded: true, riskLevel: "medium" });
+    return sendJson(res, 201, sessionResponse({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      companyId: user.company_id || null,
+      companyName: null
+    }));
   }
 
   if (action === "setup") {
