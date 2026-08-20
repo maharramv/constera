@@ -48,6 +48,6 @@
     "launch:readiness:check": "npm run launch:readiness -- --artifact --artifact-dir=outputs",
     "launch:readiness:ci": "npm run launch:readiness:go-live"
   },
-  "dependencies": { "@neondatabase/serverless": "^1.1.0", "@vercel/blob": "^2.6.1", "fflate": "^0.8.3", "qrcode": "^1.5.4", "read-excel-file": "^9.3.5", "web-push": "3.6.7" },
+  "dependencies": { "@neondatabase/serverless": "^1.1.0", "@vercel/blob": "^2.8.0", "fflate": "^0.8.3", "qrcode": "^1.5.4", "read-excel-file": "^9.3.10", "web-push": "3.6.7" },
   "devDependencies": { "@playwright/test": "^1.62.1", "esbuild": "0.28.1" }
 }
