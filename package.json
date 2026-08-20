@@ -4,13 +4,11 @@
   "private": true,
   "type": "module",
   "description": "ConstEra Korporativ v2 statik bazar platforması.",
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": { "node": "22.x" },
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
     "build": "npm run build:static",
-    "build:static": "node scripts/vercel-build.mjs",
+    "build:static": "node scripts/vercel-build.mjs && node scripts/p0-postbuild.mjs",
     "vercel-build": "npm run build:static",
     "verify:deploy": "npm run audit && npm run check:syntax && npm run test:api && npm run test:site",
     "audit": "node scripts/audit-site.mjs",
@@ -50,16 +48,6 @@
     "launch:readiness:check": "npm run launch:readiness -- --artifact --artifact-dir=outputs",
     "launch:readiness:ci": "npm run launch:readiness:go-live"
   },
-  "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
-    "@vercel/blob": "^2.6.1",
-    "fflate": "^0.8.3",
-    "qrcode": "^1.5.4",
-    "read-excel-file": "^9.3.5",
-    "web-push": "3.6.7"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "esbuild": "0.28.1"
-  }
+  "dependencies": { "@neondatabase/serverless": "^1.1.0", "@vercel/blob": "^2.6.1", "fflate": "^0.8.3", "qrcode": "^1.5.4", "read-excel-file": "^9.3.5", "web-push": "3.6.7" },
+  "devDependencies": { "@playwright/test": "^1.62.1", "esbuild": "0.28.1" }
 }

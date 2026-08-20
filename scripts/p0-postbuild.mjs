@@ -1,0 +1,14 @@
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import vm from "node:vm";
+import { injectMarketplaceSnapshot } from "./marketplace-snapshot.mjs";
+const ctx={window:{},console}; vm.createContext(ctx); ["assets/js/catalog-data.js","assets/js/taxonomy-expansion.js","assets/js/azerbaijan-real-products.js"].forEach(file=>vm.runInContext(readFileSync(file,"utf8"),ctx,{filename:file}));
+injectMarketplaceSnapshot({root:"dist",marketplace:ctx.window.CONSTERA_MARKETPLACE||{}});
+const rewrite=(file,fn)=>{if(existsSync(file))writeFileSync(file,fn(readFileSync(file,"utf8")));};
+rewrite("dist/catalog.html",html=>html.replace(/ConstEra Korporativ v2/g,"ConstEra").replace(/\s*<a\b[^>]*href=["']admin\.html["'][^>]*>İdarəetmə<\/a>\s*/g,"\n").replace(/<a class=["']card-link["'] href=["']admin\.html["']>İdarəetmə strukturuna bax<\/a>/g,'<a class="card-link" href="rfq.html">Qiymət sorğusu yarat</a>'));
+rewrite("dist/login.html",html=>html.replace(/\n\s*<details class=["']auth-setup["']>\s*<summary>İlk super administratoru yarat<\/summary>[\s\S]*?<\/details>/,""));
+["dist/docs","dist/assets/js/admin-v2.js","dist/assets/js/launch-center.js","dist/assets/js/enterprise-admin.js","dist/assets/js/operations-center.js","dist/assets/js/ai-admin.js"].forEach(entry=>rmSync(entry,{recursive:true,force:true}));
+const catalog=readFileSync("dist/catalog.html","utf8"), login=readFileSync("dist/login.html","utf8");
+if(/href=["']admin\.html["']/.test(catalog)||/ConstEra Korporativ v2/.test(catalog))throw new Error("P0 post-build: public catalog still exposes admin/internal metadata.");
+if(/ADMIN_SETUP_TOKEN|data-setup-form|İlk super administratoru yarat/.test(login))throw new Error("P0 post-build: bootstrap form still exposed.");
+if(!catalog.includes("data-snapshot-card"))throw new Error("P0 post-build: marketplace snapshot missing.");
+console.log("ConstEra P0 post-build hardening applied.");
