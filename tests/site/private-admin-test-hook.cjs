@@ -5,8 +5,14 @@ const { syncBuiltinESMExports } = require("node:module");
 
 const originalReadFileSync = fs.readFileSync;
 
+const isPublicAdminPath = (path) => {
+  if (path === "admin.html") return true;
+  if (!(path instanceof URL)) return false;
+  return path.pathname.endsWith("/admin.html") && !path.pathname.endsWith("/private/admin.html");
+};
+
 fs.readFileSync = function readConsteraTestFile(path, ...args) {
-  if (path === "admin.html") {
+  if (isPublicAdminPath(path)) {
     return originalReadFileSync.call(this, "private/admin.html", ...args);
   }
   return originalReadFileSync.call(this, path, ...args);

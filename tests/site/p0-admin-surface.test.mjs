@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (file) => readFileSync(file, "utf8");
-const readPublicAdminStub = () => readFileSync(new URL("../../admin.html", import.meta.url), "utf8");
+const readPublicAdminStub = () => readFile(new URL("../../admin.html", import.meta.url), "utf8");
 
-test("P0 admin surface is authenticated through the existing gateway", () => {
-  const publicAdmin = readPublicAdminStub();
+test("P0 admin surface is authenticated through the existing gateway", async () => {
+  const publicAdmin = await readPublicAdminStub();
   assert.match(publicAdmin, /\/api\/admin-page/);
   assert.doesNotMatch(publicAdmin, /data-admin-panel=/);
   assert.match(read("private/admin.html"), /data-admin-panel="operations"/);
