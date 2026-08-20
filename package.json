@@ -16,7 +16,7 @@
     "audit:dist": "node scripts/audit-build.mjs",
     "check:syntax": "node scripts/check-javascript.mjs",
     "test:api": "node --test tests/api/*.test.mjs",
-    "test:site": "node --test tests/site/*.test.mjs",
+    "test:site": "node --require ./tests/site/private-admin-test-hook.cjs --test tests/site/*.test.mjs",
     "test:layout": "playwright test",
     "test:layout:ci": "npx playwright test --config=playwright.config.mjs",
     "test:layout:local": "PLAYWRIGHT_BASE_URL=https://constera.az npx playwright test --config=playwright.config.mjs",

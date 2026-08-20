@@ -3,9 +3,13 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = (file) => readFileSync(file, "utf8");
+const readPublicAdminStub = () => readFileSync(new URL("../../admin.html", import.meta.url), "utf8");
 
 test("P0 admin surface is authenticated through the existing gateway", () => {
-  assert.match(read("admin.html"), /\/api\/admin-page/);
+  const publicAdmin = readPublicAdminStub();
+  assert.match(publicAdmin, /\/api\/admin-page/);
+  assert.doesNotMatch(publicAdmin, /data-admin-panel=/);
+  assert.match(read("private/admin.html"), /data-admin-panel="operations"/);
   assert.match(read("api/_admin/admin-page.js"), /getSessionUser/);
   assert.match(read("api/_admin/admin-page.js"), /super_admin/);
   assert.match(read("api/_admin/admin-asset.js"), /Authentication Required/);
