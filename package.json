@@ -11,6 +11,7 @@
     "dev": "node scripts/dev-server.mjs",
     "build": "npm run build:static",
     "build:static": "node scripts/vercel-build.mjs",
+    "vercel-build": "npm run build:static",
     "verify:deploy": "npm run audit && npm run check:syntax && npm run test:api && npm run test:site",
     "audit": "node scripts/audit-site.mjs",
     "audit:media:online": "node scripts/audit-media-online.mjs",
