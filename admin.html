@@ -1,13 +1,42 @@
 <!DOCTYPE html>
 <html lang="az">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex, nofollow, noarchive" />
-  <title>ConstEra İdarəetmə</title>
-  <meta http-equiv="refresh" content="0; url=/api/admin-page" />
-</head>
-<body>
-  <p>İdarəetmə sessiyası yoxlanılır. <a href="/api/admin-page">Davam et</a>.</p>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConstEra İdarəetmə | Təhlükəsiz giriş</title>
+    <meta
+      name="description"
+      content="ConstEra idarəetmə panelinə giriş üçün administrator sessiyasını təhlükəsiz şəkildə yoxlayan yönləndirmə səhifəsi."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://constera.az/admin.html" />
+    <meta name="theme-color" content="#f3f6f4" />
+    <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <meta http-equiv="refresh" content="0; url=/api/admin-page" />
+  </head>
+  <body data-page="admin">
+    <div class="site-shell auth-shell">
+      <header class="header">
+        <a class="brand" href="index.html" aria-label="ConstEra ana səhifə">
+          <img class="brand-logo" src="assets/images/white.svg" alt="ConstEra loqosu" />
+          <span class="brand-copy">
+            <strong>CONSTERA</strong>
+            <span>Təhlükəsiz idarəetmə</span>
+          </span>
+        </a>
+      </header>
+
+      <main id="main-content" class="auth-main">
+        <section class="auth-card glass">
+          <div class="auth-copy">
+            <p class="eyebrow">Administrator girişi</p>
+            <h1>İdarəetmə sessiyası yoxlanılır.</h1>
+            <p>Panel yalnız aktiv administrator sessiyasından sonra açılır.</p>
+          </div>
+          <a class="button button-primary" href="/api/admin-page">Təhlükəsiz girişə davam et</a>
+        </section>
+      </main>
+    </div>
+  </body>
 </html>
