@@ -99,25 +99,23 @@ CI üçün bütün layout testlərini da daxil edən tam yoxlama:
 npm run check:full
 ```
 
-MacOS-də MachPort icazəsi səbəbindən Playwright lokal mühitdə (əsasən test mühiti
-və Chromium) səhv verə bilərsə, build və API yoxlamalarını etibarlı qalsın deyə:
+Eyni tam yoxlamanı lokal adla işə salmaq üçün:
 
 ```bash
 npm run check:full:local
 ```
 
-`check:full:local` eyni sıranı saxlayır və layout yoxlamasını remote `constera.az`
-ümumi test mühitinə (`PLAYWRIGHT_BASE_URL`) yönəldir. Lokal server ilə layout
-dəyişikliliklərini yoxlamaq üçün ayrıca bu komandanı istifadə et:
+`check:full`, `check:full:local` və GitHub quality workflow-u layout dəyişikliklərini
+yoxlanan commit-in lokal serverində işə salır. Canlı `constera.az` görünüşünü ayrıca yoxlamaq üçün:
 
 ```bash
-PLAYWRIGHT_LOCAL=1 PLAYWRIGHT_LISTEN_HOST=127.0.0.1 npm run test:layout:local-server
+npm run test:layout:production
 ```
 
 Əgər Chromium lokal icazələrlə problem yaradırsa, sistem Chrome kanalını istifadə et:
 
 ```bash
-PLAYWRIGHT_CHANNEL=chrome npm run test:layout:local
+PLAYWRIGHT_CHANNEL=chrome npm run test:layout:production
 ```
 
 Qeyd: `test:layout:local-server` yalnız əlində stabil lokal browser varsa və Playwright lokal

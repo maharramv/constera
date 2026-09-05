@@ -2529,6 +2529,56 @@
     taxonomyStrategy: "Mənbə kateqoriyaları ConstEra-nın daha geniş iyerarxik taksonomiyasına uyğunlaşdırılıb"
   });
 
+  const verifiedTvimImages = Object.freeze({
+    "https://tvim.az/az/a-tip-i-zospan": "https://admin.tvim.az/storage/products/5773/img_6a52964e04f581.61633367.png",
+    "https://tvim.az/az/af-i-zospan": "https://admin.tvim.az/storage/products/5772/img_6a52964dcf6639.74500088.png",
+    "https://tvim.az/az/akdeniz-mavi-1kq-mr-fix": "https://admin.tvim.az/storage/products/474/img_6a52937c71dc88.87530309.png",
+    "https://tvim.az/az/alcipan-diamant-12-5x2500x1200mm-knauf": "https://admin.tvim.az/storage/products/6794/img_6a529671d1feb1.28067611.png",
+    "https://tvim.az/az/alcipan-ekogip-a-9-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6793/img_6a529671646c20.18448398.png",
+    "https://tvim.az/az/alcipan-ekogip-h3-9-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6796/img_6a529672d97b71.19790253.png",
+    "https://tvim.az/az/alcipan-gkl-9-5mm-1p-3m2-gilan-knauf": "https://admin.tvim.az/storage/products/6789/img_6a52966f46c9c0.26483395.png",
+    "https://tvim.az/az/alcipan-gkl-a-12-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6797/img_6a529673525b36.87928899.png",
+    "https://tvim.az/az/alcipan-gkl-a-9-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6790/img_6a529670016474.66002117.png",
+    "https://tvim.az/az/alcipan-gkl-dfir-12-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6800/img_6a52967439e253.82806485.png",
+    "https://tvim.az/az/alcipan-gkl-h2-12-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6792/img_6a529670ea9d11.21585037.png",
+    "https://tvim.az/az/alcipan-gkl-h2-9-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6791/img_6a529670778138.84114844.png",
+    "https://tvim.az/az/alcipan-profili-c-primet": "https://admin.tvim.az/storage/products/6927/img_6a52967ebade47.92949496.webp",
+    "https://tvim.az/az/alcipan-profili-u-primet": "https://admin.tvim.az/storage/products/3677/img_6a5294f6af5fb4.29344004.webp",
+    "https://tvim.az/az/alcipan-sapfir-12-5x2500x1200mm-knauf": "https://admin.tvim.az/storage/products/6795/img_6a5296728908d5.95657639.png",
+    "https://tvim.az/az/aq-proff-i-zospan": "https://admin.tvim.az/storage/products/5770/img_6a52964d898570.38730543.png",
+    "https://tvim.az/az/aquapanel-i-ndoor-knauf-1200x2400-12-5mm": "https://admin.tvim.az/storage/products/7117/img_6a5296a1baf827.26710815.png",
+    "https://tvim.az/az/aquapanel-out-knauf-1200x2400-12-5mm": "https://admin.tvim.az/storage/products/5735/img_6a52964c2b1f97.76238930.jpg",
+    "https://tvim.az/az/aquapanel-universal-knauf-900x1200-8mm": "https://admin.tvim.az/storage/products/7118/img_6a5296a21f2c94.95950543.png",
+    "https://tvim.az/az/as-130-proff-izospan": "https://admin.tvim.az/storage/products/5771/img_6a52964daf6705.65467943.png",
+    "https://tvim.az/az/boardex-1200x2400-12-5mm-dalsan": "https://admin.tvim.az/storage/products/5838/img_6a52965425a157.11381069.png",
+    "https://tvim.az/az/fibrosement-lovheleri-betopan-1250x2500x8mm-hekimboard": "https://admin.tvim.az/storage/products/7197/img_6a5296b1aad826.01893780.png",
+    "https://tvim.az/az/fibrosement-lovheleri-betopan-1250x2500x10mm-hekimboard": "https://admin.tvim.az/storage/products/7198/img_6a5296b20d8747.12361459.png",
+    "https://tvim.az/az/fibrosement-lovheleri-betopan-1250x2500x12mm-hekimboard": "https://admin.tvim.az/storage/products/7199/img_6a5296b262ab52.87892807.png",
+    "https://tvim.az/az/guardex-knauf-1200x2400-12-5mm": "https://admin.tvim.az/storage/products/7121/img_6a5296a27a3428.98725839.jpg",
+    "https://tvim.az/az/parakontakt-20kq-metanet-a": "https://admin.tvim.az/storage/products/7104/img_6a52969d7bd1a4.57566174.png",
+    "https://tvim.az/az/panplus-premium-ic-cebhe-boyasi-ag-25kq-15l-panda": "https://admin.tvim.az/storage/products/3628/img_6a5294f1f325d2.54987903.jpg",
+    "https://tvim.az/az/akvarium-silikonu-280ml-seffaf-turkaz": "https://admin.tvim.az/storage/products/6961/img_6a52968357cd83.61907892.jpg",
+    "https://tvim.az/az/oboy-kleyi-premium-universal-500qr-metylan": "https://admin.tvim.az/storage/products/5554/img_6a52962bf16df4.10704760.webp",
+    "https://tvim.az/az/pp-boru-75-50sm-metak": "https://admin.tvim.az/storage/products/55/img_6a529339dd8517.78329850.png",
+    "https://tvim.az/az/pp-ucluk-110-90-metak": "https://admin.tvim.az/storage/products/78/img_6a52933ad68ec2.93791014.png",
+    "https://tvim.az/az/pprc-amerikanka-i-c-dis-25x25-metak": "https://admin.tvim.az/storage/products/11/img_6a529336f2b5c2.96096959.png",
+    "https://tvim.az/az/kollektor-5-cixisli-firat": "https://admin.tvim.az/storage/products/4810/img_6a5295ba20a276.19483164.png",
+    "https://tvim.az/az/unitaz-bo-607-gold-banyo": "https://admin.tvim.az/storage/products/4421/img_6a5295a4bcde01.54766646.png",
+    "https://tvim.az/az/drel-gsb-600-bosch": "https://admin.tvim.az/storage/products/5617/img_6a52963c5aca59.07221373.webp",
+    "https://tvim.az/az/drel-gsb-13-re-bosch": "https://admin.tvim.az/storage/products/3149/img_6a5294acebe984.12760914.webp",
+    "https://tvim.az/az/drel-850w-ingco": "https://admin.tvim.az/storage/products/2078/img_6a529439c18b35.46496855.webp",
+    "https://tvim.az/az/qaradag-optimal-300-40-kq-holcim": "https://admin.tvim.az/storage/products/711/img_6a5293a8e78fd9.57439521.png",
+    "https://tvim.az/az/metal-profil-ua-50-4000mm-2mm-knauf": "https://admin.tvim.az/storage/products/6807/img_6a5296758df632.24400687.jpg",
+    "https://tvim.az/az/280-ml-parket-qermetik-klen-soudal": "https://admin.tvim.az/storage/products/2985/img_6a529495e163d9.08887116.webp",
+    "https://tvim.az/az/mineral-yun-mahlic-teplorulon-tr44-2-knauf": "https://admin.tvim.az/storage/products/7124/img_6a5296a397df24.33705256.jpg",
+    "https://tvim.az/az/astar-tiefengrund-10-kq-knauf": "https://admin.tvim.az/storage/products/6864/img_6a52967971c003.30321533.png"
+  });
+
+  data.products = data.products.map((item) => {
+    const imageUrl = verifiedTvimImages[item.sourceUrl];
+    return imageUrl ? { ...item, imageUrl, imageCredit: "TVIM rəsmi məhsul səhifəsi" } : item;
+  });
+
   const hasHttpsSource = (item) => /^https:\/\//i.test(String(item?.sourceUrl || ""));
   const hasUsableImage = (item) => /^(?:https:\/\/|\/?assets\/)/i.test(String(item?.imageUrl || ""));
   const hasPositiveAmount = (item) => {

@@ -29,4 +29,6 @@ test("P0 build strips private artifacts and bootstrap UI", () => {
   assert.match(post, /data-setup-form/);
   assert.match(post, /injectMarketplaceSnapshot/);
   assert.match(read("package.json"), /p0-postbuild\.mjs/);
+  assert.match(read("supplier-portal.html"), /assets\/downloads\/supplier-feed\.csv/);
+  assert.match(read("supplier-portal.html"), /assets\/downloads\/supplier-feed\.json/);
 });

@@ -80,6 +80,8 @@ const requiredFiles = [
   "assets/js/lifecycle-public.js",
   "assets/js/execution-center.js",
   "assets/js/execution-certificate.js",
+  "assets/downloads/supplier-feed.csv",
+  "assets/downloads/supplier-feed.json",
   "service-worker.js",
   ".well-known/security.txt",
   "docs/commercial-launch-runbook.md",

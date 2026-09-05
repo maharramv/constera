@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, relative } from "node:path";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const root = "dist";
@@ -24,6 +24,7 @@ const totalBytes = sum(files);
 const javascriptBytes = sum(files.filter((item) => item.extension === ".js"));
 const cssBytes = sum(files.filter((item) => item.extension === ".css"));
 const errors = [];
+const rootPath = resolve(root);
 const assetBytes = new Map(files.map((item) => [relative(root, item.file), item.bytes]));
 const assetGzipBytes = new Map(files
   .filter((item) => [".js", ".css"].includes(item.extension))
@@ -50,6 +51,27 @@ files.forEach(({ file }) => {
   }
   if (file.endsWith(".html")) {
     const html = readFileSync(file, "utf8");
+    for (const match of html.matchAll(/\b(?:href|src)=["']([^"']+)["']/gi)) {
+      const rawReference = String(match[1] || "").trim();
+      if (!rawReference || /^(?:#|https?:\/\/|mailto:|tel:|data:|blob:|javascript:)/i.test(rawReference)) continue;
+      const cleanReference = rawReference.split(/[?#]/, 1)[0];
+      if (!cleanReference || cleanReference.startsWith("/api/")) continue;
+      let decodedReference;
+      try {
+        decodedReference = decodeURIComponent(cleanReference);
+      } catch {
+        errors.push(`${relative(root, file)}: etibarsız kodlanmış daxili keçid: ${rawReference}`);
+        continue;
+      }
+      const target = decodedReference.startsWith("/")
+        ? resolve(root, `.${decodedReference}`)
+        : resolve(dirname(file), decodedReference);
+      if (target !== rootPath && !target.startsWith(`${rootPath}${sep}`)) {
+        errors.push(`${relative(root, file)}: build xaricinə çıxan keçid: ${rawReference}`);
+      } else if (!existsSync(target)) {
+        errors.push(`${relative(root, file)}: build-də olmayan daxili resurs: ${rawReference}`);
+      }
+    }
     const referencedBytes = (pattern, sizes = assetBytes) => {
       const paths = [...html.matchAll(pattern)].map((match) => match[1].split("?")[0].replace(/^\//, ""));
       return [...new Set(paths)].reduce((total, path) => total + Number(sizes.get(path) || 0), 0);

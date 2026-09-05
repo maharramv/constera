@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { buildCommercialLaunchProgram } from "../../api/_lib/commercial-launch.js";
 import { navigationItems } from "../../scripts/site-shell.mjs";
 
 const pages = readdirSync(process.cwd())
   .filter((file) => file.endsWith(".html"))
   .sort((left, right) => left.localeCompare(right, "az"));
+const publicPages = pages.filter((file) => file !== "admin.html");
+const useLocalServer = process.env.PLAYWRIGHT_LOCAL === "1";
 
 const primaryViewports = [
   { name: "mobile", width: 390, height: 844 },
@@ -32,7 +34,7 @@ for (const viewport of primaryViewports) {
     page.on("pageerror", (error) => browserErrors.push(error.message));
 
     let reference = null;
-    for (const file of pages) {
+    for (const file of publicPages) {
       await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
       await expect(page.locator("[data-site-header]")).toBeVisible();
 
@@ -85,10 +87,16 @@ test("tam naviqasiya desktop və mobile rejimlərində açılır", async ({ page
   }
 });
 
+test("idarəetmə giriş nöqtəsi anonim istifadəçini təhlükəsiz girişə yönləndirir", async ({ page }) => {
+  await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+  await page.waitForURL((url) => url.pathname === "/login.html" && url.searchParams.get("next") === "admin.html");
+  await expect(page.locator("[data-login-form]")).toBeVisible();
+});
+
 test("dinamik idarəetmələr əlçatan ad və təhlükəsiz xarici link alır", async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
     await page.setViewportSize(viewport);
-    for (const file of pages) {
+    for (const file of publicPages) {
       await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
       const issues = await page.evaluate(() => {
         const visible = (element) => {
@@ -138,7 +146,7 @@ test("dinamik idarəetmələr əlçatan ad və təhlükəsiz xarici link alır",
 test("render olunan şəkillər mobil və desktop görünüşdə zədəsiz açılır", async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) {
     await page.setViewportSize(viewport);
-    for (const file of pages) {
+    for (const file of publicPages) {
       await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
       await page.locator("img").evaluateAll((images) => {
         images.forEach((image) => { image.loading = "eager"; });
@@ -155,7 +163,7 @@ test("render olunan şəkillər mobil və desktop görünüşdə zədəsiz açı
 
 test("render olunan daxili keçidlərin hamısı mövcud səhifəyə aparır", async ({ page, request }) => {
   const targets = new Set();
-  for (const file of pages) {
+  for (const file of publicPages) {
     await page.goto(`/${file}`, { waitUntil: "domcontentloaded" });
     const links = await page.locator("a[href]").evaluateAll((anchors) => anchors.map((anchor) => {
       const href = anchor.getAttribute("href") || "";
@@ -650,6 +658,14 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
       }
     }
   }));
+  if (useLocalServer) {
+    const privateAdminHtml = readFileSync("private/admin.html", "utf8");
+    await page.route("**/admin.html", (route) => route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: privateAdminHtml
+    }));
+  }
   await page.goto("/index.html", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => {
     localStorage.setItem("constera-rfq-drafts", JSON.stringify([{
@@ -687,6 +703,13 @@ test("məhsul, RFQ, təchizatçı və admin iş axınları responsivdir", async 
     await page.goto("/supplier-portal.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator("[data-inventory-bulk-input]")).toBeVisible();
     await expect(page.locator("[data-supplier-order-rows]")).toBeAttached();
+
+    if (!useLocalServer) {
+      await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+      await page.waitForURL((url) => url.pathname === "/login.html" && url.searchParams.get("next") === "admin.html");
+      await expect(page.locator("[data-auth-session], [data-login-form]").first()).toBeVisible();
+      continue;
+    }
 
     await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
     await page.locator("[data-admin-quality-dialog]").evaluate((dialog) => dialog.showModal());
