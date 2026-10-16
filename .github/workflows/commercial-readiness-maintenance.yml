@@ -60,6 +60,7 @@ jobs:
           npm run db:verify-backup
 
       - name: Yenilənmiş kommersiya hazırlığı hesabatını yarat
+        if: always()
         run: npm run launch:readiness -- --artifact --artifact-dir=outputs --min-score=0
 
       - name: Hesabatları saxla

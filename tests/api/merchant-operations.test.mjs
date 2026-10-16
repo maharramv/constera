@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { backupDeliveryReadiness } from "../../api/_lib/cloud-backup.js";
 import { buildMerchantFeedXml } from "../../api/_lib/merchant-feed.js";
@@ -106,6 +107,12 @@ test("backup ayrıca özəl Blob token-i ilə hazır olur və provider statusu s
       else process.env[key] = previous[key];
     });
   }
+});
+
+test("backup göndərişi Blob xətasının təhlükəsiz səbəbini operatora göstərir", () => {
+  const source = readFileSync(new URL("../../api/_lib/cloud-backup.js", import.meta.url), "utf8");
+  assert.match(source, /Özəl backup yaddaşına yazmaq mümkün olmadı: \$\{reason\}/);
+  assert.match(source, /replace\(\/https\?:\\\/\\\/\\S\+\/gi, "\[URL\]"\)/);
 });
 
 test("bank köçürməsi yalnız tam Azərbaycan rekvizitləri ilə aktiv olur", () => {

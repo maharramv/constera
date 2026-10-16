@@ -476,8 +476,11 @@ export const deliverScheduledBackup = async () => {
         contentType: "application/gzip",
         token: privateBlobBackupToken()
       });
-    } catch {
-      throw new Error("Özəl backup yaddaşına yazmaq mümkün olmadı.");
+    } catch (error) {
+      const reason = String(error?.message || error || "naməlum xəta")
+        .replace(/https?:\/\/\S+/gi, "[URL]")
+        .slice(0, 240);
+      throw new Error(`Özəl backup yaddaşına yazmaq mümkün olmadı: ${reason}`);
     }
     deliveryDetails = { channel: delivery.channel, pathname };
   }
