@@ -2531,7 +2531,7 @@
 
   const verifiedTvimImages = Object.freeze({
     "https://tvim.az/az/a-tip-i-zospan": "https://admin.tvim.az/storage/products/5773/img_6a52964e04f581.61633367.png",
-    "https://tvim.az/az/af-i-zospan": "https://admin.tvim.az/storage/products/5772/img_6a52964dcf6639.74500088.png",
+    "https://tvim.az/az/af-i-zospan": "https://admin.tvim.az/storage/product/variations/5772/5772/img_6aa91d6053c117.77235594.png",
     "https://tvim.az/az/akdeniz-mavi-1kq-mr-fix": "https://admin.tvim.az/storage/products/474/img_6a52937c71dc88.87530309.png",
     "https://tvim.az/az/alcipan-diamant-12-5x2500x1200mm-knauf": "https://admin.tvim.az/storage/products/6794/img_6a529671d1feb1.28067611.png",
     "https://tvim.az/az/alcipan-ekogip-a-9-5x2500x1200mm-gilan-knauf": "https://admin.tvim.az/storage/products/6793/img_6a529671646c20.18448398.png",

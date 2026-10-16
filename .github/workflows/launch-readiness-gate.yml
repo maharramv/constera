@@ -26,22 +26,25 @@ jobs:
       - name: Asılılıqları quraşdır
         run: npm ci
 
-      - name: Postgres bağlantısı mövcuddursa buraxılış yoxlamasını işə sal
-        id: readiness
+      - name: Yüksək riskli dependency zəifliklərini yoxla
+        run: npm audit --audit-level=high
+
+      - name: Kataloq media ünvanlarını yoxla
+        run: npm run audit:media:online
+
+      - name: Production Postgres ilə buraxılış yoxlamasını işə sal
         run: |
           if [ -z "${DATABASE_URL}" ] && [ -z "${POSTGRES_URL}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "DATABASE_URL və ya POSTGRES_URL təyin olunmadığı üçün buraxılış readiness yoxlaması atlandı."
-            exit 0
+            echo "::error::DATABASE_URL və ya POSTGRES_URL təyin olunmayıb; buraxılış qapısı bazasız uğurlu sayıla bilməz."
+            exit 1
           fi
-          echo "skip=false" >> "$GITHUB_OUTPUT"
           npm run launch:readiness:go-live -- --artifact
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
 
       - name: Launch readiness nəticələrini saxla
-        if: steps.readiness.outputs.skip != 'true'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: constera-launch-readiness

@@ -82,6 +82,15 @@ test("Vercel production monitorinqi və deploy keyfiyyət qapısını avtomatik 
   ));
 });
 
+test("həftəlik buraxılış qapısı bazasız uğurlu nəticə vermir və xarici riskləri yoxlayır", () => {
+  const workflow = read(".github/workflows/launch-readiness-gate.yml");
+  assert.doesNotMatch(workflow, /skip=true/);
+  assert.match(workflow, /DATABASE_URL və ya POSTGRES_URL təyin olunmayıb/);
+  assert.match(workflow, /exit 1/);
+  assert.match(workflow, /npm audit --audit-level=high/);
+  assert.match(workflow, /npm run audit:media:online/);
+});
+
 test("kritik kataloq, müqavilə, ödəniş və logistika yazmaları administrator 2FA qorumasındadır", () => {
   assert.match(read("api/_admin/catalog-quality.js"), /assertCriticalTwoFactor\(user\)/);
   assert.match(read("api/_admin/catalog-staging.js"), /assertCriticalTwoFactor\(user\)/);

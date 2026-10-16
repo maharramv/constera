@@ -61,7 +61,10 @@ const createProductionChecks = (origin) => {
     { path: "/delivery-returns.html", status: 200, includes: "Çatdırılma" },
     { path: "/privacy.html", status: 200, includes: "Məxfilik" },
     { path: "/terms.html", status: 200, includes: "İstifadə şərtləri" },
-    { path: "/login.html", status: 200, includes: "ConstEra" }
+    { path: "/login.html", status: 200, includes: "ConstEra" },
+    { path: "/register.html", status: 200, includes: "ConstEra hesabı yarat" },
+    { path: "/assets/downloads/supplier-feed.csv", status: 200, includes: "sku,supplierSku,price" },
+    { path: "/assets/downloads/supplier-feed.json", status: 200, json: (body) => Array.isArray(body.items) }
   ]);
 };
 

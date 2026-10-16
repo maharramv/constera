@@ -92,7 +92,10 @@ test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruy
     "/contact.html",
     "/delivery-returns.html",
     "/privacy.html",
-    "/terms.html"
+    "/terms.html",
+    "/register.html",
+    "/assets/downloads/supplier-feed.csv",
+    "/assets/downloads/supplier-feed.json"
   ]) {
     assert.equal(paths.includes(path), true, path);
   }
@@ -116,6 +119,8 @@ test("production monitor SEO, PWA və təhlükəsizlik başlıqlarını da qoruy
           ? { data: { products: [] } }
           : path === "/api/integrations"
             ? { data: { readiness: {} } }
+            : path === "/assets/downloads/supplier-feed.json"
+              ? { items: [] }
             : { error: { code: "authentication_required" } })
       : String(check?.includes || "ok");
     const headers = new Headers({
