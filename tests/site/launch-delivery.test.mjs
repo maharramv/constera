@@ -102,4 +102,5 @@ test("kataloq remediation CLI boş təhlükəsiz filtrdə bütün problemləri s
   assert.match(script, /hasExplicitSelection/);
   assert.match(script, /hasExplicitSelection && issueIds\.length === 0/);
   assert.match(script, /selectedIssues: 0/);
+  assert.match(script, /açıq problem yoxdur[\s\S]+process\.exit\(0\)/);
 });

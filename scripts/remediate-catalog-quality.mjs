@@ -65,6 +65,10 @@ if (!commit) {
   process.exit(0);
 }
 if (!allRequested && !issueIds.length) {
+  if (hasExplicitSelection) {
+    console.log("Seçilmiş təhlükəsiz filtrlər üzrə açıq problem yoxdur. Dəyişiklik tələb edilmir.");
+    process.exit(0);
+  }
   console.error("Filtrsiz düzəliş bloklandı. --issue, təhlükəsiz --only və ya açıq --all seçimi tələb olunur.");
   process.exit(1);
 }
