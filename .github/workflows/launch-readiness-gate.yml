@@ -32,6 +32,23 @@ jobs:
       - name: Kataloq media ünvanlarını yoxla
         run: npm run audit:media:online
 
+      - name: Production backup-ını göndər və bərpa yoxlamasını təsdiqlə
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+          BACKUP_READ_WRITE_TOKEN: ${{ secrets.BACKUP_READ_WRITE_TOKEN }}
+        run: |
+          if [ -z "${DATABASE_URL}" ] && [ -z "${POSTGRES_URL}" ]; then
+            echo "::error::DATABASE_URL və ya POSTGRES_URL təyin olunmayıb; backup yoxlaması bazasız işləyə bilməz."
+            exit 1
+          fi
+          if [ -z "${BACKUP_READ_WRITE_TOKEN}" ]; then
+            echo "::error::BACKUP_READ_WRITE_TOKEN təyin olunmayıb; özəl backup kanalı təsdiqlənə bilməz."
+            exit 1
+          fi
+          npm run db:deliver-backup
+          npm run db:verify-backup
+
       - name: Production Postgres ilə buraxılış yoxlamasını işə sal
         run: |
           if [ -z "${DATABASE_URL}" ] && [ -z "${POSTGRES_URL}" ]; then
@@ -42,6 +59,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+          BACKUP_READ_WRITE_TOKEN: ${{ secrets.BACKUP_READ_WRITE_TOKEN }}
 
       - name: Launch readiness nəticələrini saxla
         if: always()

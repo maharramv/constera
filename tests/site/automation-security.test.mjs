@@ -86,9 +86,25 @@ test("həftəlik buraxılış qapısı bazasız uğurlu nəticə vermir və xari
   const workflow = read(".github/workflows/launch-readiness-gate.yml");
   assert.doesNotMatch(workflow, /skip=true/);
   assert.match(workflow, /DATABASE_URL və ya POSTGRES_URL təyin olunmayıb/);
+  assert.match(workflow, /BACKUP_READ_WRITE_TOKEN təyin olunmayıb/);
+  assert.match(workflow, /npm run db:deliver-backup/);
+  assert.match(workflow, /npm run db:verify-backup/);
   assert.match(workflow, /exit 1/);
   assert.match(workflow, /npm audit --audit-level=high/);
   assert.match(workflow, /npm run audit:media:online/);
+});
+
+test("kommersiya hazırlığı xidməti yalnız təhlükəsiz kataloq düzəlişlərini və özəl backup-ı icra edir", () => {
+  const workflow = read(".github/workflows/commercial-readiness-maintenance.yml");
+  assert.match(workflow, /workflow_dispatch/);
+  assert.match(workflow, /db:normalize-attributes/);
+  assert.match(workflow, /--min-technical=2/);
+  assert.match(workflow, /db:remediate/);
+  assert.match(workflow, /stale_price/);
+  assert.match(workflow, /offer_stale_price/);
+  assert.doesNotMatch(workflow, /--all/);
+  assert.match(workflow, /db:deliver-backup/);
+  assert.match(workflow, /launch:readiness/);
 });
 
 test("kritik kataloq, müqavilə, ödəniş və logistika yazmaları administrator 2FA qorumasındadır", () => {

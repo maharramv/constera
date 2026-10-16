@@ -1,0 +1,72 @@
+name: ConstEra kommersiya hazırlığı xidməti
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: constera-commercial-readiness-maintenance
+  cancel-in-progress: false
+
+jobs:
+  maintain-production-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+      BACKUP_READ_WRITE_TOKEN: ${{ secrets.BACKUP_READ_WRITE_TOKEN }}
+    steps:
+      - name: Repozitoriyanı yüklə
+        uses: actions/checkout@v7
+
+      - name: Node.js 22 qur
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Asılılıqları quraşdır
+        run: npm ci
+
+      - name: Production sirlərini yoxla
+        run: |
+          if [ -z "${DATABASE_URL}" ] && [ -z "${POSTGRES_URL}" ]; then
+            echo "::error::DATABASE_URL və ya POSTGRES_URL təyin olunmayıb."
+            exit 1
+          fi
+          if [ -z "${BACKUP_READ_WRITE_TOKEN}" ]; then
+            echo "::error::BACKUP_READ_WRITE_TOKEN təyin olunmayıb."
+            exit 1
+          fi
+
+      - name: Texniki məhsul atributlarını normallaşdır
+        run: npm run db:normalize-attributes -- --limit=500 --min-technical=2
+
+      - name: Yalnız təhlükəsiz qiymət və URL problemlərini düzəlt
+        run: >-
+          npm run db:remediate --
+          --only=invalid_image_url,broken_image_url,invalid_image_content,invalid_source_url,broken_source_url,stale_price,expired_price,invalid_offer_price,offer_stale_price
+          --commit
+
+      - name: Kataloq keyfiyyətini yenidən hesabla
+        run: npm run db:scan-quality
+
+      - name: Özəl backup-ı göndər və bərpa məşqini yoxla
+        run: |
+          npm run db:deliver-backup
+          npm run db:verify-backup
+
+      - name: Yenilənmiş kommersiya hazırlığı hesabatını yarat
+        run: npm run launch:readiness -- --artifact --artifact-dir=outputs --min-score=0
+
+      - name: Hesabatları saxla
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: constera-commercial-readiness-maintenance
+          path: outputs/*
+          if-no-files-found: ignore
+          retention-days: 14
