@@ -33,7 +33,7 @@ jobs:
 
       - name: Nasazlıq üçün incident aç və ya yenilə
         if: steps.production-check.outcome == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const marker = '<!-- constera-production-monitor -->';
@@ -65,7 +65,7 @@ jobs:
 
       - name: Bərpa olunmuş incident-i bağla
         if: steps.production-check.outcome == 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const marker = '<!-- constera-production-monitor -->';
